@@ -95,6 +95,8 @@ export function PublishTripForm() {
   const routesQuery = useQuery({
     queryKey: ["/api/routes"],
     placeholderData: [],
+    // Aseguramos que se haga la consulta real a la API
+    enabled: true,
   });
 
   // Fetch selected route segments when route changes

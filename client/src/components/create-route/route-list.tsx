@@ -54,21 +54,29 @@ export function RouteList() {
   // Fetch routes
   const routesQuery = useQuery<Route[]>({
     queryKey: ["/api/routes"],
-    // Temporalmente deshabilitamos la consulta real mientras se corrigen problemas de conexión
-    enabled: false, // Deshabilitado temporalmente
-    placeholderData: exampleRoutes,
+    // Habilitamos la consulta real de rutas
+    enabled: true,
+    // Solo usar datos de ejemplo como respaldo si no hay rutas reales
+    placeholderData: [],
   });
 
   // Delete route mutation
   const deleteRouteMutation = useMutation({
     mutationFn: async (id: number) => {
+      console.log("Eliminando ruta con ID:", id);
       try {
-        await fetch(`/api/routes/${id}`, {
+        const response = await fetch(`/api/routes/${id}`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json'
           }
         });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || "Error al eliminar la ruta");
+        }
+        
         return true;
       } catch (error) {
         console.error("Error al eliminar ruta:", error);
