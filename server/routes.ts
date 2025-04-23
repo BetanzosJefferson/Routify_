@@ -444,11 +444,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const originIndex = allPoints.indexOf(segment.origin);
     const destinationIndex = allPoints.indexOf(segment.destination);
     
+    if (originIndex === -1 || destinationIndex === -1) {
+      console.warn(`Ubicación no encontrada en la ruta: ${segment.origin} o ${segment.destination}`);
+      return Math.round(totalPrice / 2); // Valor por defecto si no se encuentran los índices
+    }
+    
     // Calculate the number of segments this covers
     const segmentsCovered = destinationIndex - originIndex;
     
-    // Calculate the price proportionally
-    return Math.round((segmentsCovered / totalSegments) * totalPrice);
+    // Asegurarnos de que el número de segmentos sea siempre positivo
+    if (segmentsCovered <= 0) {
+      console.warn(`Cálculo de segmentos inválido para ${segment.origin} -> ${segment.destination}`);
+      return Math.round(totalPrice / 4); // Valor por defecto para segmentos con cálculo inválido
+    }
+    
+    // Calcular la proporción basada en la distancia entre los puntos (asumiendo distancias iguales)
+    const proportion = segmentsCovered / totalSegments;
+    
+    // Para evitar precios muy bajos, establecemos un mínimo de 1/4 del precio total
+    const minProportion = 0.25;
+    const effectiveProportion = Math.max(proportion, minProportion);
+    
+    // Redondear a múltiplos de 25 para precios más "limpios"
+    const exactPrice = effectiveProportion * totalPrice;
+    return Math.round(exactPrice / 25) * 25;
   }
 
   app.put(apiRouter("/trips/:id"), async (req: Request, res: Response) => {
