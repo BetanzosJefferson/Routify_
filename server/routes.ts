@@ -441,15 +441,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const totalPoints = allPoints.length;
     const totalSegments = totalPoints - 1;
     
+    // Resultado final: mapa de tiempos para cada segmento
+    const segmentTimes: Record<string, { departureTime: string; arrivalTime: string }> = {};
+    console.log("Iniciando cálculo de tiempos para segmentos");
+    
     // Primero intentamos usar los tiempos definidos en segmentPrices (con mayor prioridad)
     const segmentPrices = segments[0]?.segmentPrices;
     if (segmentPrices && Array.isArray(segmentPrices) && segmentPrices.length > 0) {
       console.log("Verificando tiempos en segmentPrices", segmentPrices);
       
-      // Crear mapa para los segmentos con tiempos configurados en segmentPrices
-      const segmentTimes: Record<string, { departureTime: string; arrivalTime: string }> = {};
-      
-      // Recorrer cada segmentPrice para extraer los tiempos
+      // Recorrer cada segmentPrice para extraer los tiempos explícitamente configurados
       segments.forEach(segment => {
         const segmentData = segmentPrices.find(
           (sp: any) => sp.origin === segment.origin && sp.destination === segment.destination
@@ -458,36 +459,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (segmentData) {
           let departureTime, arrivalTime;
           
-          // Obtener tiempo de salida
+          // Obtener tiempo de salida (dar prioridad al formato completo)
           if (segmentData.departureTime) {
             departureTime = segmentData.departureTime;
-            console.log(`Usando tiempo de salida explícito desde segmentPrices para ${segment.origin} -> ${segment.destination}: ${departureTime}`);
+            console.log(`Usando tiempo de salida explícito: ${segment.origin} -> ${departureTime}`);
           } else if (segmentData.departureHour && segmentData.departureMinute && segmentData.departureAmPm) {
             departureTime = `${segmentData.departureHour}:${segmentData.departureMinute} ${segmentData.departureAmPm}`;
-            console.log(`Usando tiempo de salida por componentes desde segmentPrices para ${segment.origin} -> ${segment.destination}: ${departureTime}`);
+            console.log(`Componiendo tiempo de salida: ${segment.origin} -> ${departureTime}`);
           }
           
-          // Obtener tiempo de llegada
+          // Obtener tiempo de llegada (dar prioridad al formato completo)
           if (segmentData.arrivalTime) {
             arrivalTime = segmentData.arrivalTime;
-            console.log(`Usando tiempo de llegada explícito desde segmentPrices para ${segment.origin} -> ${segment.destination}: ${arrivalTime}`);
+            console.log(`Usando tiempo de llegada explícito: ${segment.destination} -> ${arrivalTime}`);
           } else if (segmentData.arrivalHour && segmentData.arrivalMinute && segmentData.arrivalAmPm) {
             arrivalTime = `${segmentData.arrivalHour}:${segmentData.arrivalMinute} ${segmentData.arrivalAmPm}`;
-            console.log(`Usando tiempo de llegada por componentes desde segmentPrices para ${segment.origin} -> ${segment.destination}: ${arrivalTime}`);
+            console.log(`Componiendo tiempo de llegada: ${segment.destination} -> ${arrivalTime}`);
           }
           
-          // Si tenemos ambos tiempos, guardar el segmento
+          // Si tenemos ambos tiempos configurados para este segmento, guardarlos
           if (departureTime && arrivalTime) {
             const key = `${segment.origin}-${segment.destination}`;
             segmentTimes[key] = { departureTime, arrivalTime };
+            console.log(`✓ Configurados tiempos para segmento: ${segment.origin} -> ${segment.destination}`);
           }
         }
       });
       
       // Si tenemos tiempos para todos los segmentos, retornar directamente
       if (Object.keys(segmentTimes).length === segments.length) {
-        console.log("Usando tiempos configurados para todos los segmentos desde segmentPrices");
+        console.log("✅ Usando tiempos configurados para todos los segmentos");
         return segmentTimes;
+      } else {
+        console.log(`Encontrados ${Object.keys(segmentTimes).length}/${segments.length} segmentos con tiempos configurados`);
       }
     }
     
