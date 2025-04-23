@@ -926,11 +926,16 @@ export function PublishTripForm() {
         </CardContent>
       </Card>
       
-      {/* Diálogo para editar tiempo */}
-      <Dialog open={showTimeDialog} onOpenChange={setShowTimeDialog}>
-        <DialogContent className="sm:max-w-[425px]">
+      {/* Diálogo para editar tiempo usando TimePicker moderno */}
+      <Dialog open={showTimeDialog} onOpenChange={(open) => {
+        if (!open) setShowTimeDialog(false);
+      }}>
+        <DialogContent className="sm:max-w-[425px]" aria-describedby="time-config-description">
           <DialogHeader>
             <DialogTitle>Configurar horario</DialogTitle>
+            <p id="time-config-description" className="text-sm text-muted-foreground">
+              Configure el horario para esta parada en la ruta.
+            </p>
           </DialogHeader>
           
           <div className="py-4">
@@ -939,122 +944,35 @@ export function PublishTripForm() {
               <p className="text-sm text-gray-500">{currentStopInfo.location}</p>
             </div>
             
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="time-hour">Hora</Label>
-                <div className="grid grid-cols-5 gap-2 items-center mt-2">
-                  <div className="col-span-1">
-                    <Select 
-                      defaultValue={stopTimes[editingStopIndex || 0]?.hour || "08"}
-                      onValueChange={(value) => {
-                        if (editingStopIndex === null) return;
-                        const newStopTimes = [...stopTimes];
-                        if (!newStopTimes[editingStopIndex]) {
-                          newStopTimes[editingStopIndex] = {
-                            hour: value,
-                            minute: "00",
-                            ampm: "AM"
-                          };
-                        } else {
-                          newStopTimes[editingStopIndex].hour = value;
-                        }
-                        setStopTimes(newStopTimes);
-                      }}
-                    >
-                      <SelectTrigger id="time-hour">
-                        <SelectValue placeholder="HH" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(hour => (
-                          <SelectItem key={hour} value={hour}>{hour}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="text-center">:</div>
-                  
-                  <div className="col-span-1">
-                    <Select 
-                      defaultValue={stopTimes[editingStopIndex || 0]?.minute || "00"}
-                      onValueChange={(value) => {
-                        if (editingStopIndex === null) return;
-                        const newStopTimes = [...stopTimes];
-                        if (!newStopTimes[editingStopIndex]) {
-                          newStopTimes[editingStopIndex] = {
-                            hour: "08",
-                            minute: value,
-                            ampm: "AM"
-                          };
-                        } else {
-                          newStopTimes[editingStopIndex].minute = value;
-                        }
-                        setStopTimes(newStopTimes);
-                      }}
-                    >
-                      <SelectTrigger id="time-minute">
-                        <SelectValue placeholder="MM" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 12 }, (_, i) => (i * 5).toString().padStart(2, '0')).map(minute => (
-                          <SelectItem key={minute} value={minute}>{minute}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="col-span-2">
-                    <Select 
-                      defaultValue={stopTimes[editingStopIndex || 0]?.ampm || "AM"}
-                      onValueChange={(value: "AM" | "PM") => {
-                        if (editingStopIndex === null) return;
-                        const newStopTimes = [...stopTimes];
-                        if (!newStopTimes[editingStopIndex]) {
-                          newStopTimes[editingStopIndex] = {
-                            hour: "08",
-                            minute: "00",
-                            ampm: value
-                          };
-                        } else {
-                          newStopTimes[editingStopIndex].ampm = value;
-                        }
-                        setStopTimes(newStopTimes);
-                      }}
-                    >
-                      <SelectTrigger id="time-ampm">
-                        <SelectValue placeholder="AM/PM" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="AM">AM</SelectItem>
-                        <SelectItem value="PM">PM</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+            {editingStopIndex !== null && (
+              <div className="text-center">
+                <div className="text-4xl font-bold mb-4">
+                  {stopTimes[editingStopIndex]?.hour || "08"}:{stopTimes[editingStopIndex]?.minute || "00"} {stopTimes[editingStopIndex]?.ampm || "AM"}
                 </div>
+                
+                <TimePicker
+                  open={true}
+                  onClose={() => setShowTimeDialog(false)}
+                  onSelectTime={(hour, minute, ampm) => {
+                    if (editingStopIndex !== null) {
+                      saveStopTime(hour, minute, ampm);
+                    }
+                  }}
+                  initialHour={stopTimes[editingStopIndex]?.hour || "08"}
+                  initialMinute={stopTimes[editingStopIndex]?.minute || "00"}
+                  initialAmPm={stopTimes[editingStopIndex]?.ampm || "AM"}
+                  title={`Configurar horario para ${currentStopInfo.name}`}
+                />
               </div>
-              
-              <div className="text-sm text-gray-500 pt-2">
-                <p className="flex items-center">
-                  <InfoIcon className="h-4 w-4 mr-2 text-primary" />
-                  Esta hora representa tanto el tiempo de llegada como de salida para esta ubicación.
-                </p>
-              </div>
+            )}
+            
+            <div className="text-sm text-gray-500 pt-4">
+              <p className="flex items-center">
+                <InfoIcon className="h-4 w-4 mr-2 text-primary" />
+                Esta hora representa tanto el tiempo de llegada como de salida para esta ubicación.
+              </p>
             </div>
           </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowTimeDialog(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={() => {
-              if (editingStopIndex !== null && stopTimes[editingStopIndex]) {
-                const { hour, minute, ampm } = stopTimes[editingStopIndex]!;
-                saveStopTime(hour, minute, ampm);
-              }
-            }}>
-              Guardar
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
