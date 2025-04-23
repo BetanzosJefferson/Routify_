@@ -795,7 +795,11 @@ export function PublishTripForm() {
                                   <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                                     {index === 0 ? (
                                       <span className="text-primary">Origen: {location}</span>
-                                    ) : index === [routeSegmentsQuery.data.origin, ...(routeSegmentsQuery.data.stops || []), routeSegmentsQuery.data.destination].length - 1 ? (
+                                    ) : routeSegmentsQuery.data?.origin && index === [
+                                        routeSegmentsQuery.data.origin, 
+                                        ...(routeSegmentsQuery.data.stops || []), 
+                                        routeSegmentsQuery.data.destination
+                                      ].length - 1 ? (
                                       <span className="text-primary">Destino: {location}</span>
                                     ) : (
                                       <span>Parada {index}: {location}</span>

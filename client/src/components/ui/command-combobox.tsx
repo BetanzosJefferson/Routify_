@@ -64,25 +64,55 @@ export function CommandCombobox({
   
   // Filtrar opciones basadas en texto de búsqueda
   const filteredGroupedOptions: GroupedLocations = React.useMemo(() => {
+    // Si no hay búsqueda, mostrar todas las opciones
     if (!searchValue) return groupedOptions
     
     const filtered: GroupedLocations = {}
     const searchLower = searchValue.toLowerCase()
     
+    // Primero, buscar en todas las ciudades
+    let hasCityMatches = false;
+    
     Object.entries(groupedOptions).forEach(([city, locations]) => {
-      const matchingLocations = locations.filter(
-        loc => 
-          loc.city.toLowerCase().includes(searchLower) ||
-          loc.place.toLowerCase().includes(searchLower) ||
-          loc.value.toLowerCase().includes(searchLower)
-      )
+      // Verificar si el texto de búsqueda coincide con el nombre de la ciudad
+      const cityMatches = city.toLowerCase().includes(searchLower);
+      
+      // Filtrar ubicaciones que coinciden con la búsqueda
+      const matchingLocations = locations.filter(loc => 
+        cityMatches || // Incluir todas las ubicaciones si la ciudad coincide
+        loc.city.toLowerCase().includes(searchLower) ||
+        loc.place.toLowerCase().includes(searchLower) ||
+        loc.value.toLowerCase().includes(searchLower) ||
+        `${loc.place}, ${loc.city}`.toLowerCase().includes(searchLower) // Buscar en texto combinado
+      );
       
       if (matchingLocations.length) {
-        filtered[city] = matchingLocations
+        filtered[city] = matchingLocations;
+        if (cityMatches) hasCityMatches = true;
       }
-    })
+    });
     
-    return filtered
+    // Si no hay coincidencias exactas, intentar búsqueda parcial
+    if (Object.keys(filtered).length === 0) {
+      Object.entries(groupedOptions).forEach(([city, locations]) => {
+        // Buscar coincidencias parciales en palabras separadas
+        const matchingLocations = locations.filter(loc => {
+          const allWords = [
+            ...city.toLowerCase().split(/\s+/),
+            ...loc.place.toLowerCase().split(/\s+/)
+          ];
+          
+          // Verificar si alguna palabra comienza con el texto de búsqueda
+          return allWords.some(word => word.startsWith(searchLower));
+        });
+        
+        if (matchingLocations.length) {
+          filtered[city] = matchingLocations;
+        }
+      });
+    }
+    
+    return filtered;
   }, [groupedOptions, searchValue])
   
   // Encuentra el texto a mostrar en el botón basado en el valor seleccionado
