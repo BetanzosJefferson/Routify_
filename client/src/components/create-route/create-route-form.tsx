@@ -289,33 +289,6 @@ export function CreateRouteForm({ initialRoute, onSuccess }: CreateRouteFormProp
               {/* Submit Button */}
               <div className="flex justify-end gap-4">
                 <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    if (stops.length < 2) {
-                      toast({
-                        title: "Error de validación",
-                        description: "Una ruta debe tener al menos 2 paradas.",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-                    
-                    // Crear datos de prueba para verificar la mutación directamente
-                    const testRouteData: InsertRoute = {
-                      name: form.getValues().name || `Ruta de Prueba ${Date.now()}`,
-                      stops: stops.map(stop => stop.location),
-                      origin: stops[0].location,
-                      destination: stops[stops.length - 1].location
-                    };
-                    
-                    console.log("Enviando datos de ruta (prueba directa):", testRouteData);
-                    routeMutation.mutate(testRouteData);
-                  }}
-                >
-                  Prueba Directa
-                </Button>
-                <Button
                   type="submit"
                   className="bg-primary hover:bg-primary-dark text-white"
                   disabled={routeMutation.isPending || stops.length < 2}
