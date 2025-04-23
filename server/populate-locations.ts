@@ -1,7 +1,12 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { db } from './db';
 import { locationData } from '@shared/schema';
+
+// Obtén la ruta del directorio actual para ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function populateLocationData() {
   try {
@@ -48,14 +53,16 @@ async function populateLocationData() {
   }
 }
 
-// Ejecutar la función si este archivo se ejecuta directamente
-if (require.main === module) {
-  populateLocationData()
-    .then(() => process.exit(0))
-    .catch((error) => {
-      console.error('Error al ejecutar el script:', error);
-      process.exit(1);
-    });
-}
+// En ES modules, no podemos usar require.main === module
+// Simplemente exportamos la función para usarla desde otros archivos
+
+// Ejecución para pruebas (descomentar si es necesario)
+/*
+populateLocationData()
+  .then(() => console.log('Datos cargados exitosamente'))
+  .catch((error) => {
+    console.error('Error al ejecutar el script:', error);
+  });
+*/
 
 export { populateLocationData };
