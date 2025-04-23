@@ -57,6 +57,7 @@ export const reservations = pgTable("reservations", {
   totalAmount: doublePrecision("total_amount").notNull(),
   email: text("email").notNull(),
   phone: text("phone").notNull(),
+  notes: text("notes"),
   status: text("status").notNull().default("confirmed"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -132,5 +133,6 @@ export const createReservationValidationSchema = z.object({
     })
   ),
   email: z.string().email("Valid email is required"),
-  phone: z.string().min(1, "Phone number is required")
+  phone: z.string().min(1, "Phone number is required"),
+  notes: z.string().optional()
 });
