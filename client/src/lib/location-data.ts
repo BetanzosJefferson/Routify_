@@ -24,7 +24,7 @@ export function useLocationData() {
   return useQuery<LocationState[]>({
     queryKey: ['/api/locations'],
     queryFn: async () => {
-      const response = await apiRequest<LocationState[]>('/api/locations');
+      const response = await apiRequest<LocationState[]>("GET", '/api/locations');
       return response;
     }
   });
