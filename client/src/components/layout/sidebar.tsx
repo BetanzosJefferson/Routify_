@@ -129,6 +129,16 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             </NavItem>
           </NavSection>
           
+          <NavSection title="Usuarios">
+            <NavItem 
+              icon={<UserIcon className="h-5 w-5" />} 
+              active={activeTab === "users"}
+              onClick={() => handleTabClick("users")}
+            >
+              Usuarios
+            </NavItem>
+          </NavSection>
+          
           <NavSection title="Configuración">
             <NavItem 
               icon={<Settings2 className="h-5 w-5" />} 

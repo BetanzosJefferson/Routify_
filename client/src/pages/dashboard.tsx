@@ -8,6 +8,7 @@ import { PublishTripForm } from "@/components/publish-trip/publish-trip-form";
 import { TripList } from "@/components/trips/trip-list";
 import { ReservationList } from "@/components/reservations/reservation-list";
 import TripSummary from "@/components/trip-summary/trip-summary";
+import { UsersPage } from "@/components/users/users-page";
 import { TabType } from "@/hooks/use-active-tab";
 
 export default function Dashboard() {
