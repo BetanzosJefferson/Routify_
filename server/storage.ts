@@ -123,33 +123,29 @@ export class MemStorage implements IStorage {
     
     const segments: Array<{ origin: string; destination: string; price?: number }> = [];
     
-    // Add origin to first stop
-    if (route.stops.length > 0) {
-      segments.push({
-        origin: route.origin,
-        destination: route.stops[0]
-      });
-      
-      // Add all stops
-      for (let i = 0; i < route.stops.length - 1; i++) {
+    // Crear un array con todos los puntos en la ruta (origen, paradas, destino)
+    const allPoints = [route.origin, ...route.stops, route.destination];
+    
+    // Generar todas las combinaciones posibles de segmentos
+    for (let i = 0; i < allPoints.length - 1; i++) {
+      for (let j = i + 1; j < allPoints.length; j++) {
+        // Agregar cada combinación posible como un segmento
         segments.push({
-          origin: route.stops[i],
-          destination: route.stops[i + 1]
+          origin: allPoints[i],
+          destination: allPoints[j]
         });
       }
-      
-      // Add last stop to destination
-      segments.push({
-        origin: route.stops[route.stops.length - 1],
-        destination: route.destination
-      });
-    } else {
-      // Direct route
+    }
+    
+    // Si no hay segmentos (caso raro), al menos agregar la ruta directa
+    if (segments.length === 0) {
       segments.push({
         origin: route.origin,
         destination: route.destination
       });
     }
+    
+    console.log(`Generados ${segments.length} segmentos para la ruta ${id}`);
     
     return {
       ...route,
