@@ -98,6 +98,7 @@ export function TripList() {
   const [searchParams, setSearchParams] = useState<SearchParams>({ date: today });
   const [selectedTrip, setSelectedTrip] = useState<TripWithRouteInfo | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [sortMethod, setSortMethod] = useState<"departure" | "price" | "duration">("departure");
   
   // Form state
   const [origin, setOrigin] = useState("");
@@ -165,6 +166,76 @@ export function TripList() {
     setShowModal(false);
     setSelectedTrip(null);
   };
+
+  // Función para ordenar los viajes según el criterio seleccionado
+  const sortedTrips = useMemo(() => {
+    if (!trips) return [];
+    
+    return [...trips].sort((a, b) => {
+      // Ordenar por hora de salida (más temprano primero)
+      if (sortMethod === "departure") {
+        // Extraer hora de salida
+        const getTimeValue = (timeStr: string) => {
+          const [time, period] = timeStr.split(' ');
+          const [hours, minutes] = time.split(':').map(Number);
+          let value = hours * 60 + minutes;
+          if (period === 'PM' && hours < 12) value += 12 * 60;
+          if (period === 'AM' && hours === 12) value = minutes;
+          return value;
+        };
+        
+        return getTimeValue(a.departureTime) - getTimeValue(b.departureTime);
+      }
+      
+      // Ordenar por precio (más barato primero)
+      if (sortMethod === "price") {
+        const priceA = a.isSubTrip && Array.isArray(a.segmentPrices) && a.segmentPrices.length > 0 
+          ? a.segmentPrices[0]?.price || a.price 
+          : a.price;
+        
+        const priceB = b.isSubTrip && Array.isArray(b.segmentPrices) && b.segmentPrices.length > 0 
+          ? b.segmentPrices[0]?.price || b.price 
+          : b.price;
+          
+        return priceA - priceB;
+      }
+      
+      // Ordenar por duración (más corto primero)
+      if (sortMethod === "duration") {
+        // Calcular duración en minutos
+        const getDuration = (departureTime: string, arrivalTime: string) => {
+          if (!departureTime || !arrivalTime) return 0;
+          
+          const parseTime = (time: string) => {
+            let [hourMin, period] = time.split(' ');
+            let [hours, minutes] = hourMin.split(':').map(Number);
+            
+            if (period === 'PM' && hours < 12) hours += 12;
+            if (period === 'AM' && hours === 12) hours = 0;
+            
+            return hours * 60 + minutes;
+          };
+          
+          let departure = parseTime(departureTime);
+          let arrival = parseTime(arrivalTime);
+          
+          // Si la llegada es antes que la salida, sumar 24 horas
+          if (arrival < departure) {
+            arrival += 24 * 60;
+          }
+          
+          return arrival - departure;
+        };
+        
+        const durationA = getDuration(a.departureTime, a.arrivalTime);
+        const durationB = getDuration(b.departureTime, b.arrivalTime);
+        
+        return durationA - durationB;
+      }
+      
+      return 0;
+    });
+  }, [trips, sortMethod]);
   
   return (
     <div className="py-6">
