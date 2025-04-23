@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { TimeInput } from "@/components/ui/time-input";
 import { publishTripValidationSchema, type Route, type RouteWithSegments, type SegmentPrice } from "@shared/schema";
 import { generateSegmentsFromRoute, convertTo24Hour, isSameCity } from "@/lib/utils";
 
@@ -570,130 +571,56 @@ export function PublishTripForm() {
               {/* Time Selection */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Departure Time */}
-                <div>
-                  <FormLabel>Hora de salida</FormLabel>
-                  <div className="flex space-x-2">
-                    <FormField
-                      control={form.control}
-                      name="departureHour"
-                      render={({ field }) => (
-                        <FormItem className="w-1/3">
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="1"
-                              max="12"
-                              placeholder="HH"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="departureMinute"
-                      render={({ field }) => (
-                        <FormItem className="w-1/3">
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="0"
-                              max="59"
-                              placeholder="MM"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="departureAmPm"
-                      render={({ field }) => (
-                        <FormItem className="w-1/3">
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="AM/PM" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="AM">AM</SelectItem>
-                              <SelectItem value="PM">PM</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="departureHour"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hora de salida</FormLabel>
+                      <div>
+                        <TimeInput
+                          value={{
+                            hour: form.getValues("departureHour"),
+                            minute: form.getValues("departureMinute"),
+                            ampm: form.getValues("departureAmPm")
+                          }}
+                          onChange={(hour, minute, ampm) => {
+                            form.setValue("departureHour", hour);
+                            form.setValue("departureMinute", minute);
+                            form.setValue("departureAmPm", ampm);
+                          }}
+                        />
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 
                 {/* Arrival Time */}
-                <div>
-                  <FormLabel>Hora de llegada</FormLabel>
-                  <div className="flex space-x-2">
-                    <FormField
-                      control={form.control}
-                      name="arrivalHour"
-                      render={({ field }) => (
-                        <FormItem className="w-1/3">
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="1"
-                              max="12"
-                              placeholder="HH"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="arrivalMinute"
-                      render={({ field }) => (
-                        <FormItem className="w-1/3">
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="0"
-                              max="59"
-                              placeholder="MM"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="arrivalAmPm"
-                      render={({ field }) => (
-                        <FormItem className="w-1/3">
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="AM/PM" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="AM">AM</SelectItem>
-                              <SelectItem value="PM">PM</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="arrivalHour"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hora de llegada</FormLabel>
+                      <div>
+                        <TimeInput
+                          value={{
+                            hour: form.getValues("arrivalHour"),
+                            minute: form.getValues("arrivalMinute"),
+                            ampm: form.getValues("arrivalAmPm")
+                          }}
+                          onChange={(hour, minute, ampm) => {
+                            form.setValue("arrivalHour", hour);
+                            form.setValue("arrivalMinute", minute);
+                            form.setValue("arrivalAmPm", ampm);
+                          }}
+                        />
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
               
               {/* Route Segment Pricing (conditional) */}
