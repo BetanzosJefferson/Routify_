@@ -57,9 +57,9 @@ interface TabItemProps {
 function TabItem({ href, active, onClick, children }: TabItemProps) {
   return (
     <Link href={href}>
-      <a 
+      <div 
         className={cn(
-          "py-4 px-1 text-sm font-medium",
+          "py-4 px-1 text-sm font-medium cursor-pointer",
           active 
             ? "text-primary border-b-2 border-primary" 
             : "text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:border-gray-300"
@@ -67,7 +67,7 @@ function TabItem({ href, active, onClick, children }: TabItemProps) {
         onClick={onClick}
       >
         {children}
-      </a>
+      </div>
     </Link>
   );
 }

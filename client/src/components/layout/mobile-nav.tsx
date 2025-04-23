@@ -56,12 +56,12 @@ interface NavLinkProps {
 function NavLink({ href, onClick, children }: NavLinkProps) {
   return (
     <Link href={href}>
-      <a 
-        className="flex items-center px-2 py-3 text-base font-medium text-gray-700 hover:bg-gray-100 rounded-md"
+      <div 
+        className="flex items-center px-2 py-3 text-base font-medium text-gray-700 hover:bg-gray-100 rounded-md cursor-pointer"
         onClick={onClick}
       >
         {children}
-      </a>
+      </div>
     </Link>
   );
 }
