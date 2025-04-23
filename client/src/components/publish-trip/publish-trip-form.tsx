@@ -256,7 +256,7 @@ export function PublishTripForm() {
       hour, 
       minute, 
       ampm,
-      location: stopLocation  // Guardar la ubicación correspondiente
+      location: stopLocation
     };
     setStopTimes(newStopTimes);
     
