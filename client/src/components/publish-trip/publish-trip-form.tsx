@@ -95,18 +95,27 @@ export function PublishTripForm() {
   useEffect(() => {
     if (routeSegmentsQuery.data) {
       const route = routeSegmentsQuery.data;
-      const segments = route.segments.filter(
-        segment => !isSameCity(segment.origin, segment.destination)
-      );
       
-      const segmentPricesWithDefaultValues = segments.map(segment => ({
-        origin: segment.origin,
-        destination: segment.destination,
-        price: 0,
-      }));
-      
-      setSegmentPrices(segmentPricesWithDefaultValues);
-      form.setValue("segmentPrices", segmentPricesWithDefaultValues);
+      // Verificar que route.segments existe antes de usar filter
+      if (route.segments && Array.isArray(route.segments)) {
+        const segments = route.segments.filter(
+          segment => segment && segment.origin && segment.destination && 
+          !isSameCity(segment.origin, segment.destination)
+        );
+        
+        const segmentPricesWithDefaultValues = segments.map(segment => ({
+          origin: segment.origin,
+          destination: segment.destination,
+          price: 0,
+        }));
+        
+        setSegmentPrices(segmentPricesWithDefaultValues);
+        form.setValue("segmentPrices", segmentPricesWithDefaultValues);
+      } else {
+        console.warn("No se encontraron segmentos en la ruta seleccionada o la estructura es incorrecta", route);
+        setSegmentPrices([]);
+        form.setValue("segmentPrices", []);
+      }
     }
   }, [routeSegmentsQuery.data, form]);
 
