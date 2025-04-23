@@ -1,11 +1,17 @@
 import { useState } from "react";
 import { MenuIcon, XIcon } from "lucide-react";
-import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useActiveTab } from "@/hooks/use-active-tab";
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
+  const { setTab } = useActiveTab();
+  
+  const handleNavClick = (tab: "create-route" | "publish-trip" | "trips" | "reservations") => {
+    setTab(tab);
+    setOpen(false);
+  };
   
   return (
     <div className="md:hidden flex items-center justify-between bg-white border-b border-gray-200 px-4 py-3">
@@ -25,16 +31,16 @@ export function MobileNav() {
             </div>
           </div>
           <nav className="flex flex-col p-4">
-            <NavLink href="/dashboard?tab=create-route" onClick={() => setOpen(false)}>
+            <NavLink onClick={() => handleNavClick("create-route")}>
               Create Route
             </NavLink>
-            <NavLink href="/dashboard?tab=publish-trip" onClick={() => setOpen(false)}>
+            <NavLink onClick={() => handleNavClick("publish-trip")}>
               Publish Trip
             </NavLink>
-            <NavLink href="/dashboard?tab=trips" onClick={() => setOpen(false)}>
+            <NavLink onClick={() => handleNavClick("trips")}>
               Trips
             </NavLink>
-            <NavLink href="/dashboard?tab=reservations" onClick={() => setOpen(false)}>
+            <NavLink onClick={() => handleNavClick("reservations")}>
               Reservations
             </NavLink>
           </nav>
@@ -48,20 +54,17 @@ export function MobileNav() {
 }
 
 interface NavLinkProps {
-  href: string;
   onClick: () => void;
   children: React.ReactNode;
 }
 
-function NavLink({ href, onClick, children }: NavLinkProps) {
+function NavLink({ onClick, children }: NavLinkProps) {
   return (
-    <Link href={href}>
-      <div 
-        className="flex items-center px-2 py-3 text-base font-medium text-gray-700 hover:bg-gray-100 rounded-md cursor-pointer"
-        onClick={onClick}
-      >
-        {children}
-      </div>
-    </Link>
+    <div 
+      className="flex items-center px-2 py-3 text-base font-medium text-gray-700 hover:bg-gray-100 rounded-md cursor-pointer"
+      onClick={onClick}
+    >
+      {children}
+    </div>
   );
 }
