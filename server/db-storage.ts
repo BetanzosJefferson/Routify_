@@ -214,38 +214,78 @@ export class DatabaseStorage implements IStorage {
   }
   
   async updateRelatedTripsAvailability(tripId: number, seatChange: number): Promise<void> {
-    // Get the original trip
+    // Obtener el viaje original
     const trip = await this.getTrip(tripId);
     if (!trip) return;
     
-    // Update all sub-trips with the same parentTripId, including the main trip
-    if (trip.isSubTrip && trip.parentTripId) {
-      // If this is a sub-trip, update the parent and all siblings
-      const parentId = trip.parentTripId;
+    if (trip.isSubTrip && trip.parentTripId && trip.segmentOrigin && trip.segmentDestination) {
+      // Este es un sub-viaje, actualizar el viaje principal
+      const mainTrip = await this.getTrip(trip.parentTripId);
+      if (!mainTrip) return;
+      
+      // Actualizar el viaje principal
       await db
         .update(schema.trips)
-        .set({ 
-          availableSeats: sql`available_seats + ${seatChange}` 
-        })
+        .set({ availableSeats: sql`available_seats + ${seatChange}` })
+        .where(eq(schema.trips.id, mainTrip.id));
+      
+      // Obtener información de la ruta principal para determinar todas las paradas
+      const routeInfo = await this.getRouteWithSegments(mainTrip.routeId);
+      if (!routeInfo) return;
+      
+      // Crear un array con todas las paradas en orden
+      const allStops = [routeInfo.origin, ...routeInfo.stops, routeInfo.destination];
+      
+      // Encontrar índices para este segmento
+      const segmentOriginIdx = allStops.indexOf(trip.segmentOrigin);
+      const segmentDestinationIdx = allStops.indexOf(trip.segmentDestination);
+      
+      if (segmentOriginIdx === -1 || segmentDestinationIdx === -1) return;
+      
+      // Obtener todos los sub-viajes relacionados con el viaje principal
+      const subTrips = await db
+        .select()
+        .from(schema.trips)
         .where(
-          or(
-            eq(schema.trips.id, parentId),
-            eq(schema.trips.parentTripId, parentId)
+          and(
+            eq(schema.trips.parentTripId, mainTrip.id),
+            eq(schema.trips.isSubTrip, true),
+            sql`id != ${trip.id}`
           )
         );
+      
+      // Actualizar cada sub-viaje que se superpone con el segmento actual
+      for (const subTrip of subTrips) {
+        if (!subTrip.segmentOrigin || !subTrip.segmentDestination) continue;
+        
+        // Encontrar índices para el sub-viaje comparado
+        const subOriginIdx = allStops.indexOf(subTrip.segmentOrigin);
+        const subDestinationIdx = allStops.indexOf(subTrip.segmentDestination);
+        
+        if (subOriginIdx === -1 || subDestinationIdx === -1) continue;
+        
+        // Verificar si hay superposición de segmentos
+        const hasOverlap = (
+          // Si alguna parte del segmento actual está dentro del otro segmento
+          (segmentOriginIdx >= subOriginIdx && segmentOriginIdx < subDestinationIdx) ||
+          (segmentDestinationIdx > subOriginIdx && segmentDestinationIdx <= subDestinationIdx) ||
+          // O si el otro segmento está completamente dentro del segmento actual
+          (subOriginIdx >= segmentOriginIdx && subDestinationIdx <= segmentDestinationIdx)
+        );
+        
+        if (hasOverlap) {
+          await db
+            .update(schema.trips)
+            .set({ availableSeats: sql`available_seats + ${seatChange}` })
+            .where(eq(schema.trips.id, subTrip.id));
+        }
+      }
     } else {
-      // If this is a main trip, update it and all its sub-trips
+      // Es un viaje principal, actualizar todos sus sub-viajes
       await db
         .update(schema.trips)
-        .set({ 
-          availableSeats: sql`available_seats + ${seatChange}` 
-        })
-        .where(
-          or(
-            eq(schema.trips.id, tripId),
-            eq(schema.trips.parentTripId, tripId)
-          )
-        );
+        .set({ availableSeats: sql`available_seats + ${seatChange}` })
+        .where(eq(schema.trips.parentTripId, tripId));
     }
   }
   

@@ -534,10 +534,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         passengers.push(passenger);
       }
       
-      // Update available seats on the trip
+      // Actualizar asientos disponibles en el viaje
       await storage.updateTrip(trip.id, {
         availableSeats: trip.availableSeats - passengerCount
       });
+      
+      // Actualizar disponibilidad en viajes relacionados
+      await storage.updateRelatedTripsAvailability(trip.id, -passengerCount);
       
       res.status(201).json({
         ...reservation,

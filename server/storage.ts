@@ -317,43 +317,70 @@ export class MemStorage implements IStorage {
     const trip = await this.getTrip(tripId);
     if (!trip) return;
     
-    if (trip.isSubTrip && trip.parentTripId) {
-      // This is a sub-trip, update the main trip and other sub-trips
+    // Obtenemos todos los viajes
+    const allTrips = Array.from(this.trips.values());
+    
+    if (trip.isSubTrip && trip.parentTripId && trip.segmentOrigin && trip.segmentDestination) {
+      // Este es un sub-viaje, actualizamos el viaje principal y otros sub-viajes que se superpongan
       const mainTrip = await this.getTrip(trip.parentTripId);
       if (!mainTrip) return;
       
-      // Update main trip availability
+      // Actualizar el viaje principal
       await this.updateTrip(mainTrip.id, {
         availableSeats: mainTrip.availableSeats + seatChange
       });
       
-      // Get all sub-trips with the same origin/destination
-      const allTrips = Array.from(this.trips.values());
-      const relatedSubTrips = allTrips.filter(t => 
+      // Obtener todos los puntos de parada del viaje principal
+      const routeInfo = await this.getRouteWithSegments(mainTrip.routeId);
+      if (!routeInfo) return;
+      
+      const allStops = [routeInfo.origin, ...routeInfo.stops, routeInfo.destination];
+      
+      // Encontrar índices para este segmento
+      const segmentOriginIdx = allStops.indexOf(trip.segmentOrigin);
+      const segmentDestinationIdx = allStops.indexOf(trip.segmentDestination);
+      
+      if (segmentOriginIdx === -1 || segmentDestinationIdx === -1) return;
+      
+      // Actualizar todos los sub-viajes que se superponen con este segmento
+      const subTrips = allTrips.filter(t => 
         t.isSubTrip && 
         t.parentTripId === mainTrip.id &&
-        ((t.segmentOrigin === trip.segmentOrigin && 
-          t.segmentDestination === trip.segmentDestination) ||
-         (t.segmentOrigin === trip.segmentDestination && 
-          t.segmentDestination === trip.segmentOrigin))
+        t.id !== trip.id &&
+        t.segmentOrigin && 
+        t.segmentDestination
       );
       
-      // Update all related sub-trips
-      for (const subTrip of relatedSubTrips) {
-        if (subTrip.id !== trip.id) {
+      for (const subTrip of subTrips) {
+        // Encontrar índices para el sub-viaje comparado
+        const subOriginIdx = allStops.indexOf(subTrip.segmentOrigin!);
+        const subDestinationIdx = allStops.indexOf(subTrip.segmentDestination!);
+        
+        if (subOriginIdx === -1 || subDestinationIdx === -1) continue;
+        
+        // Verificar si hay superposición de segmentos
+        // Los segmentos se superponen si hay cualquier parte del camino que comparten
+        const hasOverlap = (
+          // Si alguna parte del segmento actual está dentro del otro segmento
+          (segmentOriginIdx >= subOriginIdx && segmentOriginIdx < subDestinationIdx) ||
+          (segmentDestinationIdx > subOriginIdx && segmentDestinationIdx <= subDestinationIdx) ||
+          // O si el otro segmento está completamente dentro del segmento actual
+          (subOriginIdx >= segmentOriginIdx && subDestinationIdx <= segmentDestinationIdx)
+        );
+        
+        if (hasOverlap) {
           await this.updateTrip(subTrip.id, {
             availableSeats: subTrip.availableSeats + seatChange
           });
         }
       }
     } else {
-      // This is a main trip, update all sub-trips
-      const allTrips = Array.from(this.trips.values());
+      // Es un viaje principal, obtener todos los sub-viajes
       const subTrips = allTrips.filter(t => 
         t.isSubTrip && t.parentTripId === trip.id
       );
       
-      // Update all sub-trips
+      // Actualizar todos los sub-viajes
       for (const subTrip of subTrips) {
         await this.updateTrip(subTrip.id, {
           availableSeats: subTrip.availableSeats + seatChange
