@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { 
   MapIcon, 
@@ -6,39 +6,39 @@ import {
   BuildingIcon, 
   UserIcon 
 } from "lucide-react";
+import { useActiveTab } from "@/hooks/use-active-tab";
 
 interface NavItemProps {
-  href: string;
   icon: React.ReactNode;
   children: React.ReactNode;
   active: boolean;
+  onClick: () => void;
 }
 
-const NavItem = ({ href, icon, children, active }: NavItemProps) => {
+const NavItem = ({ icon, children, active, onClick }: NavItemProps) => {
   return (
-    <Link href={href}>
-      <div 
-        className={cn(
-          "flex items-center px-4 py-2 text-sm font-medium rounded-md cursor-pointer",
-          active 
-            ? "text-gray-900 bg-gray-100" 
-            : "text-gray-700 hover:bg-gray-100"
-        )}
-      >
-        <div className={cn(
-          "h-5 w-5 mr-3",
-          active ? "text-primary" : "text-gray-500"
-        )}>
-          {icon}
-        </div>
-        {children}
+    <div 
+      onClick={onClick}
+      className={cn(
+        "flex items-center px-4 py-2 text-sm font-medium rounded-md cursor-pointer",
+        active 
+          ? "text-gray-900 bg-gray-100" 
+          : "text-gray-700 hover:bg-gray-100"
+      )}
+    >
+      <div className={cn(
+        "h-5 w-5 mr-3",
+        active ? "text-primary" : "text-gray-500"
+      )}>
+        {icon}
       </div>
-    </Link>
+      {children}
+    </div>
   );
 };
 
 export function Sidebar() {
-  const [location] = useLocation();
+  const { activeTab, setTab } = useActiveTab();
   
   return (
     <div className="hidden md:flex md:flex-shrink-0">
@@ -50,30 +50,30 @@ export function Sidebar() {
         <div className="flex-1 flex flex-col overflow-y-auto">
           <nav className="flex-1 px-2 py-4 space-y-2">
             <NavItem 
-              href="/dashboard?tab=create-route" 
               icon={<MapIcon />} 
-              active={location.includes("create-route") || location === "/dashboard"}
+              active={activeTab === "create-route"}
+              onClick={() => setTab("create-route")}
             >
               Create Route
             </NavItem>
             <NavItem 
-              href="/dashboard?tab=publish-trip" 
               icon={<ClockIcon />} 
-              active={location.includes("publish-trip")}
+              active={activeTab === "publish-trip"}
+              onClick={() => setTab("publish-trip")}
             >
               Publish Trip
             </NavItem>
             <NavItem 
-              href="/dashboard?tab=trips" 
               icon={<BuildingIcon />} 
-              active={location.includes("trips") && !location.includes("publish-trip")}
+              active={activeTab === "trips"}
+              onClick={() => setTab("trips")}
             >
               Trips
             </NavItem>
             <NavItem 
-              href="/dashboard?tab=reservations" 
               icon={<UserIcon />} 
-              active={location.includes("reservations")}
+              active={activeTab === "reservations"}
+              onClick={() => setTab("reservations")}
             >
               Reservations
             </NavItem>
