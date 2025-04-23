@@ -432,7 +432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Helper function to calculate segment departure and arrival times
   function calculateSegmentTimes(
-    segments: { origin: string; destination: string; price: number; stopTimes?: any[] }[],
+    segments: { origin: string; destination: string; price: number; stopTimes?: any[]; segmentPrices?: any[] }[],
     mainDepartureTime: string,
     mainArrivalTime: string,
     route: RouteWithSegments
@@ -440,6 +440,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const allPoints = [route.origin, ...route.stops, route.destination];
     const totalPoints = allPoints.length;
     const totalSegments = totalPoints - 1;
+    
+    // Primero intentamos usar los tiempos definidos en segmentPrices (con mayor prioridad)
+    const segmentPrices = segments[0]?.segmentPrices;
+    if (segmentPrices && Array.isArray(segmentPrices) && segmentPrices.length > 0) {
+      console.log("Verificando tiempos en segmentPrices", segmentPrices);
+      
+      // Crear mapa para los segmentos con tiempos configurados en segmentPrices
+      const segmentTimes: Record<string, { departureTime: string; arrivalTime: string }> = {};
+      
+      // Recorrer cada segmentPrice para extraer los tiempos
+      segments.forEach(segment => {
+        const segmentData = segmentPrices.find(
+          (sp: any) => sp.origin === segment.origin && sp.destination === segment.destination
+        );
+        
+        if (segmentData) {
+          let departureTime, arrivalTime;
+          
+          // Obtener tiempo de salida
+          if (segmentData.departureTime) {
+            departureTime = segmentData.departureTime;
+            console.log(`Usando tiempo de salida explícito desde segmentPrices para ${segment.origin} -> ${segment.destination}: ${departureTime}`);
+          } else if (segmentData.departureHour && segmentData.departureMinute && segmentData.departureAmPm) {
+            departureTime = `${segmentData.departureHour}:${segmentData.departureMinute} ${segmentData.departureAmPm}`;
+            console.log(`Usando tiempo de salida por componentes desde segmentPrices para ${segment.origin} -> ${segment.destination}: ${departureTime}`);
+          }
+          
+          // Obtener tiempo de llegada
+          if (segmentData.arrivalTime) {
+            arrivalTime = segmentData.arrivalTime;
+            console.log(`Usando tiempo de llegada explícito desde segmentPrices para ${segment.origin} -> ${segment.destination}: ${arrivalTime}`);
+          } else if (segmentData.arrivalHour && segmentData.arrivalMinute && segmentData.arrivalAmPm) {
+            arrivalTime = `${segmentData.arrivalHour}:${segmentData.arrivalMinute} ${segmentData.arrivalAmPm}`;
+            console.log(`Usando tiempo de llegada por componentes desde segmentPrices para ${segment.origin} -> ${segment.destination}: ${arrivalTime}`);
+          }
+          
+          // Si tenemos ambos tiempos, guardar el segmento
+          if (departureTime && arrivalTime) {
+            const key = `${segment.origin}-${segment.destination}`;
+            segmentTimes[key] = { departureTime, arrivalTime };
+          }
+        }
+      });
+      
+      // Si tenemos tiempos para todos los segmentos, retornar directamente
+      if (Object.keys(segmentTimes).length === segments.length) {
+        console.log("Usando tiempos configurados para todos los segmentos desde segmentPrices");
+        return segmentTimes;
+      }
+    }
     
     // Verificar si hay stopTimes personalizados en los datos de entrada
     const stopTimes = segments[0]?.stopTimes;
