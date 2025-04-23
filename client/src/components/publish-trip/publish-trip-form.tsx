@@ -81,6 +81,7 @@ type FormValues = {
 
 export function PublishTripForm() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
   const [segmentPrices, setSegmentPrices] = useState<SegmentTimePrice[]>([]);
   const [editingStopIndex, setEditingStopIndex] = useState<number | null>(null);
@@ -432,7 +433,7 @@ export function PublishTripForm() {
       }));
     
     // Convertir tiempos de segmentos a formato adecuado (HH:MM AM/PM)
-    const segmentsWithTimesAndPrices = segmentPrices.map(segment => {
+    const segmentsWithTimesAndPrices = segmentPrices.map((segment: SegmentTimePrice) => {
       const departureTime = `${segment.departureHour}:${segment.departureMinute} ${segment.departureAmPm}`;
       const arrivalTime = `${segment.arrivalHour}:${segment.arrivalMinute} ${segment.arrivalAmPm}`;
       
@@ -444,7 +445,7 @@ export function PublishTripForm() {
     });
     
     // Asignar el tipo explícitamente para evitar errores de TS
-    const segmentDataToSend = segmentsWithTimesAndPrices as any;
+    const segmentDataToSend = segmentsWithTimesAndPrices;
     
     // Preparar datos comunes para crear o actualizar
     const tripData = {
@@ -565,7 +566,16 @@ export function PublishTripForm() {
       // Si hay segmentPrices, actualizar el estado
       if (tripData.segmentPrices && Array.isArray(tripData.segmentPrices)) {
         // Convertir los tiempos en los segmentos
-        const formattedSegmentPrices = tripData.segmentPrices.map(segment => {
+        type SegmentWithTimes = {
+          origin: string;
+          destination: string;
+          price: number;
+          departureTime?: string;
+          arrivalTime?: string;
+          [key: string]: any;
+        };
+        
+        const formattedSegmentPrices = tripData.segmentPrices.map((segment: SegmentWithTimes) => {
           // Si el segmento tiene departureTime y arrivalTime
           if (segment.departureTime && segment.arrivalTime) {
             const [depTime, depAmPm] = segment.departureTime.split(' ');
