@@ -195,7 +195,14 @@ export class MemStorage implements IStorage {
   
   async createTrip(trip: InsertTrip): Promise<Trip> {
     const id = this.tripId++;
-    const newTrip: Trip = { ...trip, id };
+    const newTrip: Trip = { 
+      ...trip, 
+      id,
+      isSubTrip: trip.isSubTrip ?? false,
+      parentTripId: trip.parentTripId ?? null,
+      segmentOrigin: trip.segmentOrigin ?? null,
+      segmentDestination: trip.segmentDestination ?? null
+    };
     this.trips.set(id, newTrip);
     return newTrip;
   }
@@ -296,8 +303,9 @@ export class MemStorage implements IStorage {
       });
     }
     
-    if (params.seats && params.seats > 0) {
-      trips = trips.filter(trip => trip.availableSeats >= params.seats);
+    const seatsRequired = params.seats !== undefined ? params.seats : 0;
+    if (seatsRequired > 0) {
+      trips = trips.filter(trip => trip.availableSeats >= seatsRequired);
     }
     
     return trips;
