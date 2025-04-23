@@ -92,24 +92,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(apiRouter("/routes"), async (req: Request, res: Response) => {
     try {
       console.log("POST /routes - Request recibido:", req.body);
-      const validationResult = createRouteValidationSchema.safeParse(req.body);
+      
+      // Primero verificamos si los campos requeridos están presentes
+      if (!req.body.name || !req.body.origin || !req.body.destination) {
+        console.log("Datos requeridos faltantes:", req.body);
+        return res.status(400).json({ 
+          error: "Datos incompletos", 
+          details: "Se requieren los campos name, origin y destination" 
+        });
+      }
+      
+      // Asegurarse de que stops sea un array
+      const stops = Array.isArray(req.body.stops) ? req.body.stops : [];
+      
+      // Crear un objeto con los datos seguros
+      const safeRouteData = {
+        name: req.body.name,
+        origin: req.body.origin,
+        destination: req.body.destination,
+        stops: stops
+      };
+      
+      // Ahora validar
+      const validationResult = createRouteValidationSchema.safeParse(safeRouteData);
       
       if (!validationResult.success) {
         console.log("Validación fallida:", validationResult.error.format());
         return res.status(400).json({ 
-          error: "Invalid route data", 
+          error: "Datos de ruta inválidos", 
           details: validationResult.error.format() 
         });
       }
       
-      const routeData = validationResult.data;
-      console.log("Datos validados correctamente:", routeData);
-      const route = await storage.createRoute(routeData);
+      console.log("Datos validados correctamente:", safeRouteData);
+      const route = await storage.createRoute(safeRouteData);
       console.log("Ruta creada con éxito:", route);
       res.status(201).json(route);
     } catch (error: any) {
       console.error("Error al crear ruta:", error?.message || error);
-      res.status(500).json({ error: "Failed to create route", details: error?.message || "Unknown error" });
+      res.status(500).json({ error: "Error al crear ruta", details: error?.message || "Error desconocido" });
     }
   });
 

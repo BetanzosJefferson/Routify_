@@ -115,14 +115,42 @@ export function CreateRouteForm({ initialRoute, onSuccess }: CreateRouteFormProp
   const routeMutation = useMutation({
     mutationFn: async (data: InsertRoute) => {
       console.log("Enviando datos a servidor:", data);
-      if (initialRoute && initialRoute.id) {
-        // Update existing route
-        console.log("Actualizando ruta existente:", initialRoute.id);
-        return apiRequest("PUT", `/api/routes/${initialRoute.id}`, data);
-      } else {
-        // Create new route
-        console.log("Creando nueva ruta...");
-        return apiRequest("POST", "/api/routes", data);
+      
+      // Verificar la existencia de datos requeridos
+      if (!data.name || !data.origin || !data.destination) {
+        console.error("Datos requeridos faltantes:", { name: data.name, origin: data.origin, destination: data.destination });
+        throw new Error("Faltan datos requeridos (nombre, origen, destino)");
+      }
+      
+      try {
+        if (initialRoute && initialRoute.id) {
+          // Update existing route
+          console.log("Actualizando ruta existente:", initialRoute.id);
+          const result = await fetch(`/api/routes/${initialRoute.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          console.log("Respuesta raw:", result);
+          return result.json();
+        } else {
+          // Create new route
+          console.log("Creando nueva ruta...");
+          const result = await fetch('/api/routes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          console.log("Respuesta raw:", result);
+          if (!result.ok) {
+            const errorText = await result.text();
+            throw new Error(errorText || result.statusText);
+          }
+          return result.json();
+        }
+      } catch (error) {
+        console.error("Error en la petición:", error);
+        throw error;
       }
     },
     onSuccess: () => {

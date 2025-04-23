@@ -95,11 +95,11 @@ export type SegmentPrice = {
 
 // EXTENDED VALIDATION SCHEMAS
 
-export const createRouteValidationSchema = insertRouteSchema.extend({
-  name: z.string().min(1, "Route name is required"),
-  origin: z.string().min(1, "Origin is required"),
-  stops: z.array(z.string().min(1, "Stop location is required")),
-  destination: z.string().min(1, "Destination is required"),
+export const createRouteValidationSchema = z.object({
+  name: z.string().min(1, "Nombre de la ruta es requerido"),
+  origin: z.string().min(1, "Origen es requerido"),
+  stops: z.array(z.string()),
+  destination: z.string().min(1, "Destino es requerido"),
 });
 
 export const publishTripValidationSchema = z.object({
