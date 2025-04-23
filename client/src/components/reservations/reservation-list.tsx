@@ -78,8 +78,22 @@ export function ReservationList() {
   // Delete reservation mutation
   const deleteReservationMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await apiRequest("DELETE", `/api/reservations/${id}`, undefined);
-      return response;
+      // Importante: No intentamos parsear JSON para una respuesta 204 (sin contenido)
+      const response = await fetch(`/api/reservations/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        // Si hay un error, intentamos extraer el mensaje
+        const errorData = response.status !== 204 ? await response.json() : { error: 'Unknown error' };
+        throw new Error(errorData.error || 'Failed to cancel reservation');
+      }
+      
+      // Retornamos un valor simple ya que la respuesta no tiene cuerpo
+      return true;
     },
     onSuccess: () => {
       toast({
