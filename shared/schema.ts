@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, doublePrecision, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -136,3 +136,20 @@ export const createReservationValidationSchema = z.object({
   phone: z.string().min(1, "Phone number is required"),
   notes: z.string().optional()
 });
+
+// LOCATION DATA SCHEMA
+export const locationData = pgTable("location_data", {
+  id: serial("id").primaryKey(),
+  state: text("state").notNull(),
+  code: text("code").notNull(),
+  municipalities: jsonb("municipalities").notNull()
+});
+
+export const insertLocationSchema = createInsertSchema(locationData);
+export type InsertLocation = z.infer<typeof insertLocationSchema>;
+export type Location = typeof locationData.$inferSelect;
+
+export type Municipality = {
+  name: string;
+  code: string;
+};
