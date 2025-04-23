@@ -310,8 +310,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             origin: string;
             destination: string;
             price: number;
+            // Tiempo en formato string "HH:MM AM/PM"
             departureTime?: string;
             arrivalTime?: string;
+            // Componentes individuales de tiempo
+            departureHour?: string;
+            departureMinute?: string;
+            departureAmPm?: string;
+            arrivalHour?: string;
+            arrivalMinute?: string;
+            arrivalAmPm?: string;
           };
           
           const segmentData = tripData.segmentPrices.find(
@@ -324,19 +332,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (segmentData) {
             price = segmentData.price;
             
-            // Si el frontend envió tiempos específicos para este segmento, usarlos
+            // Verificar si el frontend está enviando tiempos con formato explícito o componentes de hora
             if (segmentData.departureTime) {
+              // Formato explícito "HH:MM AM/PM"
               departureTime = segmentData.departureTime;
-              console.log(`Usando tiempo de salida personalizado para ${segment.origin} -> ${segment.destination}: ${departureTime}`);
+              console.log(`Usando tiempo de salida explícito para ${segment.origin} -> ${segment.destination}: ${departureTime}`);
+            } else if (segmentData.departureHour && segmentData.departureMinute && segmentData.departureAmPm) {
+              // Formato de componentes (hora, minuto, AM/PM)
+              departureTime = `${segmentData.departureHour}:${segmentData.departureMinute} ${segmentData.departureAmPm}`;
+              console.log(`Usando tiempo de salida por componentes para ${segment.origin} -> ${segment.destination}: ${departureTime}`);
             } else {
+              // Fallback al tiempo calculado
               departureTime = segmentTimes[`${segment.origin}-${segment.destination}`].departureTime;
+              console.log(`Fallback: Usando tiempo de salida calculado para ${segment.origin} -> ${segment.destination}: ${departureTime}`);
             }
             
             if (segmentData.arrivalTime) {
+              // Formato explícito "HH:MM AM/PM"
               arrivalTime = segmentData.arrivalTime;
-              console.log(`Usando tiempo de llegada personalizado para ${segment.origin} -> ${segment.destination}: ${arrivalTime}`);
+              console.log(`Usando tiempo de llegada explícito para ${segment.origin} -> ${segment.destination}: ${arrivalTime}`);
+            } else if (segmentData.arrivalHour && segmentData.arrivalMinute && segmentData.arrivalAmPm) {
+              // Formato de componentes (hora, minuto, AM/PM)
+              arrivalTime = `${segmentData.arrivalHour}:${segmentData.arrivalMinute} ${segmentData.arrivalAmPm}`;
+              console.log(`Usando tiempo de llegada por componentes para ${segment.origin} -> ${segment.destination}: ${arrivalTime}`);
             } else {
+              // Fallback al tiempo calculado
               arrivalTime = segmentTimes[`${segment.origin}-${segment.destination}`].arrivalTime;
+              console.log(`Fallback: Usando tiempo de llegada calculado para ${segment.origin} -> ${segment.destination}: ${arrivalTime}`);
             }
           } else {
             // Fallback: usar tiempos calculados proporcionalmente
@@ -378,7 +400,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const allPoints = [route.origin, ...route.stops, route.destination];
     const allSegments = [];
     
-    // Generate all possible combinations
+    console.log(`Generando todos los segmentos para la ruta ${route.id}`);
+    console.log(`Puntos en la ruta: ${allPoints.join(' -> ')}`);
+    
+    // Approach 1: Generate all possible combinations (not just consecutive stops)
     for (let i = 0; i < allPoints.length - 1; i++) {
       for (let j = i + 1; j < allPoints.length; j++) {
         // Skip the main route (origin to destination) as it's already created
@@ -390,25 +415,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
         
-        // Verificar que este punto no sea ignorado incorrectamente
-        if (allPoints[i].includes("Chilpancingo") || allPoints[j].includes("Chilpancingo")) {
-          console.log(`Generando segmento con Chilpancingo: ${allPoints[i]} -> ${allPoints[j]}`);
-        }
-        
         allSegments.push({
           origin: allPoints[i],
           destination: allPoints[j],
           price: 0
         });
+        
+        console.log(`  + Segmento: ${allPoints[i]} -> ${allPoints[j]}`);
       }
     }
     
     console.log(`Generados ${allSegments.length} segmentos válidos (excluyendo misma ciudad) para la ruta ${route.id}`);
-    
-    // Imprimir todos los segmentos generados para depuración
-    allSegments.forEach(segment => {
-      console.log(`  - Segmento: ${segment.origin} -> ${segment.destination}`);
-    });
     
     return allSegments;
   }

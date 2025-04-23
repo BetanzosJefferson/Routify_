@@ -691,9 +691,9 @@ export function PublishTripForm() {
                                 <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
                                   <SimpleTimeInput
                                     value={{
-                                      hour: segment.departureHour,
-                                      minute: segment.departureMinute,
-                                      ampm: segment.departureAmPm
+                                      hour: segment.departureHour || "00",
+                                      minute: segment.departureMinute || "00",
+                                      ampm: (segment.departureAmPm as "AM" | "PM") || "AM"
                                     }}
                                     onChange={(hour, minute, ampm) => {
                                       updateSegmentTime(index, 'departure', 'hour', hour);
@@ -706,9 +706,9 @@ export function PublishTripForm() {
                                 <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
                                   <SimpleTimeInput
                                     value={{
-                                      hour: segment.arrivalHour,
-                                      minute: segment.arrivalMinute,
-                                      ampm: segment.arrivalAmPm
+                                      hour: segment.arrivalHour || "00",
+                                      minute: segment.arrivalMinute || "00",
+                                      ampm: (segment.arrivalAmPm as "AM" | "PM") || "AM"
                                     }}
                                     onChange={(hour, minute, ampm) => {
                                       updateSegmentTime(index, 'arrival', 'hour', hour);
