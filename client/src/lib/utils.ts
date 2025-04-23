@@ -9,7 +9,16 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatDate(date: Date | string): string {
   if (typeof date === 'string') {
-    date = new Date(date);
+    // Crear fecha a partir de componentes individuales para evitar problemas de zona horaria
+    const parts = date.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // Meses en JS son 0-11
+      const day = parseInt(parts[2], 10);
+      date = new Date(year, month, day);
+    } else {
+      date = new Date(date);
+    }
   }
   return format(date, 'MMMM dd, yyyy');
 }
