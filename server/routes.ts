@@ -437,8 +437,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const reservations = await storage.getReservations();
       res.json(reservations);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch reservations" });
+    } catch (error: any) {
+      console.error("Error fetching reservations:", error);
+      res.status(500).json({ error: "Failed to fetch reservations", details: error.message || "Unknown error" });
     }
   });
 
@@ -520,8 +521,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...reservation,
         passengers
       });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create reservation" });
+    } catch (error: any) {
+      console.error("Error creating reservation:", error);
+      res.status(500).json({ error: "Failed to create reservation", details: error.message || "Unknown error" });
     }
   });
 
