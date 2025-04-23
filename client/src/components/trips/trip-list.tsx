@@ -334,13 +334,34 @@ export function TripList() {
         <div className="flex flex-col md:flex-row gap-2 items-start">
           <div className="text-sm font-medium text-gray-700">Ordenar por:</div>
           <div className="flex flex-wrap gap-2">
-            <button className="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors">
+            <button 
+              className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                sortMethod === "departure" 
+                  ? "bg-blue-50 text-blue-600" 
+                  : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              }`}
+              onClick={() => setSortMethod("departure")}
+            >
               Salida más temprana
             </button>
-            <button className="px-3 py-1 text-sm bg-gray-50 text-gray-600 rounded-full hover:bg-gray-100 transition-colors">
+            <button 
+              className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                sortMethod === "price" 
+                  ? "bg-blue-50 text-blue-600" 
+                  : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              }`}
+              onClick={() => setSortMethod("price")}
+            >
               Precio más bajo
             </button>
-            <button className="px-3 py-1 text-sm bg-gray-50 text-gray-600 rounded-full hover:bg-gray-100 transition-colors">
+            <button 
+              className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                sortMethod === "duration" 
+                  ? "bg-blue-50 text-blue-600" 
+                  : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              }`}
+              onClick={() => setSortMethod("duration")}
+            >
               Duración más corta
             </button>
           </div>
@@ -358,7 +379,7 @@ export function TripList() {
         </div>
       ) : trips && trips.length > 0 ? (
         <div className="grid grid-cols-1 gap-4">
-          {trips.map((trip) => (
+          {sortedTrips.map((trip) => (
             <div key={trip.id} className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-white">
               <div className="border-b border-gray-100 p-3 flex justify-between items-center">
                 <div className="flex items-center">
@@ -395,7 +416,9 @@ export function TripList() {
                   </div>
                   
                   <div className="flex flex-col items-center justify-center">
-                    <div className="text-xs text-gray-500 mb-1">1h aprox.</div>
+                    <div className="text-xs text-gray-500 mb-1">
+                      {calculateDuration(trip.departureTime, trip.arrivalTime)}
+                    </div>
                     <div className="relative w-full flex items-center justify-center">
                       <div className="border-t border-gray-300 w-full"></div>
                       <div className="absolute">
