@@ -106,27 +106,27 @@ export function TripList() {
         <div className="rounded-full bg-primary bg-opacity-10 p-2 mr-3">
           <MapPinIcon className="h-6 w-6 text-primary" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-800">Trips</h2>
+        <h2 className="text-xl font-semibold text-gray-800">Viajes</h2>
       </div>
       
       <Card className="mb-6">
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
-              <Label htmlFor="originFilter" className="block text-sm font-medium text-gray-700 mb-1">Origin</Label>
+              <Label htmlFor="originFilter" className="block text-sm font-medium text-gray-700 mb-1">Origen</Label>
               {locationOptions.length > 0 ? (
                 <LocationAdapter
                   options={locationOptions}
                   value={origin}
                   onChange={setOrigin}
-                  placeholder="Select origin"
+                  placeholder="Selecciona origen"
                   mode="grouped"
                   className="w-full"
                 />
               ) : (
                 <Input
                   id="originFilter"
-                  placeholder="Loading locations..."
+                  placeholder="Cargando ubicaciones..."
                   value={origin}
                   onChange={(e) => setOrigin(e.target.value)}
                   disabled={isLoadingAll}
@@ -134,20 +134,20 @@ export function TripList() {
               )}
             </div>
             <div>
-              <Label htmlFor="destinationFilter" className="block text-sm font-medium text-gray-700 mb-1">Destination</Label>
+              <Label htmlFor="destinationFilter" className="block text-sm font-medium text-gray-700 mb-1">Destino</Label>
               {locationOptions.length > 0 ? (
                 <LocationAdapter
                   options={locationOptions}
                   value={destination}
                   onChange={setDestination}
-                  placeholder="Select destination"
+                  placeholder="Selecciona destino"
                   mode="grouped"
                   className="w-full"
                 />
               ) : (
                 <Input
                   id="destinationFilter"
-                  placeholder="Loading locations..."
+                  placeholder="Cargando ubicaciones..."
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
                   disabled={isLoadingAll}
@@ -155,7 +155,7 @@ export function TripList() {
               )}
             </div>
             <div>
-              <label htmlFor="dateFilter" className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+              <label htmlFor="dateFilter" className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <CalendarIcon className="h-5 w-5 text-gray-400" />
@@ -170,12 +170,12 @@ export function TripList() {
               </div>
             </div>
             <div>
-              <label htmlFor="seatsFilter" className="block text-sm font-medium text-gray-700 mb-1">Seats</label>
+              <label htmlFor="seatsFilter" className="block text-sm font-medium text-gray-700 mb-1">Asientos</label>
               <Input
                 id="seatsFilter"
                 type="number"
                 min="1"
-                placeholder="Number of seats"
+                placeholder="Número de asientos"
                 value={seats}
                 onChange={(e) => setSeats(e.target.value)}
               />
@@ -184,7 +184,7 @@ export function TripList() {
               <div className="w-full p-2 border rounded-md bg-gray-50 text-center">
                 <div className="flex items-center justify-center">
                   <FilterIcon className="h-4 w-4 mr-2 text-gray-500" />
-                  <span className="text-sm text-gray-500">Real-time searching...</span>
+                  <span className="text-sm text-gray-500">Búsqueda en tiempo real...</span>
                 </div>
               </div>
             </div>
@@ -267,7 +267,9 @@ export function TripList() {
                     </div>
                   </div>
                   <div className="text-lg font-semibold text-primary">
-                    {formatPrice(trip.isSubTrip ? trip.segmentPrice || 0 : trip.price)}
+                    {formatPrice(trip.isSubTrip && trip.segmentPrices && trip.segmentPrices.length > 0 
+                      ? trip.segmentPrices[0].price || trip.price 
+                      : trip.price)}
                   </div>
                 </div>
                 
