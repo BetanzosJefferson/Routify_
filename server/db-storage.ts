@@ -29,8 +29,20 @@ export class DatabaseStorage implements IStorage {
   
   async createRoute(route: InsertRoute): Promise<Route> {
     console.log("Creando ruta con los datos:", JSON.stringify(route));
-    const [newRoute] = await db.insert(schema.routes).values(route).returning();
-    return newRoute;
+    try {
+      // Asegurarse de que stops sea un array de strings (no undefined)
+      const safeRoute = {
+        ...route,
+        stops: Array.isArray(route.stops) ? route.stops : [],
+      };
+      console.log("Datos procesados para inserción:", safeRoute);
+      const [newRoute] = await db.insert(schema.routes).values(safeRoute).returning();
+      console.log("Ruta creada exitosamente:", newRoute);
+      return newRoute;
+    } catch (error) {
+      console.error("Error al insertar ruta en la base de datos:", error);
+      throw error;
+    }
   }
   
   async updateRoute(id: number, routeUpdate: Partial<Route>): Promise<Route | undefined> {
