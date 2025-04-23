@@ -14,6 +14,8 @@ import {
   SegmentPrice,
   locationData
 } from "@shared/schema";
+
+import { setupAuthRoutes } from "./auth";
 // Utility function to check if two locations are in the same city
 function isSameCity(location1: string, location2: string): boolean {
   // Validar que ambas ubicaciones tienen el formato esperado
@@ -37,6 +39,9 @@ import { db } from "./db";
 export async function registerRoutes(app: Express): Promise<Server> {
   // prefix all routes with /api
   const apiRouter = (path: string) => `/api${path}`;
+
+  // Setup authentication routes
+  setupAuthRoutes(app);
 
   // Populate location data on server start
   try {

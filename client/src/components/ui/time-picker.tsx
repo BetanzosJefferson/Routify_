@@ -13,6 +13,8 @@ type TimePickerProps = {
   title?: string;
 };
 
+type ClockView = "hour" | "minute";
+
 export function TimePicker({
   open,
   onClose,
@@ -25,6 +27,7 @@ export function TimePicker({
   const [hour, setHour] = useState(initialHour);
   const [minute, setMinute] = useState(initialMinute);
   const [ampm, setAmPm] = useState<"AM" | "PM">(initialAmPm);
+  const [view, setView] = useState<ClockView>("hour");
   
   // Reset to initial values when dialog opens
   useEffect(() => {
@@ -32,6 +35,7 @@ export function TimePicker({
       setHour(initialHour);
       setMinute(initialMinute);
       setAmPm(initialAmPm);
+      setView("hour"); // Reset view to hour when dialog opens
     }
   }, [open, initialHour, initialMinute, initialAmPm]);
   
@@ -39,6 +43,8 @@ export function TimePicker({
     const numHour = parseInt(newHour, 10);
     if (numHour >= 1 && numHour <= 12) {
       setHour(newHour.padStart(2, '0'));
+      // Automatically switch to minute view after selecting hour
+      setView("minute");
     }
   };
   
@@ -58,16 +64,26 @@ export function TimePicker({
     onClose();
   };
   
-  // Generate clock hours for circular display
-  const clockNumbers = Array.from({ length: 12 }, (_, i) => i + 1);
+  // Clock numbers based on view
+  const clockNumbers = view === "hour" 
+    ? Array.from({ length: 12 }, (_, i) => i + 1) 
+    : [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
   
   // Calculate hand position for analog clock
   const getHandStyle = () => {
-    const hourNumber = parseInt(hour, 10) % 12;
-    const angle = (hourNumber * 30) - 90; // 30 degrees per hour, -90 to start at 12
-    return {
-      transform: `rotate(${angle}deg)`,
-    };
+    if (view === "hour") {
+      const hourNumber = parseInt(hour, 10) % 12;
+      const angle = (hourNumber * 30) - 90; // 30 degrees per hour, -90 to start at 12
+      return {
+        transform: `rotate(${angle}deg)`,
+      };
+    } else {
+      const minuteNumber = parseInt(minute, 10);
+      const angle = (minuteNumber * 6) - 90; // 6 degrees per minute, -90 to start at 12
+      return {
+        transform: `rotate(${angle}deg)`,
+      };
+    }
   };
   
   return (
@@ -86,9 +102,12 @@ export function TimePicker({
             <div 
               className={cn(
                 "px-4 py-2 rounded-md text-3xl font-bold w-20 text-center cursor-pointer",
-                hour ? "bg-primary text-white" : "bg-gray-100"
+                view === "hour" ? "bg-primary text-white" : "bg-gray-100"
               )}
-              onClick={() => document.getElementById('hour-input')?.focus()}
+              onClick={() => {
+                setView("hour");
+                document.getElementById('hour-input')?.focus();
+              }}
             >
               {hour}
             </div>
@@ -96,9 +115,12 @@ export function TimePicker({
             <div 
               className={cn(
                 "px-4 py-2 rounded-md text-3xl font-bold w-20 text-center cursor-pointer",
-                "bg-gray-100"
+                view === "minute" ? "bg-primary text-white" : "bg-gray-100"
               )}
-              onClick={() => document.getElementById('minute-input')?.focus()}
+              onClick={() => {
+                setView("minute");
+                document.getElementById('minute-input')?.focus();
+              }}
             >
               {minute}
             </div>
@@ -124,30 +146,61 @@ export function TimePicker({
             </div>
           </div>
           
+          {/* View switch tabs */}
+          <div className="flex justify-center mb-2 space-x-4">
+            <button
+              className={cn(
+                "px-3 py-1 rounded-full text-sm font-medium transition-colors",
+                view === "hour" ? "bg-primary text-white" : "text-gray-500 hover:bg-gray-100"
+              )}
+              onClick={() => setView("hour")}
+            >
+              Horas
+            </button>
+            <button
+              className={cn(
+                "px-3 py-1 rounded-full text-sm font-medium transition-colors",
+                view === "minute" ? "bg-primary text-white" : "text-gray-500 hover:bg-gray-100"
+              )}
+              onClick={() => setView("minute")}
+            >
+              Minutos
+            </button>
+          </div>
+          
           {/* Analog Clock */}
           <div className="relative w-48 h-48 rounded-full bg-gray-100 mb-6">
             {/* Clock numbers */}
             {clockNumbers.map((num) => {
-              const angle = (num * 30) - 90; // 30 degrees per hour, -90 to start at 12
+              // Different calculation based on if it's hour or minute
+              const divider = view === "hour" ? 30 : 6; // 30 degrees per hour, 6 degrees per 5 mins
+              const angle = (num * divider) - 90; // -90 to start at 12
               const radian = angle * (Math.PI / 180);
               const x = Math.cos(radian) * 70 + 96; // 70 is radius, 96 is center
               const y = Math.sin(radian) * 70 + 96;
+              
+              const isSelected = view === "hour" 
+                ? parseInt(hour, 10) === num 
+                : parseInt(minute, 10) === num;
               
               return (
                 <div
                   key={num}
                   className={cn(
-                    "absolute transform -translate-x-1/2 -translate-y-1/2 text-sm font-medium",
-                    parseInt(hour, 10) === num ? "text-primary font-bold" : "text-gray-700"
+                    "absolute transform -translate-x-1/2 -translate-y-1/2 text-sm font-medium cursor-pointer",
+                    isSelected ? "text-primary font-bold" : "text-gray-700"
                   )}
                   style={{ left: `${x}px`, top: `${y}px` }}
+                  onClick={() => view === "hour" 
+                    ? handleHourChange(num.toString()) 
+                    : handleMinuteChange(num.toString())}
                 >
                   {num}
                 </div>
               );
             })}
             
-            {/* Hour Hand */}
+            {/* Clock Hand */}
             <div 
               className="absolute top-1/2 left-1/2 w-1 h-16 bg-primary rounded-full origin-bottom"
               style={getHandStyle()}
