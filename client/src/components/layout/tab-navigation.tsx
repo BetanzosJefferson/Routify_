@@ -25,7 +25,7 @@ export function TabNavigation({ className, activeTab, onTabChange }: TabNavigati
             active={activeTab === "create-route"}
             onClick={() => handleTabClick("create-route")}
           >
-            Create Route
+            Rutas
           </TabItem>
           <TabItem 
             active={activeTab === "publish-trip"}

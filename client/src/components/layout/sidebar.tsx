@@ -65,7 +65,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               active={activeTab === "create-route"}
               onClick={() => handleTabClick("create-route")}
             >
-              Create Route
+              Rutas
             </NavItem>
             <NavItem 
               icon={<ClockIcon />} 
