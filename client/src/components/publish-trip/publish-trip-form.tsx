@@ -140,8 +140,25 @@ export function PublishTripForm() {
   // Mutation for publishing trips
   const publishTripMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      const response = await apiRequest("POST", "/api/trips", data);
-      return response.json();
+      try {
+        const response = await fetch("/api/trips", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || "Failed to publish trip");
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error("Error publishing trip:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({
@@ -235,7 +252,8 @@ export function PublishTripForm() {
                   name="capacity"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Capacidad</FormLabel>
+                      <FormLabel>Capacidad del vehículo</FormLabel>
+                      <div className="text-xs text-gray-500 mb-1">Número total de asientos disponibles</div>
                       <FormControl>
                         <Input
                           type="number"
@@ -503,10 +521,9 @@ export function PublishTripForm() {
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-gray-50">
                             <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origin</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destination</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origen</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destino</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio (MXN)</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
@@ -519,20 +536,10 @@ export function PublishTripForm() {
                                     type="number"
                                     min="0"
                                     className="w-full"
-                                    placeholder="Price"
+                                    placeholder="Precio"
                                     value={segment.price}
                                     onChange={(e) => updateSegmentPrice(index, parseInt(e.target.value, 10) || 0)}
                                   />
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                  <Button 
-                                    type="button"
-                                    variant="link"
-                                    className="text-blue-600 hover:text-blue-800"
-                                    onClick={() => updateSegmentPrice(index, segment.price)}
-                                  >
-                                    Update
-                                  </Button>
                                 </td>
                               </tr>
                             ))}
