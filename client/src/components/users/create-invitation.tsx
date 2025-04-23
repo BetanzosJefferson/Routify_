@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { UserRole, UserRoleType } from "@shared/schema";
+import { UserRole } from "@shared/schema";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -11,13 +11,12 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, Copy, Check } from "lucide-react";
+import { AlertCircle, Copy, Check, UserPlus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Schema de validación
 const invitationFormSchema = z.object({
   role: z.string().min(1, "El rol es requerido"),
-  email: z.string().email("Correo electrónico inválido").optional(),
 });
 
 type InvitationFormValues = z.infer<typeof invitationFormSchema>;
@@ -36,7 +35,6 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
     resolver: zodResolver(invitationFormSchema),
     defaultValues: {
       role: UserRole.ADMIN,
-      email: "",
     },
   });
 
@@ -58,9 +56,10 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
       return response.json();
     },
     onSuccess: (data) => {
-      // Crear la URL de registro
+      // Crear la URL de registro con el rol incluido
       const baseUrl = window.location.origin;
-      const registrationUrl = `${baseUrl}/register/${data.token}`;
+      const role = form.getValues().role;
+      const registrationUrl = `${baseUrl}/register/${data.token}?role=${encodeURIComponent(role)}`;
 
       setInvitation({
         token: data.token,
@@ -68,8 +67,8 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
       });
 
       toast({
-        title: "Invitación creada",
-        description: "La invitación ha sido creada exitosamente",
+        title: "Enlace de invitación generado",
+        description: "El enlace de registro ha sido creado exitosamente",
       });
 
       if (onComplete) {
@@ -96,8 +95,8 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
           setCopied(true);
           setTimeout(() => setCopied(false), 3000);
           toast({
-            title: "URL copiada",
-            description: "La URL de invitación ha sido copiada al portapapeles",
+            title: "Enlace copiado",
+            description: "El enlace de registro ha sido copiado al portapapeles",
           });
         },
         () => {
@@ -114,25 +113,39 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
   return (
     <div className="space-y-6">
       {invitation ? (
-        <div className="space-y-4">
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Comparte esta URL con el nuevo usuario. La invitación expirará en 24 horas y solo se puede usar una vez.
+        <div className="space-y-6">
+          <div className="bg-green-50 border-green-100 p-4 rounded-lg">
+            <div className="flex items-center gap-2 mb-2 text-green-700">
+              <Check className="h-5 w-5" />
+              <h3 className="font-semibold">¡Enlace de invitación generado!</h3>
+            </div>
+            <p className="text-sm text-green-700 mb-4">
+              El enlace de registro fue creado correctamente. Comparte este enlace con el nuevo usuario para completar el registro.
+            </p>
+            <div className="bg-white border border-green-200 rounded-md p-3 relative flex items-center gap-2">
+              <Input 
+                value={invitation.url} 
+                readOnly 
+                className="font-mono text-xs pr-10 border-none focus-visible:ring-0 focus-visible:ring-offset-0"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-2"
+                onClick={copyToClipboard}
+              >
+                {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+          
+          <Alert variant="default" className="bg-amber-50 border-amber-200">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800">
+              Este enlace es de un solo uso y expirará en 24 horas. El usuario deberá completar el registro 
+              antes de ese tiempo.
             </AlertDescription>
           </Alert>
-
-          <div className="p-3 bg-muted rounded-md relative">
-            <p className="font-mono text-xs break-all pr-8">{invitation.url}</p>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-2 top-2"
-              onClick={copyToClipboard}
-            >
-              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            </Button>
-          </div>
 
           <div className="flex justify-end">
             <Button
@@ -142,7 +155,7 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
                 form.reset();
               }}
             >
-              Crear otra invitación
+              Generar otro enlace
             </Button>
           </div>
         </div>
@@ -232,27 +245,20 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Correo Electrónico (opcional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="usuario@ejemplo.com"
-                      {...field}
-                      value={field.value || ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="mt-6">
+              <Alert variant="default" className="bg-amber-50 border-amber-200">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800">
+                  Al generar un enlace de invitación, el usuario podrá registrarse con el rol seleccionado. 
+                  El enlace es de un solo uso y caduca en 24 horas.
+                </AlertDescription>
+              </Alert>
+            </div>
 
-            <div className="flex justify-end space-x-2">
-              <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? "Creando..." : "Crear Invitación"}
+            <div className="flex justify-end space-x-2 mt-6">
+              <Button type="submit" disabled={mutation.isPending} className="gap-2">
+                <UserPlus className="h-4 w-4" />
+                {mutation.isPending ? "Generando enlace..." : "Generar enlace de invitación"}
               </Button>
             </div>
           </form>
