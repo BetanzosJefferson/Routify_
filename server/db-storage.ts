@@ -291,14 +291,28 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createReservation(reservation: InsertReservation): Promise<Reservation> {
-    const [newReservation] = await db.insert(schema.reservations).values(reservation).returning();
+    // Preparamos los datos asegurándonos de que notes sea null si no está definido
+    const reservationData = { ...reservation };
+    
+    if (reservationData.notes === undefined) {
+      reservationData.notes = null;
+    }
+    
+    const [newReservation] = await db.insert(schema.reservations).values(reservationData).returning();
     return newReservation;
   }
   
   async updateReservation(id: number, reservationUpdate: Partial<Reservation>): Promise<Reservation | undefined> {
+    // Manejar el caso de notes undefined
+    const updateData = { ...reservationUpdate };
+    
+    if (updateData.notes === undefined) {
+      updateData.notes = null;
+    }
+    
     const [updatedReservation] = await db
       .update(schema.reservations)
-      .set(reservationUpdate)
+      .set(updateData)
       .where(eq(schema.reservations.id, id))
       .returning();
     return updatedReservation;

@@ -405,11 +405,17 @@ export class MemStorage implements IStorage {
   
   async createReservation(reservation: InsertReservation): Promise<Reservation> {
     const id = this.reservationId++;
+    // Preparamos los datos de la reserva asegurándonos de que notes sea null si no está definido
+    const reservationData = { ...reservation };
+    
+    // Eliminar la propiedad notes del objeto original para evitar problemas con el spreading
+    delete reservationData.notes;
+    
     const newReservation: Reservation = { 
-      ...reservation, 
+      ...reservationData, 
       id,
-      status: reservation.status || "confirmed",
       notes: reservation.notes || null, // Aseguramos que notas sea string | null (nunca undefined)
+      status: reservation.status || "confirmed",
       createdAt: new Date()  
     };
     
