@@ -1,13 +1,16 @@
+import React from "react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { TabType } from "@/hooks/use-active-tab";
 import { 
   MapIcon, 
   ClockIcon, 
   BuildingIcon, 
-  UserIcon 
+  UserIcon, 
+  CarIcon, 
+  HomeIcon, 
+  Settings2 
 } from "lucide-react";
-
-type TabType = "create-route" | "publish-trip" | "trips" | "reservations";
 
 interface SidebarProps {
   activeTab: TabType;
@@ -16,32 +19,41 @@ interface SidebarProps {
 
 interface NavItemProps {
   icon: React.ReactNode;
-  children: React.ReactNode;
   active: boolean;
   onClick: () => void;
+  children: React.ReactNode;
 }
 
-const NavItem = ({ icon, children, active, onClick }: NavItemProps) => {
+function NavItem({ icon, active, onClick, children }: NavItemProps) {
   return (
-    <div 
-      onClick={onClick}
+    <button
       className={cn(
-        "flex items-center px-4 py-2 text-sm font-medium rounded-md cursor-pointer",
-        active 
-          ? "text-gray-900 bg-gray-100" 
-          : "text-gray-700 hover:bg-gray-100"
+        "group flex items-center w-full px-3 py-2.5 rounded-md font-medium transition-all duration-200",
+        active
+          ? "bg-primary text-primary-foreground hover:bg-primary/90"
+          : "text-gray-700 hover:text-primary hover:bg-primary/10"
       )}
+      onClick={onClick}
     >
-      <div className={cn(
-        "h-5 w-5 mr-3",
-        active ? "text-primary" : "text-gray-500"
-      )}>
-        {icon}
-      </div>
-      {children}
+      <span className={cn("mr-3", active ? "text-white" : "text-gray-500 group-hover:text-primary")}>{icon}</span>
+      <span>{children}</span>
+    </button>
+  );
+}
+
+interface NavSectionProps {
+  title: string;
+  children: React.ReactNode;
+}
+
+function NavSection({ title, children }: NavSectionProps) {
+  return (
+    <div className="mb-6">
+      <h3 className="px-3 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">{title}</h3>
+      <div className="space-y-1">{children}</div>
     </div>
   );
-};
+}
 
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const [, setLocation] = useLocation();
@@ -54,41 +66,77 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   return (
     <div className="hidden md:flex md:flex-shrink-0">
       <div className="flex flex-col w-64 bg-white border-r border-gray-200">
-        <div className="px-6 pt-6 pb-4">
-          <h1 className="text-2xl font-semibold text-gray-800">TransRoute</h1>
-          <p className="text-sm text-gray-500">Route Management System</p>
+        <div className="px-6 pt-6 pb-4 flex items-center">
+          <div className="h-9 w-9 rounded-md bg-primary flex items-center justify-center mr-3">
+            <CarIcon className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold text-gray-800">TransRoute</h1>
+            <p className="text-xs text-gray-500">Sistema de Gestión</p>
+          </div>
         </div>
-        <div className="flex-1 flex flex-col overflow-y-auto">
-          <nav className="flex-1 px-2 py-4 space-y-2">
+        
+        <div className="flex-1 flex flex-col overflow-y-auto pt-5 px-3">
+          <NavSection title="General">
             <NavItem 
-              icon={<MapIcon />} 
+              icon={<HomeIcon className="h-5 w-5" />} 
+              active={false}
+              onClick={() => {}}
+            >
+              Dashboard
+            </NavItem>
+          </NavSection>
+          
+          <NavSection title="Gestión de Rutas">
+            <NavItem 
+              icon={<MapIcon className="h-5 w-5" />} 
               active={activeTab === "create-route"}
               onClick={() => handleTabClick("create-route")}
             >
               Rutas
             </NavItem>
             <NavItem 
-              icon={<ClockIcon />} 
+              icon={<ClockIcon className="h-5 w-5" />} 
               active={activeTab === "publish-trip"}
               onClick={() => handleTabClick("publish-trip")}
             >
-              Publish Trip
+              Publicar Viajes
             </NavItem>
             <NavItem 
-              icon={<BuildingIcon />} 
+              icon={<BuildingIcon className="h-5 w-5" />} 
               active={activeTab === "trips"}
               onClick={() => handleTabClick("trips")}
             >
-              Trips
+              Viajes
             </NavItem>
+          </NavSection>
+          
+          <NavSection title="Reservaciones">
             <NavItem 
-              icon={<UserIcon />} 
+              icon={<UserIcon className="h-5 w-5" />} 
               active={activeTab === "reservations"}
               onClick={() => handleTabClick("reservations")}
             >
-              Reservations
+              Reservaciones
             </NavItem>
-          </nav>
+          </NavSection>
+          
+          <NavSection title="Configuración">
+            <NavItem 
+              icon={<Settings2 className="h-5 w-5" />} 
+              active={false}
+              onClick={() => {}}
+            >
+              Ajustes
+            </NavItem>
+          </NavSection>
+          
+          <div className="mt-auto pt-4 pb-6 px-3">
+            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-xs text-gray-600 font-medium">TransRoute v1.0</p>
+              <p className="text-xs text-gray-500">© 2025 Transport Systems</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
