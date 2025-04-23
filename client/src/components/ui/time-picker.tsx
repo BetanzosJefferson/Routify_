@@ -72,9 +72,12 @@ export function TimePicker({
   
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]" aria-describedby="time-picker-description">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          <p id="time-picker-description" className="text-sm text-muted-foreground">
+            Selecciona la hora utilizando el reloj o los controles numéricos.
+          </p>
         </DialogHeader>
         
         <div className="flex flex-col items-center p-4">

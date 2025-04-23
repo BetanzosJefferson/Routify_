@@ -673,103 +673,33 @@ export function PublishTripForm() {
                                 </td>
                                 {/* Hora de Salida */}
                                 <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  <div className="flex space-x-1">
-                                    <div className="w-16">
-                                      <Select 
-                                        value={segment.departureHour}
-                                        onValueChange={(value) => updateSegmentTime(index, 'departure', 'hour', value)}
-                                      >
-                                        <SelectTrigger className="h-8">
-                                          <SelectValue placeholder="HH" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(hour => (
-                                            <SelectItem key={hour} value={hour}>{hour}</SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <span className="flex items-center">:</span>
-                                    <div className="w-16">
-                                      <Select 
-                                        value={segment.departureMinute}
-                                        onValueChange={(value) => updateSegmentTime(index, 'departure', 'minute', value)}
-                                      >
-                                        <SelectTrigger className="h-8">
-                                          <SelectValue placeholder="MM" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {['00', '15', '30', '45'].map(minute => (
-                                            <SelectItem key={minute} value={minute}>{minute}</SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div className="w-16">
-                                      <Select 
-                                        value={segment.departureAmPm}
-                                        onValueChange={(value) => updateSegmentTime(index, 'departure', 'ampm', value as "AM" | "PM")}
-                                      >
-                                        <SelectTrigger className="h-8">
-                                          <SelectValue placeholder="AM/PM" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="AM">AM</SelectItem>
-                                          <SelectItem value="PM">PM</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  </div>
+                                  <TimeInput
+                                    value={{
+                                      hour: segment.departureHour,
+                                      minute: segment.departureMinute,
+                                      ampm: segment.departureAmPm
+                                    }}
+                                    onChange={(hour, minute, ampm) => {
+                                      updateSegmentTime(index, 'departure', 'hour', hour);
+                                      updateSegmentTime(index, 'departure', 'minute', minute);
+                                      updateSegmentTime(index, 'departure', 'ampm', ampm);
+                                    }}
+                                  />
                                 </td>
                                 {/* Hora de Llegada */}
                                 <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  <div className="flex space-x-1">
-                                    <div className="w-16">
-                                      <Select 
-                                        value={segment.arrivalHour}
-                                        onValueChange={(value) => updateSegmentTime(index, 'arrival', 'hour', value)}
-                                      >
-                                        <SelectTrigger className="h-8">
-                                          <SelectValue placeholder="HH" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(hour => (
-                                            <SelectItem key={hour} value={hour}>{hour}</SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <span className="flex items-center">:</span>
-                                    <div className="w-16">
-                                      <Select 
-                                        value={segment.arrivalMinute}
-                                        onValueChange={(value) => updateSegmentTime(index, 'arrival', 'minute', value)}
-                                      >
-                                        <SelectTrigger className="h-8">
-                                          <SelectValue placeholder="MM" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {['00', '15', '30', '45'].map(minute => (
-                                            <SelectItem key={minute} value={minute}>{minute}</SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div className="w-16">
-                                      <Select 
-                                        value={segment.arrivalAmPm}
-                                        onValueChange={(value) => updateSegmentTime(index, 'arrival', 'ampm', value as "AM" | "PM")}
-                                      >
-                                        <SelectTrigger className="h-8">
-                                          <SelectValue placeholder="AM/PM" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="AM">AM</SelectItem>
-                                          <SelectItem value="PM">PM</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  </div>
+                                  <TimeInput
+                                    value={{
+                                      hour: segment.arrivalHour,
+                                      minute: segment.arrivalMinute,
+                                      ampm: segment.arrivalAmPm
+                                    }}
+                                    onChange={(hour, minute, ampm) => {
+                                      updateSegmentTime(index, 'arrival', 'hour', hour);
+                                      updateSegmentTime(index, 'arrival', 'minute', minute);
+                                      updateSegmentTime(index, 'arrival', 'ampm', ampm);
+                                    }}
+                                  />
                                 </td>
                               </tr>
                             ))}
