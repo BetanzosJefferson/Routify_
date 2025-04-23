@@ -7,8 +7,8 @@ import { RouteList } from "@/components/create-route/route-list";
 import { PublishTripForm } from "@/components/publish-trip/publish-trip-form";
 import { TripList } from "@/components/trips/trip-list";
 import { ReservationList } from "@/components/reservations/reservation-list";
-
-type TabType = "create-route" | "publish-trip" | "trips" | "reservations";
+import TripSummary from "@/components/trip-summary/trip-summary";
+import { TabType } from "@/hooks/use-active-tab";
 
 export default function Dashboard() {
   const [location] = useLocation();
@@ -19,7 +19,7 @@ export default function Dashboard() {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("tab") as TabType | null;
     
-    if (tab && ["create-route", "publish-trip", "trips", "reservations"].includes(tab)) {
+    if (tab && ["create-route", "publish-trip", "trips", "reservations", "trip-summary"].includes(tab)) {
       setActiveTab(tab);
     }
   }, [location]);
@@ -45,6 +45,7 @@ export default function Dashboard() {
             {activeTab === "publish-trip" && <PublishTripForm />}
             {activeTab === "trips" && <TripList />}
             {activeTab === "reservations" && <ReservationList />}
+            {activeTab === "trip-summary" && <TripSummary />}
           </main>
         </div>
       </div>
