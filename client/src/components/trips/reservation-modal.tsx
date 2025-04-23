@@ -86,7 +86,7 @@ export function ReservationModal({ trip, isOpen, onClose }: ReservationModalProp
   // Reservation mutation
   const createReservationMutation = useMutation({
     mutationFn: async (data: ReservationFormData) => {
-      return await apiRequest<any>("/api/reservations", "POST", data);
+      return await apiRequest<any>("POST", "/api/reservations", data);
     },
     onSuccess: () => {
       toast({
