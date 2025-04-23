@@ -81,7 +81,6 @@ type FormValues = {
 
 export function PublishTripForm() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
   const [segmentPrices, setSegmentPrices] = useState<SegmentTimePrice[]>([]);
   const [editingStopIndex, setEditingStopIndex] = useState<number | null>(null);
@@ -447,14 +446,66 @@ export function PublishTripForm() {
     // Asignar el tipo explícitamente para evitar errores de TS
     const segmentDataToSend = segmentsWithTimesAndPrices as any;
     
-    publishTripMutation.mutate({
+    // Preparar datos comunes para crear o actualizar
+    const tripData = {
       ...data,
+      routeId: selectedRouteId,
       capacity,
-      availableSeats: capacity, // Inicializar asientos disponibles igual a la capacidad total
       price: Number(data.price),
       segmentPrices: segmentDataToSend,
-      stopTimes: formattedStopTimes, // También mantener los tiempos de parada para compatibilidad
-    });
+      stopTimes: formattedStopTimes,
+      departureTime: `${data.departureHour}:${data.departureMinute} ${data.departureAmPm}`,
+      arrivalTime: `${data.arrivalHour}:${data.arrivalMinute} ${data.arrivalAmPm}`,
+    };
+    
+    if (editingTripId) {
+      // Estamos actualizando un viaje existente
+      // Usar método PUT en lugar de POST
+      fetch(`/api/trips/${editingTripId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...tripData,
+          id: editingTripId,
+          // No modificar asientos disponibles directamente en edición
+        }),
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Error al actualizar el viaje');
+          }
+          return response.json();
+        })
+        .then(updatedTrip => {
+          toast({
+            title: "Viaje actualizado",
+            description: `El viaje #${editingTripId} ha sido actualizado correctamente.`,
+          });
+          
+          // Volver a la lista y limpiar el estado de edición
+          setShowForm(false);
+          setEditingTripId(null);
+          
+          // Invalidar cache para recargar datos
+          queryClient.invalidateQueries({ queryKey: ['/api/trips'] });
+        })
+        .catch(error => {
+          console.error('Error actualizando viaje:', error);
+          toast({
+            title: "Error al actualizar",
+            description: error.message,
+            variant: "destructive",
+          });
+        });
+    } else {
+      // Estamos creando un nuevo viaje
+      publishTripMutation.mutate({
+        ...tripData,
+        availableSeats: capacity, // Inicializar asientos disponibles igual a la capacidad total
+      });
+    }
   };
 
   // Guardar el tiempo editado desde el diálogo modal
