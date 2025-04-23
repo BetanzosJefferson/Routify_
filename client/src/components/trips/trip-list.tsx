@@ -167,8 +167,23 @@ export function TripList() {
                 {trips.map((trip) => (
                   <tr key={trip.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{trip.route.name}</div>
-                      <div className="text-sm text-gray-500">{trip.numStops} stops</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {trip.isSubTrip ? (
+                          <span className="flex items-center">
+                            <span className="inline-block h-2 w-2 rounded-full bg-indigo-500 mr-2"></span>
+                            {trip.segmentOrigin} → {trip.segmentDestination}
+                          </span>
+                        ) : (
+                          trip.route.name
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {trip.isSubTrip ? (
+                          <span className="text-xs italic">Sub-trip of {trip.route.name}</span>
+                        ) : (
+                          `${trip.numStops} stops`
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{formatDate(trip.departureDate)}</div>
