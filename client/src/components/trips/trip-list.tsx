@@ -192,22 +192,8 @@ export function TripList() {
         </CardContent>
       </Card>
       
-      {/* Navegador de fechas */}
+      {/* Título de la fecha actual */}
       <div className="flex justify-center items-center mb-6">
-        <Button 
-          variant="outline" 
-          size="icon"
-          onClick={() => {
-            const newDate = new Date(date);
-            newDate.setDate(newDate.getDate() - 1);
-            setDate(formatDateForInput(newDate));
-            setSearchParams({...searchParams, date: formatDateForInput(newDate)});
-          }}
-          className="mr-2"
-        >
-          <ChevronLeftIcon className="h-4 w-4" />
-        </Button>
-        
         <div className="text-xl font-medium mx-4">
           {new Date(date).toLocaleDateString('es-MX', {
             day: 'numeric',
@@ -215,20 +201,6 @@ export function TripList() {
             year: 'numeric',
           })}
         </div>
-        
-        <Button 
-          variant="outline" 
-          size="icon"
-          onClick={() => {
-            const newDate = new Date(date);
-            newDate.setDate(newDate.getDate() + 1);
-            setDate(formatDateForInput(newDate));
-            setSearchParams({...searchParams, date: formatDateForInput(newDate)});
-          }}
-          className="ml-2"
-        >
-          <ChevronRightIcon className="h-4 w-4" />
-        </Button>
       </div>
 
       {isLoading ? (
@@ -241,7 +213,7 @@ export function TripList() {
           Error al cargar los viajes. Por favor, inténtalo de nuevo.
         </div>
       ) : trips && trips.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {trips.map((trip) => (
             <Card key={trip.id} className="overflow-hidden hover:shadow-md transition-shadow">
               <div className="bg-primary h-2"></div>
@@ -252,10 +224,19 @@ export function TripList() {
                       {trip.isSubTrip ? (
                         <span className="flex items-center">
                           <span className="inline-block h-2 w-2 rounded-full bg-indigo-500 mr-2"></span>
-                          {trip.segmentOrigin} → {trip.segmentDestination}
+                          <span className="hidden md:inline">{trip.segmentOrigin}</span>
+                          <span className="md:hidden">{abbreviateLocation(trip.segmentOrigin)}</span>
+                          {' → '}
+                          <span className="hidden md:inline">{trip.segmentDestination}</span>
+                          <span className="md:hidden">{abbreviateLocation(trip.segmentDestination)}</span>
                         </span>
                       ) : (
-                        trip.route.name
+                        <span>
+                          <span className="hidden md:inline">{trip.route.name}</span>
+                          <span className="md:hidden">
+                            {abbreviateLocation(trip.route.origin)}{' → '}{abbreviateLocation(trip.route.destination)}
+                          </span>
+                        </span>
                       )}
                     </h3>
                     <div className="text-sm text-gray-500 mt-1">
