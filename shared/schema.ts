@@ -1,7 +1,19 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, doublePrecision, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, doublePrecision, jsonb, uuid, varchar } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// USER ROLE ENUM
+export const UserRole = {
+  SUPER_ADMIN: "superAdmin",
+  ADMIN: "admin",
+  CALL_CENTER: "callCenter",
+  CHECKER: "checador",
+  DRIVER: "chofer",
+  TICKET_OFFICE: "taquilla",
+} as const;
+
+export type UserRoleType = typeof UserRole[keyof typeof UserRole];
 
 // ROUTE SCHEMA
 export const routes = pgTable("routes", {
@@ -203,5 +215,54 @@ export const passengerRelations = relations(passengers, ({ one }) => ({
   reservation: one(reservations, {
     fields: [passengers.reservationId],
     references: [reservations.id]
+  })
+}));
+
+// USER SCHEMA
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email").notNull().unique(),
+  password: text("password").notNull(),
+  role: text("role").notNull().default(UserRole.TICKET_OFFICE),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertUserSchema = createInsertSchema(users)
+  .extend({
+    email: z.string().email("Por favor ingrese un correo electrónico válido"),
+    password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  });
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+
+// INVITATION SCHEMA
+export const invitations = pgTable("invitations", {
+  id: serial("id").primaryKey(),
+  token: uuid("token").notNull().unique().defaultRandom(),
+  role: text("role").notNull(),
+  email: text("email"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdById: integer("created_by_id").notNull(),
+});
+
+export const insertInvitationSchema = createInsertSchema(invitations);
+export type InsertInvitation = z.infer<typeof insertInvitationSchema>;
+export type Invitation = typeof invitations.$inferSelect;
+
+// USER RELATIONS
+export const userRelations = relations(users, ({ many }) => ({
+  invitationsCreated: many(invitations)
+}));
+
+export const invitationRelations = relations(invitations, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [invitations.createdById],
+    references: [users.id]
   })
 }));

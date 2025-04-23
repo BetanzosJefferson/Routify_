@@ -950,19 +950,20 @@ export function PublishTripForm() {
                   {stopTimes[editingStopIndex]?.hour || "08"}:{stopTimes[editingStopIndex]?.minute || "00"} {stopTimes[editingStopIndex]?.ampm || "AM"}
                 </div>
                 
-                <TimePicker
-                  open={true}
-                  onClose={() => setShowTimeDialog(false)}
-                  onSelectTime={(hour, minute, ampm) => {
-                    if (editingStopIndex !== null) {
-                      saveStopTime(hour, minute, ampm);
-                    }
-                  }}
-                  initialHour={stopTimes[editingStopIndex]?.hour || "08"}
-                  initialMinute={stopTimes[editingStopIndex]?.minute || "00"}
-                  initialAmPm={stopTimes[editingStopIndex]?.ampm || "AM"}
-                  title={`Configurar horario para ${currentStopInfo.name}`}
-                />
+                <div className="mb-4">
+                  <Button 
+                    variant="outline" 
+                    className="px-4 py-2"
+                    onClick={() => {
+                      if (editingStopIndex !== null && stopTimes[editingStopIndex]) {
+                        const { hour, minute, ampm } = stopTimes[editingStopIndex]!;
+                        saveStopTime(hour, minute, ampm);
+                      }
+                    }}
+                  >
+                    Guardar Horario
+                  </Button>
+                </div>
               </div>
             )}
             
