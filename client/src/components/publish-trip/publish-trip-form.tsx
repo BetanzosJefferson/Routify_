@@ -667,54 +667,10 @@ export function PublishTripForm() {
                 </div>
                 
                 {/* Time Selection */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Departure Time */}
-                  <FormField
-                    control={form.control}
-                    name="departureHour"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Hora de salida</FormLabel>
-                        <div>
-                          <TimeInput
-                            value={`${form.getValues("departureHour")}:${form.getValues("departureMinute")} ${form.getValues("departureAmPm")}`}
-                            onChange={(timeString) => {
-                              const [time, period] = timeString.split(' ');
-                              const [hour, minute] = time.split(':');
-                              form.setValue("departureHour", hour);
-                              form.setValue("departureMinute", minute);
-                              form.setValue("departureAmPm", period as "AM" | "PM");
-                            }}
-                          />
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Arrival Time */}
-                  <FormField
-                    control={form.control}
-                    name="arrivalHour"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Hora de llegada</FormLabel>
-                        <div>
-                          <TimeInput
-                            value={`${form.getValues("arrivalHour")}:${form.getValues("arrivalMinute")} ${form.getValues("arrivalAmPm")}`}
-                            onChange={(timeString) => {
-                              const [time, period] = timeString.split(' ');
-                              const [hour, minute] = time.split(':');
-                              form.setValue("arrivalHour", hour);
-                              form.setValue("arrivalMinute", minute);
-                              form.setValue("arrivalAmPm", period as "AM" | "PM");
-                            }}
-                          />
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div className="mb-4">
+                  <p className="text-sm text-gray-500">
+                    Configure los horarios de salida y llegada en la pestaña "Horarios de paradas" a continuación. Los tiempos que configure para el origen y destino principal se utilizarán como horario principal del viaje.
+                  </p>
                 </div>
                 
                 {/* Route Segment Pricing (conditional) */}
@@ -934,15 +890,48 @@ export function PublishTripForm() {
             </div>
             
             {editingStopIndex !== null && (
-              <div className="text-center">
-                <TimeInput
-                  value={`${stopTimes[editingStopIndex]?.hour || "08"}:${stopTimes[editingStopIndex]?.minute || "00"} ${stopTimes[editingStopIndex]?.ampm || "AM"}`}
-                  onChange={(timeString) => {
-                    const [time, period] = timeString.split(' ');
-                    const [hour, minute] = time.split(':');
-                    saveStopTime(hour, minute, period as "AM" | "PM");
-                  }}
-                />
+              <div className="space-y-4">
+                <div className="text-center">
+                  <TimeInput
+                    value={`${stopTimes[editingStopIndex]?.hour || "08"}:${stopTimes[editingStopIndex]?.minute || "00"} ${stopTimes[editingStopIndex]?.ampm || "AM"}`}
+                    onChange={(timeString) => {
+                      // Solo guardamos el tiempo en un estado temporal
+                      const [time, period] = timeString.split(' ');
+                      const [hour, minute] = time.split(':');
+                      
+                      // Actualizar el tiempo actual en el estado sin guardar
+                      const newStopTimes = [...stopTimes];
+                      if (!newStopTimes[editingStopIndex]) {
+                        newStopTimes[editingStopIndex] = { hour: "", minute: "", ampm: "AM", location: "" };
+                      }
+                      newStopTimes[editingStopIndex].hour = hour;
+                      newStopTimes[editingStopIndex].minute = minute;
+                      newStopTimes[editingStopIndex].ampm = period as "AM" | "PM";
+                      setStopTimes(newStopTimes);
+                    }}
+                  />
+                </div>
+                <div className="flex justify-end space-x-2 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowTimeDialog(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (editingStopIndex === null) return;
+                      const currentTime = stopTimes[editingStopIndex];
+                      if (currentTime) {
+                        saveStopTime(currentTime.hour, currentTime.minute, currentTime.ampm);
+                      }
+                    }}
+                  >
+                    Guardar
+                  </Button>
+                </div>
               </div>
             )}
             
