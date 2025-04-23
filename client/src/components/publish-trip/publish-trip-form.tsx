@@ -6,7 +6,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ClockIcon, CalendarIcon, InfoIcon, Loader2Icon, CalendarPlusIcon } from "lucide-react";
 import { format } from "date-fns";
-import { SeatMap } from "@/components/publish-trip/seat-map";
 
 import {
   Form,
@@ -540,21 +539,53 @@ export function PublishTripForm() {
                       </div>
                     </TabsContent>
                     
-                    <TabsContent value="seat-map">
+                    <TabsContent value="capacity-settings">
                       <p className="text-sm text-gray-500 mb-4">
-                        Configura los asientos disponibles para este viaje. Los asientos marcados como no disponibles no serán mostrados para reservaciones.
+                        Configura la capacidad para este viaje. Este valor representa el número total de asientos disponibles.
                       </p>
                       
-                      <SeatMap 
-                        initialCapacity={form.getValues("capacity")}
-                        onCapacityChange={(newCapacity) => {
-                          form.setValue("capacity", newCapacity);
-                        }}
-                        onSeatStatusChange={(seatId, status) => {
-                          // Implementar lógica para marcar asientos como no disponibles
-                          console.log(`Asiento ${seatId} cambiado a: ${status}`);
-                        }}
-                      />
+                      <div className="p-4 border rounded-md">
+                        <h4 className="text-md font-medium text-gray-800 mb-3">Configuración de Capacidad</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <FormField
+                              control={form.control}
+                              name="capacity"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Capacidad total</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      placeholder="Número total de asientos"
+                                      {...field}
+                                      onChange={(e) => field.onChange(parseInt(e.target.value, 10) || "")}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          <div>
+                            <Label>Tipo de vehículo</Label>
+                            <Select 
+                              value={form.getValues("vehicleType")} 
+                              onValueChange={(value) => form.setValue("vehicleType", value)}
+                            >
+                              <SelectTrigger id="vehicleType">
+                                <SelectValue placeholder="Seleccionar tipo de vehículo" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="standard">Estándar (16-24 asientos)</SelectItem>
+                                <SelectItem value="premium">Premium (24-36 asientos)</SelectItem>
+                                <SelectItem value="luxury">Lujo (10-16 asientos)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
                     </TabsContent>
                   </Tabs>
                 </div>
