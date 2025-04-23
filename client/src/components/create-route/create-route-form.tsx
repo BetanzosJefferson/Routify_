@@ -189,7 +189,7 @@ export function CreateRouteForm({ initialRoute, onSuccess }: CreateRouteFormProp
         <div className="rounded-full bg-primary bg-opacity-10 p-2 mr-3">
           <MapIcon className="h-6 w-6 text-primary" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-800">Crear Ruta</h2>
+        <h2 className="text-xl font-semibold text-gray-800">{initialRoute ? "Editar Ruta" : "Crear Ruta"}</h2>
       </div>
       
       <Card>
