@@ -652,7 +652,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(apiRouter("/reservations"), async (req: Request, res: Response) => {
     try {
-      const validationResult = createReservationValidationSchema.safeParse(req.body);
+      // Asegurarnos de que el método de pago está definido (para usuarios que no tengan una versión actualizada del formulario)
+      const formData = {
+        ...req.body,
+        paymentMethod: req.body.paymentMethod || "cash"
+      };
+      
+      const validationResult = createReservationValidationSchema.safeParse(formData);
       
       if (!validationResult.success) {
         return res.status(400).json({ 
@@ -688,6 +694,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalAmount,
         email: reservationData.email,
         phone: reservationData.phone,
+        paymentMethod: reservationData.paymentMethod || "cash", // Método de pago desde el formulario
         notes: reservationData.notes || null, // Incluir notas desde el formulario
         status: "confirmed",
         createdAt: new Date()
