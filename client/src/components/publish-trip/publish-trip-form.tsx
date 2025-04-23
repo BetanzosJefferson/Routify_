@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -41,6 +42,7 @@ type FormValues = {
   arrivalMinute: string;
   arrivalAmPm: "AM" | "PM";
   capacity: number;
+  availableSeats?: number; // Agregado para inicializar asientos disponibles
   price: number;
   vehicleType: string;
   segmentPrices: SegmentPrice[];
@@ -159,10 +161,13 @@ export function PublishTripForm() {
 
   // Form submission handler
   const onSubmit = (data: FormValues) => {
-    // Convert time format for backend
+    // Convertir y preparar datos para el backend
+    const capacity = Number(data.capacity);
+    
     publishTripMutation.mutate({
       ...data,
-      capacity: Number(data.capacity),
+      capacity,
+      availableSeats: capacity, // Inicializar asientos disponibles igual a la capacidad total
       price: Number(data.price),
       segmentPrices: segmentPrices.map(segment => ({
         ...segment,
@@ -477,7 +482,7 @@ export function PublishTripForm() {
                     <TabsList className="mb-6">
                       <TabsTrigger value="segment-prices">Precios por segmento</TabsTrigger>
                       <TabsTrigger value="stop-times">Tiempos de parada</TabsTrigger>
-                      <TabsTrigger value="seat-map">Mapa de asientos</TabsTrigger>
+                      <TabsTrigger value="capacity-settings">Capacidad</TabsTrigger>
                     </TabsList>
                     
                     <TabsContent value="segment-prices">
@@ -569,20 +574,31 @@ export function PublishTripForm() {
                             />
                           </div>
                           <div>
-                            <Label>Tipo de vehículo</Label>
-                            <Select 
-                              value={form.getValues("vehicleType")} 
-                              onValueChange={(value) => form.setValue("vehicleType", value)}
-                            >
-                              <SelectTrigger id="vehicleType">
-                                <SelectValue placeholder="Seleccionar tipo de vehículo" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="standard">Estándar (16-24 asientos)</SelectItem>
-                                <SelectItem value="premium">Premium (24-36 asientos)</SelectItem>
-                                <SelectItem value="luxury">Lujo (10-16 asientos)</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <FormField
+                              control={form.control}
+                              name="vehicleType"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Tipo de vehículo</FormLabel>
+                                  <Select 
+                                    value={field.value} 
+                                    onValueChange={field.onChange}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Seleccionar tipo de vehículo" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="standard">Estándar (16-24 asientos)</SelectItem>
+                                      <SelectItem value="premium">Premium (24-36 asientos)</SelectItem>
+                                      <SelectItem value="luxury">Lujo (10-16 asientos)</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                           </div>
                         </div>
                       </div>
