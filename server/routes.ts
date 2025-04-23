@@ -9,7 +9,9 @@ import {
   insertPassengerSchema,
   createRouteValidationSchema,
   publishTripValidationSchema,
-  createReservationValidationSchema
+  createReservationValidationSchema,
+  RouteWithSegments,
+  SegmentPrice
 } from "@shared/schema";
 import { isSameCity } from "../client/src/lib/utils";
 
@@ -180,13 +182,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const departureTime = `${tripData.departureHour.padStart(2, '0')}:${tripData.departureMinute.padStart(2, '0')} ${tripData.departureAmPm}`;
       const arrivalTime = `${tripData.arrivalHour.padStart(2, '0')}:${tripData.arrivalMinute.padStart(2, '0')} ${tripData.arrivalAmPm}`;
       
+      // Get the route details to generate all possible sub-trips
+      const route = await storage.getRouteWithSegments(tripData.routeId);
+      if (!route) {
+        return res.status(404).json({ error: "Route not found" });
+      }
+      
       // Create a trip for each date in the range
       const startDate = new Date(tripData.startDate);
       const endDate = new Date(tripData.endDate);
       const createdTrips = [];
       
+      // Generate all possible segments (direct and intermediate segments)
+      const allSegments = generateAllPossibleSegments(route);
+      
+      // Calculate segment times based on total journey time
+      const segmentTimes = calculateSegmentTimes(
+        allSegments, 
+        departureTime, 
+        arrivalTime,
+        route
+      );
+      
       for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-        const tripToCreate = {
+        // Create main trip (origin to destination)
+        const mainTripToCreate = {
           routeId: tripData.routeId,
           departureDate: new Date(date),
           departureTime,
@@ -195,18 +215,182 @@ export async function registerRoutes(app: Express): Promise<Server> {
           availableSeats: tripData.capacity,
           price: tripData.price,
           vehicleType: tripData.vehicleType,
-          segmentPrices: tripData.segmentPrices
+          segmentPrices: tripData.segmentPrices,
+          isSubTrip: false,
+          parentTripId: null
         };
         
-        const trip = await storage.createTrip(tripToCreate);
-        createdTrips.push(trip);
+        const mainTrip = await storage.createTrip(mainTripToCreate);
+        createdTrips.push(mainTrip);
+        
+        // Create all sub-trips
+        for (const segment of allSegments) {
+          // Find the segment price from user input or calculate proportionally
+          const segmentPrice = tripData.segmentPrices.find(
+            sp => sp.origin === segment.origin && sp.destination === segment.destination
+          ) || { price: calculateProportionalPrice(segment, route, tripData.price) };
+          
+          const subTripToCreate = {
+            routeId: tripData.routeId,
+            departureDate: new Date(date),
+            departureTime: segmentTimes[`${segment.origin}-${segment.destination}`].departureTime,
+            arrivalTime: segmentTimes[`${segment.origin}-${segment.destination}`].arrivalTime,
+            capacity: tripData.capacity,
+            availableSeats: tripData.capacity,
+            price: segmentPrice.price,
+            vehicleType: tripData.vehicleType,
+            segmentPrices: [segmentPrice],
+            isSubTrip: true,
+            parentTripId: mainTrip.id,
+            segmentOrigin: segment.origin,
+            segmentDestination: segment.destination
+          };
+          
+          const subTrip = await storage.createTrip(subTripToCreate);
+          createdTrips.push(subTrip);
+        }
       }
       
       res.status(201).json(createdTrips);
     } catch (error) {
+      console.error("Error creating trips:", error);
       res.status(500).json({ error: "Failed to create trip" });
     }
   });
+  
+  // Helper function to generate all possible segments between stops
+  function generateAllPossibleSegments(route: RouteWithSegments) {
+    const allPoints = [route.origin, ...route.stops, route.destination];
+    const allSegments = [];
+    
+    // Generate all possible combinations
+    for (let i = 0; i < allPoints.length - 1; i++) {
+      for (let j = i + 1; j < allPoints.length; j++) {
+        // Skip the main route (origin to destination) as it's already created
+        if (i === 0 && j === allPoints.length - 1) continue;
+        
+        allSegments.push({
+          origin: allPoints[i],
+          destination: allPoints[j],
+          price: 0
+        });
+      }
+    }
+    
+    return allSegments;
+  }
+  
+  // Helper function to calculate segment departure and arrival times
+  function calculateSegmentTimes(
+    segments: { origin: string; destination: string; price: number }[],
+    mainDepartureTime: string,
+    mainArrivalTime: string,
+    route: RouteWithSegments
+  ) {
+    const allPoints = [route.origin, ...route.stops, route.destination];
+    const totalPoints = allPoints.length;
+    const totalSegments = totalPoints - 1;
+    
+    // Calculate the total duration in minutes
+    const departureTimeParts = mainDepartureTime.split(' ')[0].split(':');
+    const departureHour = parseInt(departureTimeParts[0], 10);
+    const departureMinute = parseInt(departureTimeParts[1], 10);
+    const departureAmPm = mainDepartureTime.split(' ')[1];
+    
+    const arrivalTimeParts = mainArrivalTime.split(' ')[0].split(':');
+    const arrivalHour = parseInt(arrivalTimeParts[0], 10);
+    const arrivalMinute = parseInt(arrivalTimeParts[1], 10);
+    const arrivalAmPm = mainArrivalTime.split(' ')[1];
+    
+    // Convert to 24-hour format
+    let departure24Hour = departureHour;
+    if (departureAmPm === 'PM' && departureHour < 12) departure24Hour += 12;
+    if (departureAmPm === 'AM' && departureHour === 12) departure24Hour = 0;
+    
+    let arrival24Hour = arrivalHour;
+    if (arrivalAmPm === 'PM' && arrivalHour < 12) arrival24Hour += 12;
+    if (arrivalAmPm === 'AM' && arrivalHour === 12) arrival24Hour = 0;
+    
+    // Calculate total minutes
+    const departureMinutes = departure24Hour * 60 + departureMinute;
+    let arrivalMinutes = arrival24Hour * 60 + arrivalMinute;
+    
+    // Handle case where arrival is the next day
+    if (arrivalMinutes < departureMinutes) {
+      arrivalMinutes += 24 * 60; // Add 24 hours
+    }
+    
+    const totalMinutes = arrivalMinutes - departureMinutes;
+    
+    // Allocate time proportionally to segments
+    const minutesPerSegment = totalMinutes / totalSegments;
+    
+    // Create a map to store segment indices
+    const pointIndices: Record<string, number> = {};
+    allPoints.forEach((point, index) => {
+      pointIndices[point] = index;
+    });
+    
+    // Calculate times for each segment
+    const segmentTimes: Record<string, { departureTime: string; arrivalTime: string }> = {};
+    segments.forEach(segment => {
+      const startIdx = pointIndices[segment.origin] as number;
+      const endIdx = pointIndices[segment.destination] as number;
+      
+      // Calculate the proportional time
+      const segmentStartMinutes = departureMinutes + (startIdx * minutesPerSegment);
+      const segmentEndMinutes = departureMinutes + (endIdx * minutesPerSegment);
+      
+      // Convert back to 12-hour format
+      const segmentStartHour = Math.floor(segmentStartMinutes / 60) % 24;
+      const segmentStartMinute = Math.floor(segmentStartMinutes % 60);
+      const segmentStartAmPm = segmentStartHour >= 12 ? 'PM' : 'AM';
+      const displayStartHour = segmentStartHour > 12 ? segmentStartHour - 12 : (segmentStartHour === 0 ? 12 : segmentStartHour);
+      
+      const segmentEndHour = Math.floor(segmentEndMinutes / 60) % 24;
+      const segmentEndMinute = Math.floor(segmentEndMinutes % 60);
+      const segmentEndAmPm = segmentEndHour >= 12 ? 'PM' : 'AM';
+      const displayEndHour = segmentEndHour > 12 ? segmentEndHour - 12 : (segmentEndHour === 0 ? 12 : segmentEndHour);
+      
+      const segmentDepartureTime = `${String(displayStartHour).padStart(2, '0')}:${String(segmentStartMinute).padStart(2, '0')} ${segmentStartAmPm}`;
+      const segmentArrivalTime = `${String(displayEndHour).padStart(2, '0')}:${String(segmentEndMinute).padStart(2, '0')} ${segmentEndAmPm}`;
+      
+      const key = `${segment.origin}-${segment.destination}`;
+      segmentTimes[key] = {
+        departureTime: segmentDepartureTime,
+        arrivalTime: segmentArrivalTime
+      };
+    });
+    
+    // Add the main route times
+    const mainRouteKey = `${route.origin}-${route.destination}`;
+    segmentTimes[mainRouteKey] = {
+      departureTime: mainDepartureTime,
+      arrivalTime: mainArrivalTime
+    };
+    
+    return segmentTimes;
+  }
+  
+  // Helper function to calculate proportional prices for segments
+  function calculateProportionalPrice(
+    segment: { origin: string; destination: string },
+    route: RouteWithSegments,
+    totalPrice: number
+  ) {
+    const allPoints = [route.origin, ...route.stops, route.destination];
+    const totalSegments = allPoints.length - 1;
+    
+    // Find the indices of the origin and destination in the route
+    const originIndex = allPoints.indexOf(segment.origin);
+    const destinationIndex = allPoints.indexOf(segment.destination);
+    
+    // Calculate the number of segments this covers
+    const segmentsCovered = destinationIndex - originIndex;
+    
+    // Calculate the price proportionally
+    return Math.round((segmentsCovered / totalSegments) * totalPrice);
+  }
 
   app.put(apiRouter("/trips/:id"), async (req: Request, res: Response) => {
     try {
