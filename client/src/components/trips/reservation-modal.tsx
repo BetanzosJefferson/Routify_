@@ -191,7 +191,7 @@ export function ReservationModal({ trip, isOpen, onClose }: ReservationModalProp
                 <SelectValue placeholder="Select number of passengers" />
               </SelectTrigger>
               <SelectContent>
-                {[1, 2, 3, 4, 5].map((num) => (
+                {Array.from({ length: Math.min(trip.availableSeats, 10) }, (_, i) => i + 1).map((num) => (
                   <SelectItem key={num} value={num.toString()}>
                     {num} {num === 1 ? "Passenger" : "Passengers"}
                   </SelectItem>

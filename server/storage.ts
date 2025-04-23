@@ -409,6 +409,7 @@ export class MemStorage implements IStorage {
       ...reservation, 
       id,
       status: reservation.status || "confirmed",
+      notes: reservation.notes || null, // Aseguramos que notas sea string | null (nunca undefined)
       createdAt: new Date()  
     };
     
