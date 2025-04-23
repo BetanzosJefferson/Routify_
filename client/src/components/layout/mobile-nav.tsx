@@ -43,7 +43,7 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
               active={activeTab === "create-route"}
               onClick={() => handleNavClick("create-route")}
             >
-              Create Route
+              Rutas
             </NavLink>
             <NavLink 
               active={activeTab === "publish-trip"}

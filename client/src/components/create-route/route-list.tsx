@@ -34,7 +34,7 @@ export function RouteList() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Fetch routes
-  const routesQuery = useQuery({
+  const routesQuery = useQuery<Route[]>({
     queryKey: ["/api/routes"],
     placeholderData: [],
   });
@@ -178,8 +178,8 @@ export function RouteList() {
                     <span className="font-medium text-gray-900">{route.destination}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Distancia:</span>
-                    <span className="font-medium text-gray-900">{route.distance} km</span>
+                    <span className="text-gray-600">Paradas:</span>
+                    <span className="font-medium text-gray-900">{route.stops?.length || 0} paradas</span>
                   </div>
                 </div>
               </CardContent>
