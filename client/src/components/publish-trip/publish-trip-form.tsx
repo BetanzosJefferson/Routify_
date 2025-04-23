@@ -46,14 +46,20 @@ type StopTime = {
 };
 
 // Extendiendo SegmentPrice para incluir tiempos
-type SegmentTimePrice = SegmentPrice & {
+// Redefinir SegmentTimePrice para incluir formatos de tiempo alternativos
+interface SegmentTimeFields {
   departureHour: string;
   departureMinute: string;
   departureAmPm: "AM" | "PM";
   arrivalHour: string;
   arrivalMinute: string;
   arrivalAmPm: "AM" | "PM";
-};
+  // Formato simplificado para enviar al backend
+  departureTime?: string;
+  arrivalTime?: string;
+}
+
+type SegmentTimePrice = SegmentPrice & SegmentTimeFields;
 
 type FormValues = {
   routeId: number;
@@ -391,16 +397,31 @@ export function PublishTripForm() {
       });
     }
     
+    // Para cada segmento, asegurar que estamos enviando tanto los precios como los tiempos
+    const segmentsWithTimesAndPrices = segmentPrices.map(segment => {
+      // Crear una copia del segmento
+      const updatedSegment = { ...segment };
+      
+      // Añadir campos de tiempo formato string para el backend
+      updatedSegment.departureTime = `${segment.departureHour}:${segment.departureMinute} ${segment.departureAmPm}`;
+      updatedSegment.arrivalTime = `${segment.arrivalHour}:${segment.arrivalMinute} ${segment.arrivalAmPm}`;
+      updatedSegment.price = Number(segment.price);
+      
+      return updatedSegment;
+    });
+    
+    console.log("Enviando segmentos con tiempos:", segmentsWithTimesAndPrices);
+    
+    // Asignar el tipo explícitamente para evitar errores de TS
+    const segmentDataToSend = segmentsWithTimesAndPrices as any;
+    
     publishTripMutation.mutate({
       ...data,
       capacity,
       availableSeats: capacity, // Inicializar asientos disponibles igual a la capacidad total
       price: Number(data.price),
-      segmentPrices: segmentPrices.map(segment => ({
-        ...segment,
-        price: Number(segment.price)
-      })),
-      stopTimes: formattedStopTimes, // Agregar los tiempos de parada al enviar el formulario
+      segmentPrices: segmentDataToSend,
+      stopTimes: formattedStopTimes, // También mantener los tiempos de parada para compatibilidad
     });
   };
 
