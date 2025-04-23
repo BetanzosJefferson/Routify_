@@ -33,10 +33,36 @@ export function RouteList() {
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
+  // Datos de ejemplo para desarrollo
+  const exampleRoutes: Route[] = [
+    {
+      id: 1,
+      name: "Ruta de Ejemplo 1",
+      origin: "Ciudad de México",
+      destination: "Guadalajara",
+      stops: ["Querétaro", "León"],
+      totalDistanceKm: 550,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 2,
+      name: "Ruta de Ejemplo 2",
+      origin: "Monterrey",
+      destination: "Cancún",
+      stops: ["Tampico", "Veracruz", "Villahermosa", "Campeche", "Mérida"],
+      totalDistanceKm: 1980,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+  ];
+
   // Fetch routes
   const routesQuery = useQuery<Route[]>({
     queryKey: ["/api/routes"],
-    placeholderData: [],
+    // Temporalmente deshabilitamos la consulta real mientras se corrigen problemas de conexión
+    enabled: false, // Deshabilitado temporalmente
+    placeholderData: exampleRoutes,
   });
 
   // Delete route mutation

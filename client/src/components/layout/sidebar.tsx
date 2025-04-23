@@ -61,7 +61,11 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   
   const handleTabClick = (tab: TabType) => {
     onTabChange(tab);
-    setLocation(`/dashboard?tab=${tab}`);
+    
+    // Actualizar el URL pero sin hacer una redirección completa
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    window.history.pushState({}, '', url.toString());
   };
   
   return (
