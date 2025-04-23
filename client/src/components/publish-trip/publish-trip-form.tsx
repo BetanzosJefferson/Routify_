@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { SimpleTimeInput } from "@/components/ui/simple-time-picker";
+import { TimeInput } from "@/components/ui/time-input";
 import { publishTripValidationSchema, type Route, type RouteWithSegments, type SegmentPrice } from "@shared/schema";
 import { generateSegmentsFromRoute, convertTo24Hour, isSameCity } from "@/lib/utils";
 import TripList from "./trip-list";
@@ -676,16 +676,14 @@ export function PublishTripForm() {
                       <FormItem>
                         <FormLabel>Hora de salida</FormLabel>
                         <div>
-                          <SimpleTimeInput
-                            value={{
-                              hour: form.getValues("departureHour"),
-                              minute: form.getValues("departureMinute"),
-                              ampm: form.getValues("departureAmPm")
-                            }}
-                            onChange={(hour, minute, ampm) => {
+                          <TimeInput
+                            value={`${form.getValues("departureHour")}:${form.getValues("departureMinute")} ${form.getValues("departureAmPm")}`}
+                            onChange={(timeString) => {
+                              const [time, period] = timeString.split(' ');
+                              const [hour, minute] = time.split(':');
                               form.setValue("departureHour", hour);
                               form.setValue("departureMinute", minute);
-                              form.setValue("departureAmPm", ampm);
+                              form.setValue("departureAmPm", period as "AM" | "PM");
                             }}
                           />
                         </div>
