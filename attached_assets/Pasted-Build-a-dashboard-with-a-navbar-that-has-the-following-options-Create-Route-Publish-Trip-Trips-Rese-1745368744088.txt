@@ -1,0 +1,17 @@
+Build a dashboard with a navbar that has the following options:
+Create Route
+Publish Trip
+Trips
+Reservations
+
+Create Route: It should display one input to add a trip origin, in the middle a button to "add stops" (This button is only for if the user wants to add a stop). If pressed, it should display an input after the origin input, in which the user enters a stop, and after all the stops, a destination input in which the user enters the destination. Keep in mind that the stop inputs will be displayed as many times as the "add stops" button is pressed. In addition, the stop inputs should also display a button to delete that stop and two buttons with an up and down arrow logo, similar to the screenshot I'm attaching.
+
+Publish Trip:
+Here we'll reuse the route we generated in the previous section and add the number of available seats, departure and arrival times, as well as a price (screenshot 2). Importantly, there are two date fields so the trip can be published within a date range. If it's published from the 22nd to the 25th, three entries would be created. This is to make it easier for the user to publish trips that must be published daily. Once the trip is published, it should display a list similar to this one (screenshot 3). Clicking on an already published trip displays the following (screenshots 4 and 5).
+This explains the importance of stopovers, since "sub-trips" are generated from the combinations of origin, stopovers, and destination. In the screenshot I shared with you there is an error and it is that stops are being combined within the same city of origin "Acapulco" for example "Acapulco de Juarez - Terminal Condesa to Acapulco de Juarez - Gasolinera Renacimiento" I want to avoid this type of combinations between the same cities, there should only be combinations between different cities. As you can see, inputs are also generated to change the price of each section. There must be another input to configure the times for each section. IMPORTANT for the seats: take into account the occupancy per section. that is, yes on a route Acapulco - Chilpancingo - Cuernavaca - Mexico City. If a reservation is generated for Acapulco-Chilpancingo, that seat would also be blocked on the Acapulco-Mexico and Acapulco-Cuernavaca routes, for example, but it would not be blocked on the Chilpancingo-Mexico route since the reservation ends where another leg begins. Consider this for the section we'll look at next.
+
+Trips: Here, all the generated trips should be displayed in list form, along with their departure times, prices, and available seats. These should include inputs to search for the desired origin and destination, an input to search for the desired date, and an input to search for the desired number of seats. A "Reserve" button should also be displayed. When pressed, a form should be displayed to fill out with a first and last name (these fields should be repeated depending on how many seats are being reserved), phone number, and email address. Once the reservation is made, we move on to the next section.
+
+Reservations: Here we can see a list of all the reservations that have been made, showing relevant information such as origin, destination, number of seats, name, date, etc. Here we can delete or modify the reservation.
+
+That's all.
