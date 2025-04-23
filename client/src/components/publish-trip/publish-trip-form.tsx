@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ClockIcon, CalendarIcon, InfoIcon, Loader2Icon, CalendarPlusIcon, Clock } from "lucide-react";
+import { ClockIcon, CalendarIcon, InfoIcon, Loader2Icon, CalendarPlusIcon, XIcon } from "lucide-react";
 import { format } from "date-fns";
 
 import {
@@ -15,6 +15,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -54,6 +61,9 @@ export function PublishTripForm() {
   const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
   const [segmentPrices, setSegmentPrices] = useState<SegmentPrice[]>([]);
   const [editingStopIndex, setEditingStopIndex] = useState<number | null>(null);
+  const [showTimeDialog, setShowTimeDialog] = useState(false);
+  const [stopTimes, setStopTimes] = useState<Array<{hour: string, minute: string, ampm: "AM" | "PM"} | null>>([]);
+  const [currentStopInfo, setCurrentStopInfo] = useState<{name: string, location: string}>({name: "", location: ""});
 
   // Fetch routes for dropdown
   const routesQuery = useQuery({
@@ -138,13 +148,92 @@ export function PublishTripForm() {
     form.setValue("segmentPrices", updatedPrices);
   };
   
+  // Initialize the time arrays when the route is selected
+  useEffect(() => {
+    if (routeSegmentsQuery.data) {
+      // Crear un array con el origen, las paradas y el destino
+      const totalStops = (routeSegmentsQuery.data.stops?.length || 0) + 2; // origen + paradas + destino
+      
+      // Inicializar tiempos para cada parada
+      const initialTimes = Array(totalStops).fill(null);
+      
+      // Tiempo de origen (salida)
+      initialTimes[0] = {
+        hour: form.getValues('departureHour'),
+        minute: form.getValues('departureMinute'),
+        ampm: form.getValues('departureAmPm')
+      };
+      
+      // Tiempo de destino (llegada)
+      initialTimes[initialTimes.length - 1] = {
+        hour: form.getValues('arrivalHour'),
+        minute: form.getValues('arrivalMinute'),
+        ampm: form.getValues('arrivalAmPm')
+      };
+      
+      setStopTimes(initialTimes);
+    }
+  }, [routeSegmentsQuery.data, form]);
+
   // Handle opening the time editor dialog
   const handleEditTime = (stopIndex: number) => {
+    if (!routeSegmentsQuery.data) return;
+    
     setEditingStopIndex(stopIndex);
-    // Aquí podría abrir un diálogo modal para editar el tiempo
+    
+    // Determinar la información de la parada actual
+    let stopName = "";
+    let stopLocation = "";
+    
+    if (stopIndex === 0) {
+      // Es el origen
+      stopName = "Terminal Principal";
+      stopLocation = routeSegmentsQuery.data.origin || "Origen";
+    } else if (stopIndex === (routeSegmentsQuery.data.stops?.length || 0) + 1) {
+      // Es el destino final
+      stopName = "Destino Final";
+      stopLocation = routeSegmentsQuery.data.destination || "Destino";
+    } else if (routeSegmentsQuery.data.stops && routeSegmentsQuery.data.stops[stopIndex - 1]) {
+      // Es una parada intermedia
+      stopName = `Parada ${stopIndex}`;
+      stopLocation = routeSegmentsQuery.data.stops[stopIndex - 1];
+    }
+    
+    setCurrentStopInfo({
+      name: stopName,
+      location: stopLocation
+    });
+    
+    setShowTimeDialog(true);
+  };
+  
+  // Guardar el tiempo editado
+  const saveStopTime = (hour: string, minute: string, ampm: "AM" | "PM") => {
+    if (editingStopIndex === null) return;
+    
+    // Actualizar el array de tiempos
+    const newStopTimes = [...stopTimes];
+    newStopTimes[editingStopIndex] = { hour, minute, ampm };
+    setStopTimes(newStopTimes);
+    
+    // Si es el origen o el destino, actualizar los valores del formulario
+    if (editingStopIndex === 0) {
+      // Origen
+      form.setValue('departureHour', hour);
+      form.setValue('departureMinute', minute);
+      form.setValue('departureAmPm', ampm);
+    } else if (editingStopIndex === newStopTimes.length - 1) {
+      // Destino
+      form.setValue('arrivalHour', hour);
+      form.setValue('arrivalMinute', minute);
+      form.setValue('arrivalAmPm', ampm);
+    }
+    
+    setShowTimeDialog(false);
+    
     toast({
-      title: "Edición de horario",
-      description: `Configurando horario para la parada #${stopIndex + 1}`,
+      title: "Horario actualizado",
+      description: `Se ha configurado el horario para ${currentStopInfo.name} (${currentStopInfo.location}).`,
     });
   };
 
@@ -609,7 +698,9 @@ export function PublishTripForm() {
                                       className="inline-flex items-center px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                                     >
                                       <ClockIcon className="mr-1.5 h-3.5 w-3.5" />
-                                      --:--
+                                      {stopTimes[index + 1] ? 
+                                        `${stopTimes[index + 1].hour}:${stopTimes[index + 1].minute} ${stopTimes[index + 1].ampm}` : 
+                                        "--:--"}
                                     </button>
                                   </div>
                                 </td>
@@ -754,6 +845,138 @@ export function PublishTripForm() {
           </Form>
         </CardContent>
       </Card>
+      
+      {/* Diálogo para editar tiempo */}
+      <Dialog open={showTimeDialog} onOpenChange={setShowTimeDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Configurar horario</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="mb-4">
+              <h3 className="text-lg font-medium">{currentStopInfo.name}</h3>
+              <p className="text-sm text-gray-500">{currentStopInfo.location}</p>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="time-hour">Hora</Label>
+                <div className="grid grid-cols-5 gap-2 items-center mt-2">
+                  <div className="col-span-1">
+                    <Select 
+                      defaultValue={stopTimes[editingStopIndex || 0]?.hour || "08"}
+                      onValueChange={(value) => {
+                        if (editingStopIndex === null) return;
+                        const newStopTimes = [...stopTimes];
+                        if (!newStopTimes[editingStopIndex]) {
+                          newStopTimes[editingStopIndex] = {
+                            hour: value,
+                            minute: "00",
+                            ampm: "AM"
+                          };
+                        } else {
+                          newStopTimes[editingStopIndex].hour = value;
+                        }
+                        setStopTimes(newStopTimes);
+                      }}
+                    >
+                      <SelectTrigger id="time-hour">
+                        <SelectValue placeholder="HH" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(hour => (
+                          <SelectItem key={hour} value={hour}>{hour}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="text-center">:</div>
+                  
+                  <div className="col-span-1">
+                    <Select 
+                      defaultValue={stopTimes[editingStopIndex || 0]?.minute || "00"}
+                      onValueChange={(value) => {
+                        if (editingStopIndex === null) return;
+                        const newStopTimes = [...stopTimes];
+                        if (!newStopTimes[editingStopIndex]) {
+                          newStopTimes[editingStopIndex] = {
+                            hour: "08",
+                            minute: value,
+                            ampm: "AM"
+                          };
+                        } else {
+                          newStopTimes[editingStopIndex].minute = value;
+                        }
+                        setStopTimes(newStopTimes);
+                      }}
+                    >
+                      <SelectTrigger id="time-minute">
+                        <SelectValue placeholder="MM" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 12 }, (_, i) => (i * 5).toString().padStart(2, '0')).map(minute => (
+                          <SelectItem key={minute} value={minute}>{minute}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <Select 
+                      defaultValue={stopTimes[editingStopIndex || 0]?.ampm || "AM"}
+                      onValueChange={(value: "AM" | "PM") => {
+                        if (editingStopIndex === null) return;
+                        const newStopTimes = [...stopTimes];
+                        if (!newStopTimes[editingStopIndex]) {
+                          newStopTimes[editingStopIndex] = {
+                            hour: "08",
+                            minute: "00",
+                            ampm: value
+                          };
+                        } else {
+                          newStopTimes[editingStopIndex].ampm = value;
+                        }
+                        setStopTimes(newStopTimes);
+                      }}
+                    >
+                      <SelectTrigger id="time-ampm">
+                        <SelectValue placeholder="AM/PM" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="AM">AM</SelectItem>
+                        <SelectItem value="PM">PM</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="text-sm text-gray-500 pt-2">
+                <p className="flex items-center">
+                  <InfoIcon className="h-4 w-4 mr-2 text-primary" />
+                  Esta hora representa tanto el tiempo de llegada como de salida para esta ubicación.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTimeDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={() => {
+              if (editingStopIndex !== null && stopTimes[editingStopIndex]) {
+                const { hour, minute, ampm } = stopTimes[editingStopIndex]!;
+                saveStopTime(hour, minute, ampm);
+              }
+            }}>
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
