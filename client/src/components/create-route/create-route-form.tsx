@@ -325,17 +325,91 @@ export function CreateRouteForm({ initialRoute, onSuccess }: CreateRouteFormProp
                 )}
               </div>
 
-              {/* Submit Button */}
+              {/* Submit Button - Reemplazado con implementación directa */}
               <div className="flex justify-end gap-4">
-                <Button
-                  type="submit"
-                  className="bg-primary hover:bg-primary-dark text-white"
+                <button
+                  type="button"
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-md transition-colors duration-200"
                   disabled={routeMutation.isPending || stops.length < 2}
+                  onClick={() => {
+                    if (stops.length < 2) {
+                      toast({
+                        title: "Error de validación",
+                        description: "Una ruta debe tener al menos 2 paradas.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    
+                    // Obtener datos del formulario manualmente
+                    const formData = form.getValues();
+                    
+                    // Extraer paradas
+                    const stopLocations = stops.map(stop => stop.location);
+                    const origin = stopLocations[0];
+                    const destination = stopLocations[stopLocations.length - 1];
+                    const middleStops = stopLocations.length > 2 
+                      ? stopLocations.slice(1, stopLocations.length - 1) 
+                      : [];
+                    
+                    // Crear objeto de datos
+                    const routeData = {
+                      name: formData.name,
+                      origin: origin,
+                      destination: destination,
+                      stops: middleStops
+                    };
+                    
+                    console.log("Datos de ruta a enviar:", routeData);
+                    
+                    // Hacer petición directa con fetch
+                    fetch('/api/routes', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify(routeData)
+                    })
+                    .then(response => {
+                      console.log("Respuesta del servidor:", response);
+                      if (!response.ok) {
+                        return response.text().then(text => {
+                          throw new Error(text || response.statusText);
+                        });
+                      }
+                      return response.json();
+                    })
+                    .then(data => {
+                      console.log("Ruta creada exitosamente:", data);
+                      toast({
+                        title: "Ruta creada exitosamente",
+                        description: "La nueva ruta ha sido creada y ya está disponible para publicar viajes.",
+                      });
+                      
+                      // Limpiar formulario
+                      form.reset();
+                      setStops([]);
+                      
+                      // Invalidar cache
+                      queryClient.invalidateQueries({ queryKey: ["/api/routes"] });
+                      
+                      // Llamar al callback si existe
+                      if (onSuccess) onSuccess();
+                    })
+                    .catch(error => {
+                      console.error("Error al crear ruta:", error);
+                      toast({
+                        title: "Error al crear la ruta",
+                        description: error.message,
+                        variant: "destructive",
+                      });
+                    });
+                  }}
                 >
                   {routeMutation.isPending ? 
                     (initialRoute ? "Actualizando..." : "Creando...") : 
                     (initialRoute ? "Actualizar Ruta" : "Crear Ruta")}
-                </Button>
+                </button>
               </div>
             </form>
           </Form>
