@@ -325,7 +325,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (i === 0 && j === allPoints.length - 1) continue;
         
         // Skip segments where origin and destination are in the same city
-        if (isSameCity(allPoints[i], allPoints[j])) continue;
+        if (isSameCity(allPoints[i], allPoints[j])) {
+          console.log(`Saltando segmento en misma ciudad: ${allPoints[i]} -> ${allPoints[j]}`);
+          continue;
+        }
+        
+        // Verificar que este punto no sea ignorado incorrectamente
+        if (allPoints[i].includes("Chilpancingo") || allPoints[j].includes("Chilpancingo")) {
+          console.log(`Generando segmento con Chilpancingo: ${allPoints[i]} -> ${allPoints[j]}`);
+        }
         
         allSegments.push({
           origin: allPoints[i],
@@ -335,7 +343,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
     
-    console.log(`Generados ${allSegments.length} segmentos válidos (excluyendo misma ciudad) para la ruta`);
+    console.log(`Generados ${allSegments.length} segmentos válidos (excluyendo misma ciudad) para la ruta ${route.id}`);
+    
+    // Imprimir todos los segmentos generados para depuración
+    allSegments.forEach(segment => {
+      console.log(`  - Segmento: ${segment.origin} -> ${segment.destination}`);
+    });
+    
     return allSegments;
   }
   
