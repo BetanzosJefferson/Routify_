@@ -160,7 +160,12 @@ export function PublishTripForm() {
   useEffect(() => {
     if (routeSegmentsQuery.data) {
       // Crear un array con el origen, las paradas y el destino
-      const totalStops = (routeSegmentsQuery.data.stops?.length || 0) + 2; // origen + paradas + destino
+      const allLocations = [
+        routeSegmentsQuery.data.origin,
+        ...(routeSegmentsQuery.data.stops || []),
+        routeSegmentsQuery.data.destination
+      ];
+      const totalStops = allLocations.length;
       
       // Inicializar tiempos para cada parada
       const initialTimes = Array(totalStops).fill(null);
@@ -169,15 +174,30 @@ export function PublishTripForm() {
       initialTimes[0] = {
         hour: form.getValues('departureHour'),
         minute: form.getValues('departureMinute'),
-        ampm: form.getValues('departureAmPm')
+        ampm: form.getValues('departureAmPm'),
+        location: allLocations[0] || ""
       };
       
       // Tiempo de destino (llegada)
       initialTimes[initialTimes.length - 1] = {
         hour: form.getValues('arrivalHour'),
         minute: form.getValues('arrivalMinute'),
-        ampm: form.getValues('arrivalAmPm')
+        ampm: form.getValues('arrivalAmPm'),
+        location: allLocations[allLocations.length - 1] || ""
       };
+      
+      // Inicializar tiempos intermedios proporcionalmente
+      if (totalStops > 2) {
+        for (let i = 1; i < totalStops - 1; i++) {
+          // Para paradas intermedias, creamos tiempos proporcionales
+          initialTimes[i] = {
+            hour: "00",
+            minute: "00",
+            ampm: "AM",
+            location: allLocations[i] || ""
+          };
+        }
+      }
       
       setStopTimes(initialTimes);
     }
@@ -219,9 +239,25 @@ export function PublishTripForm() {
   const saveStopTime = (hour: string, minute: string, ampm: "AM" | "PM") => {
     if (editingStopIndex === null) return;
     
-    // Actualizar el array de tiempos
+    // Obtener la ubicación para este índice
+    let stopLocation = "";
+    if (routeSegmentsQuery.data) {
+      const allLocations = [
+        routeSegmentsQuery.data.origin,
+        ...(routeSegmentsQuery.data.stops || []),
+        routeSegmentsQuery.data.destination
+      ];
+      stopLocation = allLocations[editingStopIndex] || "";
+    }
+    
+    // Actualizar el array de tiempos, incluyendo la ubicación
     const newStopTimes = [...stopTimes];
-    newStopTimes[editingStopIndex] = { hour, minute, ampm };
+    newStopTimes[editingStopIndex] = { 
+      hour, 
+      minute, 
+      ampm,
+      location: stopLocation  // Guardar la ubicación correspondiente
+    };
     setStopTimes(newStopTimes);
     
     // Si es el origen o el destino, actualizar los valores del formulario
