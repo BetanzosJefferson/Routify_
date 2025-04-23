@@ -64,18 +64,20 @@ export function TimeInput({
   // State para el valor interno del input en formato 24h
   const [internalValue, setInternalValue] = useState<string>('');
   
-  // Inicializar con un valor predeterminado en caso de que no se proporcione uno
+  // Inicializar con el valor proporcionado o uno predeterminado
   useEffect(() => {
-    // Si no hay valor, establecer uno predeterminado (8:00 AM)
-    if (!value) {
-      setInternalValue('08:00');
-      onChange('08:00 AM');
-      return;
-    }
-    
     // Convertir el valor proporcionado a formato 24h para el input nativo
-    const value24h = formatTo24Hour(value);
-    setInternalValue(value24h);
+    if (value) {
+      const value24h = formatTo24Hour(value);
+      setInternalValue(value24h);
+    } else {
+      // Solo establecer un valor predeterminado si no se proporciona ninguno
+      // y solo en la inicialización
+      if (internalValue === '') {
+        setInternalValue('08:00');
+        onChange('08:00 AM');
+      }
+    }
   }, [value, onChange]);
   
   // Manejar cambios en el input

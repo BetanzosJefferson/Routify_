@@ -90,7 +90,10 @@ export function Combobox({
                     setOpen(false);
                     setSearchValue("");
                   }}
-                  onClick={() => {
+                  className="cursor-pointer hover:bg-gray-100"
+                  onMouseDown={(e) => {
+                    // Prevenir el comportamiento por defecto para evitar que se pierda el foco
+                    e.preventDefault();
                     onChange(option.value === value ? "" : option.value);
                     setOpen(false);
                     setSearchValue("");

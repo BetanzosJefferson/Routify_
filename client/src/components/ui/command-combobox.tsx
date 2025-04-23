@@ -203,8 +203,10 @@ export function CommandCombobox({
                         setOpen(false)
                         setSearchValue("")
                       }}
-                      className="flex py-2 cursor-pointer"
-                      onClick={() => {
+                      className="flex py-2 cursor-pointer hover:bg-gray-100"
+                      onMouseDown={(e) => {
+                        // Prevenir el comportamiento por defecto para evitar que se pierda el foco
+                        e.preventDefault();
                         onChange(location.value)
                         setOpen(false)
                         setSearchValue("")

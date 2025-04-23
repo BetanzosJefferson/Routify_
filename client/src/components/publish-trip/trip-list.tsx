@@ -335,7 +335,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
                       {formatDate(trip.departureDate)}
                     </TableCell>
                     <TableCell>
-                      {trip.routeName || `Ruta #${trip.routeId}`}
+                      {trip.route?.name || trip.routeName || `Ruta #${trip.routeId}`}
                     </TableCell>
                     <TableCell>{trip.origin}</TableCell>
                     <TableCell>{trip.destination}</TableCell>
