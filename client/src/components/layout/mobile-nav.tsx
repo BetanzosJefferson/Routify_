@@ -1,15 +1,23 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { MenuIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useActiveTab } from "@/hooks/use-active-tab";
 
-export function MobileNav() {
+type TabType = "create-route" | "publish-trip" | "trips" | "reservations";
+
+interface MobileNavProps {
+  activeTab: TabType;
+  onTabChange: (tab: TabType) => void;
+}
+
+export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
   const [open, setOpen] = useState(false);
-  const { setTab } = useActiveTab();
+  const [, setLocation] = useLocation();
   
-  const handleNavClick = (tab: "create-route" | "publish-trip" | "trips" | "reservations") => {
-    setTab(tab);
+  const handleNavClick = (tab: TabType) => {
+    onTabChange(tab);
+    setLocation(`/dashboard?tab=${tab}`);
     setOpen(false);
   };
   
@@ -31,16 +39,28 @@ export function MobileNav() {
             </div>
           </div>
           <nav className="flex flex-col p-4">
-            <NavLink onClick={() => handleNavClick("create-route")}>
+            <NavLink 
+              active={activeTab === "create-route"}
+              onClick={() => handleNavClick("create-route")}
+            >
               Create Route
             </NavLink>
-            <NavLink onClick={() => handleNavClick("publish-trip")}>
+            <NavLink 
+              active={activeTab === "publish-trip"}
+              onClick={() => handleNavClick("publish-trip")}
+            >
               Publish Trip
             </NavLink>
-            <NavLink onClick={() => handleNavClick("trips")}>
+            <NavLink 
+              active={activeTab === "trips"}
+              onClick={() => handleNavClick("trips")}
+            >
               Trips
             </NavLink>
-            <NavLink onClick={() => handleNavClick("reservations")}>
+            <NavLink 
+              active={activeTab === "reservations"}
+              onClick={() => handleNavClick("reservations")}
+            >
               Reservations
             </NavLink>
           </nav>
@@ -54,14 +74,19 @@ export function MobileNav() {
 }
 
 interface NavLinkProps {
+  active: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }
 
-function NavLink({ onClick, children }: NavLinkProps) {
+function NavLink({ active, onClick, children }: NavLinkProps) {
   return (
     <div 
-      className="flex items-center px-2 py-3 text-base font-medium text-gray-700 hover:bg-gray-100 rounded-md cursor-pointer"
+      className={`flex items-center px-2 py-3 text-base font-medium rounded-md cursor-pointer ${
+        active 
+          ? "text-primary bg-gray-50" 
+          : "text-gray-700 hover:bg-gray-100"
+      }`}
       onClick={onClick}
     >
       {children}
