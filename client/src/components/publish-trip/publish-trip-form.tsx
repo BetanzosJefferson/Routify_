@@ -627,19 +627,10 @@ export function PublishTripForm() {
                     </TabsContent>
                     
                     <TabsContent value="stop-times">
-                      <div className="flex justify-between items-center mb-4">
+                      <div className="mb-4">
                         <p className="text-sm text-gray-500">
-                          Configure el horario de cada parada. El tiempo en cada parada representa tanto la hora de llegada (si se viene de la parada anterior) como la hora de salida (para continuar a la siguiente).
+                          Configure el horario de cada parada haciendo clic en cada botón de tiempo. El tiempo en cada parada representa tanto la hora de llegada como la hora de salida para esa ubicación.
                         </p>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          type="button" 
-                          className="flex items-center bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
-                        >
-                          <ClockIcon className="mr-2 h-4 w-4" />
-                          <span>Editar todos los tiempos</span>
-                        </Button>
                       </div>
                       
                       <div className="overflow-auto">
@@ -698,7 +689,7 @@ export function PublishTripForm() {
                                       className="inline-flex items-center px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                                     >
                                       <ClockIcon className="mr-1.5 h-3.5 w-3.5" />
-                                      {stopTimes[index + 1] ? 
+                                      {stopTimes[index + 1] && stopTimes[index + 1].hour ? 
                                         `${stopTimes[index + 1].hour}:${stopTimes[index + 1].minute} ${stopTimes[index + 1].ampm}` : 
                                         "--:--"}
                                     </button>
