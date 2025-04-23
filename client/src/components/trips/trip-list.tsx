@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2Icon, MapPinIcon, CalendarIcon, FilterIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
 import { formatDate, formatPrice } from "@/lib/utils";
+import { format } from "date-fns";
 import { extractLocationsFromTrips } from "@/lib/trip-utils";
 
 // Función para abreviar ubicaciones en móvil
@@ -292,19 +294,18 @@ export function TripList() {
               )}
             </div>
             <div>
-              <label htmlFor="dateFilter" className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <CalendarIcon className="h-5 w-5 text-gray-400" />
-                </div>
-                <Input
-                  id="dateFilter"
-                  type="date"
-                  className="pl-10"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-              </div>
+              <Label htmlFor="dateFilter" className="block text-sm font-medium text-gray-700 mb-1">Fecha</Label>
+              <DatePicker
+                date={date ? new Date(date) : undefined}
+                onDateChange={(selectedDate) => {
+                  if (selectedDate) {
+                    setDate(format(selectedDate, 'yyyy-MM-dd'));
+                  } else {
+                    setDate('');
+                  }
+                }}
+                placeholder="Seleccionar fecha"
+              />
             </div>
             <div>
               <label htmlFor="seatsFilter" className="block text-sm font-medium text-gray-700 mb-1">Asientos</label>
