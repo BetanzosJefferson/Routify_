@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ClipboardListIcon, UserIcon, DollarSignIcon, PackageIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -349,7 +348,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                         </td>
                                         <td className="py-3 px-4 whitespace-nowrap">
                                           <div className="text-sm font-medium text-gray-900">
-                                            ${(reservation.totalAmount / (reservation.passengers?.length || 1)).toLocaleString('es-MX')}
+                                            ${reservation.totalAmount.toLocaleString('es-MX')}
                                           </div>
                                         </td>
                                       </tr>
@@ -359,8 +358,8 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               </table>
                             </div>
                           ) : (
-                            <div className="text-center py-8 bg-gray-50 rounded-lg">
-                              <div className="text-gray-500">No hay pasajeros registrados para este viaje</div>
+                            <div className="text-center py-8 rounded-md bg-gray-50">
+                              <p className="text-gray-500">No hay pasajeros registrados para este viaje</p>
                             </div>
                           )}
                         </div>
@@ -370,15 +369,22 @@ export default function TripSummary({ className }: TripSummaryProps) {
                 </Card>
               </div>
             ) : (
-              <div className="bg-gray-50 rounded-lg py-12 text-center">
-                <div className="text-gray-500">Selecciona un viaje para ver su resumen</div>
+              <div className="flex flex-col justify-center items-center h-64 bg-gray-50 rounded-lg p-6">
+                <p className="text-gray-500 text-center mb-2">
+                  Selecciona un viaje para ver los detalles
+                </p>
+                {filteredTrips.length === 0 && (
+                  <p className="text-gray-400 text-center text-sm">
+                    No hay viajes disponibles para esta fecha
+                  </p>
+                )}
               </div>
             )}
           </div>
         </div>
       ) : (
-        <div className="bg-gray-50 rounded-lg py-12 text-center">
-          <div className="text-gray-500">No hay viajes disponibles</div>
+        <div className="flex justify-center items-center h-64 bg-gray-50 rounded-lg">
+          <p className="text-gray-500">No hay viajes registrados en el sistema</p>
         </div>
       )}
     </div>

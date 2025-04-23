@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2Icon, MapPinIcon, CalendarIcon, FilterIcon } from "lucide-react";
+import { Loader2Icon, MapPinIcon, CalendarIcon, FilterIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { extractLocationsFromTrips } from "@/lib/trip-utils";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -192,104 +192,141 @@ export function TripList() {
         </CardContent>
       </Card>
       
-      <Card>
-        <div className="overflow-x-auto">
-          {isLoading ? (
-            <div className="flex justify-center items-center p-8">
-              <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-2">Loading trips...</span>
-            </div>
-          ) : isError ? (
-            <div className="text-center p-8 text-red-500">
-              Error loading trips. Please try again.
-            </div>
-          ) : trips && trips.length > 0 ? (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Route</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Departure</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Arrival</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available Seats</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {trips.map((trip) => (
-                  <tr key={trip.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {trip.isSubTrip ? (
-                          <span className="flex items-center">
-                            <span className="inline-block h-2 w-2 rounded-full bg-indigo-500 mr-2"></span>
-                            {trip.segmentOrigin} → {trip.segmentDestination}
-                          </span>
-                        ) : (
-                          trip.route.name
-                        )}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {trip.isSubTrip ? (
-                          <span className="text-xs italic">Sub-trip of {trip.route.name}</span>
-                        ) : (
-                          `${trip.numStops} stops`
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatDate(trip.departureDate)}</div>
-                      <div className="text-sm text-gray-500">{trip.departureTime}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatDate(trip.departureDate)}</div>
-                      <div className="text-sm text-gray-500">{trip.arrivalTime}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {trip.vehicleType.charAt(0).toUpperCase() + trip.vehicleType.slice(1)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {trip.availableSeats}/{trip.capacity}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatPrice(trip.price)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Button
-                        size="sm"
-                        className="bg-primary hover:bg-primary-dark"
-                        onClick={() => handleReserve(trip)}
-                        disabled={trip.availableSeats <= 0}
-                      >
-                        Reserve
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="text-center p-8 text-gray-500">
-              No trips found matching your criteria.
-            </div>
-          )}
+      {/* Navegador de fechas */}
+      <div className="flex justify-center items-center mb-6">
+        <Button 
+          variant="outline" 
+          size="icon"
+          onClick={() => {
+            const newDate = new Date(date);
+            newDate.setDate(newDate.getDate() - 1);
+            setDate(formatDateForInput(newDate));
+            setSearchParams({...searchParams, date: formatDateForInput(newDate)});
+          }}
+          className="mr-2"
+        >
+          <ChevronLeftIcon className="h-4 w-4" />
+        </Button>
+        
+        <div className="text-xl font-medium mx-4">
+          {new Date(date).toLocaleDateString('es-MX', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })}
         </div>
         
-        {/* Pagination (placeholder, would be implemented with actual data) */}
-        <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
-          <div className="flex justify-between items-center">
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700">
-                  Showing <span className="font-medium">1</span> to <span className="font-medium">{trips?.length || 0}</span> of <span className="font-medium">{trips?.length || 0}</span> results
-                </p>
-              </div>
-              {/* Pagination controls would go here if needed */}
-            </div>
-          </div>
+        <Button 
+          variant="outline" 
+          size="icon"
+          onClick={() => {
+            const newDate = new Date(date);
+            newDate.setDate(newDate.getDate() + 1);
+            setDate(formatDateForInput(newDate));
+            setSearchParams({...searchParams, date: formatDateForInput(newDate)});
+          }}
+          className="ml-2"
+        >
+          <ChevronRightIcon className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center items-center p-8">
+          <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Cargando viajes...</span>
         </div>
-      </Card>
+      ) : isError ? (
+        <div className="text-center p-8 text-red-500">
+          Error al cargar los viajes. Por favor, inténtalo de nuevo.
+        </div>
+      ) : trips && trips.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {trips.map((trip) => (
+            <Card key={trip.id} className="overflow-hidden hover:shadow-md transition-shadow">
+              <div className="bg-primary h-2"></div>
+              <CardContent className="p-5">
+                <div className="flex justify-between items-start mb-4 mt-2">
+                  <div>
+                    <h3 className="font-medium text-lg text-gray-900">
+                      {trip.isSubTrip ? (
+                        <span className="flex items-center">
+                          <span className="inline-block h-2 w-2 rounded-full bg-indigo-500 mr-2"></span>
+                          {trip.segmentOrigin} → {trip.segmentDestination}
+                        </span>
+                      ) : (
+                        trip.route.name
+                      )}
+                    </h3>
+                    <div className="text-sm text-gray-500 mt-1">
+                      {trip.isSubTrip ? (
+                        <span className="text-xs italic">Sub-viaje de {trip.route.name}</span>
+                      ) : (
+                        `${trip.numStops} paradas`
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-lg font-semibold text-primary">
+                    {formatPrice(trip.isSubTrip ? trip.segmentPrice || 0 : trip.price)}
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between mt-4 border-t border-gray-100 pt-4">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-gray-500">Salida</span>
+                    <span className="text-sm font-medium">{trip.departureTime}</span>
+                    <span className="text-xs text-gray-500">{formatDate(trip.departureDate)}</span>
+                  </div>
+                  
+                  <div className="flex-1 px-4">
+                    <div className="relative flex items-center justify-center">
+                      <div className="border-t border-dashed border-gray-300 w-full"></div>
+                      <div className="absolute">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-end">
+                    <span className="text-xs text-gray-500">Llegada</span>
+                    <span className="text-sm font-medium">{trip.arrivalTime}</span>
+                    <span className="text-xs text-gray-500">{formatDate(trip.departureDate)}</span>
+                  </div>
+                </div>
+                
+                <div className="mt-5 flex items-center justify-between">
+                  <div className="text-sm">
+                    <span className="capitalize">{trip.vehicleType}</span> • 
+                    <span className="ml-1 font-medium">{trip.availableSeats}</span>
+                    <span className="text-gray-500">/{trip.capacity} asientos</span>
+                  </div>
+                  
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => handleReserve(trip)}
+                    disabled={trip.availableSeats <= 0}
+                  >
+                    Reservar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <div className="text-center text-gray-500 mb-4">
+              <CalendarIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-lg">No hay viajes disponibles para esta fecha.</p>
+              <p className="text-sm mt-2">Intenta con otra fecha o modifica los filtros de búsqueda.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
       {/* Reservation Modal */}
       {selectedTrip && (
