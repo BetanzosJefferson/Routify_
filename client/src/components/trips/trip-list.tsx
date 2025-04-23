@@ -4,6 +4,30 @@ import { Loader2Icon, MapPinIcon, CalendarIcon, FilterIcon, ChevronLeftIcon, Che
 import { formatDate, formatPrice } from "@/lib/utils";
 import { extractLocationsFromTrips } from "@/lib/trip-utils";
 
+// Función para abreviar ubicaciones en móvil
+function abbreviateLocation(location: string): string {
+  if (!location) return '';
+  
+  // Si ya es corto, dejarlo como está
+  if (location.length <= 8) return location;
+  
+  // Si tiene comas, tomar solo la primera parte
+  if (location.includes(',')) {
+    return location.split(',')[0].trim();
+  }
+  
+  // Si tiene espacios, tomar primeras letras de cada palabra
+  if (location.includes(' ')) {
+    const words = location.split(' ');
+    if (words.length >= 2) {
+      return words.map(word => word.charAt(0)).join('');
+    }
+  }
+  
+  // Si todo falla, cortar a 8 caracteres
+  return location.substring(0, 7) + '.';
+}
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -225,16 +249,16 @@ export function TripList() {
                         <span className="flex items-center">
                           <span className="inline-block h-2 w-2 rounded-full bg-indigo-500 mr-2"></span>
                           <span className="hidden md:inline">{trip.segmentOrigin}</span>
-                          <span className="md:hidden">{abbreviateLocation(trip.segmentOrigin)}</span>
+                          <span className="md:hidden">{abbreviateLocation(trip.segmentOrigin || '')}</span>
                           {' → '}
                           <span className="hidden md:inline">{trip.segmentDestination}</span>
-                          <span className="md:hidden">{abbreviateLocation(trip.segmentDestination)}</span>
+                          <span className="md:hidden">{abbreviateLocation(trip.segmentDestination || '')}</span>
                         </span>
                       ) : (
                         <span>
                           <span className="hidden md:inline">{trip.route.name}</span>
                           <span className="md:hidden">
-                            {abbreviateLocation(trip.route.origin)}{' → '}{abbreviateLocation(trip.route.destination)}
+                            {abbreviateLocation(trip.route.origin || '')}{' → '}{abbreviateLocation(trip.route.destination || '')}
                           </span>
                         </span>
                       )}
@@ -248,8 +272,8 @@ export function TripList() {
                     </div>
                   </div>
                   <div className="text-lg font-semibold text-primary">
-                    {formatPrice(trip.isSubTrip && trip.segmentPrices && trip.segmentPrices.length > 0 
-                      ? trip.segmentPrices[0].price || trip.price 
+                    {formatPrice(trip.isSubTrip && Array.isArray(trip.segmentPrices) && trip.segmentPrices.length > 0 
+                      ? trip.segmentPrices[0]?.price || trip.price 
                       : trip.price)}
                   </div>
                 </div>
@@ -282,8 +306,10 @@ export function TripList() {
                 <div className="mt-5 flex items-center justify-between">
                   <div className="text-sm">
                     <span className="capitalize">{trip.vehicleType}</span> • 
-                    <span className="ml-1 font-medium">{trip.availableSeats}</span>
-                    <span className="text-gray-500">/{trip.capacity} asientos</span>
+                    <span className="ml-1 font-medium">
+                      {Math.round(((trip.capacity - trip.availableSeats) / trip.capacity) * 100)}%
+                    </span>
+                    <span className="text-gray-500"> ocupación</span>
                   </div>
                   
                   <Button
