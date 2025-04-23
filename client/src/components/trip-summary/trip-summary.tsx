@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ClipboardListIcon, UserIcon, DollarSignIcon, PackageIcon, Calendar } from "lucide-react";
+import { ClipboardListIcon, UserIcon, DollarSignIcon, PackageIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { format, addDays, subDays, isSameDay } from "date-fns";
+import { es } from "date-fns/locale";
 import { Trip, TripWithRouteInfo, Reservation, Passenger } from "@shared/schema";
 
 type TripSummaryProps = {
@@ -22,6 +25,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
   const [tripReservations, setTripReservations] = useState<ReservationWithPassengers[]>([]);
   const [totalPassengers, setTotalPassengers] = useState(0);
   const [totalSales, setTotalSales] = useState(0);
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
 
   // Fetch all trips
   const { data: trips, isLoading: isLoadingTrips } = useQuery<TripWithRouteInfo[]>({
@@ -34,6 +38,27 @@ export default function TripSummary({ className }: TripSummaryProps) {
     queryKey: ["/api/reservations"],
     staleTime: 30000, // 30 seconds
   });
+  
+  // Filtrar para obtener solo viajes principales (no sub-viajes) y por fecha seleccionada
+  const filteredTrips = trips?.filter(trip => {
+    // Filtrar por viajes principales
+    if (trip.isSubTrip) return false;
+    
+    // Filtrar por fecha actual
+    const tripDate = new Date(trip.departureDate);
+    return isSameDay(tripDate, currentDate);
+  }) || [];
+  
+  // Navegación de fecha
+  const goToPreviousDay = () => {
+    setCurrentDate(prevDate => subDays(prevDate, 1));
+    setSelectedTrip(null); // Resetear selección al cambiar de fecha
+  };
+  
+  const goToNextDay = () => {
+    setCurrentDate(prevDate => addDays(prevDate, 1));
+    setSelectedTrip(null); // Resetear selección al cambiar de fecha
+  };
 
   // Filter reservations by selected trip
   useEffect(() => {
@@ -69,26 +94,27 @@ export default function TripSummary({ className }: TripSummaryProps) {
     }
   }, [selectedTrip, reservations, trips]);
 
-  // Auto-seleccionar el primer viaje si no hay ninguno seleccionado
+  // Auto-seleccionar el primer viaje filtrado si no hay ninguno seleccionado
   useEffect(() => {
-    if (trips && trips.length > 0 && !selectedTrip) {
-      // Preferir viajes principales (no sub-viajes)
-      const mainTrip = trips.find(trip => !trip.isSubTrip);
-      setSelectedTrip(mainTrip?.id || trips[0].id);
+    if (filteredTrips && filteredTrips.length > 0 && !selectedTrip) {
+      // Autoseleccionar el primer viaje del día actual
+      setSelectedTrip(filteredTrips[0].id);
     }
-  }, [trips, selectedTrip]);
-
-  // Filtrar para obtener solo viajes principales (no sub-viajes)
-  const mainTrips = trips?.filter(trip => !trip.isSubTrip) || [];
+  }, [filteredTrips, selectedTrip, currentDate]);
 
   // Función para formatear fecha
   const formatDate = (dateString: string | Date) => {
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
     return date.toLocaleDateString('es-MX', {
       year: 'numeric',
-      month: 'long',
+      month: 'long', 
       day: 'numeric'
     });
+  };
+  
+  // Función para formatear fecha para el encabezado
+  const formatHeaderDate = (date: Date) => {
+    return format(date, "d 'de' MMMM, yyyy", { locale: es });
   };
 
   return (
@@ -100,6 +126,31 @@ export default function TripSummary({ className }: TripSummaryProps) {
         <h2 className="text-xl font-semibold text-gray-800">Resumen de Viajes</h2>
       </div>
 
+      {/* Navegador de fechas */}
+      <div className="flex justify-center items-center mb-6">
+        <Button 
+          variant="outline" 
+          size="icon"
+          onClick={goToPreviousDay}
+          className="mr-2"
+        >
+          <ChevronLeftIcon className="h-4 w-4" />
+        </Button>
+        
+        <div className="text-xl font-medium mx-4">
+          {formatHeaderDate(currentDate)}
+        </div>
+        
+        <Button 
+          variant="outline" 
+          size="icon"
+          onClick={goToNextDay}
+          className="ml-2"
+        >
+          <ChevronRightIcon className="h-4 w-4" />
+        </Button>
+      </div>
+      
       {isLoadingTrips || isLoadingReservations ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -113,30 +164,36 @@ export default function TripSummary({ className }: TripSummaryProps) {
                 <CardDescription>Selecciona un viaje para ver detalles</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {mainTrips.map(trip => (
-                    <div 
-                      key={trip.id}
-                      className={`
-                        p-3 rounded-md cursor-pointer transition-colors
-                        ${selectedTrip === trip.id 
-                          ? 'bg-primary text-white' 
-                          : 'bg-gray-50 hover:bg-gray-100 text-gray-800'}
-                      `}
-                      onClick={() => setSelectedTrip(trip.id)}
-                    >
-                      <div className="font-medium">{trip.route.name}</div>
-                      <div className="text-sm mt-1 flex justify-between">
-                        <span className={selectedTrip === trip.id ? 'text-white/80' : 'text-gray-500'}>
-                          {formatDate(trip.departureDate)}
-                        </span>
-                        <Badge variant={selectedTrip === trip.id ? "outline" : "secondary"}>
-                          {trip.departureTime}
-                        </Badge>
+                {filteredTrips.length > 0 ? (
+                  <div className="space-y-3">
+                    {filteredTrips.map(trip => (
+                      <div 
+                        key={trip.id}
+                        className={`
+                          p-3 rounded-md cursor-pointer transition-colors
+                          ${selectedTrip === trip.id 
+                            ? 'bg-primary text-white' 
+                            : 'bg-gray-50 hover:bg-gray-100 text-gray-800'}
+                        `}
+                        onClick={() => setSelectedTrip(trip.id)}
+                      >
+                        <div className="font-medium">{trip.route.name}</div>
+                        <div className="text-sm mt-1 flex justify-between">
+                          <span className={selectedTrip === trip.id ? 'text-white' : 'text-gray-500'}>
+                            {trip.departureTime}
+                          </span>
+                          <Badge variant={selectedTrip === trip.id ? "outline" : "secondary"}>
+                            {trip.availableSeats}/{trip.capacity}
+                          </Badge>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    No hay viajes programados para esta fecha
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
