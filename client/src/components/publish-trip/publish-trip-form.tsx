@@ -540,7 +540,7 @@ export function PublishTripForm() {
                     <TabsContent value="stop-times">
                       <div className="flex justify-between items-center mb-4">
                         <p className="text-sm text-gray-500">
-                          Los tiempos se configuran por parada, representando la hora de salida desde cada ubicación.
+                          Configure el horario de cada parada. El tiempo en cada parada representa tanto la hora de llegada (si se viene de la parada anterior) como la hora de salida (para continuar a la siguiente).
                         </p>
                         <Button 
                           variant="outline" 
@@ -560,7 +560,7 @@ export function PublishTripForm() {
                               <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">#</th>
                               <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parada</th>
                               <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hora de salida</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
@@ -647,7 +647,7 @@ export function PublishTripForm() {
                       <div className="mt-4 text-sm text-gray-500">
                         <p className="flex items-center">
                           <InfoIcon className="h-4 w-4 mr-2 text-primary" />
-                          Los tiempos intermedios se calculan automáticamente en base a la distancia entre puntos.
+                          El horario de cada parada representa tanto la hora de llegada como la de salida para esa ubicación. Para los sub-viajes, se usarán estos tiempos para calcular la duración.
                         </p>
                       </div>
                     </TabsContent>
