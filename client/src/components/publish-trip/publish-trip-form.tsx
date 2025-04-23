@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ClockIcon, CalendarIcon } from "lucide-react";
+import { ClockIcon, CalendarIcon, InfoIcon, Loader2Icon, CalendarPlusIcon } from "lucide-react";
 import { format } from "date-fns";
 
 import {
@@ -542,15 +542,39 @@ export function PublishTripForm() {
               )}
               
               {/* Submit Button */}
-              <div className="flex justify-end mt-8">
-                <Button 
-                  type="submit" 
-                  className="bg-primary hover:bg-primary-dark text-white px-6 py-2 text-lg font-medium"
-                  size="lg"
-                  disabled={publishTripMutation.isPending || !selectedRouteId}
-                >
-                  {publishTripMutation.isPending ? "Publishing..." : "Publish Trip"}
-                </Button>
+              <div className="mt-8">
+                <div className="bg-slate-50 border border-slate-200 rounded-md p-3 mb-4">
+                  <div className="flex">
+                    <InfoIcon className="h-5 w-5 text-blue-500 mr-2 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-slate-700 text-sm mb-1">Sub-Trip Generation</p>
+                      <p className="text-xs text-slate-600">
+                        When you publish this trip, the system will automatically create all possible 
+                        sub-trips between stops with proportional pricing and timing based on the total journey.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button 
+                    type="submit" 
+                    className="bg-primary hover:bg-primary-dark text-white px-6 py-2 text-lg font-medium"
+                    size="lg"
+                    disabled={publishTripMutation.isPending || !selectedRouteId}
+                  >
+                    {publishTripMutation.isPending ? (
+                      <span className="flex items-center">
+                        <Loader2Icon className="mr-2 h-5 w-5 animate-spin" />
+                        Publishing...
+                      </span>
+                    ) : (
+                      <span className="flex items-center">
+                        <CalendarPlusIcon className="mr-2 h-5 w-5" />
+                        Publish Trip
+                      </span>
+                    )}
+                  </Button>
+                </div>
               </div>
             </form>
           </Form>
