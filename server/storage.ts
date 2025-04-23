@@ -442,13 +442,15 @@ export class MemStorage implements IStorage {
     // Preparamos los datos de la reserva asegurándonos de que notes sea null si no está definido
     const reservationData = { ...reservation };
     
-    // Eliminar la propiedad notes del objeto original para evitar problemas con el spreading
+    // Eliminar las propiedades que configuraremos explícitamente para evitar problemas con el spreading
     delete reservationData.notes;
+    delete reservationData.paymentMethod;
     
     const newReservation: Reservation = { 
       ...reservationData, 
       id,
       notes: reservation.notes || null, // Aseguramos que notas sea string | null (nunca undefined)
+      paymentMethod: reservation.paymentMethod || "cash", // Valor por defecto si no se proporciona
       status: reservation.status || "confirmed",
       createdAt: new Date()  
     };
