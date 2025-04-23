@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ClockIcon, CalendarIcon, InfoIcon, Loader2Icon, CalendarPlusIcon } from "lucide-react";
+import { ClockIcon, CalendarIcon, InfoIcon, Loader2Icon, CalendarPlusIcon, Clock } from "lucide-react";
 import { format } from "date-fns";
 
 import {
@@ -53,6 +53,7 @@ export function PublishTripForm() {
   const queryClient = useQueryClient();
   const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
   const [segmentPrices, setSegmentPrices] = useState<SegmentPrice[]>([]);
+  const [editingStopIndex, setEditingStopIndex] = useState<number | null>(null);
 
   // Fetch routes for dropdown
   const routesQuery = useQuery({
@@ -135,6 +136,16 @@ export function PublishTripForm() {
     };
     setSegmentPrices(updatedPrices);
     form.setValue("segmentPrices", updatedPrices);
+  };
+  
+  // Handle opening the time editor dialog
+  const handleEditTime = (stopIndex: number) => {
+    setEditingStopIndex(stopIndex);
+    // Aquí podría abrir un diálogo modal para editar el tiempo
+    toast({
+      title: "Edición de horario",
+      description: `Configurando horario para la parada #${stopIndex + 1}`,
+    });
   };
 
   // Mutation for publishing trips
@@ -301,7 +312,7 @@ export function PublishTripForm() {
                   name="startDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>First trip date</FormLabel>
+                      <FormLabel>Fecha del primer viaje</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -325,7 +336,7 @@ export function PublishTripForm() {
                   name="endDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Last trip date</FormLabel>
+                      <FormLabel>Fecha del último viaje</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -348,7 +359,7 @@ export function PublishTripForm() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Departure Time */}
                 <div>
-                  <FormLabel>Departure time</FormLabel>
+                  <FormLabel>Hora de salida</FormLabel>
                   <div className="flex space-x-2">
                     <FormField
                       control={form.control}
@@ -411,7 +422,7 @@ export function PublishTripForm() {
                 
                 {/* Arrival Time */}
                 <div>
-                  <FormLabel>Arrival time</FormLabel>
+                  <FormLabel>Hora de llegada</FormLabel>
                   <div className="flex space-x-2">
                     <FormField
                       control={form.control}
@@ -480,7 +491,7 @@ export function PublishTripForm() {
                     {routeSegmentsQuery.data.name}
                   </h3>
                   <p className="text-sm text-gray-500 mb-6">
-                    Configure prices for segments and estimated stop times for this trip.
+                    Configure los precios por segmento y los tiempos estimados para cada parada de este viaje.
                   </p>
                   
                   <Tabs defaultValue="segment-prices">
@@ -492,7 +503,7 @@ export function PublishTripForm() {
                     
                     <TabsContent value="segment-prices">
                       <p className="text-sm text-gray-500 mb-4">
-                        Configure prices for each segment of the route. Segments between different cities require manual pricing.
+                        Configure los precios para cada segmento de la ruta. Los segmentos entre diferentes ciudades requieren una configuración manual de precio.
                       </p>
                       
                       <div className="overflow-x-auto">
@@ -531,8 +542,14 @@ export function PublishTripForm() {
                         <p className="text-sm text-gray-500">
                           Los tiempos se configuran por parada, representando la hora de salida desde cada ubicación.
                         </p>
-                        <Button variant="outline" size="sm" type="button" className="flex items-center">
-                          <span className="mr-2">Editar tiempos</span>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          type="button" 
+                          className="flex items-center bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
+                        >
+                          <ClockIcon className="mr-2 h-4 w-4" />
+                          <span>Editar todos los tiempos</span>
                         </Button>
                       </div>
                       
@@ -548,9 +565,9 @@ export function PublishTripForm() {
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
                             {/* Origen */}
-                            <tr className="bg-red-50">
+                            <tr className="bg-primary/5">
                               <td className="px-3 py-3">
-                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-red-500 text-white">1</div>
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white">1</div>
                               </td>
                               <td className="px-3 py-3 whitespace-nowrap">
                                 <div className="text-sm font-medium text-gray-900">Terminal Principal</div>
@@ -560,19 +577,23 @@ export function PublishTripForm() {
                               </td>
                               <td className="px-3 py-3 whitespace-nowrap">
                                 <div className="flex items-center">
-                                  <span className="inline-flex items-center px-2 py-1 rounded-md bg-red-100 text-red-800">
-                                    <ClockIcon className="mr-1 h-3 w-3" />
+                                  <button 
+                                    type="button"
+                                    onClick={() => handleEditTime(0)}
+                                    className="inline-flex items-center px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                                  >
+                                    <ClockIcon className="mr-1.5 h-3.5 w-3.5" />
                                     {form.getValues('departureHour')}:{form.getValues('departureMinute')} {form.getValues('departureAmPm')}
-                                  </span>
+                                  </button>
                                 </div>
                               </td>
                             </tr>
                             
                             {/* Paradas intermedias */}
                             {routeSegmentsQuery.data?.stops.map((stop, index) => (
-                              <tr key={index} className="bg-blue-50">
+                              <tr key={index} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
                                 <td className="px-3 py-3">
-                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500 text-white">{index + 2}</div>
+                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/80 text-white">{index + 2}</div>
                                 </td>
                                 <td className="px-3 py-3 whitespace-nowrap">
                                   <div className="text-sm font-medium text-gray-900">Parada {index + 1}</div>
@@ -582,19 +603,23 @@ export function PublishTripForm() {
                                 </td>
                                 <td className="px-3 py-3 whitespace-nowrap">
                                   <div className="flex items-center">
-                                    <span className="inline-flex items-center px-2 py-1 rounded-md bg-blue-100 text-blue-800">
-                                      <ClockIcon className="mr-1 h-3 w-3" />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditTime(index + 1)}
+                                      className="inline-flex items-center px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                                    >
+                                      <ClockIcon className="mr-1.5 h-3.5 w-3.5" />
                                       --:--
-                                    </span>
+                                    </button>
                                   </div>
                                 </td>
                               </tr>
                             ))}
                             
                             {/* Destino */}
-                            <tr className="bg-green-50">
+                            <tr className="bg-primary/5">
                               <td className="px-3 py-3">
-                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-500 text-white">{(routeSegmentsQuery.data?.stops.length || 0) + 2}</div>
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white">{(routeSegmentsQuery.data?.stops.length || 0) + 2}</div>
                               </td>
                               <td className="px-3 py-3 whitespace-nowrap">
                                 <div className="text-sm font-medium text-gray-900">Destino Final</div>
@@ -604,10 +629,14 @@ export function PublishTripForm() {
                               </td>
                               <td className="px-3 py-3 whitespace-nowrap">
                                 <div className="flex items-center">
-                                  <span className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-800">
-                                    <ClockIcon className="mr-1 h-3 w-3" />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditTime((routeSegmentsQuery.data?.stops.length || 0) + 1)}
+                                    className="inline-flex items-center px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                                  >
+                                    <ClockIcon className="mr-1.5 h-3.5 w-3.5" />
                                     {form.getValues('arrivalHour')}:{form.getValues('arrivalMinute')} {form.getValues('arrivalAmPm')}
-                                  </span>
+                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -617,7 +646,7 @@ export function PublishTripForm() {
                       
                       <div className="mt-4 text-sm text-gray-500">
                         <p className="flex items-center">
-                          <InfoIcon className="h-4 w-4 mr-2 text-blue-500" />
+                          <InfoIcon className="h-4 w-4 mr-2 text-primary" />
                           Los tiempos intermedios se calculan automáticamente en base a la distancia entre puntos.
                         </p>
                       </div>
@@ -690,12 +719,12 @@ export function PublishTripForm() {
               <div className="mt-8">
                 <div className="bg-slate-50 border border-slate-200 rounded-md p-3 mb-4">
                   <div className="flex">
-                    <InfoIcon className="h-5 w-5 text-blue-500 mr-2 mt-0.5 flex-shrink-0" />
+                    <InfoIcon className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="font-medium text-slate-700 text-sm mb-1">Sub-Trip Generation</p>
+                      <p className="font-medium text-slate-700 text-sm mb-1">Generación de Sub-Viajes</p>
                       <p className="text-xs text-slate-600">
-                        When you publish this trip, the system will automatically create all possible 
-                        sub-trips between stops with proportional pricing and timing based on the total journey.
+                        Al publicar este viaje, el sistema creará automáticamente todos los sub-viajes posibles
+                        entre paradas con precios y tiempos proporcionales basados en el recorrido total.
                       </p>
                     </div>
                   </div>
@@ -710,12 +739,12 @@ export function PublishTripForm() {
                     {publishTripMutation.isPending ? (
                       <span className="flex items-center">
                         <Loader2Icon className="mr-2 h-5 w-5 animate-spin" />
-                        Publishing...
+                        Publicando...
                       </span>
                     ) : (
                       <span className="flex items-center">
                         <CalendarPlusIcon className="mr-2 h-5 w-5" />
-                        Publish Trip
+                        Publicar Viaje
                       </span>
                     )}
                   </Button>
