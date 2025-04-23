@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2Icon, MapPinIcon, CalendarIcon, FilterIcon } from "lucide-react";
 import { formatDate, formatPrice } from "@/lib/utils";
@@ -41,16 +41,23 @@ export function TripList() {
     },
   });
   
-  // Handler for search form submission
-  const handleSearch = () => {
-    const params: SearchParams = {};
-    if (origin) params.origin = origin;
-    if (destination) params.destination = destination;
-    if (date) params.date = date;
-    if (seats) params.seats = parseInt(seats, 10);
+  // Update search params in real-time as the user types
+  useEffect(() => {
+    // Small debounce function to avoid too many requests
+    const debounceTimer = setTimeout(() => {
+      const params: SearchParams = {};
+      if (origin) params.origin = origin;
+      if (destination) params.destination = destination;
+      if (date) params.date = date;
+      if (seats && !isNaN(parseInt(seats, 10))) {
+        params.seats = parseInt(seats, 10);
+      }
+      
+      setSearchParams(params);
+    }, 300); // 300ms debounce
     
-    setSearchParams(params);
-  };
+    return () => clearTimeout(debounceTimer);
+  }, [origin, destination, date, seats]);
   
   // Handler for reservation button click
   const handleReserve = (trip: TripWithRouteInfo) => {
@@ -121,13 +128,12 @@ export function TripList() {
               />
             </div>
             <div className="flex items-end">
-              <Button
-                className="w-full bg-primary hover:bg-primary-dark"
-                onClick={handleSearch}
-              >
-                <FilterIcon className="h-4 w-4 mr-2" />
-                Search
-              </Button>
+              <div className="w-full p-2 border rounded-md bg-gray-50 text-center">
+                <div className="flex items-center justify-center">
+                  <FilterIcon className="h-4 w-4 mr-2 text-gray-500" />
+                  <span className="text-sm text-gray-500">Real-time searching...</span>
+                </div>
+              </div>
             </div>
           </div>
         </CardContent>
