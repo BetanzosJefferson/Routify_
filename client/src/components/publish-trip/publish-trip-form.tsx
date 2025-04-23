@@ -222,12 +222,12 @@ export function PublishTripForm() {
                   name="capacity"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Capacity</FormLabel>
+                      <FormLabel>Capacidad</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           min="1"
-                          placeholder="Number of passengers"
+                          placeholder="Número de pasajeros"
                           {...field}
                           onChange={(e) => field.onChange(parseInt(e.target.value, 10) || "")}
                         />
@@ -243,13 +243,13 @@ export function PublishTripForm() {
                   name="price"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Price</FormLabel>
+                      <FormLabel>Precio</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           min="0"
                           step="0.01"
-                          placeholder="Price per passenger"
+                          placeholder="Precio por pasajero"
                           {...field}
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || "")}
                         />
@@ -546,7 +546,7 @@ export function PublishTripForm() {
                       </p>
                       
                       <SeatMap 
-                        initialCapacity={parseInt(form.getValues("capacity"), 10) || 24}
+                        initialCapacity={form.getValues("capacity")}
                         onCapacityChange={(newCapacity) => {
                           form.setValue("capacity", newCapacity);
                         }}
