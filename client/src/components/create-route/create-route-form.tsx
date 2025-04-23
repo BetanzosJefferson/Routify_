@@ -171,15 +171,25 @@ export function CreateRouteForm({ initialRoute, onSuccess }: CreateRouteFormProp
     // Asegurarse de que hay al menos 2 paradas para establecer origen y destino
     const stopLocations = stops.map(stop => stop.location);
     
+    // Extraer el primer y último elemento para origen y destino
+    const origin = stopLocations[0];
+    const destination = stopLocations[stopLocations.length - 1];
+    
+    // Si hay más de 2 paradas, las del medio son las "stops"
+    // Si solo hay 2 paradas, el array de stops debe estar vacío
+    const middleStops = stopLocations.length > 2 
+      ? stopLocations.slice(1, stopLocations.length - 1) 
+      : [];
+    
     // Combinar los datos del formulario con las paradas
     const routeData: InsertRoute = {
       ...data,
-      stops: stopLocations,
-      origin: stopLocations[0],
-      destination: stopLocations[stopLocations.length - 1]
+      stops: middleStops,
+      origin: origin,
+      destination: destination
     };
     
-    console.log("Enviando datos de ruta:", routeData);
+    console.log("Enviando datos de ruta (procesados):", routeData);
     
     routeMutation.mutate(routeData);
   };
