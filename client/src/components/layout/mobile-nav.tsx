@@ -3,8 +3,7 @@ import { useLocation } from "wouter";
 import { MenuIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-
-type TabType = "create-route" | "publish-trip" | "trips" | "reservations";
+import { TabType } from "@/hooks/use-active-tab";
 
 interface MobileNavProps {
   activeTab: TabType;
@@ -49,19 +48,25 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
               active={activeTab === "publish-trip"}
               onClick={() => handleNavClick("publish-trip")}
             >
-              Publish Trip
+              Publicar Viajes
             </NavLink>
             <NavLink 
               active={activeTab === "trips"}
               onClick={() => handleNavClick("trips")}
             >
-              Trips
+              Viajes
             </NavLink>
             <NavLink 
               active={activeTab === "reservations"}
               onClick={() => handleNavClick("reservations")}
             >
-              Reservations
+              Reservaciones
+            </NavLink>
+            <NavLink 
+              active={activeTab === "trip-summary"}
+              onClick={() => handleNavClick("trip-summary")}
+            >
+              Resumen de Viajes
             </NavLink>
           </nav>
         </SheetContent>
