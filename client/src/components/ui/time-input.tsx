@@ -1,68 +1,84 @@
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { TimePicker } from "@/components/ui/time-picker";
-import { ClockIcon } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
-type TimeInputProps = {
-  value: {
-    hour: string;
-    minute: string;
-    ampm: "AM" | "PM";
-  };
-  onChange: (hour: string, minute: string, ampm: "AM" | "PM") => void;
-  label?: string;
-  labelPosition?: "top" | "left";
+export interface TimeInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
   className?: string;
-};
+}
 
+/**
+ * Un componente de entrada de tiempo que utiliza el input nativo de tipo time,
+ * pero permite formatear y manejar la entrada como "HH:MM AM/PM"
+ */
 export function TimeInput({
   value,
   onChange,
-  label,
-  labelPosition = "top",
-  className = "",
+  placeholder = "Seleccionar hora",
+  disabled = false,
+  className,
 }: TimeInputProps) {
-  const [open, setOpen] = useState(false);
-
-  const handleOpenDialog = () => {
-    setOpen(true);
+  // Convertir entre el formato "HH:MM AM/PM" y el formato "HH:MM" (24h) para el input nativo
+  const formatTo24Hour = (timeStr: string): string => {
+    if (!timeStr || !timeStr.includes(' ')) return '';
+    
+    const [time, period] = timeStr.split(' ');
+    const [hours, minutes] = time.split(':').map(Number);
+    
+    let hours24 = hours;
+    
+    if (period === 'PM' && hours < 12) {
+      hours24 = hours + 12;
+    } else if (period === 'AM' && hours === 12) {
+      hours24 = 0;
+    }
+    
+    return `${hours24.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
-
-  const handleCloseDialog = () => {
-    setOpen(false);
+  
+  const formatTo12Hour = (timeStr: string): string => {
+    if (!timeStr) return '';
+    
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    
+    let hours12 = hours % 12;
+    if (hours12 === 0) hours12 = 12;
+    
+    const period = hours >= 12 ? 'PM' : 'AM';
+    
+    return `${hours12.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
   };
-
-  const handleSelectTime = (hour: string, minute: string, ampm: "AM" | "PM") => {
-    onChange(hour, minute, ampm);
-    setOpen(false);
+  
+  // State para el valor interno del input en formato 24h
+  const [internalValue, setInternalValue] = useState<string>('');
+  
+  // Actualizar el valor interno cuando cambia el valor externo
+  useEffect(() => {
+    setInternalValue(formatTo24Hour(value));
+  }, [value]);
+  
+  // Manejar cambios en el input
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setInternalValue(newValue);
+    
+    if (newValue) {
+      const formatted12Hour = formatTo12Hour(newValue);
+      onChange(formatted12Hour);
+    }
   };
-
+  
   return (
-    <div className={`flex ${labelPosition === "left" ? "flex-row items-center gap-2" : "flex-col"} ${className}`}>
-      {label && (
-        <label className={`text-sm font-medium text-gray-700 ${labelPosition === "top" ? "mb-1" : ""}`}>
-          {label}
-        </label>
-      )}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={handleOpenDialog}
-        className="border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400"
-      >
-        <ClockIcon className="h-4 w-4 mr-1.5 text-gray-500" />
-        {value.hour}:{value.minute} {value.ampm}
-      </Button>
-
-      <TimePicker
-        open={open}
-        onClose={handleCloseDialog}
-        onSelectTime={handleSelectTime}
-        initialHour={value.hour}
-        initialMinute={value.minute}
-        initialAmPm={value.ampm}
-      />
-    </div>
+    <Input
+      type="time"
+      value={internalValue}
+      onChange={handleChange}
+      placeholder={placeholder}
+      disabled={disabled}
+      className={cn("w-full", className)}
+    />
   );
 }
