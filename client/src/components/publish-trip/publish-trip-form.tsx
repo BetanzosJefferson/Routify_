@@ -45,6 +45,16 @@ type StopTime = {
   location: string;
 };
 
+// Extendiendo SegmentPrice para incluir tiempos
+type SegmentTimePrice = SegmentPrice & {
+  departureHour: string;
+  departureMinute: string;
+  departureAmPm: "AM" | "PM";
+  arrivalHour: string;
+  arrivalMinute: string;
+  arrivalAmPm: "AM" | "PM";
+};
+
 type FormValues = {
   routeId: number;
   startDate: string;
@@ -59,7 +69,7 @@ type FormValues = {
   availableSeats?: number; // Agregado para inicializar asientos disponibles
   price: number;
   vehicleType: string;
-  segmentPrices: SegmentPrice[];
+  segmentPrices: SegmentTimePrice[];
   stopTimes?: StopTime[]; // Agregar tiempos de paradas intermedias
 };
 
@@ -67,11 +77,12 @@ export function PublishTripForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
-  const [segmentPrices, setSegmentPrices] = useState<SegmentPrice[]>([]);
+  const [segmentPrices, setSegmentPrices] = useState<SegmentTimePrice[]>([]);
   const [editingStopIndex, setEditingStopIndex] = useState<number | null>(null);
   const [showTimeDialog, setShowTimeDialog] = useState(false);
   const [stopTimes, setStopTimes] = useState<Array<{hour: string, minute: string, ampm: "AM" | "PM", location?: string} | null>>([]);
   const [currentStopInfo, setCurrentStopInfo] = useState<{name: string, location: string}>({name: "", location: ""});
+  const [editingSegment, setEditingSegment] = useState<{index: number, timeType: 'departure' | 'arrival'} | null>(null);
 
   // Fetch routes for dropdown
   const routesQuery = useQuery({
@@ -126,6 +137,13 @@ export function PublishTripForm() {
           origin: segment.origin,
           destination: segment.destination,
           price: 0,
+          // Añadir campos de tiempo para cada segmento
+          departureHour: "08",
+          departureMinute: "00",
+          departureAmPm: "AM" as "AM", 
+          arrivalHour: "09",
+          arrivalMinute: "00",
+          arrivalAmPm: "AM" as "AM"
         }));
         
         setSegmentPrices(segmentPricesWithDefaultValues);
@@ -152,6 +170,24 @@ export function PublishTripForm() {
       ...updatedPrices[index],
       price,
     };
+    setSegmentPrices(updatedPrices);
+    form.setValue("segmentPrices", updatedPrices);
+  };
+  
+  // Manejador para actualizar el tiempo de salida/llegada de un segmento
+  const updateSegmentTime = (index: number, timeType: 'departure' | 'arrival', field: 'hour' | 'minute' | 'ampm', value: string) => {
+    const updatedPrices = [...segmentPrices];
+    if (timeType === 'departure') {
+      updatedPrices[index] = {
+        ...updatedPrices[index],
+        [`departure${field.charAt(0).toUpperCase() + field.slice(1)}`]: value,
+      };
+    } else {
+      updatedPrices[index] = {
+        ...updatedPrices[index],
+        [`arrival${field.charAt(0).toUpperCase() + field.slice(1)}`]: value,
+      };
+    }
     setSegmentPrices(updatedPrices);
     form.setValue("segmentPrices", updatedPrices);
   };
@@ -658,24 +694,26 @@ export function PublishTripForm() {
                     
                     <TabsContent value="segment-prices">
                       <p className="text-sm text-gray-500 mb-4">
-                        Configure los precios para cada segmento de la ruta. Los segmentos entre diferentes ciudades requieren una configuración manual de precio.
+                        Configure los precios y horarios para cada segmento de la ruta. Los segmentos entre diferentes ciudades requieren una configuración manual.
                       </p>
                       
                       <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-gray-50">
                             <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origen</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destino</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio (MXN)</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origen</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destino</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio (MXN)</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hora de Salida</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hora de Llegada</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
                             {segmentPrices.map((segment, index) => (
                               <tr key={index}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{segment.origin}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{segment.destination}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">{segment.origin}</td>
+                                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">{segment.destination}</td>
+                                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
                                   <Input
                                     type="number"
                                     min="0"
@@ -685,10 +723,117 @@ export function PublishTripForm() {
                                     onChange={(e) => updateSegmentPrice(index, parseInt(e.target.value, 10) || 0)}
                                   />
                                 </td>
+                                {/* Hora de Salida */}
+                                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  <div className="flex space-x-1">
+                                    <div className="w-16">
+                                      <Select 
+                                        value={segment.departureHour}
+                                        onValueChange={(value) => updateSegmentTime(index, 'departure', 'hour', value)}
+                                      >
+                                        <SelectTrigger className="h-8">
+                                          <SelectValue placeholder="HH" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(hour => (
+                                            <SelectItem key={hour} value={hour}>{hour}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <span className="flex items-center">:</span>
+                                    <div className="w-16">
+                                      <Select 
+                                        value={segment.departureMinute}
+                                        onValueChange={(value) => updateSegmentTime(index, 'departure', 'minute', value)}
+                                      >
+                                        <SelectTrigger className="h-8">
+                                          <SelectValue placeholder="MM" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {['00', '15', '30', '45'].map(minute => (
+                                            <SelectItem key={minute} value={minute}>{minute}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="w-16">
+                                      <Select 
+                                        value={segment.departureAmPm}
+                                        onValueChange={(value) => updateSegmentTime(index, 'departure', 'ampm', value as "AM" | "PM")}
+                                      >
+                                        <SelectTrigger className="h-8">
+                                          <SelectValue placeholder="AM/PM" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="AM">AM</SelectItem>
+                                          <SelectItem value="PM">PM</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+                                </td>
+                                {/* Hora de Llegada */}
+                                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  <div className="flex space-x-1">
+                                    <div className="w-16">
+                                      <Select 
+                                        value={segment.arrivalHour}
+                                        onValueChange={(value) => updateSegmentTime(index, 'arrival', 'hour', value)}
+                                      >
+                                        <SelectTrigger className="h-8">
+                                          <SelectValue placeholder="HH" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(hour => (
+                                            <SelectItem key={hour} value={hour}>{hour}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <span className="flex items-center">:</span>
+                                    <div className="w-16">
+                                      <Select 
+                                        value={segment.arrivalMinute}
+                                        onValueChange={(value) => updateSegmentTime(index, 'arrival', 'minute', value)}
+                                      >
+                                        <SelectTrigger className="h-8">
+                                          <SelectValue placeholder="MM" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {['00', '15', '30', '45'].map(minute => (
+                                            <SelectItem key={minute} value={minute}>{minute}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="w-16">
+                                      <Select 
+                                        value={segment.arrivalAmPm}
+                                        onValueChange={(value) => updateSegmentTime(index, 'arrival', 'ampm', value as "AM" | "PM")}
+                                      >
+                                        <SelectTrigger className="h-8">
+                                          <SelectValue placeholder="AM/PM" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="AM">AM</SelectItem>
+                                          <SelectItem value="PM">PM</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+                                </td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
+                      </div>
+                      
+                      <div className="mt-4 text-sm text-gray-500">
+                        <p className="flex items-center">
+                          <InfoIcon className="h-4 w-4 mr-2 text-primary" />
+                          Configure tanto el precio como los horarios para cada segmento. Esto garantiza que los horarios se apliquen correctamente a cada tramo del viaje.
+                        </p>
                       </div>
                     </TabsContent>
                     
