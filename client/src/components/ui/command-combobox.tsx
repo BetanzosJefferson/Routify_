@@ -68,51 +68,79 @@ export function CommandCombobox({
     if (!searchValue) return groupedOptions
     
     const filtered: GroupedLocations = {}
-    const searchLower = searchValue.toLowerCase()
+    const searchLower = searchValue.toLowerCase().trim()
     
-    // Primero, buscar en todas las ciudades
-    let hasCityMatches = false;
+    // Si la búsqueda está vacía después de limpiarla, mostrar todas las opciones
+    if (!searchLower) return groupedOptions
+    
+    // Dividir la búsqueda en palabras clave individuales para búsqueda más flexible
+    const searchTerms = searchLower.split(/\s+/).filter(term => term.length > 0)
     
     Object.entries(groupedOptions).forEach(([city, locations]) => {
-      // Verificar si el texto de búsqueda coincide con el nombre de la ciudad
-      const cityMatches = city.toLowerCase().includes(searchLower);
+      // Verificar si algún término de búsqueda coincide con el nombre de la ciudad
+      const cityLower = city.toLowerCase()
+      const cityMatches = searchTerms.some(term => cityLower.includes(term))
       
       // Filtrar ubicaciones que coinciden con la búsqueda
-      const matchingLocations = locations.filter(loc => 
-        cityMatches || // Incluir todas las ubicaciones si la ciudad coincide
-        loc.city.toLowerCase().includes(searchLower) ||
-        loc.place.toLowerCase().includes(searchLower) ||
-        loc.value.toLowerCase().includes(searchLower) ||
-        `${loc.place}, ${loc.city}`.toLowerCase().includes(searchLower) // Buscar en texto combinado
-      );
+      const matchingLocations = locations.filter(loc => {
+        // Si la ciudad coincide completamente, incluir todas sus ubicaciones
+        if (cityMatches) return true
+        
+        const placeLower = loc.place.toLowerCase()
+        const fullTextLower = `${placeLower}, ${cityLower}`.toLowerCase()
+        
+        // Verificar si TODOS los términos de búsqueda están en el texto completo
+        // o si cada término coincide con alguna parte del texto
+        return searchTerms.every(term => 
+          fullTextLower.includes(term) || 
+          placeLower.includes(term) || 
+          cityLower.includes(term)
+        )
+      })
       
-      if (matchingLocations.length) {
-        filtered[city] = matchingLocations;
-        if (cityMatches) hasCityMatches = true;
+      if (matchingLocations.length > 0) {
+        filtered[city] = matchingLocations
       }
-    });
+    })
     
-    // Si no hay coincidencias exactas, intentar búsqueda parcial
+    // Si no hay coincidencias exactas, intentar búsqueda con coincidencias parciales
     if (Object.keys(filtered).length === 0) {
       Object.entries(groupedOptions).forEach(([city, locations]) => {
-        // Buscar coincidencias parciales en palabras separadas
-        const matchingLocations = locations.filter(loc => {
-          const allWords = [
-            ...city.toLowerCase().split(/\s+/),
-            ...loc.place.toLowerCase().split(/\s+/)
-          ];
-          
-          // Verificar si alguna palabra comienza con el texto de búsqueda
-          return allWords.some(word => word.startsWith(searchLower));
-        });
+        const cityWords = city.toLowerCase().split(/\s+/)
         
-        if (matchingLocations.length) {
-          filtered[city] = matchingLocations;
+        // Buscar coincidencias parciales al inicio de palabras
+        const matchingLocations = locations.filter(loc => {
+          const placeWords = loc.place.toLowerCase().split(/\s+/)
+          const allWords = [...cityWords, ...placeWords]
+          
+          // Verificar si alguna palabra comienza con algún término de búsqueda
+          return searchTerms.some(term => 
+            allWords.some(word => word.startsWith(term))
+          )
+        })
+        
+        if (matchingLocations.length > 0) {
+          filtered[city] = matchingLocations
         }
-      });
+      })
     }
     
-    return filtered;
+    // Si aún no hay coincidencias, buscar coincidencias muy parciales
+    if (Object.keys(filtered).length === 0 && searchLower.length >= 2) {
+      Object.entries(groupedOptions).forEach(([city, locations]) => {
+        // Buscar ubicaciones donde al menos 2 caracteres coincidan en alguna palabra
+        const matchingLocations = locations.filter(loc => {
+          const fullText = `${loc.place} ${city}`.toLowerCase()
+          return searchTerms.some(term => fullText.includes(term.substring(0, 2)))
+        })
+        
+        if (matchingLocations.length > 0) {
+          filtered[city] = matchingLocations
+        }
+      })
+    }
+    
+    return filtered
   }, [groupedOptions, searchValue])
   
   // Encuentra el texto a mostrar en el botón basado en el valor seleccionado
@@ -167,15 +195,15 @@ export function CommandCombobox({
               <div key={city}>
                 <CommandGroup heading={city}>
                   {locations.map((location) => (
-                    <button
+                    <CommandItem
                       key={location.value}
-                      type="button"
-                      className="w-full text-left flex items-start py-2 cursor-pointer hover:bg-gray-100 active:bg-gray-200 px-2 rounded-sm"
-                      onClick={() => {
-                        onChange(location.value)
+                      value={location.value}
+                      onSelect={(currentValue) => {
+                        onChange(currentValue)
                         setOpen(false)
                         setSearchValue("")
                       }}
+                      className="flex py-2 cursor-pointer"
                     >
                       <div className="flex items-center w-full">
                         <div className="mr-2 flex h-4 w-4 items-center justify-center">
@@ -193,7 +221,7 @@ export function CommandCombobox({
                           )}
                         </div>
                       </div>
-                    </button>
+                    </CommandItem>
                   ))}
                 </CommandGroup>
                 <CommandSeparator />
