@@ -216,7 +216,7 @@ export function PublishTripForm() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Main Trip Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Route Selection */}
                 <FormField
                   control={form.control}
@@ -268,39 +268,17 @@ export function PublishTripForm() {
                   )}
                 />
                 
-                {/* Price */}
-                <FormField
-                  control={form.control}
-                  name="price"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Precio</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="Precio por pasajero"
-                          {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || "")}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
                 {/* Vehicle Type */}
                 <FormField
                   control={form.control}
                   name="vehicleType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Type of vehicle</FormLabel>
+                      <FormLabel>Tipo de vehículo</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select vehicle type" />
+                            <SelectValue placeholder="Seleccionar tipo de vehículo" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -549,13 +527,98 @@ export function PublishTripForm() {
                     </TabsContent>
                     
                     <TabsContent value="stop-times">
-                      <p className="text-sm text-gray-500 mb-4">
-                        Configure estimated stop times at each location. This helps passengers plan their journey.
-                      </p>
+                      <div className="flex justify-between items-center mb-4">
+                        <p className="text-sm text-gray-500">
+                          Los tiempos se configuran por parada, representando la hora de salida desde cada ubicación.
+                        </p>
+                        <Button variant="outline" size="sm" type="button" className="flex items-center">
+                          <span className="mr-2">Editar tiempos</span>
+                        </Button>
+                      </div>
                       
-                      <div className="bg-gray-100 p-6 rounded-md text-center">
-                        <p className="text-gray-500">
-                          Stop times configuration will be available in future updates.
+                      <div className="overflow-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">#</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parada</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hora de salida</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {/* Origen */}
+                            <tr className="bg-red-50">
+                              <td className="px-3 py-3">
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-red-500 text-white">1</div>
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <div className="text-sm font-medium text-gray-900">Terminal Principal</div>
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                                {routeSegmentsQuery.data?.origin || 'Origen'}
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-md bg-red-100 text-red-800">
+                                    <ClockIcon className="mr-1 h-3 w-3" />
+                                    {form.getValues('departureHour')}:{form.getValues('departureMinute')} {form.getValues('departureAmPm')}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                            
+                            {/* Paradas intermedias */}
+                            {routeSegmentsQuery.data?.stops.map((stop, index) => (
+                              <tr key={index} className="bg-blue-50">
+                                <td className="px-3 py-3">
+                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500 text-white">{index + 2}</div>
+                                </td>
+                                <td className="px-3 py-3 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-gray-900">Parada {index + 1}</div>
+                                </td>
+                                <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                                  {stop}
+                                </td>
+                                <td className="px-3 py-3 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <span className="inline-flex items-center px-2 py-1 rounded-md bg-blue-100 text-blue-800">
+                                      <ClockIcon className="mr-1 h-3 w-3" />
+                                      --:--
+                                    </span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                            
+                            {/* Destino */}
+                            <tr className="bg-green-50">
+                              <td className="px-3 py-3">
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-500 text-white">{(routeSegmentsQuery.data?.stops.length || 0) + 2}</div>
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <div className="text-sm font-medium text-gray-900">Destino Final</div>
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                                {routeSegmentsQuery.data?.destination || 'Destino'}
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-800">
+                                    <ClockIcon className="mr-1 h-3 w-3" />
+                                    {form.getValues('arrivalHour')}:{form.getValues('arrivalMinute')} {form.getValues('arrivalAmPm')}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      <div className="mt-4 text-sm text-gray-500">
+                        <p className="flex items-center">
+                          <InfoIcon className="h-4 w-4 mr-2 text-blue-500" />
+                          Los tiempos intermedios se calculan automáticamente en base a la distancia entre puntos.
                         </p>
                       </div>
                     </TabsContent>
