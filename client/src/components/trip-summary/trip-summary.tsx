@@ -25,6 +25,8 @@ export default function TripSummary({ className }: TripSummaryProps) {
   const [tripReservations, setTripReservations] = useState<ReservationWithPassengers[]>([]);
   const [totalPassengers, setTotalPassengers] = useState(0);
   const [totalSales, setTotalSales] = useState(0);
+  const [totalCashSales, setTotalCashSales] = useState(0);
+  const [totalTransferSales, setTotalTransferSales] = useState(0);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
 
   // Fetch all trips
@@ -84,13 +86,26 @@ export default function TripSummary({ className }: TripSummaryProps) {
       const passengers = allReservations.reduce((acc, res) => acc + (res.passengers?.length || 0), 0);
       const sales = allReservations.reduce((acc, res) => acc + (res.totalAmount || 0), 0);
       
+      // Calcular ventas por método de pago
+      const cashSales = allReservations
+        .filter(res => res.paymentMethod === 'cash')
+        .reduce((acc, res) => acc + (res.totalAmount || 0), 0);
+        
+      const transferSales = allReservations
+        .filter(res => res.paymentMethod === 'transfer')
+        .reduce((acc, res) => acc + (res.totalAmount || 0), 0);
+      
       setTripReservations(allReservations);
       setTotalPassengers(passengers);
       setTotalSales(sales);
+      setTotalCashSales(cashSales);
+      setTotalTransferSales(transferSales);
     } else {
       setTripReservations([]);
       setTotalPassengers(0);
       setTotalSales(0);
+      setTotalCashSales(0);
+      setTotalTransferSales(0);
     }
   }, [selectedTrip, reservations, trips]);
 
@@ -312,6 +327,36 @@ export default function TripSummary({ className }: TripSummaryProps) {
                           </Card>
                         </div>
                         
+                        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <Card className="bg-yellow-50 border-yellow-100">
+                            <CardContent className="pt-6">
+                              <div className="flex items-center space-x-2">
+                                <div className="p-2 bg-yellow-100 rounded-full">
+                                  <DollarSignIcon className="h-5 w-5 text-yellow-600" />
+                                </div>
+                                <div className="text-yellow-600 font-medium">Ventas en Efectivo</div>
+                              </div>
+                              <div className="mt-4 text-3xl font-bold text-yellow-700">
+                                ${totalCashSales.toLocaleString('es-MX')}
+                              </div>
+                            </CardContent>
+                          </Card>
+                          
+                          <Card className="bg-indigo-50 border-indigo-100">
+                            <CardContent className="pt-6">
+                              <div className="flex items-center space-x-2">
+                                <div className="p-2 bg-indigo-100 rounded-full">
+                                  <DollarSignIcon className="h-5 w-5 text-indigo-600" />
+                                </div>
+                                <div className="text-indigo-600 font-medium">Ventas por Transferencia</div>
+                              </div>
+                              <div className="mt-4 text-3xl font-bold text-indigo-700">
+                                ${totalTransferSales.toLocaleString('es-MX')}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+                        
                         <div className="mt-6">
                           <h3 className="text-lg font-semibold mb-4">Lista de Pasajeros</h3>
                           
@@ -328,6 +373,9 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                     </th>
                                     <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                       Ruta
+                                    </th>
+                                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Pago
                                     </th>
                                     <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                       Importe
@@ -354,6 +402,16 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                           </div>
                                           <div className="text-xs text-gray-500">
                                             {reservation.trip.departureTime} - {reservation.trip.arrivalTime}
+                                          </div>
+                                        </td>
+                                        <td className="py-3 px-4 whitespace-nowrap">
+                                          <div className="text-sm font-medium">
+                                            <Badge variant={reservation.paymentMethod === 'cash' ? 'outline' : 'secondary'} 
+                                              className={reservation.paymentMethod === 'cash' 
+                                                ? 'border-yellow-500 text-yellow-700' 
+                                                : 'bg-indigo-100 text-indigo-700'}>
+                                              {reservation.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
+                                            </Badge>
                                           </div>
                                         </td>
                                         <td className="py-3 px-4 whitespace-nowrap">
