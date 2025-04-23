@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { MapPinIcon, PlusCircleIcon, Trash2Icon, ChevronUpIcon, ChevronDownIcon } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { MapIcon, MapPinIcon, PlusCircleIcon, XCircleIcon } from "lucide-react";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 import {
   Form,
@@ -17,26 +18,84 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { createRouteValidationSchema } from "@shared/schema";
-import { type InsertRoute } from "@shared/schema";
+import { LocationPicker } from "@/components/ui/location-picker";
+import { createRouteValidationSchema, InsertRoute } from "@shared/schema";
+
+type StopData = {
+  id: string;
+  location: string;
+  stateCode?: string;
+  municipalityCode?: string;
+  stationName?: string;
+};
 
 export function CreateRouteForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [stops, setStops] = useState<string[]>([]);
+  const [stops, setStops] = useState<StopData[]>([]);
 
-  // Initialize form with default values
+  // Form validation and handling
   const form = useForm<InsertRoute>({
     resolver: zodResolver(createRouteValidationSchema),
     defaultValues: {
       name: "",
-      origin: "",
-      stops: [],
-      destination: "",
+      stops: []
     },
   });
 
-  // Mutation for creating a route
+  // Generate a route name based on the first and last stops
+  const generateRouteName = (stopsList: StopData[]) => {
+    if (stopsList.length < 2) return "";
+    const firstStop = stopsList[0].location.split(',')[0].trim();
+    const lastStop = stopsList[stopsList.length - 1].location.split(',')[0].trim();
+    return `${firstStop} - ${lastStop}`;
+  };
+
+  // Add a new stop
+  const handleAddLocation = (locationData: any) => {
+    const newStop: StopData = {
+      id: `stop-${Date.now()}`,
+      location: locationData.fullName,
+      stateCode: locationData.stateCode,
+      municipalityCode: locationData.municipalityCode,
+      stationName: locationData.stationName
+    };
+    
+    const updatedStops = [...stops, newStop];
+    setStops(updatedStops);
+    
+    form.setValue("stops", updatedStops.map(stop => stop.location));
+    
+    // Auto-generate route name if it's empty or matches previous auto-generated name
+    const currentName = form.getValues("name");
+    const previousName = generateRouteName(stops);
+    
+    if (!currentName || currentName === previousName) {
+      const newName = generateRouteName(updatedStops);
+      form.setValue("name", newName);
+    }
+  };
+
+  // Remove a stop
+  const handleRemoveStop = (id: string) => {
+    const updatedStops = stops.filter((stop) => stop.id !== id);
+    setStops(updatedStops);
+    form.setValue("stops", updatedStops.map(stop => stop.location));
+  };
+
+  // Handle drag and drop reordering
+  const handleDragEnd = (result: any) => {
+    if (!result.destination) return;
+    
+    const items = Array.from(stops);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    
+    setStops(items);
+    form.setValue("stops", items.map(stop => stop.location));
+  };
+
+  // Mutation for creating routes
   const createRouteMutation = useMutation({
     mutationFn: async (data: InsertRoute) => {
       const response = await apiRequest("POST", "/api/routes", data);
@@ -44,11 +103,11 @@ export function CreateRouteForm() {
     },
     onSuccess: () => {
       toast({
-        title: "Route created successfully",
-        description: "Your new route has been saved.",
+        title: "Ruta creada exitosamente",
+        description: "La nueva ruta ha sido creada y ya está disponible para publicar viajes.",
       });
       
-      // Reset form
+      // Reset form and stops
       form.reset();
       setStops([]);
       
@@ -57,7 +116,7 @@ export function CreateRouteForm() {
     },
     onError: (error) => {
       toast({
-        title: "Failed to create route",
+        title: "Error al crear la ruta",
         description: error.message,
         variant: "destructive",
       });
@@ -66,53 +125,26 @@ export function CreateRouteForm() {
 
   // Form submission handler
   const onSubmit = (data: InsertRoute) => {
-    // Ensure stops from state are included
-    const formData = {
-      ...data,
-      stops: stops,
-    };
+    // Validar que haya al menos 2 paradas
+    if (stops.length < 2) {
+      toast({
+        title: "Error de validación",
+        description: "Una ruta debe tener al menos 2 paradas.",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    createRouteMutation.mutate(formData);
-  };
-
-  // Stop management functions
-  const addStop = () => {
-    setStops([...stops, ""]);
-  };
-
-  const updateStop = (index: number, value: string) => {
-    const updatedStops = [...stops];
-    updatedStops[index] = value;
-    setStops(updatedStops);
-  };
-
-  const removeStop = (index: number) => {
-    const updatedStops = [...stops];
-    updatedStops.splice(index, 1);
-    setStops(updatedStops);
-  };
-
-  const moveStopUp = (index: number) => {
-    if (index === 0) return;
-    const updatedStops = [...stops];
-    [updatedStops[index], updatedStops[index - 1]] = [updatedStops[index - 1], updatedStops[index]];
-    setStops(updatedStops);
-  };
-
-  const moveStopDown = (index: number) => {
-    if (index === stops.length - 1) return;
-    const updatedStops = [...stops];
-    [updatedStops[index], updatedStops[index + 1]] = [updatedStops[index + 1], updatedStops[index]];
-    setStops(updatedStops);
+    createRouteMutation.mutate(data);
   };
 
   return (
     <div className="py-6">
       <div className="flex items-center mb-4">
         <div className="rounded-full bg-primary bg-opacity-10 p-2 mr-3">
-          <MapPinIcon className="h-6 w-6 text-primary" />
+          <MapIcon className="h-6 w-6 text-primary" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-800">Create Route</h2>
+        <h2 className="text-xl font-semibold text-gray-800">Crear Ruta</h2>
       </div>
       
       <Card>
@@ -125,139 +157,93 @@ export function CreateRouteForm() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Route Name</FormLabel>
+                    <FormLabel>Nombre de la ruta</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="e.g. Acapulco - México" 
-                        {...field} 
-                      />
+                      <Input placeholder="Ej: Ciudad de México - Acapulco" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
-              {/* Origin */}
-              <FormField
-                control={form.control}
-                name="origin"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Origin</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <MapPinIcon className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <Input
-                          className="pl-10"
-                          placeholder="Enter origin location"
-                          {...field}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
+
               {/* Stops */}
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <FormLabel>Stops</FormLabel>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="text-primary hover:bg-primary hover:bg-opacity-10"
-                    onClick={addStop}
-                  >
-                    <PlusCircleIcon className="h-4 w-4 mr-1" />
-                    Add Stop
-                  </Button>
+                <div className="flex justify-between items-center mb-3">
+                  <FormLabel>Paradas</FormLabel>
+                  <LocationPicker onLocationAdded={handleAddLocation} />
                 </div>
                 
-                <div className="space-y-3">
-                  {stops.map((stop, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <span className="inline-block w-6 text-sm text-gray-500 text-center">{index + 1}</span>
-                      <div className="relative flex-1">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <MapPinIcon className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <Input
-                          className="pl-10"
-                          placeholder="Enter stop location"
-                          value={stop}
-                          onChange={(e) => updateStop(index, e.target.value)}
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="text-gray-400 hover:text-red-500"
-                        onClick={() => removeStop(index)}
-                      >
-                        <Trash2Icon className="h-5 w-5" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="text-gray-400 hover:text-gray-600"
-                        onClick={() => moveStopUp(index)}
-                        disabled={index === 0}
-                      >
-                        <ChevronUpIcon className="h-5 w-5" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="text-gray-400 hover:text-gray-600"
-                        onClick={() => moveStopDown(index)}
-                        disabled={index === stops.length - 1}
-                      >
-                        <ChevronDownIcon className="h-5 w-5" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Destination */}
-              <FormField
-                control={form.control}
-                name="destination"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Destination</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <MapPinIcon className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <Input
-                          className="pl-10"
-                          placeholder="Enter destination location"
-                          {...field}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                {stops.length === 0 && (
+                  <div className="border border-dashed border-gray-300 rounded-md p-8 text-center">
+                    <p className="text-gray-500 mb-2">
+                      Agrega al menos dos ubicaciones para crear una ruta
+                    </p>
+                    <LocationPicker 
+                      onLocationAdded={handleAddLocation} 
+                      buttonText="Agregar primera ubicación"
+                      className="mt-2"
+                    />
+                  </div>
                 )}
-              />
-              
+                
+                {stops.length > 0 && (
+                  <div className="border rounded-md p-2 mb-4">
+                    <DragDropContext onDragEnd={handleDragEnd}>
+                      <Droppable droppableId="stops">
+                        {(provided) => (
+                          <ul
+                            {...provided.droppableProps}
+                            ref={provided.innerRef}
+                            className="space-y-1"
+                          >
+                            {stops.map((stop, index) => (
+                              <Draggable key={stop.id} draggableId={stop.id} index={index}>
+                                {(provided) => (
+                                  <li
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    className="flex items-center justify-between p-3 bg-gray-50 rounded-md border"
+                                  >
+                                    <div className="flex items-center">
+                                      <div className="flex-shrink-0 mr-3">
+                                        <div className="rounded-full bg-primary w-8 h-8 flex items-center justify-center text-white font-semibold text-sm">
+                                          {index + 1}
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <p className="font-medium text-gray-700">{stop.location}</p>
+                                      </div>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleRemoveStop(stop.id)}
+                                    >
+                                      <XCircleIcon className="h-5 w-5 text-red-500" />
+                                    </Button>
+                                  </li>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                          </ul>
+                        )}
+                      </Droppable>
+                    </DragDropContext>
+                  </div>
+                )}
+              </div>
+
               {/* Submit Button */}
               <div className="flex justify-end">
-                <Button 
-                  type="submit" 
-                  className="bg-primary hover:bg-primary-dark"
-                  disabled={createRouteMutation.isPending}
+                <Button
+                  type="submit"
+                  className="bg-primary hover:bg-primary-dark text-white"
+                  disabled={createRouteMutation.isPending || stops.length < 2}
                 >
-                  {createRouteMutation.isPending ? "Saving..." : "Save Route"}
+                  {createRouteMutation.isPending ? "Creando..." : "Crear Ruta"}
                 </Button>
               </div>
             </form>
