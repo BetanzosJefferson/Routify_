@@ -1,29 +1,41 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 
-type TabType = "create-route" | "publish-trip" | "trips" | "reservations";
+export type TabType = "create-route" | "publish-trip" | "trips" | "reservations";
+
+// Create a global state for tab management
+const tabState = {
+  activeTab: "create-route" as TabType
+};
 
 export function useActiveTab() {
   const [location, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState<TabType>("create-route");
+  const [activeTab, setActiveTab] = useState<TabType>(tabState.activeTab);
 
+  // Keep local state in sync with global state
   useEffect(() => {
-    // Parse the tab from URL query params
+    setActiveTab(tabState.activeTab);
+
+    // Parse URL parameters on mount
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get("tab") as TabType | null;
     
     if (tabParam && ["create-route", "publish-trip", "trips", "reservations"].includes(tabParam)) {
+      tabState.activeTab = tabParam;
       setActiveTab(tabParam);
-    } else if (location === "/dashboard" || location === "/") {
-      // Default to create-route if no tab specified
-      setActiveTab("create-route");
     }
-  }, [location, window.location.search]);
+  }, []);
 
+  // Function to change the active tab
   const setTab = (tab: TabType) => {
-    // Update the URL and the active tab
-    setLocation(`/dashboard?tab=${tab}`);
+    // Update global state
+    tabState.activeTab = tab;
+    
+    // Update local state
     setActiveTab(tab);
+    
+    // Update URL
+    setLocation(`/dashboard?tab=${tab}`);
   };
 
   return { activeTab, setTab };
