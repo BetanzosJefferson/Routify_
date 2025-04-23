@@ -19,7 +19,16 @@ import { eq, and, gte, lt, like, or, sql } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   async getRoutes(): Promise<Route[]> {
-    return await db.select().from(schema.routes);
+    console.log("DB Storage: Consultando todas las rutas");
+    try {
+      const routes = await db.select().from(schema.routes);
+      console.log(`DB Storage: Rutas encontradas: ${routes.length}`);
+      console.log("DB Storage: Datos de rutas:", JSON.stringify(routes));
+      return routes;
+    } catch (error) {
+      console.error("DB Storage: Error al consultar rutas:", error);
+      return [];
+    }
   }
   
   async getRoute(id: number): Promise<Route | undefined> {

@@ -704,7 +704,7 @@ export function PublishTripForm() {
                                 </td>
                                 {/* Hora de Llegada */}
                                 <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  <TimeInput
+                                  <SimpleTimeInput
                                     value={{
                                       hour: segment.arrivalHour,
                                       minute: segment.arrivalMinute,
@@ -962,24 +962,16 @@ export function PublishTripForm() {
             
             {editingStopIndex !== null && (
               <div className="text-center">
-                <div className="text-4xl font-bold mb-4">
-                  {stopTimes[editingStopIndex]?.hour || "08"}:{stopTimes[editingStopIndex]?.minute || "00"} {stopTimes[editingStopIndex]?.ampm || "AM"}
-                </div>
-                
-                <div className="mb-4">
-                  <Button 
-                    variant="outline" 
-                    className="px-4 py-2"
-                    onClick={() => {
-                      if (editingStopIndex !== null && stopTimes[editingStopIndex]) {
-                        const { hour, minute, ampm } = stopTimes[editingStopIndex]!;
-                        saveStopTime(hour, minute, ampm);
-                      }
-                    }}
-                  >
-                    Guardar Horario
-                  </Button>
-                </div>
+                <SimpleTimeInput
+                  value={{
+                    hour: stopTimes[editingStopIndex]?.hour || "08",
+                    minute: stopTimes[editingStopIndex]?.minute || "00",
+                    ampm: stopTimes[editingStopIndex]?.ampm || "AM"
+                  }}
+                  onChange={(hour, minute, ampm) => {
+                    saveStopTime(hour, minute, ampm);
+                  }}
+                />
               </div>
             )}
             
