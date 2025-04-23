@@ -6,6 +6,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ClockIcon, CalendarIcon, InfoIcon, Loader2Icon, CalendarPlusIcon } from "lucide-react";
 import { format } from "date-fns";
+import { SeatMap } from "@/components/publish-trip/seat-map";
 
 import {
   Form,
@@ -177,7 +178,7 @@ export function PublishTripForm() {
         <div className="rounded-full bg-primary bg-opacity-10 p-2 mr-3">
           <ClockIcon className="h-6 w-6 text-primary" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-800">Publish Trip</h2>
+        <h2 className="text-xl font-semibold text-gray-800">Publicar Viaje</h2>
       </div>
       
       <Card>
@@ -192,14 +193,14 @@ export function PublishTripForm() {
                   name="routeId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Route</FormLabel>
+                      <FormLabel>Ruta</FormLabel>
                       <Select 
                         onValueChange={handleRouteChange}
                         value={field.value ? String(field.value) : ""}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a route" />
+                            <SelectValue placeholder="Seleccionar una ruta" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -475,8 +476,9 @@ export function PublishTripForm() {
                   
                   <Tabs defaultValue="segment-prices">
                     <TabsList className="mb-6">
-                      <TabsTrigger value="segment-prices">Segment Prices</TabsTrigger>
-                      <TabsTrigger value="stop-times">Stop Times</TabsTrigger>
+                      <TabsTrigger value="segment-prices">Precios por segmento</TabsTrigger>
+                      <TabsTrigger value="stop-times">Tiempos de parada</TabsTrigger>
+                      <TabsTrigger value="seat-map">Mapa de asientos</TabsTrigger>
                     </TabsList>
                     
                     <TabsContent value="segment-prices">
@@ -536,6 +538,23 @@ export function PublishTripForm() {
                           Stop times configuration will be available in future updates.
                         </p>
                       </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="seat-map">
+                      <p className="text-sm text-gray-500 mb-4">
+                        Configura los asientos disponibles para este viaje. Los asientos marcados como no disponibles no serán mostrados para reservaciones.
+                      </p>
+                      
+                      <SeatMap 
+                        initialCapacity={parseInt(form.getValues("capacity"), 10) || 24}
+                        onCapacityChange={(newCapacity) => {
+                          form.setValue("capacity", newCapacity);
+                        }}
+                        onSeatStatusChange={(seatId, status) => {
+                          // Implementar lógica para marcar asientos como no disponibles
+                          console.log(`Asiento ${seatId} cambiado a: ${status}`);
+                        }}
+                      />
                     </TabsContent>
                   </Tabs>
                 </div>
