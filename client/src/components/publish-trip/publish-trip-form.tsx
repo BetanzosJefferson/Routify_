@@ -599,14 +599,25 @@ export function PublishTripForm() {
             const [arrTime, arrAmPm] = segment.arrivalTime.split(' ');
             const [arrHour, arrMinute] = arrTime.split(':');
             
+            // Validar que los valores AM/PM son correctos
+            const validDepAmPm = depAmPm === "AM" || depAmPm === "PM" ? depAmPm : "AM";
+            const validArrAmPm = arrAmPm === "AM" || arrAmPm === "PM" ? arrAmPm : "AM";
+            
+            console.log("Cargando tiempos de segmento:", {
+              origin: segment.origin,
+              destination: segment.destination,
+              depTime: `${depHour}:${depMinute} ${validDepAmPm}`,
+              arrTime: `${arrHour}:${arrMinute} ${validArrAmPm}`
+            });
+            
             result = {
               ...result,
               departureHour: depHour,
               departureMinute: depMinute,
-              departureAmPm: depAmPm as "AM" | "PM",
+              departureAmPm: validDepAmPm,
               arrivalHour: arrHour,
               arrivalMinute: arrMinute,
-              arrivalAmPm: arrAmPm as "AM" | "PM"
+              arrivalAmPm: validArrAmPm
             };
           }
           

@@ -88,11 +88,12 @@ export function TimeInput({
     if (newValue) {
       // Convertir a formato 12h para el valor externo
       const formatted12Hour = formatTo12Hour(newValue);
+      console.log("TimeInput - Valor convertido:", newValue, "→", formatted12Hour);
       onChange(formatted12Hour);
     } else {
-      // Si se limpia el campo, establecer un valor predeterminado
-      setInternalValue('08:00');
-      onChange('08:00 AM');
+      // Si se limpia el campo, mantener el valor actual
+      console.log("TimeInput - Campo limpio, manteniendo valor actual", internalValue);
+      // No establecer un valor predeterminado automáticamente
     }
   };
   
