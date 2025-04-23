@@ -16,9 +16,18 @@ import {
 } from "@shared/schema";
 // Utility function to check if two locations are in the same city
 function isSameCity(location1: string, location2: string): boolean {
+  // Validar que ambas ubicaciones tienen el formato esperado
+  if (!location1.includes(' - ') || !location2.includes(' - ')) {
+    console.warn(`Formato de ubicación inesperado: "${location1}" o "${location2}"`);
+    return false;
+  }
+  
   // Extract city name (assuming format "City, State - Location")
   const city1 = location1.split(' - ')[0].trim();
   const city2 = location2.split(' - ')[0].trim();
+  
+  // Debugging
+  console.log(`Comparando ciudades: "${city1}" y "${city2}" => ${city1 === city2}`);
   
   return city1 === city2;
 }
