@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -29,7 +29,12 @@ type StopData = {
   stationName?: string;
 };
 
-export function CreateRouteForm() {
+interface CreateRouteFormProps {
+  initialRoute?: any; // Ruta inicial para edición, null si es una nueva ruta
+  onSuccess?: () => void; // Callback después de guardar con éxito
+}
+
+export function CreateRouteForm({ initialRoute, onSuccess }: CreateRouteFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [stops, setStops] = useState<StopData[]>([]);
@@ -37,11 +42,22 @@ export function CreateRouteForm() {
   // Form validation and handling
   const form = useForm<InsertRoute>({
     resolver: zodResolver(createRouteValidationSchema),
-    defaultValues: {
+    defaultValues: initialRoute || {
       name: "",
       stops: []
     },
   });
+  
+  // Initialize stops from initialRoute if provided
+  useEffect(() => {
+    if (initialRoute && initialRoute.stops && initialRoute.stops.length > 0) {
+      const initialStops = initialRoute.stops.map((stop: string, index: number) => ({
+        id: `stop-${index}`,
+        location: stop,
+      }));
+      setStops(initialStops);
+    }
+  }, [initialRoute]);
 
   // Generate a route name based on the first and last stops
   const generateRouteName = (stopsList: StopData[]) => {
@@ -95,21 +111,37 @@ export function CreateRouteForm() {
     form.setValue("stops", items.map(stop => stop.location));
   };
 
-  // Mutation for creating routes
-  const createRouteMutation = useMutation({
+  // Mutation for creating or updating routes
+  const routeMutation = useMutation({
     mutationFn: async (data: InsertRoute) => {
-      const response = await apiRequest("POST", "/api/routes", data);
-      return response.json();
+      if (initialRoute && initialRoute.id) {
+        // Update existing route
+        const response = await apiRequest("PUT", `/api/routes/${initialRoute.id}`, data);
+        return response.json();
+      } else {
+        // Create new route
+        const response = await apiRequest("POST", "/api/routes", data);
+        return response.json();
+      }
     },
     onSuccess: () => {
       toast({
-        title: "Ruta creada exitosamente",
-        description: "La nueva ruta ha sido creada y ya está disponible para publicar viajes.",
+        title: initialRoute ? "Ruta actualizada" : "Ruta creada exitosamente",
+        description: initialRoute 
+          ? "La ruta ha sido actualizada correctamente." 
+          : "La nueva ruta ha sido creada y ya está disponible para publicar viajes.",
       });
       
-      // Reset form and stops
-      form.reset();
-      setStops([]);
+      // Reset form and stops if not editing
+      if (!initialRoute) {
+        form.reset();
+        setStops([]);
+      }
+      
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
       
       // Invalidate routes cache
       queryClient.invalidateQueries({ queryKey: ["/api/routes"] });
@@ -148,7 +180,7 @@ export function CreateRouteForm() {
     
     console.log("Enviando datos de ruta:", routeData);
     
-    createRouteMutation.mutate(routeData);
+    routeMutation.mutate(routeData);
   };
 
   return (
@@ -278,7 +310,7 @@ export function CreateRouteForm() {
                     };
                     
                     console.log("Enviando datos de ruta (prueba directa):", testRouteData);
-                    createRouteMutation.mutate(testRouteData);
+                    routeMutation.mutate(testRouteData);
                   }}
                 >
                   Prueba Directa
@@ -286,9 +318,11 @@ export function CreateRouteForm() {
                 <Button
                   type="submit"
                   className="bg-primary hover:bg-primary-dark text-white"
-                  disabled={createRouteMutation.isPending || stops.length < 2}
+                  disabled={routeMutation.isPending || stops.length < 2}
                 >
-                  {createRouteMutation.isPending ? "Creando..." : "Crear Ruta"}
+                  {routeMutation.isPending ? 
+                    (initialRoute ? "Actualizando..." : "Creando...") : 
+                    (initialRoute ? "Actualizar Ruta" : "Crear Ruta")}
                 </Button>
               </div>
             </form>
