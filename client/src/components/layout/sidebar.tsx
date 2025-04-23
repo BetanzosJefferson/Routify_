@@ -9,7 +9,8 @@ import {
   UserIcon, 
   CarIcon, 
   HomeIcon, 
-  Settings2 
+  Settings2,
+  ClipboardListIcon
 } from "lucide-react";
 
 interface SidebarProps {
@@ -111,13 +112,20 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             </NavItem>
           </NavSection>
           
-          <NavSection title="Reservaciones">
+          <NavSection title="Reservaciones y Reportes">
             <NavItem 
               icon={<UserIcon className="h-5 w-5" />} 
               active={activeTab === "reservations"}
               onClick={() => handleTabClick("reservations")}
             >
               Reservaciones
+            </NavItem>
+            <NavItem 
+              icon={<ClipboardListIcon className="h-5 w-5" />} 
+              active={activeTab === "trip-summary"}
+              onClick={() => handleTabClick("trip-summary")}
+            >
+              Resumen de Viajes
             </NavItem>
           </NavSection>
           

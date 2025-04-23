@@ -82,8 +82,8 @@ export default function TripSummary({ className }: TripSummaryProps) {
   const mainTrips = trips?.filter(trip => !trip.isSubTrip) || [];
 
   // Función para formatear fecha
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (dateString: string | Date) => {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
     return date.toLocaleDateString('es-MX', {
       year: 'numeric',
       month: 'long',
