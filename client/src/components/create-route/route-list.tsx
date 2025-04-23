@@ -58,6 +58,20 @@ export function RouteList() {
     enabled: true,
     // Solo usar datos de ejemplo como respaldo si no hay rutas reales
     placeholderData: [],
+    // Funciones personalizadas para la consulta
+    queryFn: async () => {
+      console.log("Cargando rutas...");
+      const response = await fetch("/api/routes");
+      if (!response.ok) {
+        throw new Error("Error al cargar las rutas");
+      }
+      const data = await response.json();
+      console.log("Rutas cargadas:", data);
+      return data;
+    },
+    // Reintentamos la consulta automáticamente si falla
+    retry: 3,
+    retryDelay: 1000,
   });
 
   // Delete route mutation

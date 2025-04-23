@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { TimeInput } from "@/components/ui/time-input";
+import { SimpleTimeInput } from "@/components/ui/simple-time-picker";
 import { publishTripValidationSchema, type Route, type RouteWithSegments, type SegmentPrice } from "@shared/schema";
 import { generateSegmentsFromRoute, convertTo24Hour, isSameCity } from "@/lib/utils";
 
@@ -97,6 +97,20 @@ export function PublishTripForm() {
     placeholderData: [],
     // Aseguramos que se haga la consulta real a la API
     enabled: true,
+    // Funciones personalizadas para la consulta
+    queryFn: async () => {
+      console.log("Cargando rutas para formulario...");
+      const response = await fetch("/api/routes");
+      if (!response.ok) {
+        throw new Error("Error al cargar las rutas");
+      }
+      const data = await response.json();
+      console.log("Rutas cargadas para formulario:", data);
+      return data;
+    },
+    // Reintentamos la consulta automáticamente si falla
+    retry: 3,
+    retryDelay: 1000,
   });
 
   // Fetch selected route segments when route changes
@@ -580,7 +594,7 @@ export function PublishTripForm() {
                     <FormItem>
                       <FormLabel>Hora de salida</FormLabel>
                       <div>
-                        <TimeInput
+                        <SimpleTimeInput
                           value={{
                             hour: form.getValues("departureHour"),
                             minute: form.getValues("departureMinute"),
@@ -606,7 +620,7 @@ export function PublishTripForm() {
                     <FormItem>
                       <FormLabel>Hora de llegada</FormLabel>
                       <div>
-                        <TimeInput
+                        <SimpleTimeInput
                           value={{
                             hour: form.getValues("arrivalHour"),
                             minute: form.getValues("arrivalMinute"),
@@ -675,7 +689,7 @@ export function PublishTripForm() {
                                 </td>
                                 {/* Hora de Salida */}
                                 <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  <TimeInput
+                                  <SimpleTimeInput
                                     value={{
                                       hour: segment.departureHour,
                                       minute: segment.departureMinute,
