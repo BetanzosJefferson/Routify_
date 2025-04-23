@@ -700,16 +700,14 @@ export function PublishTripForm() {
                       <FormItem>
                         <FormLabel>Hora de llegada</FormLabel>
                         <div>
-                          <SimpleTimeInput
-                            value={{
-                              hour: form.getValues("arrivalHour"),
-                              minute: form.getValues("arrivalMinute"),
-                              ampm: form.getValues("arrivalAmPm")
-                            }}
-                            onChange={(hour, minute, ampm) => {
+                          <TimeInput
+                            value={`${form.getValues("arrivalHour")}:${form.getValues("arrivalMinute")} ${form.getValues("arrivalAmPm")}`}
+                            onChange={(timeString) => {
+                              const [time, period] = timeString.split(' ');
+                              const [hour, minute] = time.split(':');
                               form.setValue("arrivalHour", hour);
                               form.setValue("arrivalMinute", minute);
-                              form.setValue("arrivalAmPm", ampm);
+                              form.setValue("arrivalAmPm", period as "AM" | "PM");
                             }}
                           />
                         </div>
@@ -933,14 +931,12 @@ export function PublishTripForm() {
             
             {editingStopIndex !== null && (
               <div className="text-center">
-                <SimpleTimeInput
-                  value={{
-                    hour: stopTimes[editingStopIndex]?.hour || "08",
-                    minute: stopTimes[editingStopIndex]?.minute || "00",
-                    ampm: stopTimes[editingStopIndex]?.ampm || "AM"
-                  }}
-                  onChange={(hour, minute, ampm) => {
-                    saveStopTime(hour, minute, ampm);
+                <TimeInput
+                  value={`${stopTimes[editingStopIndex]?.hour || "08"}:${stopTimes[editingStopIndex]?.minute || "00"} ${stopTimes[editingStopIndex]?.ampm || "AM"}`}
+                  onChange={(timeString) => {
+                    const [time, period] = timeString.split(' ');
+                    const [hour, minute] = time.split(':');
+                    saveStopTime(hour, minute, period as "AM" | "PM");
                   }}
                 />
               </div>
