@@ -70,7 +70,7 @@ export function PublishTripForm() {
   const [segmentPrices, setSegmentPrices] = useState<SegmentPrice[]>([]);
   const [editingStopIndex, setEditingStopIndex] = useState<number | null>(null);
   const [showTimeDialog, setShowTimeDialog] = useState(false);
-  const [stopTimes, setStopTimes] = useState<Array<{hour: string, minute: string, ampm: "AM" | "PM"} | null>>([]);
+  const [stopTimes, setStopTimes] = useState<Array<{hour: string, minute: string, ampm: "AM" | "PM", location?: string} | null>>([]);
   const [currentStopInfo, setCurrentStopInfo] = useState<{name: string, location: string}>({name: "", location: ""});
 
   // Fetch routes for dropdown
