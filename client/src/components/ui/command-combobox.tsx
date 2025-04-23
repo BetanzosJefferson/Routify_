@@ -134,7 +134,7 @@ export function CommandCombobox({
           <CommandList className="max-h-[300px]">
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             {Object.entries(filteredGroupedOptions).map(([city, locations]) => (
-              <React.Fragment key={city}>
+              <div key={city}>
                 <CommandGroup heading={city}>
                   {locations.map((location) => (
                     <CommandItem
@@ -167,7 +167,7 @@ export function CommandCombobox({
                   ))}
                 </CommandGroup>
                 <CommandSeparator />
-              </React.Fragment>
+              </div>
             ))}
           </CommandList>
         </Command>
