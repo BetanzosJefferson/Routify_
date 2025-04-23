@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ClipboardListIcon, UserIcon, DollarSignIcon, PackageIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { ClipboardListIcon, UserIcon, DollarSignIcon, PackageIcon, ChevronLeftIcon, ChevronRightIcon, CalendarIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { format, addDays, subDays, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { Trip, TripWithRouteInfo, Reservation, Passenger } from "@shared/schema";
@@ -115,6 +116,11 @@ export default function TripSummary({ className }: TripSummaryProps) {
   const formatHeaderDate = (date: Date) => {
     return format(date, "d 'de' MMMM, yyyy", { locale: es });
   };
+  
+  // Función para formatear fecha para input date
+  const formatDateForInput = (date: Date) => {
+    return format(date, "yyyy-MM-dd");
+  };
 
   return (
     <div className={`py-6 ${className}`}>
@@ -125,29 +131,24 @@ export default function TripSummary({ className }: TripSummaryProps) {
         <h2 className="text-xl font-semibold text-gray-800">Resumen de Viajes</h2>
       </div>
 
-      {/* Navegador de fechas */}
+      {/* Selector de fecha */}
       <div className="flex justify-center items-center mb-6">
-        <Button 
-          variant="outline" 
-          size="icon"
-          onClick={goToPreviousDay}
-          className="mr-2"
-        >
-          <ChevronLeftIcon className="h-4 w-4" />
-        </Button>
-        
-        <div className="text-xl font-medium mx-4">
-          {formatHeaderDate(currentDate)}
+        <div className="w-full max-w-md">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <CalendarIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <Input
+              type="date"
+              className="pl-10 pr-4 py-2 w-full"
+              value={formatDateForInput(currentDate)}
+              onChange={(e) => {
+                const newDate = e.target.value ? new Date(e.target.value) : new Date();
+                setCurrentDate(newDate);
+              }}
+            />
+          </div>
         </div>
-        
-        <Button 
-          variant="outline" 
-          size="icon"
-          onClick={goToNextDay}
-          className="ml-2"
-        >
-          <ChevronRightIcon className="h-4 w-4" />
-        </Button>
       </div>
       
       {isLoadingTrips || isLoadingReservations ? (
@@ -182,7 +183,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                             {trip.departureTime}
                           </span>
                           <Badge variant={selectedTrip === trip.id ? "outline" : "secondary"}>
-                            {trip.availableSeats}/{trip.capacity}
+                            {Math.round(((trip.capacity - trip.availableSeats) / trip.capacity) * 100)}% ocupación
                           </Badge>
                         </div>
                       </div>
@@ -250,8 +251,17 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                   <div className="font-medium capitalize">{trips.find(t => t.id === selectedTrip)?.vehicleType}</div>
                                 </div>
                                 <div>
-                                  <Label className="text-gray-500">Asientos Disponibles</Label>
-                                  <div className="font-medium">{trips.find(t => t.id === selectedTrip)?.availableSeats} / {trips.find(t => t.id === selectedTrip)?.capacity}</div>
+                                  <Label className="text-gray-500">Ocupación Total</Label>
+                                  <div className="font-medium">
+                                    {(() => {
+                                      const selectedTripData = trips.find(t => t.id === selectedTrip);
+                                      if (!selectedTripData) return '0%';
+                                      const occupancyPercentage = Math.round(
+                                        ((selectedTripData.capacity - selectedTripData.availableSeats) / selectedTripData.capacity) * 100
+                                      );
+                                      return `${occupancyPercentage}%`;
+                                    })()}
+                                  </div>
                                 </div>
                               </div>
                             </div>
