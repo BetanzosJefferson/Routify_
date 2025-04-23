@@ -542,10 +542,11 @@ export function PublishTripForm() {
               )}
               
               {/* Submit Button */}
-              <div className="flex justify-end mt-6">
+              <div className="flex justify-end mt-8">
                 <Button 
                   type="submit" 
-                  className="bg-primary hover:bg-primary-dark"
+                  className="bg-primary hover:bg-primary-dark text-white px-6 py-2 text-lg font-medium"
+                  size="lg"
                   disabled={publishTripMutation.isPending || !selectedRouteId}
                 >
                   {publishTripMutation.isPending ? "Publishing..." : "Publish Trip"}
