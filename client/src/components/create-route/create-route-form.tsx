@@ -135,7 +135,20 @@ export function CreateRouteForm() {
       return;
     }
     
-    createRouteMutation.mutate(data);
+    // Asegurarse de que hay al menos 2 paradas para establecer origen y destino
+    const stopLocations = stops.map(stop => stop.location);
+    
+    // Combinar los datos del formulario con las paradas
+    const routeData: InsertRoute = {
+      ...data,
+      stops: stopLocations,
+      origin: stopLocations[0],
+      destination: stopLocations[stopLocations.length - 1]
+    };
+    
+    console.log("Enviando datos de ruta:", routeData);
+    
+    createRouteMutation.mutate(routeData);
   };
 
   return (
