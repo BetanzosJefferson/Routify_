@@ -35,6 +35,7 @@ export interface IStorage {
     date?: string;
     seats?: number;
   }): Promise<TripWithRouteInfo[]>;
+  updateRelatedTripsAvailability(tripId: number, seatChange: number): Promise<void>;
   
   // Reservation methods
   getReservations(): Promise<ReservationWithDetails[]>;

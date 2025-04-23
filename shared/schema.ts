@@ -26,7 +26,12 @@ export const trips = pgTable("trips", {
   availableSeats: integer("available_seats").notNull(),
   price: doublePrecision("price").notNull(),
   vehicleType: text("vehicle_type").notNull(),
-  segmentPrices: json("segment_prices").notNull()
+  segmentPrices: json("segment_prices").notNull(),
+  // New fields for sub-trips
+  isSubTrip: boolean("is_sub_trip").default(false),
+  parentTripId: integer("parent_trip_id"),
+  segmentOrigin: text("segment_origin"),
+  segmentDestination: text("segment_destination")
 });
 
 export const insertTripSchema = createInsertSchema(trips);
