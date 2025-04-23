@@ -102,6 +102,14 @@ export const createRouteValidationSchema = z.object({
   destination: z.string().min(1, "Destino es requerido"),
 });
 
+// Definición del tipo de tiempo para paradas
+const stopTimeSchema = z.object({
+  hour: z.string().min(1, "Hour is required"),
+  minute: z.string().min(1, "Minute is required"),
+  ampm: z.enum(["AM", "PM"]),
+  location: z.string().min(1, "Location is required")
+});
+
 export const publishTripValidationSchema = z.object({
   routeId: z.number().min(1, "Route selection is required"),
   startDate: z.string().min(1, "Start date is required"),
@@ -121,7 +129,9 @@ export const publishTripValidationSchema = z.object({
       destination: z.string(),
       price: z.number().min(0, "Price must be a positive number")
     })
-  )
+  ),
+  // Campo opcional para tiempos de parada personalizados
+  stopTimes: z.array(stopTimeSchema).optional()
 });
 
 export const createReservationValidationSchema = z.object({

@@ -719,8 +719,8 @@ export function PublishTripForm() {
                                       className="inline-flex items-center px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                                     >
                                       <ClockIcon className="mr-1.5 h-3.5 w-3.5" />
-                                      {stopTimes[index + 1] && typeof stopTimes[index + 1] === 'object' ? 
-                                        `${stopTimes[index + 1].hour || ""}:${stopTimes[index + 1].minute || ""} ${stopTimes[index + 1].ampm || ""}` : 
+                                      {(stopTimes[index + 1] && typeof stopTimes[index + 1] === 'object') ? 
+                                        `${stopTimes[index + 1]?.hour || ""}:${stopTimes[index + 1]?.minute || ""} ${stopTimes[index + 1]?.ampm || ""}` : 
                                         "--:--"}
                                     </button>
                                   </div>

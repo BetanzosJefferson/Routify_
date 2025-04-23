@@ -260,6 +260,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate all possible segments (direct and intermediate segments)
       const allSegments = generateAllPossibleSegments(route);
       
+      // Si hay stopTimes en la petición, agregarlo a los segmentos para usar tiempos personalizados
+      const tripDataWithStopTimes = tripData as any;
+      if (tripDataWithStopTimes.stopTimes && Array.isArray(tripDataWithStopTimes.stopTimes)) {
+        console.log("stopTimes recibidos en la petición:", tripDataWithStopTimes.stopTimes);
+        // Añadir stopTimes a todos los segmentos para que estén disponibles en calculateSegmentTimes
+        allSegments.forEach(segment => {
+          (segment as any).stopTimes = tripDataWithStopTimes.stopTimes;
+        });
+      }
+
       // Calculate segment times based on total journey time
       const segmentTimes = calculateSegmentTimes(
         allSegments, 
@@ -364,7 +374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Helper function to calculate segment departure and arrival times
   function calculateSegmentTimes(
-    segments: { origin: string; destination: string; price: number }[],
+    segments: { origin: string; destination: string; price: number; stopTimes?: any[] }[],
     mainDepartureTime: string,
     mainArrivalTime: string,
     route: RouteWithSegments
@@ -372,6 +382,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const allPoints = [route.origin, ...route.stops, route.destination];
     const totalPoints = allPoints.length;
     const totalSegments = totalPoints - 1;
+    
+    // Verificar si hay stopTimes personalizados en los datos de entrada
+    const stopTimes = segments[0]?.stopTimes;
+    const hasStopTimes = Array.isArray(stopTimes) && stopTimes.length > 0;
+    
+    if (hasStopTimes) {
+      console.log("Usando tiempos de parada personalizados", stopTimes);
+      
+      // Crear un mapa de ubicaciones a tiempos
+      const locationTimeMap: Record<string, string> = {};
+      stopTimes.forEach((stopTime: any) => {
+        if (stopTime && stopTime.location && stopTime.hour && stopTime.minute && stopTime.ampm) {
+          const timeString = `${stopTime.hour}:${stopTime.minute} ${stopTime.ampm}`;
+          locationTimeMap[stopTime.location] = timeString;
+          console.log(`Estableciendo tiempo para ${stopTime.location}: ${timeString}`);
+        }
+      });
+      
+      // Si tenemos tiempos personalizados, usémoslos directamente
+      const segmentTimes: Record<string, { departureTime: string; arrivalTime: string }> = {};
+      
+      // Si tenemos suficientes tiempos personalizados, calcular segmentos basados en ellos
+      if (Object.keys(locationTimeMap).length >= 2) {
+        // Primero, procesamos los segmentos directos entre paradas adyacentes
+        for (let i = 0; i < allPoints.length - 1; i++) {
+          const origin = allPoints[i];
+          const destination = allPoints[i + 1];
+          
+          if (origin && destination && locationTimeMap[origin] && locationTimeMap[destination]) {
+            const key = `${origin}-${destination}`;
+            segmentTimes[key] = {
+              departureTime: locationTimeMap[origin],
+              arrivalTime: locationTimeMap[destination]
+            };
+          }
+        }
+        
+        // Luego, procesamos todos los segmentos restantes
+        segments.forEach(segment => {
+          const key = `${segment.origin}-${segment.destination}`;
+          
+          // Solo procesar segmentos que no se hayan procesado aún
+          if (!segmentTimes[key] && locationTimeMap[segment.origin] && locationTimeMap[segment.destination]) {
+            segmentTimes[key] = {
+              departureTime: locationTimeMap[segment.origin],
+              arrivalTime: locationTimeMap[segment.destination]
+            };
+          }
+        });
+        
+        // Si hemos podido calcular todos los segmentos usando tiempos personalizados, devolvemos esos
+        if (Object.keys(segmentTimes).length === segments.length) {
+          console.log("Usando exclusivamente tiempos personalizados para todos los segmentos");
+          return segmentTimes;
+        }
+      }
+    }
+    
+    // Si no hay suficientes tiempos personalizados o si faltan algunos segmentos, caemos al cálculo proporcional
+    console.log("Usando cálculo proporcional para los tiempos de segmentos");
     
     // Calculate the total duration in minutes
     const departureTimeParts = mainDepartureTime.split(' ')[0].split(':');
