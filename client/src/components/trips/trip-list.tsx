@@ -8,8 +8,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Combobox } from "@/components/ui/combobox";
-import { CommandCombobox, LocationOption } from "@/components/ui/command-combobox";
+import { LocationAdapter } from "@/components/ui/location-adapter";
+import { LocationOption } from "@/components/ui/command-combobox";
 import { TripWithRouteInfo } from "@shared/schema";
 import { ReservationModal } from "./reservation-modal";
 
@@ -107,11 +107,12 @@ export function TripList() {
             <div>
               <Label htmlFor="originFilter" className="block text-sm font-medium text-gray-700 mb-1">Origin</Label>
               {locationOptions.length > 0 ? (
-                <CommandCombobox
+                <LocationAdapter
                   options={locationOptions}
                   value={origin}
                   onChange={setOrigin}
                   placeholder="Select origin"
+                  mode="grouped"
                   className="w-full"
                 />
               ) : (
@@ -127,11 +128,12 @@ export function TripList() {
             <div>
               <Label htmlFor="destinationFilter" className="block text-sm font-medium text-gray-700 mb-1">Destination</Label>
               {locationOptions.length > 0 ? (
-                <CommandCombobox
+                <LocationAdapter
                   options={locationOptions}
                   value={destination}
                   onChange={setDestination}
                   placeholder="Select destination"
+                  mode="grouped"
                   className="w-full"
                 />
               ) : (
