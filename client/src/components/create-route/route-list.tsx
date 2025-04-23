@@ -42,7 +42,18 @@ export function RouteList() {
   // Delete route mutation
   const deleteRouteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/routes/${id}`);
+      try {
+        await fetch(`/api/routes/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        return true;
+      } catch (error) {
+        console.error("Error al eliminar ruta:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({
