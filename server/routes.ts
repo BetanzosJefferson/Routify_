@@ -617,7 +617,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
     
     // Calculate times for each segment
-    const segmentTimes: Record<string, { departureTime: string; arrivalTime: string }> = {};
+    const calculatedSegmentTimes: Record<string, { departureTime: string; arrivalTime: string }> = {};
     segments.forEach(segment => {
       const startIdx = pointIndices[segment.origin] as number;
       const endIdx = pointIndices[segment.destination] as number;
@@ -641,7 +641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const segmentArrivalTime = `${String(displayEndHour).padStart(2, '0')}:${String(segmentEndMinute).padStart(2, '0')} ${segmentEndAmPm}`;
       
       const key = `${segment.origin}-${segment.destination}`;
-      segmentTimes[key] = {
+      calculatedSegmentTimes[key] = {
         departureTime: segmentDepartureTime,
         arrivalTime: segmentArrivalTime
       };
@@ -649,12 +649,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     // Add the main route times
     const mainRouteKey = `${route.origin}-${route.destination}`;
-    segmentTimes[mainRouteKey] = {
+    calculatedSegmentTimes[mainRouteKey] = {
       departureTime: mainDepartureTime,
       arrivalTime: mainArrivalTime
     };
     
-    return segmentTimes;
+    return calculatedSegmentTimes;
   }
   
   // Helper function to calculate proportional prices for segments
