@@ -362,9 +362,16 @@ export function CreateRouteForm({ initialRoute, onSuccess }: CreateRouteFormProp
                     
                     console.log("Datos de ruta a enviar:", routeData);
                     
+                    // Determinar el método y URL según si es edición o creación
+                    const url = initialRoute 
+                      ? `/api/routes/${initialRoute.id}` 
+                      : '/api/routes';
+                    
+                    const method = initialRoute ? 'PUT' : 'POST';
+                    
                     // Hacer petición directa con fetch
-                    fetch('/api/routes', {
-                      method: 'POST',
+                    fetch(url, {
+                      method: method,
                       headers: {
                         'Content-Type': 'application/json'
                       },
@@ -380,10 +387,12 @@ export function CreateRouteForm({ initialRoute, onSuccess }: CreateRouteFormProp
                       return response.json();
                     })
                     .then(data => {
-                      console.log("Ruta creada exitosamente:", data);
+                      console.log("Operación exitosa:", data);
                       toast({
-                        title: "Ruta creada exitosamente",
-                        description: "La nueva ruta ha sido creada y ya está disponible para publicar viajes.",
+                        title: initialRoute ? "Ruta actualizada exitosamente" : "Ruta creada exitosamente",
+                        description: initialRoute 
+                          ? "La ruta ha sido actualizada correctamente." 
+                          : "La nueva ruta ha sido creada y ya está disponible para publicar viajes.",
                       });
                       
                       // Limpiar formulario
