@@ -221,22 +221,73 @@ export class MemStorage implements IStorage {
   }): Promise<TripWithRouteInfo[]> {
     let trips = await this.getTrips();
     
-    if (params.origin) {
+    // First, filter by sub-trips
+    if ((params.origin || params.destination) && !(params.origin && params.destination)) {
+      // If only origin or only destination is specified, include sub-trips
+      trips = trips.filter(trip => {
+        // Include main trips
+        if (!trip.isSubTrip) return true;
+        
+        // Include relevant sub-trips
+        const segmentOrigin = trip.segmentOrigin;
+        const segmentDestination = trip.segmentDestination;
+        
+        if (params.origin && !params.destination) {
+          // Filter by origin only
+          const originLower = params.origin.toLowerCase();
+          return segmentOrigin?.toLowerCase().includes(originLower);
+        } 
+        
+        if (params.destination && !params.origin) {
+          // Filter by destination only
+          const destinationLower = params.destination.toLowerCase();
+          return segmentDestination?.toLowerCase().includes(destinationLower);
+        }
+        
+        return true;
+      });
+    } else if (params.origin && params.destination) {
+      // If both origin and destination are specified, prioritize direct sub-trips
       const originLower = params.origin.toLowerCase();
-      trips = trips.filter(trip => 
-        trip.route.origin.toLowerCase().includes(originLower) ||
-        trip.route.stops.some(stop => stop.toLowerCase().includes(originLower))
-      );
-    }
-    
-    if (params.destination) {
       const destinationLower = params.destination.toLowerCase();
-      trips = trips.filter(trip => 
-        trip.route.destination.toLowerCase().includes(destinationLower) ||
-        trip.route.stops.some(stop => stop.toLowerCase().includes(destinationLower))
-      );
+      
+      // Find sub-trips that match exactly the origin-destination pair
+      const exactMatches = trips.filter(trip => {
+        if (!trip.isSubTrip) return false;
+        
+        const segmentOrigin = trip.segmentOrigin?.toLowerCase() || "";
+        const segmentDestination = trip.segmentDestination?.toLowerCase() || "";
+        
+        return segmentOrigin.includes(originLower) && 
+               segmentDestination.includes(destinationLower);
+      });
+      
+      // If we found exact sub-trip matches, use those, otherwise continue with regular filtering
+      if (exactMatches.length > 0) {
+        trips = exactMatches;
+      } else {
+        // Standard filtering on main trips
+        trips = trips.filter(trip => {
+          if (trip.isSubTrip) return false;
+          
+          // Check if main trip has both the origin and destination
+          const routeOrigin = trip.route.origin.toLowerCase();
+          const routeDestination = trip.route.destination.toLowerCase();
+          const routeStops = trip.route.stops.map(stop => stop.toLowerCase());
+          
+          // Main trip has the origin and destination (either as endpoints or stops)
+          const hasOrigin = routeOrigin.includes(originLower) || 
+                         routeStops.some(stop => stop.includes(originLower));
+          
+          const hasDestination = routeDestination.includes(destinationLower) || 
+                              routeStops.some(stop => stop.includes(destinationLower));
+          
+          return hasOrigin && hasDestination;
+        });
+      }
     }
     
+    // Additional filters (date and seats)
     if (params.date) {
       const searchDate = new Date(params.date);
       trips = trips.filter(trip => {
@@ -245,11 +296,61 @@ export class MemStorage implements IStorage {
       });
     }
     
-    if (params.seats) {
+    if (params.seats && params.seats > 0) {
       trips = trips.filter(trip => trip.availableSeats >= params.seats);
     }
     
     return trips;
+  }
+  
+  // Update availability on related trips (main trip and sub-trips)
+  async updateRelatedTripsAvailability(tripId: number, seatChange: number): Promise<void> {
+    const trip = await this.getTrip(tripId);
+    if (!trip) return;
+    
+    if (trip.isSubTrip && trip.parentTripId) {
+      // This is a sub-trip, update the main trip and other sub-trips
+      const mainTrip = await this.getTrip(trip.parentTripId);
+      if (!mainTrip) return;
+      
+      // Update main trip availability
+      await this.updateTrip(mainTrip.id, {
+        availableSeats: mainTrip.availableSeats + seatChange
+      });
+      
+      // Get all sub-trips with the same origin/destination
+      const allTrips = Array.from(this.trips.values());
+      const relatedSubTrips = allTrips.filter(t => 
+        t.isSubTrip && 
+        t.parentTripId === mainTrip.id &&
+        ((t.segmentOrigin === trip.segmentOrigin && 
+          t.segmentDestination === trip.segmentDestination) ||
+         (t.segmentOrigin === trip.segmentDestination && 
+          t.segmentDestination === trip.segmentOrigin))
+      );
+      
+      // Update all related sub-trips
+      for (const subTrip of relatedSubTrips) {
+        if (subTrip.id !== trip.id) {
+          await this.updateTrip(subTrip.id, {
+            availableSeats: subTrip.availableSeats + seatChange
+          });
+        }
+      }
+    } else {
+      // This is a main trip, update all sub-trips
+      const allTrips = Array.from(this.trips.values());
+      const subTrips = allTrips.filter(t => 
+        t.isSubTrip && t.parentTripId === trip.id
+      );
+      
+      // Update all sub-trips
+      for (const subTrip of subTrips) {
+        await this.updateTrip(subTrip.id, {
+          availableSeats: subTrip.availableSeats + seatChange
+        });
+      }
+    }
   }
   
   // Reservation methods
@@ -298,6 +399,7 @@ export class MemStorage implements IStorage {
     const newReservation: Reservation = { 
       ...reservation, 
       id,
+      status: reservation.status || "confirmed",
       createdAt: new Date()  
     };
     
@@ -307,9 +409,14 @@ export class MemStorage implements IStorage {
     const trip = await this.getTrip(reservation.tripId);
     if (trip) {
       const passengerCount = (await this.getPassengers(id)).length;
+      
+      // Update this trip's seat availability
       await this.updateTrip(trip.id, {
         availableSeats: trip.availableSeats - passengerCount
       });
+      
+      // Update related trips seat availability
+      await this.updateRelatedTripsAvailability(trip.id, -passengerCount);
     }
     
     return newReservation;
@@ -335,9 +442,13 @@ export class MemStorage implements IStorage {
     // Update available seats on the trip
     const trip = await this.getTrip(reservation.tripId);
     if (trip) {
+      // Update this trip's seat availability
       await this.updateTrip(trip.id, {
         availableSeats: trip.availableSeats + passengerCount
       });
+      
+      // Update related trips seat availability
+      await this.updateRelatedTripsAvailability(trip.id, passengerCount);
     }
     
     // Delete passengers
