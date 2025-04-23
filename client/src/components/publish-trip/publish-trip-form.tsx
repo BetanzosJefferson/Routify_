@@ -468,11 +468,94 @@ export function PublishTripForm() {
   };
 
   // Función para manejar la edición de un viaje
-  const handleEditTrip = (tripId: number) => {
-    setEditingTripId(tripId);
-    setShowForm(true);
-    // Aquí debería cargarse la información del viaje y actualizarse el formulario
-    // Esto requeriría una implementación adicional para obtener datos del viaje por ID
+  const handleEditTrip = async (tripId: number) => {
+    try {
+      // Guardar ID del viaje que se está editando
+      setEditingTripId(tripId);
+      
+      // Primero, obtener los datos del viaje a editar
+      const response = await fetch(`/api/trips/${tripId}`);
+      if (!response.ok) {
+        throw new Error('Error al cargar datos del viaje');
+      }
+      
+      const tripData = await response.json();
+      
+      // Mostrar el formulario antes de continuar
+      setShowForm(true);
+      
+      // Extraer los datos sobre tiempo de salida y llegada
+      const [departureTime, departureAmPm] = tripData.departureTime.split(' ');
+      const [departureHour, departureMinute] = departureTime.split(':');
+      
+      const [arrivalTime, arrivalAmPm] = tripData.arrivalTime.split(' ');
+      const [arrivalHour, arrivalMinute] = arrivalTime.split(':');
+      
+      // Seleccionar la ruta
+      setSelectedRouteId(tripData.routeId);
+      
+      // Inicializar form values
+      form.reset({
+        routeId: tripData.routeId,
+        startDate: tripData.departureDate.split('T')[0],
+        endDate: tripData.departureDate.split('T')[0], // Mismo día para edición
+        departureHour,
+        departureMinute,
+        departureAmPm: departureAmPm as "AM" | "PM",
+        arrivalHour,
+        arrivalMinute,
+        arrivalAmPm: arrivalAmPm as "AM" | "PM",
+        capacity: tripData.capacity,
+        price: tripData.price,
+        vehicleType: tripData.vehicleType || "standard",
+        segmentPrices: tripData.segmentPrices || [],
+      });
+      
+      // Si hay segmentPrices, actualizar el estado
+      if (tripData.segmentPrices && Array.isArray(tripData.segmentPrices)) {
+        // Convertir los tiempos en los segmentos
+        const formattedSegmentPrices = tripData.segmentPrices.map(segment => {
+          // Si el segmento tiene departureTime y arrivalTime
+          if (segment.departureTime && segment.arrivalTime) {
+            const [depTime, depAmPm] = segment.departureTime.split(' ');
+            const [depHour, depMinute] = depTime.split(':');
+            
+            const [arrTime, arrAmPm] = segment.arrivalTime.split(' ');
+            const [arrHour, arrMinute] = arrTime.split(':');
+            
+            return {
+              ...segment,
+              departureHour: depHour,
+              departureMinute: depMinute,
+              departureAmPm: depAmPm as "AM" | "PM",
+              arrivalHour: arrHour,
+              arrivalMinute: arrMinute,
+              arrivalAmPm: arrAmPm as "AM" | "PM"
+            };
+          }
+          return segment;
+        });
+        
+        setSegmentPrices(formattedSegmentPrices);
+      }
+      
+      // Cargar tiempos de paradas si están disponibles
+      if (tripData.stopTimes && Array.isArray(tripData.stopTimes)) {
+        setStopTimes(tripData.stopTimes);
+      }
+      
+      toast({
+        title: "Viaje cargado para edición",
+        description: `Editando viaje #${tripId} de la ruta ${tripData.route?.name || 'desconocida'}`,
+      });
+    } catch (error) {
+      console.error("Error al cargar el viaje para edición:", error);
+      toast({
+        title: "Error al cargar el viaje",
+        description: "No se pudieron obtener los datos del viaje. Inténtelo de nuevo.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Función para mostrar el formulario de creación de nuevo viaje
@@ -851,12 +934,12 @@ export function PublishTripForm() {
                       {publishTripMutation.isPending ? (
                         <span className="flex items-center">
                           <Loader2Icon className="mr-2 h-5 w-5 animate-spin" />
-                          Publicando...
+                          {editingTripId ? "Actualizando..." : "Publicando..."}
                         </span>
                       ) : (
                         <span className="flex items-center">
                           <CalendarPlusIcon className="mr-2 h-5 w-5" />
-                          Publicar Viaje
+                          {editingTripId ? "Actualizar Viaje" : "Publicar Viaje"}
                         </span>
                       )}
                     </Button>
