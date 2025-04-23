@@ -1,10 +1,15 @@
+import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from './queryClient';
+
 // Estructura para datos de ubicación en México
 export interface LocationData {
-  states: State[];
+  states: LocationState[];
 }
 
-export interface State {
-  name: string;
+export interface LocationState {
+  id?: number;
+  state?: string;
+  name?: string;
   code: string;
   municipalities: Municipality[];
 }
@@ -14,8 +19,19 @@ export interface Municipality {
   code: string;
 }
 
-// Datos de estados y municipios extraídos del archivo XML
-export const mexicoStates: State[] = [
+// Hook para obtener datos de ubicación
+export function useLocationData() {
+  return useQuery({
+    queryKey: ['/api/locations'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/locations');
+      return response;
+    }
+  });
+}
+
+// Datos estáticos (fallback para desarrollo)
+const staticMexicoStates: LocationState[] = [
   {
     name: "Aguascalientes",
     code: "01",
@@ -358,19 +374,44 @@ export const mexicoStates: State[] = [
   }
 ];
 
-// Función para obtener los municipios de un estado
-export function getMunicipalitiesByState(stateCode: string): Municipality[] {
-  const state = mexicoStates.find(state => state.code === stateCode);
+// Exportamos los datos estáticos para uso de fallback (aunque no es lo ideal)
+export const mexicoStates = staticMexicoStates;
+
+// Funciones actualizadas para trabajar con datos de la base de datos
+export function getMunicipalitiesByState(stateCode: string, states?: LocationState[]): Municipality[] {
+  // Si se proporcionan estados, usar esos; de lo contrario, usar los estáticos
+  const statesData = states || staticMexicoStates;
+  const state = statesData.find(state => state.code === stateCode);
   return state ? state.municipalities : [];
 }
 
 // Función para obtener un estado por su código
-export function getStateByCode(stateCode: string): State | undefined {
-  return mexicoStates.find(state => state.code === stateCode);
+export function getStateByCode(stateCode: string, states?: LocationState[]): LocationState | undefined {
+  // Si se proporcionan estados, usar esos; de lo contrario, usar los estáticos
+  const statesData = states || staticMexicoStates;
+  return statesData.find(state => state.code === stateCode);
 }
 
 // Función para obtener un municipio por su código dentro de un estado
-export function getMunicipalityByCode(stateCode: string, municipalityCode: string): Municipality | undefined {
-  const state = getStateByCode(stateCode);
+export function getMunicipalityByCode(stateCode: string, municipalityCode: string, states?: LocationState[]): Municipality | undefined {
+  const state = getStateByCode(stateCode, states);
   return state?.municipalities.find(municipality => municipality.code === municipalityCode);
+}
+
+// Función para obtener opciones de estados para componentes Select
+export function getStateOptions(states?: LocationState[]): { label: string, value: string }[] {
+  const statesData = states || staticMexicoStates;
+  return statesData.map(state => ({
+    label: state.state || state.name || "", // Compatibilidad con ambos formatos
+    value: state.code
+  }));
+}
+
+// Función para obtener opciones de municipios para componentes Select
+export function getMunicipalityOptions(stateCode: string, states?: LocationState[]): { label: string, value: string }[] {
+  const municipalities = getMunicipalitiesByState(stateCode, states);
+  return municipalities.map(municipality => ({
+    label: municipality.name,
+    value: municipality.code
+  }));
 }

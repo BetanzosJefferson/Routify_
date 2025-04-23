@@ -11,13 +11,35 @@ import {
   publishTripValidationSchema,
   createReservationValidationSchema,
   RouteWithSegments,
-  SegmentPrice
+  SegmentPrice,
+  locationData
 } from "@shared/schema";
 import { isSameCity } from "../client/src/lib/utils";
+import { populateLocationData } from "./populate-locations";
+import { db } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // prefix all routes with /api
   const apiRouter = (path: string) => `/api${path}`;
+
+  // Populate location data on server start
+  try {
+    await populateLocationData();
+    console.log("Location data loaded successfully");
+  } catch (error) {
+    console.error("Error loading location data:", error);
+  }
+
+  // LOCATION DATA ENDPOINT
+  app.get(apiRouter("/locations"), async (req: Request, res: Response) => {
+    try {
+      const locations = await db.select().from(locationData);
+      res.json(locations);
+    } catch (error) {
+      console.error("Error fetching location data:", error);
+      res.status(500).json({ error: "Failed to fetch location data" });
+    }
+  });
 
   // ROUTES ENDPOINTS
   app.get(apiRouter("/routes"), async (req: Request, res: Response) => {
