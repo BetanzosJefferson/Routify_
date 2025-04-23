@@ -41,9 +41,6 @@ export function RouteList() {
       origin: "Ciudad de México",
       destination: "Guadalajara",
       stops: ["Querétaro", "León"],
-      totalDistanceKm: 550,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     },
     {
       id: 2,
@@ -51,9 +48,6 @@ export function RouteList() {
       origin: "Monterrey",
       destination: "Cancún",
       stops: ["Tampico", "Veracruz", "Villahermosa", "Campeche", "Mérida"],
-      totalDistanceKm: 1980,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     }
   ];
 
