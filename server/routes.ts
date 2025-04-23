@@ -299,21 +299,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Create all sub-trips
         for (const segment of allSegments) {
-          // Find the segment price from user input or calculate proportionally
-          const segmentPrice = tripData.segmentPrices.find(
-            sp => sp.origin === segment.origin && sp.destination === segment.destination
-          ) || { price: calculateProportionalPrice(segment, route, tripData.price) };
+          // Find the segment data (price and times) from user input or calculate proportionally
+          // Actualizar la definición del tipo de segmentPrices para incluir los tiempos
+          type ExtendedSegmentPrice = {
+            origin: string;
+            destination: string;
+            price: number;
+            departureTime?: string;
+            arrivalTime?: string;
+          };
+          
+          const segmentData = tripData.segmentPrices.find(
+            (sp: any) => sp.origin === segment.origin && sp.destination === segment.destination
+          ) as ExtendedSegmentPrice | undefined;
+          
+          // Si tenemos datos del segmento con tiempos personalizados, usarlos directamente
+          let departureTime, arrivalTime, price;
+          
+          if (segmentData) {
+            price = segmentData.price;
+            
+            // Si el frontend envió tiempos específicos para este segmento, usarlos
+            if (segmentData.departureTime) {
+              departureTime = segmentData.departureTime;
+              console.log(`Usando tiempo de salida personalizado para ${segment.origin} -> ${segment.destination}: ${departureTime}`);
+            } else {
+              departureTime = segmentTimes[`${segment.origin}-${segment.destination}`].departureTime;
+            }
+            
+            if (segmentData.arrivalTime) {
+              arrivalTime = segmentData.arrivalTime;
+              console.log(`Usando tiempo de llegada personalizado para ${segment.origin} -> ${segment.destination}: ${arrivalTime}`);
+            } else {
+              arrivalTime = segmentTimes[`${segment.origin}-${segment.destination}`].arrivalTime;
+            }
+          } else {
+            // Fallback: usar tiempos calculados proporcionalmente
+            price = calculateProportionalPrice(segment, route, tripData.price);
+            departureTime = segmentTimes[`${segment.origin}-${segment.destination}`].departureTime;
+            arrivalTime = segmentTimes[`${segment.origin}-${segment.destination}`].arrivalTime;
+          }
           
           const subTripToCreate = {
             routeId: tripData.routeId,
             departureDate: new Date(date),
-            departureTime: segmentTimes[`${segment.origin}-${segment.destination}`].departureTime,
-            arrivalTime: segmentTimes[`${segment.origin}-${segment.destination}`].arrivalTime,
+            departureTime,
+            arrivalTime,
             capacity: tripData.capacity,
             availableSeats: tripData.capacity,
-            price: segmentPrice.price,
+            price,
             vehicleType: tripData.vehicleType,
-            segmentPrices: [segmentPrice],
+            segmentPrices: [{ origin: segment.origin, destination: segment.destination, price }],
             isSubTrip: true,
             parentTripId: mainTrip.id,
             segmentOrigin: segment.origin,
