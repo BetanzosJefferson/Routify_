@@ -20,15 +20,23 @@ interface SearchParams {
   seats?: number;
 }
 
+// Función para formatear fecha en formato ISO (YYYY-MM-DD)
+function formatDateForInput(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
 export function TripList() {
-  const [searchParams, setSearchParams] = useState<SearchParams>({});
+  // Obtener la fecha actual formateada como YYYY-MM-DD
+  const today = formatDateForInput(new Date());
+  
+  const [searchParams, setSearchParams] = useState<SearchParams>({ date: today });
   const [selectedTrip, setSelectedTrip] = useState<TripWithRouteInfo | null>(null);
   const [showModal, setShowModal] = useState(false);
   
   // Form state
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(today);
   const [seats, setSeats] = useState("");
   
   // Query for all trips to build autocomplete options

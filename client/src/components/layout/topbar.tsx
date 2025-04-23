@@ -3,8 +3,7 @@ import {
   BellIcon, 
   UserIcon, 
   SettingsIcon, 
-  LogOutIcon,
-  SearchIcon 
+  LogOutIcon
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -17,7 +16,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 export function Topbar() {
   const [, setLocation] = useLocation();
@@ -30,22 +28,10 @@ export function Topbar() {
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Buscador */}
-        <div className="flex-1 md:w-1/3 lg:w-1/4 hidden md:block">
-          <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <SearchIcon className="h-4 w-4 text-gray-400" />
-            </div>
-            <Input
-              type="search"
-              placeholder="Buscar..."
-              className="pl-10 text-sm focus:outline-none"
-            />
-          </div>
+        {/* Título de la aplicación */}
+        <div className="flex-1">
+          <h1 className="text-lg font-semibold text-gray-900">TransRoute</h1>
         </div>
-
-        {/* Espacio en medio (flexbox centra automáticamente) */}
-        <div className="flex-1 md:hidden"></div>
 
         {/* Acciones del lado derecho */}
         <div className="flex items-center space-x-4">

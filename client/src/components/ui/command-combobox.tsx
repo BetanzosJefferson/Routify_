@@ -137,9 +137,10 @@ export function CommandCombobox({
               <div key={city}>
                 <CommandGroup heading={city}>
                   {locations.map((location) => (
-                    <div
+                    <button
                       key={location.value}
-                      className="flex items-start py-2 cursor-pointer hover:bg-gray-100 active:bg-gray-200 px-2 rounded-sm"
+                      type="button"
+                      className="w-full text-left flex items-start py-2 cursor-pointer hover:bg-gray-100 active:bg-gray-200 px-2 rounded-sm"
                       onClick={() => {
                         onChange(location.value)
                         setOpen(false)
@@ -162,7 +163,7 @@ export function CommandCombobox({
                           )}
                         </div>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </CommandGroup>
                 <CommandSeparator />
