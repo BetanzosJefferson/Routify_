@@ -1,11 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2Icon, MapPinIcon, CalendarIcon, FilterIcon } from "lucide-react";
 import { formatDate, formatPrice } from "@/lib/utils";
+import { extractLocationsFromTrips } from "@/lib/trip-utils";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { TripWithRouteInfo } from "@shared/schema";
 import { ReservationModal } from "./reservation-modal";
 
@@ -27,7 +30,17 @@ export function TripList() {
   const [date, setDate] = useState("");
   const [seats, setSeats] = useState("");
   
-  // Query for trips, with search parameters
+  // Query for all trips to build autocomplete options
+  const { data: allTrips, isLoading: isLoadingAll } = useQuery({
+    queryKey: ["/api/trips"],
+    queryFn: async () => {
+      const response = await fetch("/api/trips");
+      if (!response.ok) throw new Error("Failed to fetch trips");
+      return await response.json() as TripWithRouteInfo[];
+    },
+  });
+  
+  // Filter trips based on search parameters
   const { data: trips, isLoading, isError } = useQuery({
     queryKey: ["/api/trips", searchParams],
     queryFn: async () => {
@@ -39,7 +52,14 @@ export function TripList() {
       if (!response.ok) throw new Error("Failed to fetch trips");
       return await response.json() as TripWithRouteInfo[];
     },
+    enabled: Object.keys(searchParams).length > 0 // Only run if there are search params
   });
+  
+  // Extract unique locations for autocomplete
+  const locationOptions = useMemo(() => {
+    if (!allTrips) return [];
+    return extractLocationsFromTrips(allTrips);
+  }, [allTrips]);
   
   // Update search params in real-time as the user types
   useEffect(() => {
@@ -84,22 +104,44 @@ export function TripList() {
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
-              <label htmlFor="originFilter" className="block text-sm font-medium text-gray-700 mb-1">Origin</label>
-              <Input
-                id="originFilter"
-                placeholder="Filter by origin"
-                value={origin}
-                onChange={(e) => setOrigin(e.target.value)}
-              />
+              <Label htmlFor="originFilter" className="block text-sm font-medium text-gray-700 mb-1">Origin</Label>
+              {locationOptions.length > 0 ? (
+                <Combobox
+                  options={locationOptions}
+                  value={origin}
+                  onChange={setOrigin}
+                  placeholder="Select origin"
+                  className="w-full"
+                />
+              ) : (
+                <Input
+                  id="originFilter"
+                  placeholder="Loading locations..."
+                  value={origin}
+                  onChange={(e) => setOrigin(e.target.value)}
+                  disabled={isLoadingAll}
+                />
+              )}
             </div>
             <div>
-              <label htmlFor="destinationFilter" className="block text-sm font-medium text-gray-700 mb-1">Destination</label>
-              <Input
-                id="destinationFilter"
-                placeholder="Filter by destination"
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-              />
+              <Label htmlFor="destinationFilter" className="block text-sm font-medium text-gray-700 mb-1">Destination</Label>
+              {locationOptions.length > 0 ? (
+                <Combobox
+                  options={locationOptions}
+                  value={destination}
+                  onChange={setDestination}
+                  placeholder="Select destination"
+                  className="w-full"
+                />
+              ) : (
+                <Input
+                  id="destinationFilter"
+                  placeholder="Loading locations..."
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  disabled={isLoadingAll}
+                />
+              )}
             </div>
             <div>
               <label htmlFor="dateFilter" className="block text-sm font-medium text-gray-700 mb-1">Date</label>
