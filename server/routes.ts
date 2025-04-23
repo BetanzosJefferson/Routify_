@@ -14,7 +14,14 @@ import {
   SegmentPrice,
   locationData
 } from "@shared/schema";
-import { isSameCity } from "../client/src/lib/utils";
+// Utility function to check if two locations are in the same city
+function isSameCity(location1: string, location2: string): boolean {
+  // Extract city name (assuming format "City, State - Location")
+  const city1 = location1.split(' - ')[0].trim();
+  const city2 = location2.split(' - ')[0].trim();
+  
+  return city1 === city2;
+}
 import { populateLocationData } from "./populate-locations";
 import { db } from "./db";
 
@@ -317,6 +324,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Skip the main route (origin to destination) as it's already created
         if (i === 0 && j === allPoints.length - 1) continue;
         
+        // Skip segments where origin and destination are in the same city
+        if (isSameCity(allPoints[i], allPoints[j])) continue;
+        
         allSegments.push({
           origin: allPoints[i],
           destination: allPoints[j],
@@ -325,6 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
     
+    console.log(`Generados ${allSegments.length} segmentos válidos (excluyendo misma ciudad) para la ruta`);
     return allSegments;
   }
   

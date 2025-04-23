@@ -94,9 +94,20 @@ export class DatabaseStorage implements IStorage {
     // Crear un array con todos los puntos en la ruta (origen, paradas, destino)
     const allPoints = [route.origin, ...route.stops, route.destination];
     
+    // Función para verificar si dos ubicaciones están en la misma ciudad
+    function isSameCity(location1: string, location2: string): boolean {
+      // Extraer el nombre de la ciudad (asumiendo formato "Ciudad, Estado - Ubicación")
+      const city1 = location1.split(' - ')[0].trim();
+      const city2 = location2.split(' - ')[0].trim();
+      return city1 === city2;
+    }
+    
     // Generar todas las combinaciones posibles de segmentos
     for (let i = 0; i < allPoints.length - 1; i++) {
       for (let j = i + 1; j < allPoints.length; j++) {
+        // No agregar segmentos donde origen y destino están en la misma ciudad
+        if (isSameCity(allPoints[i], allPoints[j])) continue;
+        
         // Agregar cada combinación posible como un segmento
         segments.push({
           origin: allPoints[i],
@@ -113,7 +124,7 @@ export class DatabaseStorage implements IStorage {
       });
     }
     
-    console.log(`Generados ${segments.length} segmentos para la ruta ${id}`);
+    console.log(`Generados ${segments.length} segmentos válidos (excluyendo misma ciudad) para la ruta ${id}`);
     
     return {
       ...route,
