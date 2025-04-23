@@ -41,6 +41,7 @@ interface ReservationFormData {
   passengers: Passenger[];
   email: string;
   phone: string;
+  paymentMethod: "cash" | "transfer";
   notes?: string;
 }
 
@@ -53,6 +54,7 @@ export function ReservationModal({ trip, isOpen, onClose }: ReservationModalProp
   const [passengers, setPassengers] = useState<Passenger[]>([{ firstName: "", lastName: "" }]);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "transfer">("cash");
   const [notes, setNotes] = useState("");
   
   // Update passengers array when number of passengers changes
@@ -145,6 +147,7 @@ export function ReservationModal({ trip, isOpen, onClose }: ReservationModalProp
       passengers,
       email,
       phone,
+      paymentMethod,
       notes
     };
     
@@ -256,6 +259,22 @@ export function ReservationModal({ trip, isOpen, onClose }: ReservationModalProp
                 onChange={(e) => setPhone(e.target.value)}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="paymentMethod">Método de Pago</Label>
+              <Select
+                value={paymentMethod}
+                onValueChange={(value) => setPaymentMethod(value as "cash" | "transfer")}
+              >
+                <SelectTrigger id="paymentMethod">
+                  <SelectValue placeholder="Seleccione método de pago" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Efectivo</SelectItem>
+                  <SelectItem value="transfer">Transferencia</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
             <div className="space-y-2">
               <Label htmlFor="notes">Notas adicionales</Label>
               <Input
