@@ -21,10 +21,10 @@ export interface Municipality {
 
 // Hook para obtener datos de ubicación
 export function useLocationData() {
-  return useQuery({
+  return useQuery<LocationState[]>({
     queryKey: ['/api/locations'],
     queryFn: async () => {
-      const response = await apiRequest('/api/locations');
+      const response = await apiRequest<LocationState[]>('/api/locations');
       return response;
     }
   });

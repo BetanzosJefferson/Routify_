@@ -1,4 +1,5 @@
 import { pgTable, text, serial, integer, boolean, timestamp, json, doublePrecision, jsonb } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -153,3 +154,39 @@ export type Municipality = {
   name: string;
   code: string;
 };
+
+// RELACIONES ENTRE TABLAS
+export const routeRelations = relations(routes, ({ many }) => ({
+  trips: many(trips),
+}));
+
+export const tripRelations = relations(trips, ({ one, many }) => ({
+  route: one(routes, {
+    fields: [trips.routeId],
+    references: [routes.id]
+  }),
+  subTrips: many(trips, {
+    relationName: 'parentTrip'
+  }),
+  parentTrip: one(trips, {
+    fields: [trips.parentTripId],
+    references: [trips.id],
+    relationName: 'parentTrip'
+  }),
+  reservations: many(reservations)
+}));
+
+export const reservationRelations = relations(reservations, ({ one, many }) => ({
+  trip: one(trips, {
+    fields: [reservations.tripId],
+    references: [trips.id]
+  }),
+  passengers: many(passengers)
+}));
+
+export const passengerRelations = relations(passengers, ({ one }) => ({
+  reservation: one(reservations, {
+    fields: [passengers.reservationId],
+    references: [reservations.id]
+  })
+}));
