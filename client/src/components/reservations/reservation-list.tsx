@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
-import { UserIcon, SearchIcon, Loader2Icon } from "lucide-react";
+import { UserIcon, SearchIcon, Loader2Icon, XIcon } from "lucide-react";
 
 import {
   AlertDialog,
@@ -15,17 +15,38 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ReservationWithDetails } from "@shared/schema";
+import { Label } from "@/components/ui/label";
+import { Reservation, ReservationWithDetails } from "@shared/schema";
 
 export function ReservationList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
+  const [editingReservation, setEditingReservation] = useState<ReservationWithDetails | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<string>("cash");
+  const [notes, setNotes] = useState<string>("");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   // Fetch reservations
   const { data: reservations, isLoading, isError } = useQuery({
@@ -81,6 +102,66 @@ export function ReservationList() {
       });
     },
   });
+  
+  // Edit reservation mutation
+  const editReservationMutation = useMutation({
+    mutationFn: async (data: { id: number, updates: Partial<Reservation> }) => {
+      const response = await apiRequest(
+        "PUT", 
+        `/api/reservations/${data.id}`, 
+        data.updates
+      );
+      if (!response.ok) {
+        throw new Error("Failed to update reservation");
+      }
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Reservation updated",
+        description: "The reservation has been successfully updated.",
+      });
+      
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
+      
+      // Close edit modal
+      setIsEditModalOpen(false);
+      setEditingReservation(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error updating reservation",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Edit handlers
+  const openEditModal = (reservation: ReservationWithDetails) => {
+    setEditingReservation(reservation);
+    setPaymentMethod(reservation.paymentMethod || "cash");
+    setNotes(reservation.notes || "");
+    setIsEditModalOpen(true);
+  };
+  
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingReservation(null);
+  };
+  
+  const handleSaveEdit = () => {
+    if (!editingReservation) return;
+    
+    editReservationMutation.mutate({
+      id: editingReservation.id,
+      updates: {
+        paymentMethod,
+        notes
+      }
+    });
+  };
   
   // Confirmation dialog handlers
   const openDeleteConfirm = (id: number) => {
@@ -182,6 +263,7 @@ export function ReservationList() {
                         <Button 
                           variant="link" 
                           className="text-blue-600 hover:text-blue-800 p-0"
+                          onClick={() => openEditModal(reservation)}
                         >
                           Edit
                         </Button>
@@ -240,6 +322,83 @@ export function ReservationList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Edit Reservation Dialog */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Reservation</DialogTitle>
+            <DialogDescription>
+              Make changes to the reservation details below.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingReservation && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-1 gap-2">
+                <Label htmlFor="reservation-id">Reservation ID</Label>
+                <div id="reservation-id" className="text-sm text-gray-500">#{generateReservationId()}</div>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-2">
+                <Label htmlFor="passenger-name">Passenger</Label>
+                <div id="passenger-name" className="text-sm text-gray-500">
+                  {editingReservation.passengers[0]?.firstName} {editingReservation.passengers[0]?.lastName}
+                  {editingReservation.passengers.length > 1 && ` +${editingReservation.passengers.length - 1}`}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-2">
+                <Label htmlFor="route-info">Route</Label>
+                <div id="route-info" className="text-sm text-gray-500">
+                  {editingReservation.trip.route.name}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-2">
+                <Label htmlFor="payment-method">Payment Method</Label>
+                <Select
+                  value={paymentMethod}
+                  onValueChange={setPaymentMethod}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select payment method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="transfer">Bank Transfer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Input
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Additional notes"
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={closeEditModal}>Cancel</Button>
+            <Button 
+              onClick={handleSaveEdit}
+              disabled={editReservationMutation.isPending}
+            >
+              {editReservationMutation.isPending ? (
+                <>
+                  <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
