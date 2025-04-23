@@ -495,6 +495,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalAmount,
         email: reservationData.email,
         phone: reservationData.phone,
+        notes: reservationData.notes || null, // Incluir notas desde el formulario
         status: "confirmed",
         createdAt: new Date()
       });
