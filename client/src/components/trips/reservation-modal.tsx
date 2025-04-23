@@ -41,6 +41,7 @@ interface ReservationFormData {
   passengers: Passenger[];
   email: string;
   phone: string;
+  notes?: string;
 }
 
 export function ReservationModal({ trip, isOpen, onClose }: ReservationModalProps) {
@@ -52,6 +53,7 @@ export function ReservationModal({ trip, isOpen, onClose }: ReservationModalProp
   const [passengers, setPassengers] = useState<Passenger[]>([{ firstName: "", lastName: "" }]);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [notes, setNotes] = useState("");
   
   // Update passengers array when number of passengers changes
   const handlePassengersChange = (value: string) => {
@@ -98,6 +100,7 @@ export function ReservationModal({ trip, isOpen, onClose }: ReservationModalProp
       setPassengers([{ firstName: "", lastName: "" }]);
       setEmail("");
       setPhone("");
+      setNotes("");
       onClose();
       
       // Invalidate queries
@@ -143,6 +146,7 @@ export function ReservationModal({ trip, isOpen, onClose }: ReservationModalProp
       passengers,
       email,
       phone,
+      notes
     };
     
     createReservationMutation.mutate(reservationData);
