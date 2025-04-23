@@ -204,6 +204,11 @@ export function CommandCombobox({
                         setSearchValue("")
                       }}
                       className="flex py-2 cursor-pointer"
+                      onClick={() => {
+                        onChange(location.value)
+                        setOpen(false)
+                        setSearchValue("")
+                      }}
                     >
                       <div className="flex items-center w-full">
                         <div className="mr-2 flex h-4 w-4 items-center justify-center">

@@ -90,6 +90,11 @@ export function Combobox({
                     setOpen(false);
                     setSearchValue("");
                   }}
+                  onClick={() => {
+                    onChange(option.value === value ? "" : option.value);
+                    setOpen(false);
+                    setSearchValue("");
+                  }}
                 >
                   <Check
                     className={cn(
