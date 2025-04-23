@@ -145,9 +145,9 @@ export function CommandCombobox({
                         setOpen(false)
                         setSearchValue("")
                       }}
-                      className="flex items-start py-2"
+                      className="flex items-start py-2 cursor-pointer hover:bg-gray-100 active:bg-gray-200"
                     >
-                      <div className="flex items-center">
+                      <div className="flex items-center w-full">
                         <div className="mr-2 flex h-4 w-4 items-center justify-center">
                           <Check
                             className={cn(
@@ -156,7 +156,7 @@ export function CommandCombobox({
                             )}
                           />
                         </div>
-                        <div className="flex flex-col">
+                        <div className="flex flex-col flex-1">
                           <span className="font-medium">{location.place}</span>
                           {location.place !== "Todas las paradas" && (
                             <span className="text-xs text-gray-500">{city}</span>
