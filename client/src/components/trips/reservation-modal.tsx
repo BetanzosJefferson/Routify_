@@ -257,6 +257,15 @@ export function ReservationModal({ trip, isOpen, onClose }: ReservationModalProp
                 onChange={(e) => setPhone(e.target.value)}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notas adicionales</Label>
+              <Input
+                id="notes"
+                placeholder="Notas o instrucciones especiales"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
           </div>
           
           {/* Summary */}
