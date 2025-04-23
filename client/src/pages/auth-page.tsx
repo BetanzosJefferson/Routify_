@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 
 // Schema de validación para el formulario de login
 const loginFormSchema = z.object({
-  username: z.string().min(1, "El correo electrónico es requerido"),
+  email: z.string().min(1, "El correo electrónico es requerido"),
   password: z.string().min(1, "La contraseña es requerida"),
 });
 
@@ -35,7 +35,7 @@ export default function AuthPage() {
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
     },
   });
@@ -59,7 +59,7 @@ export default function AuthPage() {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="username"
+                  name="email"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Correo Electrónico</FormLabel>

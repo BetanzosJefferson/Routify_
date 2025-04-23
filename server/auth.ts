@@ -62,6 +62,7 @@ export function setupAuthRoutes(app: Express) {
   app.post("/api/login", async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
+      console.log("Login attempt:", { email });
 
       if (!email || !password) {
         return res.status(400).json({ message: "Email y contraseña son requeridos" });
@@ -85,6 +86,7 @@ export function setupAuthRoutes(app: Express) {
       // En un sistema real, aquí generaríamos un JWT o estableceríamos una sesión
       // Por ahora, simplemente devolvemos el usuario (sin la contraseña)
       const { password: _, ...userWithoutPassword } = user[0];
+      console.log("Login successful for:", email);
       res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error en login:", error);
