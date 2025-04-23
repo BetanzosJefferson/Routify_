@@ -91,16 +91,29 @@ export class DatabaseStorage implements IStorage {
     
     const segments: Array<{origin: string; destination: string; price?: number}> = [];
     
-    // Generate all possible segments from the stops
-    const stops = route.stops;
-    for (let i = 0; i < stops.length; i++) {
-      for (let j = i + 1; j < stops.length; j++) {
+    // Crear un array con todos los puntos en la ruta (origen, paradas, destino)
+    const allPoints = [route.origin, ...route.stops, route.destination];
+    
+    // Generar todas las combinaciones posibles de segmentos
+    for (let i = 0; i < allPoints.length - 1; i++) {
+      for (let j = i + 1; j < allPoints.length; j++) {
+        // Agregar cada combinación posible como un segmento
         segments.push({
-          origin: stops[i],
-          destination: stops[j],
+          origin: allPoints[i],
+          destination: allPoints[j]
         });
       }
     }
+    
+    // Si no hay segmentos (caso raro), al menos agregar la ruta directa
+    if (segments.length === 0) {
+      segments.push({
+        origin: route.origin,
+        destination: route.destination
+      });
+    }
+    
+    console.log(`Generados ${segments.length} segmentos para la ruta ${id}`);
     
     return {
       ...route,
