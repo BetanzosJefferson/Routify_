@@ -1,3 +1,4 @@
+import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { 
   MapIcon, 
@@ -5,7 +6,13 @@ import {
   BuildingIcon, 
   UserIcon 
 } from "lucide-react";
-import { useActiveTab } from "@/hooks/use-active-tab";
+
+type TabType = "create-route" | "publish-trip" | "trips" | "reservations";
+
+interface SidebarProps {
+  activeTab: TabType;
+  onTabChange: (tab: TabType) => void;
+}
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -36,8 +43,13 @@ const NavItem = ({ icon, children, active, onClick }: NavItemProps) => {
   );
 };
 
-export function Sidebar() {
-  const { activeTab, setTab } = useActiveTab();
+export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
+  const [, setLocation] = useLocation();
+  
+  const handleTabClick = (tab: TabType) => {
+    onTabChange(tab);
+    setLocation(`/dashboard?tab=${tab}`);
+  };
   
   return (
     <div className="hidden md:flex md:flex-shrink-0">
@@ -51,28 +63,28 @@ export function Sidebar() {
             <NavItem 
               icon={<MapIcon />} 
               active={activeTab === "create-route"}
-              onClick={() => setTab("create-route")}
+              onClick={() => handleTabClick("create-route")}
             >
               Create Route
             </NavItem>
             <NavItem 
               icon={<ClockIcon />} 
               active={activeTab === "publish-trip"}
-              onClick={() => setTab("publish-trip")}
+              onClick={() => handleTabClick("publish-trip")}
             >
               Publish Trip
             </NavItem>
             <NavItem 
               icon={<BuildingIcon />} 
               active={activeTab === "trips"}
-              onClick={() => setTab("trips")}
+              onClick={() => handleTabClick("trips")}
             >
               Trips
             </NavItem>
             <NavItem 
               icon={<UserIcon />} 
               active={activeTab === "reservations"}
-              onClick={() => setTab("reservations")}
+              onClick={() => handleTabClick("reservations")}
             >
               Reservations
             </NavItem>

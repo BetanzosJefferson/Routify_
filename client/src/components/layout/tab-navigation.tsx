@@ -1,12 +1,21 @@
-import { useActiveTab } from "@/hooks/use-active-tab";
+import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+
+type TabType = "create-route" | "publish-trip" | "trips" | "reservations";
 
 interface TabNavigationProps {
   className?: string;
+  activeTab: TabType;
+  onTabChange: (tab: TabType) => void;
 }
 
-export function TabNavigation({ className }: TabNavigationProps) {
-  const { activeTab, setTab } = useActiveTab();
+export function TabNavigation({ className, activeTab, onTabChange }: TabNavigationProps) {
+  const [, setLocation] = useLocation();
+  
+  const handleTabClick = (tab: TabType) => {
+    onTabChange(tab);
+    setLocation(`/dashboard?tab=${tab}`);
+  };
   
   return (
     <div className={cn("block", className)}>
@@ -14,25 +23,25 @@ export function TabNavigation({ className }: TabNavigationProps) {
         <nav className="-mb-px flex space-x-8">
           <TabItem 
             active={activeTab === "create-route"}
-            onClick={() => setTab("create-route")}
+            onClick={() => handleTabClick("create-route")}
           >
             Create Route
           </TabItem>
           <TabItem 
             active={activeTab === "publish-trip"}
-            onClick={() => setTab("publish-trip")}
+            onClick={() => handleTabClick("publish-trip")}
           >
             Publish Trip
           </TabItem>
           <TabItem 
             active={activeTab === "trips"}
-            onClick={() => setTab("trips")}
+            onClick={() => handleTabClick("trips")}
           >
             Trips
           </TabItem>
           <TabItem 
             active={activeTab === "reservations"}
-            onClick={() => setTab("reservations")}
+            onClick={() => handleTabClick("reservations")}
           >
             Reservations
           </TabItem>
