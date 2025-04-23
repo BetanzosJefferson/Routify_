@@ -392,7 +392,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Crear un mapa de ubicaciones a tiempos
       const locationTimeMap: Record<string, string> = {};
-      stopTimes.forEach((stopTime: any) => {
+      
+      // Asignamos los tiempos a cada ubicación, asegurando que las paradas estén en el orden correcto
+      const orderedStopTimes = [...stopTimes].sort((a, b) => {
+        if (!a || !a.location || !b || !b.location) return 0;
+        const indexA = allPoints.indexOf(a.location);
+        const indexB = allPoints.indexOf(b.location);
+        if (indexA === -1 || indexB === -1) return 0;
+        return indexA - indexB;
+      });
+      
+      orderedStopTimes.forEach((stopTime: any) => {
         if (stopTime && stopTime.location && stopTime.hour && stopTime.minute && stopTime.ampm) {
           const timeString = `${stopTime.hour}:${stopTime.minute} ${stopTime.ampm}`;
           locationTimeMap[stopTime.location] = timeString;
@@ -402,6 +412,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Si tenemos tiempos personalizados, usémoslos directamente
       const segmentTimes: Record<string, { departureTime: string; arrivalTime: string }> = {};
+      
+      // Asegurarse de que los tiempos de origen y destino principal estén configurados correctamente
+      if (!locationTimeMap[route.origin]) {
+        locationTimeMap[route.origin] = mainDepartureTime;
+        console.log(`Forzando tiempo de salida principal para ${route.origin}: ${mainDepartureTime}`);
+      }
+      
+      if (!locationTimeMap[route.destination]) {
+        locationTimeMap[route.destination] = mainArrivalTime;
+        console.log(`Forzando tiempo de llegada principal para ${route.destination}: ${mainArrivalTime}`);
+      }
       
       // Si tenemos suficientes tiempos personalizados, calcular segmentos basados en ellos
       if (Object.keys(locationTimeMap).length >= 2) {

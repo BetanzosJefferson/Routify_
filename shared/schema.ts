@@ -59,6 +59,7 @@ export const reservations = pgTable("reservations", {
   email: text("email").notNull(),
   phone: text("phone").notNull(),
   notes: text("notes"),
+  paymentMethod: text("payment_method").notNull().default("cash"), // 'cash' o 'transfer'
   status: text("status").notNull().default("confirmed"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -145,6 +146,10 @@ export const createReservationValidationSchema = z.object({
   ),
   email: z.string().email("Valid email is required"),
   phone: z.string().min(1, "Phone number is required"),
+  paymentMethod: z.enum(["cash", "transfer"], {
+    required_error: "Método de pago es requerido",
+    invalid_type_error: "Método de pago debe ser efectivo o transferencia"
+  }),
   notes: z.string().optional()
 });
 
