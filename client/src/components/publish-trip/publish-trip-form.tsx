@@ -38,6 +38,7 @@ import { Separator } from "@/components/ui/separator";
 import { SimpleTimeInput } from "@/components/ui/simple-time-picker";
 import { publishTripValidationSchema, type Route, type RouteWithSegments, type SegmentPrice } from "@shared/schema";
 import { generateSegmentsFromRoute, convertTo24Hour, isSameCity } from "@/lib/utils";
+import TripList from "./trip-list";
 
 type StopTime = {
   hour: string;
@@ -442,18 +443,78 @@ export function PublishTripForm() {
     });
   };
 
+  const [showForm, setShowForm] = useState(false);
+  const [editingTripId, setEditingTripId] = useState<number | null>(null);
+
+  // Función para manejar la edición de un viaje
+  const handleEditTrip = (tripId: number) => {
+    setEditingTripId(tripId);
+    setShowForm(true);
+    // Aquí debería cargarse la información del viaje y actualizarse el formulario
+    // Esto requeriría una implementación adicional para obtener datos del viaje por ID
+  };
+
+  // Función para mostrar el formulario de creación de nuevo viaje
+  const handleNewTrip = () => {
+    form.reset({
+      routeId: 0,
+      startDate: format(new Date(), "yyyy-MM-dd"),
+      endDate: format(new Date(), "yyyy-MM-dd"),
+      departureHour: "08",
+      departureMinute: "00",
+      departureAmPm: "AM",
+      arrivalHour: "12",
+      arrivalMinute: "00",
+      arrivalAmPm: "PM",
+      capacity: 18,
+      price: 450,
+      vehicleType: "standard",
+      segmentPrices: [],
+    });
+    setSelectedRouteId(null);
+    setSegmentPrices([]);
+    setStopTimes([]);
+    setEditingTripId(null);
+    setShowForm(true);
+  };
+
   return (
     <div className="py-6">
-      <div className="flex items-center mb-4">
-        <div className="rounded-full bg-primary bg-opacity-10 p-2 mr-3">
-          <ClockIcon className="h-6 w-6 text-primary" />
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center">
+          <div className="rounded-full bg-primary bg-opacity-10 p-2 mr-3">
+            <ClockIcon className="h-6 w-6 text-primary" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800">Gestión de Viajes</h2>
         </div>
-        <h2 className="text-xl font-semibold text-gray-800">Publicar Viaje</h2>
+        
+        {!showForm && (
+          <Button 
+            onClick={handleNewTrip}
+            className="bg-primary hover:bg-primary-dark text-white"
+            size="sm"
+          >
+            <CalendarPlusIcon className="mr-2 h-4 w-4" />
+            Crear nuevo viaje
+          </Button>
+        )}
+        
+        {showForm && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowForm(false)}
+          >
+            <XIcon className="mr-2 h-4 w-4" />
+            Volver a la lista
+          </Button>
+        )}
       </div>
       
-      <Card>
-        <CardContent className="pt-6">
-          <Form {...form}>
+      {showForm ? (
+        <Card>
+          <CardContent className="pt-6">
+            <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Main Trip Information */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -941,6 +1002,10 @@ export function PublishTripForm() {
           </Form>
         </CardContent>
       </Card>
+      ) : (
+        // Mostrar la lista de viajes cuando no se muestra el formulario
+        <TripList onEditTrip={handleEditTrip} />
+      )}
       
       {/* Diálogo para editar tiempo usando TimePicker moderno */}
       <Dialog open={showTimeDialog} onOpenChange={(open) => {
