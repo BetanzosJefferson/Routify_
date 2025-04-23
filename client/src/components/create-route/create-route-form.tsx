@@ -114,14 +114,15 @@ export function CreateRouteForm({ initialRoute, onSuccess }: CreateRouteFormProp
   // Mutation for creating or updating routes
   const routeMutation = useMutation({
     mutationFn: async (data: InsertRoute) => {
+      console.log("Enviando datos a servidor:", data);
       if (initialRoute && initialRoute.id) {
         // Update existing route
-        const response = await apiRequest("PUT", `/api/routes/${initialRoute.id}`, data);
-        return response.json();
+        console.log("Actualizando ruta existente:", initialRoute.id);
+        return apiRequest("PUT", `/api/routes/${initialRoute.id}`, data);
       } else {
         // Create new route
-        const response = await apiRequest("POST", "/api/routes", data);
-        return response.json();
+        console.log("Creando nueva ruta...");
+        return apiRequest("POST", "/api/routes", data);
       }
     },
     onSuccess: () => {

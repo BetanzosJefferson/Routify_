@@ -91,9 +91,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(apiRouter("/routes"), async (req: Request, res: Response) => {
     try {
+      console.log("POST /routes - Request recibido:", req.body);
       const validationResult = createRouteValidationSchema.safeParse(req.body);
       
       if (!validationResult.success) {
+        console.log("Validación fallida:", validationResult.error.format());
         return res.status(400).json({ 
           error: "Invalid route data", 
           details: validationResult.error.format() 
@@ -101,10 +103,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const routeData = validationResult.data;
+      console.log("Datos validados correctamente:", routeData);
       const route = await storage.createRoute(routeData);
+      console.log("Ruta creada con éxito:", route);
       res.status(201).json(route);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create route" });
+    } catch (error: any) {
+      console.error("Error al crear ruta:", error?.message || error);
+      res.status(500).json({ error: "Failed to create route", details: error?.message || "Unknown error" });
     }
   });
 
