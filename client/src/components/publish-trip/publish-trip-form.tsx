@@ -576,6 +576,21 @@ export function PublishTripForm() {
         };
         
         const formattedSegmentPrices = tripData.segmentPrices.map((segment: SegmentWithTimes) => {
+          // Asegurarse de que el precio sea un número
+          const price = typeof segment.price === 'number' ? segment.price : 
+                         typeof segment.price === 'string' ? parseFloat(segment.price) : 0;
+
+          let result = {
+            ...segment,
+            price: price,
+            departureHour: "08",
+            departureMinute: "00",
+            departureAmPm: "AM" as "AM",
+            arrivalHour: "09",
+            arrivalMinute: "00",
+            arrivalAmPm: "AM" as "AM"
+          };
+          
           // Si el segmento tiene departureTime y arrivalTime
           if (segment.departureTime && segment.arrivalTime) {
             const [depTime, depAmPm] = segment.departureTime.split(' ');
@@ -584,8 +599,8 @@ export function PublishTripForm() {
             const [arrTime, arrAmPm] = segment.arrivalTime.split(' ');
             const [arrHour, arrMinute] = arrTime.split(':');
             
-            return {
-              ...segment,
+            result = {
+              ...result,
               departureHour: depHour,
               departureMinute: depMinute,
               departureAmPm: depAmPm as "AM" | "PM",
@@ -594,10 +609,14 @@ export function PublishTripForm() {
               arrivalAmPm: arrAmPm as "AM" | "PM"
             };
           }
-          return segment;
+          
+          console.log("Segmento formateado para edición:", result);
+          return result;
         });
         
+        console.log("Segmentos con precios cargados para edición:", formattedSegmentPrices);
         setSegmentPrices(formattedSegmentPrices);
+        form.setValue("segmentPrices", formattedSegmentPrices);
       }
       
       // Cargar tiempos de paradas si están disponibles
