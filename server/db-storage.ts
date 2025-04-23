@@ -207,18 +207,20 @@ export class DatabaseStorage implements IStorage {
     
     // Apply date filter
     if (params.date) {
-      const searchDate = new Date(params.date);
-      searchDate.setHours(0, 0, 0, 0);
+      // Ajustamos para manejar correctamente la fecha sin problemas de zona horaria
+      const searchDate = new Date(params.date + 'T00:00:00');
+      console.log(`Buscando viajes para la fecha: ${searchDate.toISOString()}`);
       
-      const nextDay = new Date(searchDate);
+      // Creamos la fecha del día siguiente (a las 00:00:00)
+      const nextDay = new Date(params.date + 'T00:00:00');
       nextDay.setDate(nextDay.getDate() + 1);
+      console.log(`Hasta la fecha: ${nextDay.toISOString()}`);
       
-      tripsQuery.where(
-        and(
-          gte(schema.trips.departureDate, searchDate),
-          lt(schema.trips.departureDate, nextDay)
-        )
-      );
+      // Convertimos las fechas a strings para comparación directa de fechas sin hora
+      const searchDateStr = params.date;
+      
+      // Usamos SQL para comparar solo las partes de fecha sin considerar la hora
+      tripsQuery.where(sql`DATE(departure_date) = ${searchDateStr}`);
     }
     
     // Get trips
