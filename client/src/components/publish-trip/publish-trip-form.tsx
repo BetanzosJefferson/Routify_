@@ -2,10 +2,9 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { ClockIcon, CalendarIcon, InfoIcon, Loader2Icon, CalendarPlusIcon, XIcon } from "lucide-react";
 import { format } from "date-fns";
+import { ClockIcon, CalendarIcon, InfoIcon, Loader2Icon, CalendarPlusIcon, XIcon } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 import {
   Form,
@@ -25,7 +24,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -91,6 +89,13 @@ export function PublishTripForm() {
   const [stopTimes, setStopTimes] = useState<Array<{hour: string, minute: string, ampm: "AM" | "PM", location?: string} | null>>([]);
   const [currentStopInfo, setCurrentStopInfo] = useState<{name: string, location: string}>({name: "", location: ""});
   const [editingSegment, setEditingSegment] = useState<{index: number, timeType: 'departure' | 'arrival'} | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editingTripId, setEditingTripId] = useState<number | null>(null);
+  const [editingTimeValue, setEditingTimeValue] = useState<{hour: string, minute: string, ampm: "AM" | "PM"}>({
+    hour: "08",
+    minute: "00",
+    ampm: "AM"
+  });
 
   // Fetch routes for dropdown
   const routesQuery = useQuery({
@@ -379,6 +384,9 @@ export function PublishTripForm() {
       
       // Invalidate trips cache
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
+      
+      // Volver a la lista de viajes
+      setShowForm(false);
     },
     onError: (error) => {
       toast({
@@ -389,46 +397,52 @@ export function PublishTripForm() {
     },
   });
 
-  // Form submission handler
+  // Handle form submission
   const onSubmit = (data: FormValues) => {
-    // Convertir y preparar datos para el backend
-    const capacity = Number(data.capacity);
+    const { capacity } = data;
     
-    // Preparar tiempos de parada con información de ubicación
-    const formattedStopTimes: StopTime[] = [];
-    if (routeSegmentsQuery.data) {
-      const allLocations = [
-        routeSegmentsQuery.data.origin,
-        ...(routeSegmentsQuery.data.stops || []),
-        routeSegmentsQuery.data.destination
-      ];
-      
-      stopTimes.forEach((time, index) => {
-        if (time && allLocations[index]) {
-          formattedStopTimes.push({
-            hour: time.hour,
-            minute: time.minute,
-            ampm: time.ampm,
-            location: allLocations[index] || ""
-          });
-        }
+    // Verificar que se ha seleccionado un ID de ruta
+    if (!selectedRouteId) {
+      toast({
+        title: "Error de validación",
+        description: "Debe seleccionar una ruta",
+        variant: "destructive",
       });
+      return;
     }
     
-    // Para cada segmento, asegurar que estamos enviando tanto los precios como los tiempos
-    const segmentsWithTimesAndPrices = segmentPrices.map(segment => {
-      // Crear una copia del segmento
-      const updatedSegment = { ...segment };
-      
-      // Añadir campos de tiempo formato string para el backend
-      updatedSegment.departureTime = `${segment.departureHour}:${segment.departureMinute} ${segment.departureAmPm}`;
-      updatedSegment.arrivalTime = `${segment.arrivalHour}:${segment.arrivalMinute} ${segment.arrivalAmPm}`;
-      updatedSegment.price = Number(segment.price);
-      
-      return updatedSegment;
-    });
+    // Verificar que todos los segmentos tienen precios
+    const hasInvalidPrices = segmentPrices.some(segment => segment.price <= 0);
+    if (hasInvalidPrices) {
+      toast({
+        title: "Error de validación",
+        description: "Todos los segmentos deben tener un precio válido",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    console.log("Enviando segmentos con tiempos:", segmentsWithTimesAndPrices);
+    // Preparar los tiempos de las paradas
+    const formattedStopTimes = stopTimes
+      .filter(stop => stop !== null)
+      .map(stop => ({
+        hour: stop!.hour,
+        minute: stop!.minute,
+        ampm: stop!.ampm,
+        location: stop!.location || ""
+      }));
+    
+    // Convertir tiempos de segmentos a formato adecuado (HH:MM AM/PM)
+    const segmentsWithTimesAndPrices = segmentPrices.map(segment => {
+      const departureTime = `${segment.departureHour}:${segment.departureMinute} ${segment.departureAmPm}`;
+      const arrivalTime = `${segment.arrivalHour}:${segment.arrivalMinute} ${segment.arrivalAmPm}`;
+      
+      return {
+        ...segment,
+        departureTime,
+        arrivalTime
+      };
+    });
     
     // Asignar el tipo explícitamente para evitar errores de TS
     const segmentDataToSend = segmentsWithTimesAndPrices as any;
@@ -443,8 +457,15 @@ export function PublishTripForm() {
     });
   };
 
-  const [showForm, setShowForm] = useState(false);
-  const [editingTripId, setEditingTripId] = useState<number | null>(null);
+  // Guardar el tiempo editado desde el diálogo modal
+  const handleSaveTime = () => {
+    if (editingStopIndex === null) return;
+    saveStopTime(
+      editingTimeValue.hour,
+      editingTimeValue.minute,
+      editingTimeValue.ampm
+    );
+  };
 
   // Función para manejar la edición de un viaje
   const handleEditTrip = (tripId: number) => {
@@ -515,439 +536,327 @@ export function PublishTripForm() {
         <Card>
           <CardContent className="pt-6">
             <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Main Trip Information */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Route Selection */}
-                <FormField
-                  control={form.control}
-                  name="routeId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Ruta</FormLabel>
-                      <Select 
-                        onValueChange={handleRouteChange}
-                        value={field.value ? String(field.value) : ""}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar una ruta" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {routesQuery.data?.map((route: Route) => (
-                            <SelectItem key={route.id} value={String(route.id)}>
-                              {route.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                {/* Capacity */}
-                <FormField
-                  control={form.control}
-                  name="capacity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Capacidad del vehículo</FormLabel>
-                      <div className="text-xs text-gray-500 mb-1">Número total de asientos disponibles</div>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="1"
-                          placeholder="Número de pasajeros"
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value, 10) || "")}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                {/* Vehicle Type */}
-                <FormField
-                  control={form.control}
-                  name="vehicleType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tipo de vehículo</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar tipo de vehículo" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="standard">Standard</SelectItem>
-                          <SelectItem value="premium">Premium</SelectItem>
-                          <SelectItem value="luxury">Luxury</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              {/* Date Range Selection */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Start Date */}
-                <FormField
-                  control={form.control}
-                  name="startDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fecha del primer viaje</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <CalendarIcon className="h-5 w-5 text-gray-400" />
-                          </div>
-                          <Input
-                            type="date"
-                            className="pl-10"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                {/* End Date */}
-                <FormField
-                  control={form.control}
-                  name="endDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fecha del último viaje</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <CalendarIcon className="h-5 w-5 text-gray-400" />
-                          </div>
-                          <Input
-                            type="date"
-                            className="pl-10"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              {/* Time Selection */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Departure Time */}
-                <FormField
-                  control={form.control}
-                  name="departureHour"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Hora de salida</FormLabel>
-                      <div>
-                        <SimpleTimeInput
-                          value={{
-                            hour: form.getValues("departureHour"),
-                            minute: form.getValues("departureMinute"),
-                            ampm: form.getValues("departureAmPm")
-                          }}
-                          onChange={(hour, minute, ampm) => {
-                            form.setValue("departureHour", hour);
-                            form.setValue("departureMinute", minute);
-                            form.setValue("departureAmPm", ampm);
-                          }}
-                        />
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                {/* Arrival Time */}
-                <FormField
-                  control={form.control}
-                  name="arrivalHour"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Hora de llegada</FormLabel>
-                      <div>
-                        <SimpleTimeInput
-                          value={{
-                            hour: form.getValues("arrivalHour"),
-                            minute: form.getValues("arrivalMinute"),
-                            ampm: form.getValues("arrivalAmPm")
-                          }}
-                          onChange={(hour, minute, ampm) => {
-                            form.setValue("arrivalHour", hour);
-                            form.setValue("arrivalMinute", minute);
-                            form.setValue("arrivalAmPm", ampm);
-                          }}
-                        />
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              {/* Route Segment Pricing (conditional) */}
-              {selectedRouteId && routeSegmentsQuery.data && (
-                <div className="mt-8 border-t pt-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">
-                    {routeSegmentsQuery.data.name}
-                  </h3>
-                  <p className="text-sm text-gray-500 mb-6">
-                    Configure los precios por segmento y los tiempos estimados para cada parada de este viaje.
-                  </p>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {/* Main Trip Information */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Route Selection */}
+                  <FormField
+                    control={form.control}
+                    name="routeId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ruta</FormLabel>
+                        <Select 
+                          onValueChange={handleRouteChange}
+                          value={field.value ? String(field.value) : ""}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar una ruta" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {routesQuery.data?.map((route: Route) => (
+                              <SelectItem key={route.id} value={String(route.id)}>
+                                {route.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   
-                  <Tabs defaultValue="segment-prices">
-                    <TabsList className="mb-6">
-                      <TabsTrigger value="segment-prices">Precios por segmento</TabsTrigger>
-                      <TabsTrigger value="stop-times">Tiempos de parada</TabsTrigger>
-                      <TabsTrigger value="capacity-settings">Capacidad</TabsTrigger>
-                    </TabsList>
-                    
-                    <TabsContent value="segment-prices">
-                      <p className="text-sm text-gray-500 mb-4">
-                        Configure los precios y horarios para cada segmento de la ruta. Los segmentos entre diferentes ciudades requieren una configuración manual.
-                      </p>
-                      
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origen</th>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destino</th>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio (MXN)</th>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hora de Salida</th>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hora de Llegada</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {segmentPrices.map((segment, index) => (
-                              <tr key={index}>
-                                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">{segment.origin}</td>
-                                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">{segment.destination}</td>
-                                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    className="w-full"
-                                    placeholder="Precio"
-                                    value={segment.price}
-                                    onChange={(e) => updateSegmentPrice(index, parseInt(e.target.value, 10) || 0)}
-                                  />
-                                </td>
-                                {/* Hora de Salida */}
-                                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  <SimpleTimeInput
-                                    value={{
-                                      hour: segment.departureHour || "00",
-                                      minute: segment.departureMinute || "00",
-                                      ampm: (segment.departureAmPm as "AM" | "PM") || "AM"
-                                    }}
-                                    onChange={(hour, minute, ampm) => {
-                                      updateSegmentTime(index, 'departure', 'hour', hour);
-                                      updateSegmentTime(index, 'departure', 'minute', minute);
-                                      updateSegmentTime(index, 'departure', 'ampm', ampm);
-                                    }}
-                                  />
-                                </td>
-                                {/* Hora de Llegada */}
-                                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  <SimpleTimeInput
-                                    value={{
-                                      hour: segment.arrivalHour || "00",
-                                      minute: segment.arrivalMinute || "00",
-                                      ampm: (segment.arrivalAmPm as "AM" | "PM") || "AM"
-                                    }}
-                                    onChange={(hour, minute, ampm) => {
-                                      updateSegmentTime(index, 'arrival', 'hour', hour);
-                                      updateSegmentTime(index, 'arrival', 'minute', minute);
-                                      updateSegmentTime(index, 'arrival', 'ampm', ampm);
-                                    }}
-                                  />
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      
-                      <div className="mt-4 text-sm text-gray-500">
-                        <p className="flex items-center">
-                          <InfoIcon className="h-4 w-4 mr-2 text-primary" />
-                          Configure tanto el precio como los horarios para cada segmento. Esto garantiza que los horarios se apliquen correctamente a cada tramo del viaje.
-                        </p>
-                      </div>
-                    </TabsContent>
-                    
-                    <TabsContent value="stop-times">
-                      <div className="mb-4">
-                        <p className="text-sm text-gray-500">
-                          Configure el horario de cada parada haciendo clic en cada botón de tiempo. El tiempo en cada parada representa tanto la hora de llegada como la hora de salida para esa ubicación.
-                        </p>
-                      </div>
-                      
-                      <div className="overflow-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">#</th>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parada</th>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {/* Origen */}
-                            <tr className="bg-primary/5">
-                              <td className="px-3 py-3">
-                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white">1</div>
-                              </td>
-                              <td className="px-3 py-3 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-900">Terminal Principal</div>
-                              </td>
-                              <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
-                                {routeSegmentsQuery.data?.origin || 'Origen'}
-                              </td>
-                              <td className="px-3 py-3 whitespace-nowrap">
-                                <div className="flex items-center">
-                                  <button 
-                                    type="button"
-                                    onClick={() => handleEditTime(0)}
-                                    className="inline-flex items-center px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                                  >
-                                    <ClockIcon className="mr-1.5 h-3.5 w-3.5" />
-                                    {form.getValues('departureHour')}:{form.getValues('departureMinute')} {form.getValues('departureAmPm')}
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                            
-                            {/* Paradas intermedias */}
-                            {routeSegmentsQuery.data?.stops.map((stop, index) => (
-                              <tr key={index} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-                                <td className="px-3 py-3">
-                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/80 text-white">{index + 2}</div>
-                                </td>
-                                <td className="px-3 py-3 whitespace-nowrap">
-                                  <div className="text-sm font-medium text-gray-900">Parada {index + 1}</div>
-                                </td>
-                                <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
-                                  {stop}
-                                </td>
-                                <td className="px-3 py-3 whitespace-nowrap">
-                                  <div className="flex items-center">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleEditTime(index + 1)}
-                                      className="inline-flex items-center px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                                    >
-                                      <ClockIcon className="mr-1.5 h-3.5 w-3.5" />
-                                      {(stopTimes[index + 1] && typeof stopTimes[index + 1] === 'object') ? 
-                                        `${stopTimes[index + 1]?.hour || ""}:${stopTimes[index + 1]?.minute || ""} ${stopTimes[index + 1]?.ampm || ""}` : 
-                                        "--:--"}
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                            
-                            {/* Destino */}
-                            <tr className="bg-primary/5">
-                              <td className="px-3 py-3">
-                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white">{(routeSegmentsQuery.data?.stops.length || 0) + 2}</div>
-                              </td>
-                              <td className="px-3 py-3 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-900">Destino Final</div>
-                              </td>
-                              <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
-                                {routeSegmentsQuery.data?.destination || 'Destino'}
-                              </td>
-                              <td className="px-3 py-3 whitespace-nowrap">
-                                <div className="flex items-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEditTime((routeSegmentsQuery.data?.stops.length || 0) + 1)}
-                                    className="inline-flex items-center px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                                  >
-                                    <ClockIcon className="mr-1.5 h-3.5 w-3.5" />
-                                    {form.getValues('arrivalHour')}:{form.getValues('arrivalMinute')} {form.getValues('arrivalAmPm')}
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                      
-                      <div className="mt-4 text-sm text-gray-500">
-                        <p className="flex items-center">
-                          <InfoIcon className="h-4 w-4 mr-2 text-primary" />
-                          El horario de cada parada representa tanto la hora de llegada como la de salida para esa ubicación. Para los sub-viajes, se usarán estos tiempos para calcular la duración.
-                        </p>
-                      </div>
-                    </TabsContent>
-                    
-                    <TabsContent value="capacity-settings">
-                      <p className="text-sm text-gray-500 mb-4">
-                        Configura la capacidad para este viaje. Este valor representa el número total de asientos disponibles.
-                      </p>
-                      
-                      <div className="p-4 border rounded-md">
-                        <h4 className="text-md font-medium text-gray-800 mb-3">Configuración de Capacidad</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="capacity"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Capacidad total</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      min="1"
-                                      placeholder="Número total de asientos"
-                                      {...field}
-                                      onChange={(e) => field.onChange(parseInt(e.target.value, 10) || "")}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
+                  {/* Capacity */}
+                  <FormField
+                    control={form.control}
+                    name="capacity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Capacidad del vehículo</FormLabel>
+                        <div className="text-xs text-gray-500 mb-1">Número total de asientos disponibles</div>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="1"
+                            placeholder="Número de pasajeros"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value, 10) || "")}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* Vehicle Type */}
+                  <FormField
+                    control={form.control}
+                    name="vehicleType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tipo de vehículo</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar tipo de vehículo" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="standard">Estándar (18-25 asientos)</SelectItem>
+                            <SelectItem value="premium">Premium (15-18 asientos)</SelectItem>
+                            <SelectItem value="luxury">Lujo (10-16 asientos)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                {/* Date Range Selection */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Start Date */}
+                  <FormField
+                    control={form.control}
+                    name="startDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fecha del primer viaje</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <CalendarIcon className="h-5 w-5 text-gray-400" />
+                            </div>
+                            <Input
+                              type="date"
+                              className="pl-10"
+                              {...field}
                             />
                           </div>
-                          <div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* End Date */}
+                  <FormField
+                    control={form.control}
+                    name="endDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fecha del último viaje</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <CalendarIcon className="h-5 w-5 text-gray-400" />
+                            </div>
+                            <Input
+                              type="date"
+                              className="pl-10"
+                              {...field}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                {/* Time Selection */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Departure Time */}
+                  <FormField
+                    control={form.control}
+                    name="departureHour"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hora de salida</FormLabel>
+                        <div>
+                          <SimpleTimeInput
+                            value={{
+                              hour: form.getValues("departureHour"),
+                              minute: form.getValues("departureMinute"),
+                              ampm: form.getValues("departureAmPm")
+                            }}
+                            onChange={(hour, minute, ampm) => {
+                              form.setValue("departureHour", hour);
+                              form.setValue("departureMinute", minute);
+                              form.setValue("departureAmPm", ampm);
+                            }}
+                          />
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* Arrival Time */}
+                  <FormField
+                    control={form.control}
+                    name="arrivalHour"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hora de llegada</FormLabel>
+                        <div>
+                          <SimpleTimeInput
+                            value={{
+                              hour: form.getValues("arrivalHour"),
+                              minute: form.getValues("arrivalMinute"),
+                              ampm: form.getValues("arrivalAmPm")
+                            }}
+                            onChange={(hour, minute, ampm) => {
+                              form.setValue("arrivalHour", hour);
+                              form.setValue("arrivalMinute", minute);
+                              form.setValue("arrivalAmPm", ampm);
+                            }}
+                          />
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                {/* Route Segment Pricing (conditional) */}
+                {selectedRouteId && routeSegmentsQuery.data && (
+                  <div className="mt-8 border-t pt-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      {routeSegmentsQuery.data.name}
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-6">
+                      Configure los precios por segmento y los tiempos estimados para cada parada de este viaje.
+                    </p>
+                    
+                    <Tabs defaultValue="segment-prices">
+                      <TabsList className="mb-6">
+                        <TabsTrigger value="segment-prices">Precios por segmento</TabsTrigger>
+                        <TabsTrigger value="stop-times">Tiempos de parada</TabsTrigger>
+                        <TabsTrigger value="capacity-settings">Capacidad</TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="segment-prices">
+                        <p className="text-sm text-gray-500 mb-4">
+                          Configure los precios para cada segmento de la ruta. Los segmentos entre diferentes ciudades requieren una configuración manual.
+                        </p>
+                        
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origen</th>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destino</th>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio (MXN)</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {segmentPrices.map((segment, index) => (
+                                <tr key={`${segment.origin}-${segment.destination}`} className="hover:bg-gray-50">
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{segment.origin}</td>
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{segment.destination}</td>
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 w-32">
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="10"
+                                      value={segment.price || ""}
+                                      onChange={(e) => updateSegmentPrice(index, Number(e.target.value))}
+                                      className="w-24 h-8 text-right"
+                                    />
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="stop-times">
+                        <p className="text-sm text-gray-500 mb-4">
+                          Configure los tiempos estimados de llegada a cada parada de la ruta. Estos tiempos se utilizarán en itinerarios y 
+                          para calcular estimaciones de tiempo para pasajeros.
+                        </p>
+                        
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario</th>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acción</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {routeSegmentsQuery.data && [
+                                routeSegmentsQuery.data.origin,
+                                ...(routeSegmentsQuery.data.stops || []),
+                                routeSegmentsQuery.data.destination
+                              ].map((location, index) => (
+                                <tr key={`stop-${index}`} className="hover:bg-gray-50">
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {index === 0 ? (
+                                      <span className="text-primary">Origen: {location}</span>
+                                    ) : index === [routeSegmentsQuery.data.origin, ...(routeSegmentsQuery.data.stops || []), routeSegmentsQuery.data.destination].length - 1 ? (
+                                      <span className="text-primary">Destino: {location}</span>
+                                    ) : (
+                                      <span>Parada {index}: {location}</span>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                    {stopTimes[index] && (
+                                      <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-medium bg-gray-100 rounded">
+                                        {`${stopTimes[index]?.hour}:${stopTimes[index]?.minute} ${stopTimes[index]?.ampm}`}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleEditTime(index)}
+                                    >
+                                      Editar
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="capacity-settings">
+                        <p className="text-sm text-gray-500 mb-4">
+                          Gestione la capacidad de asientos para cada segmento de la ruta.
+                        </p>
+                        
+                        <div className="grid grid-cols-1 gap-4 mb-6">
+                          <div className="p-4 border rounded-md">
+                            <h4 className="font-medium mb-2">Configuración global de capacidad</h4>
+                            <p className="text-sm text-gray-500 mb-4">
+                              La capacidad configurada se aplicará a todos los segmentos de la ruta.
+                              Capacidad actual: <span className="font-medium">{form.getValues("capacity")} asientos</span>
+                            </p>
+                            
+                            {/* Vehicle Type para capacidad */}
                             <FormField
                               control={form.control}
                               name="vehicleType"
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Tipo de vehículo</FormLabel>
-                                  <Select 
-                                    value={field.value} 
-                                    onValueChange={field.onChange}
-                                  >
+                                  <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                       <SelectTrigger>
                                         <SelectValue placeholder="Seleccionar tipo de vehículo" />
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      <SelectItem value="standard">Estándar (16-24 asientos)</SelectItem>
-                                      <SelectItem value="premium">Premium (24-36 asientos)</SelectItem>
+                                      <SelectItem value="standard">Estándar (18-25 asientos)</SelectItem>
+                                      <SelectItem value="premium">Premium (15-18 asientos)</SelectItem>
                                       <SelectItem value="luxury">Lujo (10-16 asientos)</SelectItem>
                                     </SelectContent>
                                   </Select>
@@ -957,51 +866,50 @@ export function PublishTripForm() {
                             />
                           </div>
                         </div>
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                )}
+                
+                {/* Submit Button */}
+                <div className="mt-8">
+                  <div className="bg-slate-50 border border-slate-200 rounded-md p-3 mb-4">
+                    <div className="flex">
+                      <InfoIcon className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium text-slate-700 text-sm mb-1">Generación de Sub-Viajes</p>
+                        <p className="text-xs text-slate-600">
+                          Al publicar este viaje, el sistema creará automáticamente todos los sub-viajes posibles
+                          entre paradas con precios y tiempos proporcionales basados en el recorrido total.
+                        </p>
                       </div>
-                    </TabsContent>
-                  </Tabs>
-                </div>
-              )}
-              
-              {/* Submit Button */}
-              <div className="mt-8">
-                <div className="bg-slate-50 border border-slate-200 rounded-md p-3 mb-4">
-                  <div className="flex">
-                    <InfoIcon className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="font-medium text-slate-700 text-sm mb-1">Generación de Sub-Viajes</p>
-                      <p className="text-xs text-slate-600">
-                        Al publicar este viaje, el sistema creará automáticamente todos los sub-viajes posibles
-                        entre paradas con precios y tiempos proporcionales basados en el recorrido total.
-                      </p>
                     </div>
                   </div>
+                  <div className="flex justify-end">
+                    <Button 
+                      type="submit" 
+                      className="bg-primary hover:bg-primary-dark text-white px-6 py-2 text-lg font-medium"
+                      size="lg"
+                      disabled={publishTripMutation.isPending || !selectedRouteId}
+                    >
+                      {publishTripMutation.isPending ? (
+                        <span className="flex items-center">
+                          <Loader2Icon className="mr-2 h-5 w-5 animate-spin" />
+                          Publicando...
+                        </span>
+                      ) : (
+                        <span className="flex items-center">
+                          <CalendarPlusIcon className="mr-2 h-5 w-5" />
+                          Publicar Viaje
+                        </span>
+                      )}
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex justify-end">
-                  <Button 
-                    type="submit" 
-                    className="bg-primary hover:bg-primary-dark text-white px-6 py-2 text-lg font-medium"
-                    size="lg"
-                    disabled={publishTripMutation.isPending || !selectedRouteId}
-                  >
-                    {publishTripMutation.isPending ? (
-                      <span className="flex items-center">
-                        <Loader2Icon className="mr-2 h-5 w-5 animate-spin" />
-                        Publicando...
-                      </span>
-                    ) : (
-                      <span className="flex items-center">
-                        <CalendarPlusIcon className="mr-2 h-5 w-5" />
-                        Publicar Viaje
-                      </span>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
       ) : (
         // Mostrar la lista de viajes cuando no se muestra el formulario
         <TripList onEditTrip={handleEditTrip} />

@@ -31,19 +31,19 @@ export function TabNavigation({ className, activeTab, onTabChange }: TabNavigati
             active={activeTab === "publish-trip"}
             onClick={() => handleTabClick("publish-trip")}
           >
-            Publish Trip
+            Gestión de Viajes
           </TabItem>
           <TabItem 
             active={activeTab === "trips"}
             onClick={() => handleTabClick("trips")}
           >
-            Trips
+            Viajes
           </TabItem>
           <TabItem 
             active={activeTab === "reservations"}
             onClick={() => handleTabClick("reservations")}
           >
-            Reservations
+            Reservaciones
           </TabItem>
         </nav>
       </div>
