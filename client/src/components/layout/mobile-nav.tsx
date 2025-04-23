@@ -68,6 +68,12 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
             >
               Resumen de Viajes
             </NavLink>
+            <NavLink 
+              active={activeTab === "users"}
+              onClick={() => handleNavClick("users")}
+            >
+              Usuarios
+            </NavLink>
           </nav>
         </SheetContent>
       </Sheet>
