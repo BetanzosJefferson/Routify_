@@ -461,7 +461,12 @@ export function PublishTripForm() {
   const handleEditTrip = (tripId: number) => {
     // Fetch trip details first
     fetch(`/api/trips/${tripId}`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`Error al obtener el viaje: ${res.status} ${res.statusText}`);
+        }
+        return res.json();
+      })
       .then(trip => {
         console.log("Trip to edit:", trip);
         
@@ -475,16 +480,58 @@ export function PublishTripForm() {
         }
         
         // Inicializar stopTimes desde los datos del viaje si están disponibles
-        const stopTimesFromTrip = trip.stopTimes || [];
+        // Adaptar al formato esperado por el formulario
         let allStopTimes: Array<{hour: string, minute: string, ampm: "AM" | "PM", location?: string} | null> = [];
         
-        if (stopTimesFromTrip.length > 0) {
-          allStopTimes = stopTimesFromTrip.map((stop: any) => ({
-            hour: stop.hour || "00",
-            minute: stop.minute || "00",
-            ampm: stop.ampm || "AM",
-            location: stop.location || ""
-          }));
+        // Calcular tiempos de parada basados en la ruta y los tiempos de departureTime y arrivalTime
+        const departureParts = trip.departureTime.split(' ')[0].split(':');
+        const departureHour = departureParts[0];
+        const departureMinute = departureParts[1];
+        const departureAmPm = trip.departureTime.split(' ')[1];
+        
+        const arrivalParts = trip.arrivalTime.split(' ')[0].split(':');
+        const arrivalHour = arrivalParts[0];
+        const arrivalMinute = arrivalParts[1];
+        const arrivalAmPm = trip.arrivalTime.split(' ')[1];
+        
+        // Buscar datos de la ruta
+        if (trip.route) {
+          // Crear tiempos de parada basados en los puntos de la ruta
+          const allLocations = [
+            trip.route.origin,
+            ...(trip.route.stops || []),
+            trip.route.destination
+          ];
+          
+          // Crear tiempos de parada estimados entre el tiempo de salida y llegada
+          allStopTimes = allLocations.map((location, index) => {
+            if (index === 0) {
+              // Primera parada (origen) - hora de salida
+              return {
+                hour: departureHour,
+                minute: departureMinute,
+                ampm: departureAmPm as "AM" | "PM",
+                location
+              };
+            } else if (index === allLocations.length - 1) {
+              // Última parada (destino) - hora de llegada
+              return {
+                hour: arrivalHour,
+                minute: arrivalMinute,
+                ampm: arrivalAmPm as "AM" | "PM",
+                location
+              };
+            } else {
+              // Paradas intermedias - estimamos basado en la posición relativa
+              // Para simplificar usamos la hora de salida para todas las paradas intermedias
+              return {
+                hour: departureHour,
+                minute: departureMinute,
+                ampm: departureAmPm as "AM" | "PM",
+                location
+              };
+            }
+          });
         }
         
         // Inicializar segmentPrices desde los datos del viaje
@@ -496,16 +543,21 @@ export function PublishTripForm() {
         setSegmentPrices(segmentPricesFromTrip);
         setStopTimes(allStopTimes);
         
-        // Actualizar el formulario
+        // Actualizar el formulario con los datos disponibles
+        // Asegurándonos de usar las propiedades correctas según el formato de la API
+        const startDate = trip.departureDate?.split("T")[0] || format(new Date(), "yyyy-MM-dd");
+        const endDate = startDate; // Mismo día para edición
+        
         form.reset({
           routeId: trip.routeId,
-          startDate: trip.startDate.split("T")[0],
-          endDate: trip.endDate.split("T")[0],
+          startDate,
+          endDate,
           capacity: trip.capacity,
           price: trip.price,
           vehicleType: trip.vehicleType || "standard",
           segmentPrices: segmentPricesFromTrip,
-          stopTimes: stopTimesFromTrip
+          // Solo incluir stopTimes si realmente tenemos los datos
+          ...((allStopTimes.length > 0) && { stopTimes: allStopTimes })
         });
         
         // Mostrar el formulario
@@ -515,7 +567,7 @@ export function PublishTripForm() {
         console.error("Error loading trip details", error);
         toast({
           title: "Error",
-          description: "No se pudo cargar la información del viaje.",
+          description: "No se pudo cargar la información del viaje. " + error.message,
           variant: "destructive",
         });
       });
