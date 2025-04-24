@@ -9,6 +9,8 @@ import { TripList } from "@/components/trips/trip-list";
 import { ReservationList } from "@/components/reservations/reservation-list";
 import TripSummary from "@/components/trip-summary/trip-summary";
 import { UsersPage } from "@/components/users/users-page";
+import VehiclesPage from "@/components/vehicles/vehicles-page";
+import CommissionsPage from "@/components/commissions/commissions-page";
 import { TabType } from "@/hooks/use-active-tab";
 
 export default function Dashboard() {
@@ -20,7 +22,7 @@ export default function Dashboard() {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("tab") as TabType | null;
     
-    if (tab && ["create-route", "publish-trip", "trips", "reservations", "trip-summary", "users"].includes(tab)) {
+    if (tab && ["create-route", "publish-trip", "trips", "reservations", "trip-summary", "users", "vehicles", "commissions"].includes(tab)) {
       setActiveTab(tab);
     }
   }, [location]);
@@ -48,6 +50,8 @@ export default function Dashboard() {
             {activeTab === "reservations" && <ReservationList />}
             {activeTab === "trip-summary" && <TripSummary />}
             {activeTab === "users" && <UsersPage />}
+            {activeTab === "vehicles" && <VehiclesPage />}
+            {activeTab === "commissions" && <CommissionsPage />}
           </main>
         </div>
       </div>
