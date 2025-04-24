@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { User } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
-import { useTheme } from "@/hooks/use-theme";
+import { useTheme } from "@/lib/theme-provider";
 import { 
   Moon, 
   Sun, 
@@ -84,7 +84,7 @@ export function ProfilePage() {
   }
 
   return (
-    <Card className="max-w-4xl mx-auto">
+    <Card className="max-w-4xl mx-auto theme-transition">
       <CardHeader className="border-b">
         <CardTitle className="text-2xl font-bold">Mi Perfil</CardTitle>
       </CardHeader>
