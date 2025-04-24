@@ -120,7 +120,7 @@ export function Topbar() {
             </DialogDescription>
           </DialogHeader>
           <div className="px-6 pb-6 pt-2">
-            <ProfilePage />
+            <ProfilePage standalone={false} />
           </div>
         </DialogContent>
       </Dialog>
