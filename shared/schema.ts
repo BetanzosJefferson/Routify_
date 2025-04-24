@@ -240,6 +240,8 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   role: text("role").notNull().default(UserRole.TICKET_OFFICE),
+  company: text("company").default(""),
+  profilePicture: text("profile_picture").default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
