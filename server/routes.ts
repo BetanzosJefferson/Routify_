@@ -305,6 +305,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
         // Create main trip (origin to destination)
+        // Buscar el precio del segmento de origen a destino final para usarlo como precio principal
+        const mainSegmentPrice = tripData.segmentPrices.find(
+          (sp: any) => sp.origin === route.origin && sp.destination === route.destination
+        );
+        
         const mainTripToCreate = {
           routeId: tripData.routeId,
           departureDate: new Date(date),
@@ -312,7 +317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           arrivalTime,
           capacity: tripData.capacity,
           availableSeats: tripData.capacity,
-          price: tripData.price || 0, // Asegurar que siempre haya un precio aunque sea 0
+          price: mainSegmentPrice?.price || 450, // Usar el precio del segmento principal o un valor por defecto
           vehicleType: tripData.vehicleType,
           segmentPrices: tripData.segmentPrices,
           isSubTrip: false,
@@ -426,8 +431,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Approach 1: Generate all possible combinations (not just consecutive stops)
     for (let i = 0; i < allPoints.length - 1; i++) {
       for (let j = i + 1; j < allPoints.length; j++) {
-        // Skip the main route (origin to destination) as it's already created
-        if (i === 0 && j === allPoints.length - 1) continue;
+        // Skip the main route (origin to destination) as it's already created separately
+        if (i === 0 && j === allPoints.length - 1) {
+          console.log(`Saltando ruta principal: ${allPoints[i]} -> ${allPoints[j]} (se crea por separado)`);
+          continue;
+        }
         
         // Skip segments where origin and destination are in the same city
         if (isSameCity(allPoints[i], allPoints[j])) {
@@ -445,7 +453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
     
-    console.log(`Generados ${allSegments.length} segmentos válidos (excluyendo misma ciudad) para la ruta ${route.id}`);
+    console.log(`Generados ${allSegments.length} segmentos válidos (excluyendo misma ciudad y ruta principal) para la ruta ${route.id}`);
     
     return allSegments;
   }
