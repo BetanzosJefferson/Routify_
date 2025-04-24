@@ -210,11 +210,33 @@ export class DatabaseStorage implements IStorage {
   }
   
   async deleteTrip(id: number): Promise<boolean> {
-    const result = await db
-      .delete(schema.trips)
-      .where(eq(schema.trips.id, id))
-      .returning({ id: schema.trips.id });
-    return result.length > 0;
+    try {
+      // Primero, obtener el viaje que queremos eliminar
+      const trip = await this.getTrip(id);
+      if (!trip) return false;
+      
+      // Si es un viaje principal (no es subTrip), eliminar también todos sus sub-viajes
+      if (!trip.isSubTrip) {
+        console.log(`Eliminando viaje principal ${id} y todos sus sub-viajes`);
+        // Eliminar todos los sub-viajes que tienen este viaje como parentTripId
+        await db
+          .delete(schema.trips)
+          .where(eq(schema.trips.parentTripId, id));
+      } else {
+        console.log(`Eliminando sub-viaje ${id}`);
+      }
+      
+      // Finalmente, eliminar el viaje solicitado
+      const result = await db
+        .delete(schema.trips)
+        .where(eq(schema.trips.id, id))
+        .returning({ id: schema.trips.id });
+        
+      return result.length > 0;
+    } catch (error) {
+      console.error(`Error al eliminar viaje ${id}:`, error);
+      return false;
+    }
   }
   
   async searchTrips(params: {
