@@ -347,7 +347,24 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createVehicle(vehicle: InsertVehicle): Promise<Vehicle> {
-    const [newVehicle] = await db.insert(schema.vehicles).values(vehicle).returning();
+    console.log("Creando vehículo con datos:", JSON.stringify(vehicle, null, 2));
+    
+    // Aseguramos que los valores opcionales sean correctamente manejados
+    const vehicleData = {
+      plates: vehicle.plates,
+      brand: vehicle.brand,
+      model: vehicle.model,
+      economicNumber: vehicle.economicNumber,
+      capacity: vehicle.capacity,
+      hasAC: vehicle.hasAC === true,
+      hasRecliningSeats: vehicle.hasRecliningSeats === true,
+      services: Array.isArray(vehicle.services) ? vehicle.services : [],
+      description: vehicle.description || null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    const [newVehicle] = await db.insert(schema.vehicles).values(vehicleData).returning();
     return newVehicle;
   }
   
