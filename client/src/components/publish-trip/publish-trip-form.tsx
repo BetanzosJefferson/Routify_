@@ -603,20 +603,31 @@ export function PublishTripForm() {
           const startDate = trip.departureDate?.split("T")[0] || format(new Date(), "yyyy-MM-dd");
           const endDate = startDate; // Mismo día para edición
           
-          // Primero actualizamos los valores
-          form.setValue("routeId", trip.routeId);
-          form.setValue("startDate", startDate);
-          form.setValue("endDate", endDate);
-          form.setValue("capacity", trip.capacity);
-          form.setValue("price", trip.price || 0);
-          form.setValue("vehicleType", trip.vehicleType || "standard");
-          form.setValue("segmentPrices", segmentPricesFromTrip);
-          form.setValue("stopTimes", allStopTimes);
-            
-          // Luego forzamos que se muestren en el formulario 
+          // Primero hacemos un reset completo del formulario con los datos
+          form.reset({
+            routeId: trip.routeId,
+            startDate: startDate,
+            endDate: endDate,
+            capacity: trip.capacity,
+            price: trip.price || 0,
+            vehicleType: trip.vehicleType || "standard",
+            segmentPrices: segmentPricesFromTrip,
+            stopTimes: allStopTimes,
+          }, { 
+            // Esta opción es clave para que los campos controlados se actualicen
+            keepDirtyValues: false, 
+            keepErrors: false,
+            keepDirty: false,
+            keepIsSubmitted: false,
+            keepTouched: false,
+            keepIsValid: false,
+            keepSubmitCount: false,
+          });
+          
+          // También actualizamos los valores directamente para asegurarnos que llegan a la UI
+          // Después del reset que reinicia el estado interno del formulario
           setTimeout(() => {
-            // Este timeout permite que React actualice los componentes después del setValue
-            console.log("Formulario actualizado con datos:", {
+            console.log("Aplicando valores al formulario:", {
               routeId: trip.routeId,
               startDate,
               endDate, 
@@ -627,7 +638,16 @@ export function PublishTripForm() {
               stopTimes: allStopTimes
             });
             
-            // Trigger rerender del formulario
+            // Forzar actualización de valores individuales
+            form.setValue("routeId", trip.routeId, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+            form.setValue("startDate", startDate, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+            form.setValue("endDate", endDate, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+            form.setValue("capacity", trip.capacity, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+            form.setValue("vehicleType", trip.vehicleType || "standard", { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+            form.setValue("segmentPrices", segmentPricesFromTrip, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+            form.setValue("stopTimes", allStopTimes, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+            
+            // Forzar revalidación completa
             form.trigger();
           }, 100);
           
@@ -917,6 +937,7 @@ export function PublishTripForm() {
                                 </td>
                                 <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                                   <TimeInput
+                                    key={`time-input-${index}-${stopTimes[index]?.hour || '08'}-${stopTimes[index]?.minute || '00'}-${stopTimes[index]?.ampm || 'AM'}`}
                                     value={stopTimes[index] ? `${stopTimes[index]?.hour}:${stopTimes[index]?.minute} ${stopTimes[index]?.ampm}` : "08:00 AM"}
                                     onChange={(timeString) => {
                                       updateStopTime(index, timeString);
