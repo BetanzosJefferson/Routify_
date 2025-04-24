@@ -247,9 +247,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const tripData = validationResult.data;
       
-      // Convert time format
-      const departureTime = `${tripData.departureHour.padStart(2, '0')}:${tripData.departureMinute.padStart(2, '0')} ${tripData.departureAmPm}`;
-      const arrivalTime = `${tripData.arrivalHour.padStart(2, '0')}:${tripData.arrivalMinute.padStart(2, '0')} ${tripData.arrivalAmPm}`;
+      // Usar los tiempos proporcionados por el cliente o extraerlos de los stopTimes
+      let departureTime = tripData.departureTime || "";
+      let arrivalTime = tripData.arrivalTime || "";
+      
+      // Si no tenemos tiempos explícitos pero tenemos stopTimes, usamos el primero y último
+      if ((!departureTime || !arrivalTime) && tripData.stopTimes && tripData.stopTimes.length > 0) {
+        const stopTimes = tripData.stopTimes;
+        // El primer tiempo de parada es la salida
+        if (!departureTime && stopTimes[0]) {
+          departureTime = `${stopTimes[0].hour.padStart(2, '0')}:${stopTimes[0].minute.padStart(2, '0')} ${stopTimes[0].ampm}`;
+        }
+        // El último tiempo de parada es la llegada
+        if (!arrivalTime && stopTimes[stopTimes.length - 1]) {
+          const lastStop = stopTimes[stopTimes.length - 1];
+          arrivalTime = `${lastStop.hour.padStart(2, '0')}:${lastStop.minute.padStart(2, '0')} ${lastStop.ampm}`;
+        }
+      }
       
       // Get the route details to generate all possible sub-trips
       const route = await storage.getRouteWithSegments(tripData.routeId);
