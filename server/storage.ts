@@ -11,7 +11,11 @@ import {
   RouteWithSegments,
   TripWithRouteInfo,
   ReservationWithDetails,
-  SegmentPrice
+  SegmentPrice,
+  Vehicle,
+  InsertVehicle,
+  Commission,
+  InsertCommission
 } from "@shared/schema";
 
 export interface IStorage {
@@ -50,6 +54,20 @@ export interface IStorage {
   getPassengers(reservationId: number): Promise<Passenger[]>;
   createPassenger(passenger: InsertPassenger): Promise<Passenger>;
   deletePassengersByReservation(reservationId: number): Promise<boolean>;
+  
+  // Vehicle methods
+  getVehicles(): Promise<Vehicle[]>;
+  getVehicle(id: number): Promise<Vehicle | undefined>;
+  createVehicle(vehicle: InsertVehicle): Promise<Vehicle>;
+  updateVehicle(id: number, vehicle: Partial<Vehicle>): Promise<Vehicle | undefined>;
+  deleteVehicle(id: number): Promise<boolean>;
+  
+  // Commission methods
+  getCommissions(): Promise<Commission[]>;
+  getCommission(id: number): Promise<Commission | undefined>;
+  createCommission(commission: InsertCommission): Promise<Commission>;
+  updateCommission(id: number, commission: Partial<Commission>): Promise<Commission | undefined>;
+  deleteCommission(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -57,11 +75,15 @@ export class MemStorage implements IStorage {
   private trips: Map<number, Trip>;
   private reservations: Map<number, Reservation>;
   private passengers: Map<number, Passenger>;
+  private vehicles: Map<number, Vehicle>;
+  private commissions: Map<number, Commission>;
   
   private routeId: number;
   private tripId: number;
   private reservationId: number;
   private passengerId: number;
+  private vehicleId: number;
+  private commissionId: number;
   
   constructor() {
     this.routes = new Map();
