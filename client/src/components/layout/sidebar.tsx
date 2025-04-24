@@ -10,7 +10,9 @@ import {
   CarIcon, 
   HomeIcon, 
   Settings2,
-  ClipboardListIcon
+  ClipboardListIcon,
+  TruckIcon,
+  PercentIcon
 } from "lucide-react";
 
 interface SidebarProps {
@@ -140,6 +142,23 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               onClick={() => handleTabClick("users")}
             >
               Usuarios
+            </NavItem>
+          </NavSection>
+          
+          <NavSection title="Flota y Finanzas">
+            <NavItem 
+              icon={<TruckIcon className="h-5 w-5" />} 
+              active={activeTab === "vehicles"}
+              onClick={() => handleTabClick("vehicles")}
+            >
+              Unidades
+            </NavItem>
+            <NavItem 
+              icon={<PercentIcon className="h-5 w-5" />} 
+              active={activeTab === "commissions"}
+              onClick={() => handleTabClick("commissions")}
+            >
+              Gestión de comisiones
             </NavItem>
           </NavSection>
           
