@@ -11,6 +11,7 @@ import TripSummary from "@/components/trip-summary/trip-summary";
 import { UsersPage } from "@/components/users/users-page";
 import VehiclesPage from "@/components/vehicles/vehicles-page";
 import CommissionsPage from "@/components/commissions/commissions-page";
+import { BoardingList } from "@/components/boarding-list/boarding-list";
 import { TabType } from "@/hooks/use-active-tab";
 
 export default function Dashboard() {
