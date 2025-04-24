@@ -154,15 +154,29 @@ export function VehiclesPage() {
   // Cuando se abre el diálogo de edición
   const handleEdit = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
+    
+    // Convertimos hasAC y hasRecliningSeats a servicios para la visualización/edición
+    const services = [...(vehicle.services || [])];
+    
+    // Solo agregamos estos servicios si están activos y no ya incluidos
+    if (vehicle.hasAC && !services.includes("Aire acondicionado")) {
+      services.push("Aire acondicionado");
+    }
+    
+    if (vehicle.hasRecliningSeats && !services.includes("Asientos reclinables")) {
+      services.push("Asientos reclinables");
+    }
+    
     setForm({
       plates: vehicle.plates,
       brand: vehicle.brand,
       model: vehicle.model,
       economicNumber: vehicle.economicNumber,
       capacity: vehicle.capacity,
+      // Mantenemos estos valores para compatibilidad con vehículos existentes
       hasAC: vehicle.hasAC || false,
       hasRecliningSeats: vehicle.hasRecliningSeats || false,
-      services: vehicle.services || [],
+      services: services,
       description: vehicle.description || ""
     });
     setIsEditOpen(true);
@@ -208,13 +222,42 @@ export function VehiclesPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Procesamos los servicios para detectar si contienen "Aire acondicionado" o "Asientos reclinables"
+    // y los convertimos a las propiedades hasAC y hasRecliningSeats
+    const processedForm = {...form};
+    
+    // Ver si algún servicio debe convertirse a hasAC o hasRecliningSeats
+    const airConditioningIndex = processedForm.services.findIndex(
+      service => service.toLowerCase().includes("aire") || service.toLowerCase() === "ac"
+    );
+    if (airConditioningIndex !== -1) {
+      processedForm.hasAC = true;
+      // Eliminamos del array de servicios
+      processedForm.services = [
+        ...processedForm.services.slice(0, airConditioningIndex),
+        ...processedForm.services.slice(airConditioningIndex + 1)
+      ];
+    }
+    
+    const recliningSeatsIndex = processedForm.services.findIndex(
+      service => service.toLowerCase().includes("reclinable")
+    );
+    if (recliningSeatsIndex !== -1) {
+      processedForm.hasRecliningSeats = true;
+      // Eliminamos del array de servicios
+      processedForm.services = [
+        ...processedForm.services.slice(0, recliningSeatsIndex),
+        ...processedForm.services.slice(recliningSeatsIndex + 1)
+      ];
+    }
+    
     if (isEditOpen && selectedVehicle) {
       updateVehicleMutation.mutate({ 
         id: selectedVehicle.id, 
-        data: form 
+        data: processedForm 
       });
     } else {
-      createVehicleMutation.mutate(form);
+      createVehicleMutation.mutate(processedForm);
     }
   };
   
@@ -267,17 +310,21 @@ export function VehiclesPage() {
                       <TableCell>{vehicle.capacity} pasajeros</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
+                          {/* Combinamos todos los servicios, incluidos AC y asientos reclinables cuando existen */}
                           {vehicle.hasAC && (
-                            <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">AC</span>
+                            <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Aire acondicionado</span>
                           )}
                           {vehicle.hasRecliningSeats && (
-                            <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800">Asientos reclinables</span>
+                            <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Asientos reclinables</span>
                           )}
                           {vehicle.services?.map((service, idx) => (
-                            <span key={idx} className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                            <span key={idx} className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
                               {service}
                             </span>
                           ))}
+                          {!vehicle.hasAC && !vehicle.hasRecliningSeats && (!vehicle.services || vehicle.services.length === 0) && (
+                            <span className="text-gray-500 italic">Sin servicios</span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
@@ -384,25 +431,7 @@ export function VehiclesPage() {
                 />
               </div>
               
-              {/* Switches para servicios principales */}
-              <div className="space-y-4 col-span-2">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="hasAC"
-                    checked={form.hasAC}
-                    onCheckedChange={(checked) => handleSwitchChange(checked, "hasAC")}
-                  />
-                  <Label htmlFor="hasAC">Aire Acondicionado</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="hasRecliningSeats"
-                    checked={form.hasRecliningSeats}
-                    onCheckedChange={(checked) => handleSwitchChange(checked, "hasRecliningSeats")}
-                  />
-                  <Label htmlFor="hasRecliningSeats">Asientos Reclinables</Label>
-                </div>
-              </div>
+              {/* Quitamos los switches dedicados para que se añadan como servicios adicionales */}
               
               {/* Sección para agregar servicios adicionales */}
               <div className="col-span-2">
@@ -544,25 +573,7 @@ export function VehiclesPage() {
                 />
               </div>
               
-              {/* Switches para servicios principales */}
-              <div className="space-y-4 col-span-2">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="hasAC-edit"
-                    checked={form.hasAC}
-                    onCheckedChange={(checked) => handleSwitchChange(checked, "hasAC")}
-                  />
-                  <Label htmlFor="hasAC-edit">Aire Acondicionado</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="hasRecliningSeats-edit"
-                    checked={form.hasRecliningSeats}
-                    onCheckedChange={(checked) => handleSwitchChange(checked, "hasRecliningSeats")}
-                  />
-                  <Label htmlFor="hasRecliningSeats-edit">Asientos Reclinables</Label>
-                </div>
-              </div>
+              {/* Quitamos los switches dedicados para que se manejen como servicios adicionales */}
               
               {/* Sección para agregar servicios adicionales */}
               <div className="col-span-2">
