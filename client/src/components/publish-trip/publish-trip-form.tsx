@@ -943,6 +943,9 @@ export function PublishTripForm() {
                           Configure los tiempos estimados de llegada a cada parada de la ruta. Estos tiempos se utilizarán en itinerarios y 
                           para calcular estimaciones de tiempo para pasajeros.
                         </p>
+                        <p className="text-sm text-primary-foreground bg-primary/10 p-3 rounded mb-4">
+                          Edite directamente los horarios haciendo clic en el campo de tiempo. Los cambios se guardarán cuando publique o actualice el viaje.
+                        </p>
                         
                         <div className="overflow-x-auto">
                           <table className="min-w-full divide-y divide-gray-200">
@@ -950,7 +953,6 @@ export function PublishTripForm() {
                               <tr>
                                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
                                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario</th>
-                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acción</th>
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
@@ -974,20 +976,39 @@ export function PublishTripForm() {
                                     )}
                                   </td>
                                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                    {stopTimes[index] && (
-                                      <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-medium bg-gray-100 rounded">
-                                        {`${stopTimes[index]?.hour}:${stopTimes[index]?.minute} ${stopTimes[index]?.ampm}`}
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleEditTime(index)}
-                                    >
-                                      Editar
-                                    </Button>
+                                    <TimeInput
+                                      value={stopTimes[index] ? `${stopTimes[index]?.hour}:${stopTimes[index]?.minute} ${stopTimes[index]?.ampm}` : "08:00 AM"}
+                                      onChange={(timeString) => {
+                                        const [time, period] = timeString.split(' ');
+                                        const [hour, minute] = time.split(':');
+                                        
+                                        // Actualizar el tiempo directamente en el estado
+                                        const newStopTimes = [...stopTimes];
+                                        newStopTimes[index] = {
+                                          hour: hour,
+                                          minute: minute,
+                                          ampm: period as "AM" | "PM",
+                                          location: location // Aseguramos que la ubicación esté asociada
+                                        };
+                                        setStopTimes(newStopTimes);
+                                        
+                                        // Si es origen o destino final, también actualizar los valores del formulario principal
+                                        if (index === 0) {
+                                          form.setValue('departureHour', hour);
+                                          form.setValue('departureMinute', minute);
+                                          form.setValue('departureAmPm', period as "AM" | "PM");
+                                        } else if (routeSegmentsQuery.data && index === [
+                                          routeSegmentsQuery.data.origin, 
+                                          ...(routeSegmentsQuery.data.stops || []), 
+                                          routeSegmentsQuery.data.destination
+                                        ].length - 1) {
+                                          form.setValue('arrivalHour', hour);
+                                          form.setValue('arrivalMinute', minute);
+                                          form.setValue('arrivalAmPm', period as "AM" | "PM");
+                                        }
+                                      }}
+                                      className="w-32"
+                                    />
                                   </td>
                                 </tr>
                               ))}
