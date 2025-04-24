@@ -879,7 +879,6 @@ export function PublishTripForm() {
                                   <Input
                                     type="number"
                                     value={segment.price}
-                                    defaultValue={segment.price.toString()}
                                     onChange={(e) => updateSegmentPrice(index, parseInt(e.target.value) || 0)}
                                     className="w-24"
                                   />
