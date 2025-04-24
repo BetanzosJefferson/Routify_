@@ -32,13 +32,15 @@ export default function TripSummary({ className }: TripSummaryProps) {
   // Fetch all trips
   const { data: trips, isLoading: isLoadingTrips } = useQuery<TripWithRouteInfo[]>({
     queryKey: ["/api/trips"],
-    staleTime: 30000, // 30 seconds
+    staleTime: 5000, // Reducir a 5 segundos para actualizaciones más frecuentes
+    refetchInterval: 15000, // Recargar datos cada 15 segundos
   });
 
   // Fetch all reservations
   const { data: reservations, isLoading: isLoadingReservations } = useQuery<ReservationWithPassengers[]>({
     queryKey: ["/api/reservations"],
-    staleTime: 30000, // 30 seconds
+    staleTime: 5000, // Reducir a 5 segundos para actualizaciones más frecuentes
+    refetchInterval: 15000, // Recargar datos cada 15 segundos
   });
   
   // Filtrar para obtener solo viajes principales (no sub-viajes) y por fecha seleccionada
@@ -47,8 +49,19 @@ export default function TripSummary({ className }: TripSummaryProps) {
     if (trip.isSubTrip) return false;
     
     // Filtrar por fecha actual
+    // Convertir la fecha de salida usando la misma técnica para evitar problemas de zona horaria
     const tripDate = new Date(trip.departureDate);
-    return isSameDay(tripDate, currentDate);
+    const tripYear = tripDate.getFullYear();
+    const tripMonth = tripDate.getMonth();
+    const tripDay = tripDate.getDate();
+    
+    // Extraer componentes de la fecha actual para comparación
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
+    const currentDay = currentDate.getDate();
+    
+    // Comparar componentes de fecha en lugar de usar isSameDay
+    return tripYear === currentYear && tripMonth === currentMonth && tripDay === currentDay;
   }) || [];
   
   // Navegación de fecha
@@ -158,8 +171,15 @@ export default function TripSummary({ className }: TripSummaryProps) {
               className="pl-10 pr-4 py-2 w-full"
               value={formatDateForInput(currentDate)}
               onChange={(e) => {
-                const newDate = e.target.value ? new Date(e.target.value) : new Date();
-                setCurrentDate(newDate);
+                if (e.target.value) {
+                  // Al crear la fecha con formato yyyy-MM-dd, usar el constructor con año, mes, día para evitar problemas de zona horaria
+                  const [year, month, day] = e.target.value.split('-').map(Number);
+                  // Meses en JavaScript son 0-indexados (0-11), pero en el input date son 1-indexados (1-12)
+                  const newDate = new Date(year, month - 1, day, 12, 0, 0);
+                  setCurrentDate(newDate);
+                } else {
+                  setCurrentDate(new Date());
+                }
               }}
             />
           </div>
