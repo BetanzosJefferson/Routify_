@@ -184,7 +184,7 @@ export default function TripListNew({ onEditTrip }: TripListProps) {
   };
 
   // Obtener el nombre de la ciudad desde la ubicación completa
-  const getCityName = (fullLocation: string) => {
+  const getCityName = (fullLocation: string | undefined) => {
     if (!fullLocation) return '';
     // Formato esperado: "Ciudad, Estado - Detalles"
     const parts = fullLocation.split(',');

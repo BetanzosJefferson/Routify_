@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -29,7 +29,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { TimeInput } from "@/components/ui/time-input";
 import { publishTripValidationSchema, type Route, type RouteWithSegments, type SegmentPrice } from "@shared/schema";
 import { generateSegmentsFromRoute, isSameCity } from "@/lib/utils";
-import TripList from "./trip-list";
+import TripListNew from "./trip-list-new";
+// Importamos el componente con otro nombre para evitar conflictos
 
 type StopTime = {
   hour: string;
@@ -982,7 +983,9 @@ export function PublishTripForm() {
         </Card>
       ) : (
         // Mostrar la lista de viajes cuando no se muestra el formulario
-        <TripList onEditTrip={handleEditTrip} />
+        <div key="trip-list-container">
+          <TripListNew onEditTrip={handleEditTrip} />
+        </div>
       )}
       
       <div className="text-sm text-gray-500 pt-4">
