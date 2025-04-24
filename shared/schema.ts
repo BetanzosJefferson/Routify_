@@ -127,20 +127,16 @@ export const publishTripValidationSchema = z.object({
   routeId: z.number().min(1, "Route selection is required"),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
-  departureHour: z.string().min(1, "Departure hour is required"),
-  departureMinute: z.string().min(1, "Departure minute is required"),
-  departureAmPm: z.enum(["AM", "PM"]),
-  arrivalHour: z.string().min(1, "Arrival hour is required"),
-  arrivalMinute: z.string().min(1, "Arrival minute is required"),
-  arrivalAmPm: z.enum(["AM", "PM"]),
   capacity: z.number().min(1, "Capacity is required"),
-  price: z.number().min(0, "Price is required"),
   vehicleType: z.string().min(1, "Vehicle type is required"),
+  price: z.number().optional(),
   segmentPrices: z.array(
     z.object({
       origin: z.string(),
       destination: z.string(),
-      price: z.number().min(0, "Price must be a positive number")
+      price: z.number().min(0, "Price must be a positive number"),
+      departureTime: z.string().optional(),
+      arrivalTime: z.string().optional()
     })
   ),
   // Campo opcional para tiempos de parada personalizados
