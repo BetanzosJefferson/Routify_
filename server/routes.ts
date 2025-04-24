@@ -443,6 +443,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
         
+        // Para evitar duplicados, omitiremos los segmentos con solo una parada de diferencia
+        // si no es un segmento significativo (como origen a primera parada o última parada a destino)
+        const isShortSegment = j === i + 1;
+        const isFirstToSecond = i === 0 && j === 1; // Origen a primera parada
+        const isSecondToLast = j === allPoints.length - 1 && i === allPoints.length - 2; // Última parada a destino
+        
+        // Solo incluir segmentos cortos si son significativos o si la ruta tiene pocas paradas
+        if (isShortSegment && !isFirstToSecond && !isSecondToLast && allPoints.length > 3) {
+          console.log(`Saltando segmento corto no significativo: ${allPoints[i]} -> ${allPoints[j]}`);
+          continue;
+        }
+        
         allSegments.push({
           origin: allPoints[i],
           destination: allPoints[j],
@@ -741,15 +753,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Obtener viaje actual antes de actualizar
+      const currentTrip = await storage.getTrip(id);
+      if (!currentTrip) {
+        return res.status(404).json({ error: "Trip not found" });
+      }
+      
       const tripData = validationResult.data;
+      
+      // Si el viaje tiene segmentPrices del formulario, preservarlos
+      if (tripData.segmentPrices && Array.isArray(tripData.segmentPrices)) {
+        console.log("Actualizando precios por segmento:", tripData.segmentPrices);
+      } else if (currentTrip.segmentPrices) {
+        // Preservar los segmentPrices actuales si no se proporcionaron nuevos
+        tripData.segmentPrices = currentTrip.segmentPrices;
+        console.log("Preservando precios por segmento existentes");
+      }
+      
+      // Preservar stopTimes si están configurados
+      if (tripData.stopTimes && Array.isArray(tripData.stopTimes)) {
+        console.log("Actualizando tiempos de parada:", tripData.stopTimes);
+      }
+      
+      // Preservar campos críticos que no deberían ser nulos
+      if (tripData.price === undefined || tripData.price === null) {
+        tripData.price = currentTrip.price;
+      }
+      
+      if (tripData.capacity === undefined || tripData.capacity === null) {
+        tripData.capacity = currentTrip.capacity;
+      }
+      
+      // Actualizar el viaje principal
       const updatedTrip = await storage.updateTrip(id, tripData);
       
       if (!updatedTrip) {
         return res.status(404).json({ error: "Trip not found" });
       }
       
+      // Si es un viaje principal (no un sub-viaje), actualizar también los sub-viajes
+      if (!currentTrip.isSubTrip) {
+        // Conseguir todos los sub-viajes asociados
+        const trips = await storage.getTrips();
+        const subTrips = trips.filter(t => t.parentTripId === id);
+        
+        if (subTrips.length > 0) {
+          console.log(`Actualizando ${subTrips.length} sub-viajes asociados al viaje principal ${id}`);
+          
+          for (const subTrip of subTrips) {
+            // Para cada sub-viaje, actualizamos fecha, capacidad y tipo de vehículo
+            // pero preservamos su precio específico por segmento
+            const subTripUpdate: Partial<Trip> = {
+              departureDate: tripData.departureDate || updatedTrip.departureDate,
+              arrivalDate: tripData.arrivalDate || updatedTrip.arrivalDate,
+              capacity: tripData.capacity || updatedTrip.capacity,
+              vehicleType: tripData.vehicleType || updatedTrip.vehicleType,
+            };
+            
+            await storage.updateTrip(subTrip.id, subTripUpdate);
+          }
+          
+          console.log("Sub-viajes actualizados correctamente");
+        }
+      }
+      
       res.json(updatedTrip);
     } catch (error) {
+      console.error("Error updating trip:", error);
       res.status(500).json({ error: "Failed to update trip" });
     }
   });
