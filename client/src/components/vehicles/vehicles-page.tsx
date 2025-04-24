@@ -48,7 +48,7 @@ export function VehiclesPage() {
   const [newService, setNewService] = useState("");
   
   // Para obtener todos los vehículos
-  const { data: vehicles, isLoading } = useQuery({
+  const { data: vehicles, isLoading, isError } = useQuery({
     queryKey: ["/api/vehicles"],
     queryFn: async () => {
       try {
@@ -57,7 +57,7 @@ export function VehiclesPage() {
         return await res.json() as Vehicle[];
       } catch (error) {
         console.error("Error fetching vehicles:", error);
-        return [];
+        throw error;
       }
     }
   });
