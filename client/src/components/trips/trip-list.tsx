@@ -1,21 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { 
-  Loader2Icon, 
-  MapPinIcon, 
-  CalendarIcon, 
-  FilterIcon, 
-  ChevronLeftIcon, 
-  ChevronRightIcon,
-  CarIcon,
-  UserIcon,
-  EyeIcon,
-  ArrowRightIcon 
-} from "lucide-react";
+import { Loader2Icon, MapPinIcon, CalendarIcon, FilterIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { extractLocationsFromTrips } from "@/lib/trip-utils";
 
 // Función para abreviar ubicaciones en móvil
@@ -81,16 +69,6 @@ function calculateDuration(departureTime: string, arrivalTime: string): string {
     return `${hours}h`;
   } else {
     return `${hours}h ${minutes}m`;
-  }
-}
-
-// Función para formatear la fecha en español
-function formatDateInSpanish(date: Date): string {
-  try {
-    return format(date, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es });
-  } catch (error) {
-    console.error("Error formatting date:", error);
-    return "Fecha inválida";
   }
 }
 
@@ -402,106 +380,122 @@ export function TripList() {
           Error al cargar los viajes. Por favor, inténtalo de nuevo.
         </div>
       ) : trips && trips.length > 0 ? (
-        <div>
-          {/* Título con fecha para la vista de gestión de viajes */}
-          <div className="mb-4 mt-8">
-            <h3 className="text-xl font-semibold text-gray-800">
-              Viajes para {formatDateInSpanish(new Date(date))}
-            </h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Gestiona los viajes programados para esta fecha, asigna vehículos y conductores.
-            </p>
-          </div>
-          
-          <div className="space-y-4">
-            {sortedTrips.map((trip) => (
-              <div key={trip.id} className="border rounded-lg overflow-hidden bg-white hover:shadow-md transition-shadow">
-                <div className="p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex flex-col">
-                        <div className="text-sm font-medium text-gray-700">
-                          {trip.route.name}
-                        </div>
-                        <div className="flex items-center text-sm text-gray-500 mt-1">
-                          <CalendarIcon className="h-4 w-4 mr-1" />
-                          <span>{format(new Date(trip.departureDate), "dd/MM/yyyy")}</span>
-                          <span className="mx-2">•</span>
-                          <span>{trip.departureTime} - {trip.arrivalTime}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-blue-50 text-blue-600 font-medium text-xs px-2 py-1 rounded-full">
-                      Programado
-                    </div>
+        <div className="grid grid-cols-1 gap-4">
+          {sortedTrips.map((trip) => (
+            <div key={trip.id} className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-white">
+              <div className="border-b border-gray-100 p-3 flex justify-between items-center">
+                <div className="flex items-center">
+                  <div className="mr-2 p-1.5 bg-gray-100 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
-                  
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <div className="text-xs text-gray-500 uppercase mb-1">Ruta</div>
-                      <div className="font-medium">
-                        {trip.isSubTrip 
-                          ? `${abbreviateLocation(trip.segmentOrigin || '')} → ${abbreviateLocation(trip.segmentDestination || '')}`
-                          : `${abbreviateLocation(trip.route.origin)} → ${abbreviateLocation(trip.route.destination)}`
-                        }
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {trip.route.stops?.length || 0} paradas intermedias
-                      </div>
+                  <div>
+                    <div className="text-sm font-medium">
+                      {trip.isSubTrip ? (
+                        <span>Directo · {trip.availableSeats} asientos disponibles</span>
+                      ) : (
+                        <span>Directo · {trip.availableSeats} asientos disponibles</span>
+                      )}
                     </div>
-                    
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <div className="text-xs text-gray-500 uppercase mb-1">Vehículo</div>
-                      <div className="font-medium flex items-center text-amber-600">
-                        <CarIcon className="h-4 w-4 mr-1" />
-                        No asignado
-                      </div>
-                    </div>
-                    
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <div className="text-xs text-gray-500 uppercase mb-1">Conductor</div>
-                      <div className="font-medium flex items-center text-amber-600">
-                        <UserIcon className="h-4 w-4 mr-1" />
-                        No asignado
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center mt-4 pt-3 border-t space-x-2">
-                    <div className="text-sm text-gray-500 mr-auto">
-                      <span className="font-medium">{trip.availableSeats}</span> de <span className="font-medium">{trip.capacity}</span> asientos disponibles
-                    </div>
-                    
-                    <Button variant="outline" className="text-sm">
-                      Asignar Vehículo
-                    </Button>
-                    
-                    <Button variant="outline" className="text-sm">
-                      Asignar Conductor
-                    </Button>
-                    
-                    <Button variant="outline" className="text-sm flex items-center space-x-1">
-                      <EyeIcon className="h-4 w-4" />
-                      <span>Ver Segmentos</span>
-                    </Button>
                   </div>
                 </div>
+                <div className="text-base font-medium">
+                  {formatPrice(trip.isSubTrip && Array.isArray(trip.segmentPrices) && trip.segmentPrices.length > 0 
+                    ? trip.segmentPrices[0]?.price || trip.price 
+                    : trip.price)}
+                  <span className="text-xs text-gray-500 ml-1">MXN</span>
+                </div>
               </div>
-            ))}
-          </div>
+
+              <div className="p-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="flex flex-col">
+                    <div className="text-lg font-bold">{trip.departureTime}</div>
+                    <div className="text-sm text-gray-500 mt-1">
+                      {trip.isSubTrip ? trip.segmentOrigin : trip.route.origin}
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="text-xs text-gray-500 mb-1">
+                      {calculateDuration(trip.departureTime, trip.arrivalTime)}
+                    </div>
+                    <div className="relative w-full flex items-center justify-center">
+                      <div className="border-t border-gray-300 w-full"></div>
+                      <div className="absolute">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14"></path>
+                          <path d="M12 5l7 7-7 7"></path>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-end">
+                    <div className="text-lg font-bold">{trip.arrivalTime}</div>
+                    <div className="text-sm text-gray-500 mt-1 text-right">
+                      {trip.isSubTrip ? trip.segmentDestination : trip.route.destination}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-4 flex items-center justify-between">
+                  <div className="text-sm">
+                    <span className="capitalize">{trip.vehicleType}</span> • 
+                    <span className="ml-1 font-medium">
+                      {Math.round(((trip.capacity - trip.availableSeats) / trip.capacity) * 100)}%
+                    </span>
+                    <span className="text-gray-500"> ocupación</span>
+                  </div>
+                  
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => handleReserve(trip)}
+                    disabled={trip.availableSeats <= 0}
+                  >
+                    Reservar
+                  </Button>
+                </div>
+                
+                {trip.isSubTrip && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <span className="flex items-center text-xs text-gray-500">
+                      <span className="inline-block h-2 w-2 rounded-full bg-indigo-500 mr-2"></span>
+                      Sub-viaje de {trip.route.name}
+                    </span>
+                  </div>
+                )}
+                
+                {!trip.isSubTrip && trip.numStops > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <span className="text-xs text-gray-500">
+                      {trip.numStops} paradas en ruta
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
-        <div className="text-center p-8 bg-gray-50 rounded-lg border border-gray-200">
-          <div className="text-gray-500 mb-2">No se encontraron viajes para los criterios seleccionados.</div>
-          <div className="text-sm text-gray-400">Prueba ajustando los filtros de búsqueda.</div>
-        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <div className="text-center text-gray-500 mb-4">
+              <CalendarIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-lg">No hay viajes disponibles para esta fecha.</p>
+              <p className="text-sm mt-2">Intenta con otra fecha o modifica los filtros de búsqueda.</p>
+            </div>
+          </CardContent>
+        </Card>
       )}
       
-      {/* Modal para reservar */}
-      {showModal && selectedTrip && (
-        <ReservationStepsModal 
-          tripInfo={selectedTrip} 
+      {/* Reservation Modal */}
+      {selectedTrip && (
+        <ReservationStepsModal
+          trip={selectedTrip}
+          isOpen={showModal}
           onClose={handleCloseModal}
         />
       )}
