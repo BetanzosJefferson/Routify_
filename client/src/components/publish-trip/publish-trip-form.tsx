@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { ClockIcon, CalendarIcon, InfoIcon, Loader2Icon, CalendarPlusIcon, XIcon } from "lucide-react";
+import { InfoIcon, Loader2Icon, CalendarPlusIcon, XIcon, HelpCircleIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import {
@@ -25,10 +25,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TimeInput } from "@/components/ui/time-input";
 import { publishTripValidationSchema, type Route, type RouteWithSegments, type SegmentPrice } from "@shared/schema";
-import { generateSegmentsFromRoute, convertTo24Hour, isSameCity } from "@/lib/utils";
+import { generateSegmentsFromRoute, isSameCity } from "@/lib/utils";
 import TripList from "./trip-list";
 
 type StopTime = {
@@ -38,37 +38,21 @@ type StopTime = {
   location: string;
 };
 
-// Extendiendo SegmentPrice para incluir tiempos
-interface SegmentTimeFields {
-  departureHour: string;
-  departureMinute: string;
-  departureAmPm: "AM" | "PM";
-  arrivalHour: string;
-  arrivalMinute: string;
-  arrivalAmPm: "AM" | "PM";
-  // Formato simplificado para enviar al backend
+type SegmentTimePrice = SegmentPrice & {
   departureTime?: string;
   arrivalTime?: string;
-}
-
-type SegmentTimePrice = SegmentPrice & SegmentTimeFields;
+};
 
 type FormValues = {
   routeId: number;
   startDate: string;
   endDate: string;
-  departureHour: string;
-  departureMinute: string;
-  departureAmPm: "AM" | "PM";
-  arrivalHour: string;
-  arrivalMinute: string;
-  arrivalAmPm: "AM" | "PM";
   capacity: number;
-  availableSeats?: number; // Agregado para inicializar asientos disponibles
+  availableSeats?: number;
   price: number;
   vehicleType: string;
   segmentPrices: SegmentTimePrice[];
-  stopTimes?: StopTime[]; // Agregar tiempos de paradas intermedias
+  stopTimes?: StopTime[];
 };
 
 export function PublishTripForm() {
@@ -77,7 +61,6 @@ export function PublishTripForm() {
   const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
   const [segmentPrices, setSegmentPrices] = useState<SegmentTimePrice[]>([]);
   const [stopTimes, setStopTimes] = useState<Array<{hour: string, minute: string, ampm: "AM" | "PM", location?: string} | null>>([]);
-  const [editingSegment, setEditingSegment] = useState<{index: number, timeType: 'departure' | 'arrival'} | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingTripId, setEditingTripId] = useState<number | null>(null);
 
@@ -85,9 +68,7 @@ export function PublishTripForm() {
   const routesQuery = useQuery({
     queryKey: ["/api/routes"],
     placeholderData: [],
-    // Aseguramos que se haga la consulta real a la API
     enabled: true,
-    // Funciones personalizadas para la consulta
     queryFn: async () => {
       console.log("Cargando rutas para formulario...");
       const response = await fetch("/api/routes");
@@ -98,7 +79,6 @@ export function PublishTripForm() {
       console.log("Rutas cargadas para formulario:", data);
       return data;
     },
-    // Reintentamos la consulta automáticamente si falla
     retry: 3,
     retryDelay: 1000,
   });
@@ -121,12 +101,6 @@ export function PublishTripForm() {
       routeId: 0,
       startDate: format(new Date(), "yyyy-MM-dd"),
       endDate: format(new Date(), "yyyy-MM-dd"),
-      departureHour: "08",
-      departureMinute: "00",
-      departureAmPm: "AM",
-      arrivalHour: "12",
-      arrivalMinute: "00",
-      arrivalAmPm: "PM",
       capacity: 18,
       price: 450,
       vehicleType: "standard",
@@ -149,14 +123,7 @@ export function PublishTripForm() {
         const segmentPricesWithDefaultValues = segments.map(segment => ({
           origin: segment.origin,
           destination: segment.destination,
-          price: 0,
-          // Añadir campos de tiempo para cada segmento
-          departureHour: "08",
-          departureMinute: "00",
-          departureAmPm: "AM" as "AM", 
-          arrivalHour: "09",
-          arrivalMinute: "00",
-          arrivalAmPm: "AM" as "AM"
+          price: 0
         }));
         
         setSegmentPrices(segmentPricesWithDefaultValues);
@@ -187,24 +154,6 @@ export function PublishTripForm() {
     form.setValue("segmentPrices", updatedPrices);
   };
   
-  // Manejador para actualizar el tiempo de salida/llegada de un segmento
-  const updateSegmentTime = (index: number, timeType: 'departure' | 'arrival', field: 'hour' | 'minute' | 'ampm', value: string) => {
-    const updatedPrices = [...segmentPrices];
-    if (timeType === 'departure') {
-      updatedPrices[index] = {
-        ...updatedPrices[index],
-        [`departure${field.charAt(0).toUpperCase() + field.slice(1)}`]: value,
-      };
-    } else {
-      updatedPrices[index] = {
-        ...updatedPrices[index],
-        [`arrival${field.charAt(0).toUpperCase() + field.slice(1)}`]: value,
-      };
-    }
-    setSegmentPrices(updatedPrices);
-    form.setValue("segmentPrices", updatedPrices);
-  };
-  
   // Initialize the time arrays when the route is selected
   useEffect(() => {
     if (routeSegmentsQuery.data) {
@@ -221,17 +170,17 @@ export function PublishTripForm() {
       
       // Tiempo de origen (salida)
       initialTimes[0] = {
-        hour: form.getValues('departureHour'),
-        minute: form.getValues('departureMinute'),
-        ampm: form.getValues('departureAmPm'),
+        hour: "08",
+        minute: "00",
+        ampm: "AM",
         location: allLocations[0] || ""
       };
       
       // Tiempo de destino (llegada)
       initialTimes[initialTimes.length - 1] = {
-        hour: form.getValues('arrivalHour'),
-        minute: form.getValues('arrivalMinute'),
-        ampm: form.getValues('arrivalAmPm'),
+        hour: "12",
+        minute: "00",
+        ampm: "PM",
         location: allLocations[allLocations.length - 1] || ""
       };
       
@@ -240,7 +189,7 @@ export function PublishTripForm() {
         for (let i = 1; i < totalStops - 1; i++) {
           // Para paradas intermedias, creamos tiempos proporcionales
           initialTimes[i] = {
-            hour: "00",
+            hour: "10",
             minute: "00",
             ampm: "AM",
             location: allLocations[i] || ""
@@ -250,7 +199,7 @@ export function PublishTripForm() {
       
       setStopTimes(initialTimes);
     }
-  }, [routeSegmentsQuery.data, form]);
+  }, [routeSegmentsQuery.data]);
 
   // Actualizar el tiempo de parada directamente desde el input
   const updateStopTime = (index: number, timeString: string) => {
@@ -281,29 +230,46 @@ export function PublishTripForm() {
     };
     setStopTimes(newStopTimes);
     
-    // Si es el origen o el destino, actualizar los valores del formulario
-    let allLocationsLength = 0;
-    if (routeSegmentsQuery.data) {
-      allLocationsLength = [
-        routeSegmentsQuery.data.origin,
-        ...(routeSegmentsQuery.data.stops || []),
-        routeSegmentsQuery.data.destination
-      ].length;
-    }
+    // Actualizar tiempos de segmentos automáticamente
+    updateSegmentTimesFromStops(newStopTimes);
+  };
+
+  // Función para calcular los tiempos de los segmentos basados en los tiempos de las paradas
+  const updateSegmentTimesFromStops = (stopTimeArray: Array<{hour: string, minute: string, ampm: "AM" | "PM", location?: string} | null>) => {
+    if (!routeSegmentsQuery.data) return;
     
-    if (index === 0) {
-      // Origen
-      console.log("Actualizando tiempos de origen en el formulario");
-      form.setValue('departureHour', hour);
-      form.setValue('departureMinute', minute);
-      form.setValue('departureAmPm', ampm);
-    } else if (index === allLocationsLength - 1) {
-      // Destino - uso de allLocationsLength para ser consistente
-      console.log("Actualizando tiempos de destino en el formulario");
-      form.setValue('arrivalHour', hour);
-      form.setValue('arrivalMinute', minute);
-      form.setValue('arrivalAmPm', ampm);
-    }
+    // Obtener todas las ubicaciones (origen, paradas, destino)
+    const allLocations = [
+      routeSegmentsQuery.data.origin,
+      ...(routeSegmentsQuery.data.stops || []),
+      routeSegmentsQuery.data.destination
+    ];
+    
+    // Para cada segmento, encontrar el tiempo de salida y llegada correspondiente
+    const updatedSegmentPrices = segmentPrices.map(segment => {
+      // Encontrar índice del origen en allLocations
+      const originIndex = allLocations.findIndex(location => location === segment.origin);
+      // Encontrar índice del destino en allLocations
+      const destinationIndex = allLocations.findIndex(location => location === segment.destination);
+      
+      if (originIndex !== -1 && destinationIndex !== -1 && 
+          stopTimeArray[originIndex] && stopTimeArray[destinationIndex]) {
+        // Formatear tiempos
+        const departureTime = `${stopTimeArray[originIndex]?.hour}:${stopTimeArray[originIndex]?.minute} ${stopTimeArray[originIndex]?.ampm}`;
+        const arrivalTime = `${stopTimeArray[destinationIndex]?.hour}:${stopTimeArray[destinationIndex]?.minute} ${stopTimeArray[destinationIndex]?.ampm}`;
+        
+        return {
+          ...segment,
+          departureTime,
+          arrivalTime
+        };
+      }
+      
+      return segment;
+    });
+    
+    setSegmentPrices(updatedSegmentPrices);
+    form.setValue("segmentPrices", updatedSegmentPrices);
   };
 
   // Mutation for publishing trips
@@ -331,15 +297,14 @@ export function PublishTripForm() {
     },
     onSuccess: () => {
       toast({
-        title: "Trip published successfully",
-        description: "Your trip has been published for the selected date range.",
+        title: "Viaje publicado exitosamente",
+        description: "El viaje ha sido publicado para el rango de fechas seleccionado.",
       });
       
       // Reset form to default state but keep the selected route
-      const routeId = form.getValues("routeId");
       form.reset({
         ...form.getValues(),
-        segmentPrices: [...segmentPrices], // Keep current segment prices
+        segmentPrices: [...segmentPrices],
       });
       
       // Invalidate trips cache
@@ -350,7 +315,7 @@ export function PublishTripForm() {
     },
     onError: (error) => {
       toast({
-        title: "Failed to publish trip",
+        title: "Error al publicar el viaje",
         description: error.message,
         variant: "destructive",
       });
@@ -382,12 +347,21 @@ export function PublishTripForm() {
       return;
     }
     
+    // Verificar que todos los tiempos de paradas están configurados
+    const hasInvalidStopTimes = stopTimes.some(stop => stop === null);
+    if (hasInvalidStopTimes) {
+      toast({
+        title: "Error de validación",
+        description: "Debe configurar el tiempo para todas las paradas",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Preparar los tiempos de las paradas
     const formattedStopTimes = stopTimes
       .filter(stop => stop !== null && stop.hour && stop.minute && stop.ampm)
       .map(stop => {
-        // Asegurarse de que se guardan correctamente todos los campos
-        console.log("Enviando tiempo de parada:", stop);
         return {
           hour: stop!.hour,
           minute: stop!.minute,
@@ -396,31 +370,14 @@ export function PublishTripForm() {
         };
       });
     
-    // Convertir tiempos de segmentos a formato adecuado (HH:MM AM/PM)
-    const segmentsWithTimesAndPrices = segmentPrices.map((segment: SegmentTimePrice) => {
-      const departureTime = `${segment.departureHour}:${segment.departureMinute} ${segment.departureAmPm}`;
-      const arrivalTime = `${segment.arrivalHour}:${segment.arrivalMinute} ${segment.arrivalAmPm}`;
-      
-      return {
-        ...segment,
-        departureTime,
-        arrivalTime
-      };
-    });
-    
-    // Asignar el tipo explícitamente para evitar errores de TS
-    const segmentDataToSend = segmentsWithTimesAndPrices;
-    
     // Preparar datos comunes para crear o actualizar
     const tripData = {
       ...data,
       routeId: selectedRouteId,
       capacity,
       price: Number(data.price),
-      segmentPrices: segmentDataToSend,
+      segmentPrices,
       stopTimes: formattedStopTimes,
-      departureTime: `${data.departureHour}:${data.departureMinute} ${data.departureAmPm}`,
-      arrivalTime: `${data.arrivalHour}:${data.arrivalMinute} ${data.arrivalAmPm}`,
       availableSeats: capacity // Inicializa availableSeats con la capacidad
     };
     
@@ -480,12 +437,6 @@ export function PublishTripForm() {
       routeId: 0,
       startDate: format(new Date(), "yyyy-MM-dd"),
       endDate: format(new Date(), "yyyy-MM-dd"),
-      departureHour: "08",
-      departureMinute: "00",
-      departureAmPm: "AM",
-      arrivalHour: "12",
-      arrivalMinute: "00",
-      arrivalAmPm: "PM",
       capacity: 18,
       price: 450,
       vehicleType: "standard",
@@ -515,25 +466,6 @@ export function PublishTripForm() {
           return;
         }
         
-        // Convertir tiempos de llegada/salida a formato HH:MM AM/PM
-        const departureMatch = trip.departureTime ? trip.departureTime.match(/(\d+):(\d+)\s+(AM|PM)/) : null;
-        const arrivalMatch = trip.arrivalTime ? trip.arrivalTime.match(/(\d+):(\d+)\s+(AM|PM)/) : null;
-        
-        let departureHour = "08";
-        let departureMinute = "00";
-        let departureAmPm = "AM" as "AM" | "PM";
-        let arrivalHour = "12";
-        let arrivalMinute = "00";
-        let arrivalAmPm = "PM" as "AM" | "PM";
-        
-        if (departureMatch) {
-          [, departureHour, departureMinute, departureAmPm] = departureMatch;
-        }
-        
-        if (arrivalMatch) {
-          [, arrivalHour, arrivalMinute, arrivalAmPm] = arrivalMatch;
-        }
-        
         // Inicializar stopTimes desde los datos del viaje si están disponibles
         const stopTimesFromTrip = trip.stopTimes || [];
         let allStopTimes: Array<{hour: string, minute: string, ampm: "AM" | "PM", location?: string} | null> = [];
@@ -550,42 +482,10 @@ export function PublishTripForm() {
         // Inicializar segmentPrices desde los datos del viaje
         const segmentPricesFromTrip = trip.segmentPrices || [];
         
-        // Transformar segmentPrices a incluir los campos de tiempo
-        const formattedSegmentPrices = segmentPricesFromTrip.map((segment: any) => {
-          // Extraer tiempo de salida
-          type SegmentWithTimes = {
-            origin: string;
-            destination: string;
-            price: number;
-            departureTime?: string;
-            arrivalTime?: string;
-            [key: string]: any;
-          };
-          
-          const departureMatch = segment.departureTime ? 
-            segment.departureTime.match(/(\d+):(\d+)\s+(AM|PM)/) : 
-            null;
-          const arrivalMatch = segment.arrivalTime ? 
-            segment.arrivalTime.match(/(\d+):(\d+)\s+(AM|PM)/) : 
-            null;
-          
-          return {
-            origin: segment.origin,
-            destination: segment.destination,
-            price: segment.price,
-            departureHour: departureMatch ? departureMatch[1] : "08",
-            departureMinute: departureMatch ? departureMatch[2] : "00",
-            departureAmPm: (departureMatch ? departureMatch[3] : "AM") as "AM" | "PM",
-            arrivalHour: arrivalMatch ? arrivalMatch[1] : "09",
-            arrivalMinute: arrivalMatch ? arrivalMatch[2] : "00",
-            arrivalAmPm: (arrivalMatch ? arrivalMatch[3] : "AM") as "AM" | "PM",
-          };
-        });
-        
         // Establecer los estados
         setEditingTripId(tripId);
         setSelectedRouteId(trip.routeId);
-        setSegmentPrices(formattedSegmentPrices);
+        setSegmentPrices(segmentPricesFromTrip);
         setStopTimes(allStopTimes);
         
         // Actualizar el formulario
@@ -593,16 +493,10 @@ export function PublishTripForm() {
           routeId: trip.routeId,
           startDate: trip.startDate.split("T")[0],
           endDate: trip.endDate.split("T")[0],
-          departureHour,
-          departureMinute,
-          departureAmPm,
-          arrivalHour,
-          arrivalMinute,
-          arrivalAmPm,
           capacity: trip.capacity,
           price: trip.price,
           vehicleType: trip.vehicleType || "standard",
-          segmentPrices: formattedSegmentPrices,
+          segmentPrices: segmentPricesFromTrip,
           stopTimes: stopTimesFromTrip
         });
         
@@ -713,16 +607,12 @@ export function PublishTripForm() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Fecha de Inicio</FormLabel>
-                        <div className="relative">
-                          <FormControl>
-                            <Input
-                              type="date"
-                              {...field}
-                              className="pl-10"
-                            />
-                          </FormControl>
-                          <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        </div>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            {...field}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -735,152 +625,16 @@ export function PublishTripForm() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Fecha de Fin</FormLabel>
-                        <div className="relative">
-                          <FormControl>
-                            <Input
-                              type="date"
-                              {...field}
-                              className="pl-10"
-                            />
-                          </FormControl>
-                          <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        </div>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            {...field}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
-                  {/* Hora de salida */}
-                  <div className="flex space-x-3">
-                    <FormField
-                      control={form.control}
-                      name="departureHour"
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel>Hora de Salida</FormLabel>
-                          <div className="relative">
-                            <FormControl>
-                              <Input
-                                type="text" 
-                                {...field}
-                                placeholder="08"
-                                className="pl-10"
-                              />
-                            </FormControl>
-                            <ClockIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="departureMinute"
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel className="opacity-0">Minuto</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="text"
-                              {...field}
-                              placeholder="00"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="departureAmPm"
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel className="opacity-0">AM/PM</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="AM/PM" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="AM">AM</SelectItem>
-                              <SelectItem value="PM">PM</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  {/* Hora de llegada */}
-                  <div className="flex space-x-3">
-                    <FormField
-                      control={form.control}
-                      name="arrivalHour"
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel>Hora de Llegada</FormLabel>
-                          <div className="relative">
-                            <FormControl>
-                              <Input
-                                type="text" 
-                                {...field}
-                                placeholder="12"
-                                className="pl-10"
-                              />
-                            </FormControl>
-                            <ClockIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="arrivalMinute"
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel className="opacity-0">Minuto</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="text"
-                              {...field}
-                              placeholder="00"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="arrivalAmPm"
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel className="opacity-0">AM/PM</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="AM/PM" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="AM">AM</SelectItem>
-                              <SelectItem value="PM">PM</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
                   
                   {/* Capacidad del vehículo */}
                   <FormField
@@ -922,7 +676,7 @@ export function PublishTripForm() {
                 </div>
                 
                 {selectedRouteId && routeSegmentsQuery.data && (
-                  <Tabs defaultValue="segments">
+                  <Tabs defaultValue="stop-times">
                     <TabsList className="mb-2">
                       <TabsTrigger value="segments">Precios por Segmento</TabsTrigger>
                       <TabsTrigger value="stop-times">Tiempos de Parada</TabsTrigger>
@@ -930,14 +684,31 @@ export function PublishTripForm() {
                     
                     <TabsContent value="segments">
                       <div className="overflow-x-auto">
+                        <div className="flex items-center mb-4">
+                          <p className="text-sm text-gray-500 mr-1">
+                            Configure el precio de cada segmento del viaje.
+                          </p>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircleIcon className="h-4 w-4 text-primary/70 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent className="w-80 p-4">
+                                <p>Los precios de cada tramo se configuran independientemente.</p>
+                                <p className="mt-2">Los horarios se establecen automáticamente basados en los tiempos de parada que configure en la pestaña "Tiempos de Parada".</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-gray-50">
                             <tr>
                               <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origen</th>
                               <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destino</th>
                               <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hora Salida</th>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hora Llegada</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario de Salida</th>
+                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario de Llegada</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
@@ -950,66 +721,14 @@ export function PublishTripForm() {
                                     type="number"
                                     value={segment.price}
                                     onChange={(e) => updateSegmentPrice(index, parseInt(e.target.value) || 0)}
-                                    className="w-20"
+                                    className="w-24"
                                   />
                                 </td>
                                 <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                  <div className="flex items-center space-x-1">
-                                    <Input
-                                      type="text"
-                                      value={segment.departureHour}
-                                      onChange={(e) => updateSegmentTime(index, 'departure', 'hour', e.target.value)}
-                                      className="w-14"
-                                    />
-                                    <span>:</span>
-                                    <Input
-                                      type="text"
-                                      value={segment.departureMinute}
-                                      onChange={(e) => updateSegmentTime(index, 'departure', 'minute', e.target.value)}
-                                      className="w-14"
-                                    />
-                                    <Select
-                                      value={segment.departureAmPm}
-                                      onValueChange={(value) => updateSegmentTime(index, 'departure', 'ampm', value)}
-                                    >
-                                      <SelectTrigger className="w-24">
-                                        <SelectValue placeholder="AM/PM" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="AM">AM</SelectItem>
-                                        <SelectItem value="PM">PM</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
+                                  {segment.departureTime || "Pendiente"}
                                 </td>
                                 <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                  <div className="flex items-center space-x-1">
-                                    <Input
-                                      type="text"
-                                      value={segment.arrivalHour}
-                                      onChange={(e) => updateSegmentTime(index, 'arrival', 'hour', e.target.value)}
-                                      className="w-14"
-                                    />
-                                    <span>:</span>
-                                    <Input
-                                      type="text"
-                                      value={segment.arrivalMinute}
-                                      onChange={(e) => updateSegmentTime(index, 'arrival', 'minute', e.target.value)}
-                                      className="w-14"
-                                    />
-                                    <Select
-                                      value={segment.arrivalAmPm}
-                                      onValueChange={(value) => updateSegmentTime(index, 'arrival', 'ampm', value)}
-                                    >
-                                      <SelectTrigger className="w-24">
-                                        <SelectValue placeholder="AM/PM" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="AM">AM</SelectItem>
-                                        <SelectItem value="PM">PM</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
+                                  {segment.arrivalTime || "Pendiente"}
                                 </td>
                               </tr>
                             ))}
@@ -1024,7 +743,8 @@ export function PublishTripForm() {
                         para calcular estimaciones de tiempo para pasajeros.
                       </p>
                       <p className="text-sm text-primary-foreground bg-primary/10 p-3 rounded mb-4">
-                        Edite directamente los horarios haciendo clic en el campo de tiempo. Los cambios se guardarán cuando publique o actualice el viaje.
+                        Edite directamente los horarios haciendo clic en el campo de tiempo. Los cambios actualizarán automáticamente 
+                        los tiempos de salida y llegada para cada segmento de viaje.
                       </p>
                       
                       <div className="overflow-x-auto">
