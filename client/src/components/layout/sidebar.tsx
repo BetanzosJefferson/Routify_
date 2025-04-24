@@ -32,11 +32,11 @@ function NavItem({ icon, active, onClick, children }: NavItemProps) {
         "group flex items-center w-full px-3 py-2.5 rounded-md font-medium transition-all duration-200",
         active
           ? "bg-primary text-primary-foreground hover:bg-primary/90"
-          : "text-gray-700 hover:text-primary hover:bg-primary/10"
+          : "text-gray-700 dark:text-gray-200 hover:text-primary dark:hover:text-primary hover:bg-primary/10"
       )}
       onClick={onClick}
     >
-      <span className={cn("mr-3", active ? "text-white" : "text-gray-500 group-hover:text-primary")}>{icon}</span>
+      <span className={cn("mr-3", active ? "text-white" : "text-gray-500 dark:text-gray-400 group-hover:text-primary")}>{icon}</span>
       <span>{children}</span>
     </button>
   );
@@ -50,7 +50,7 @@ interface NavSectionProps {
 function NavSection({ title, children }: NavSectionProps) {
   return (
     <div className="mb-6">
-      <h3 className="px-3 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">{title}</h3>
+      <h3 className="px-3 mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{title}</h3>
       <div className="space-y-1">{children}</div>
     </div>
   );
@@ -70,14 +70,14 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   
   return (
     <div className="hidden md:flex md:flex-shrink-0">
-      <div className="flex flex-col w-64 bg-white border-r border-gray-200">
+      <div className="flex flex-col w-64 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 theme-transition">
         <div className="px-6 pt-6 pb-4 flex items-center">
           <div className="h-9 w-9 rounded-md bg-primary flex items-center justify-center mr-3">
             <CarIcon className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-gray-800">TransRoute</h1>
-            <p className="text-xs text-gray-500">Sistema de Gestión</p>
+            <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-100">TransRoute</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Sistema de Gestión</p>
           </div>
         </div>
         
@@ -154,9 +154,9 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           </NavSection>
           
           <div className="mt-auto pt-4 pb-6 px-3">
-            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-              <p className="text-xs text-gray-600 font-medium">TransRoute v1.0</p>
-              <p className="text-xs text-gray-500">© 2025 Transport Systems</p>
+            <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
+              <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">TransRoute v1.0</p>
+              <p className="text-xs text-gray-500 dark:text-gray-500">© 2025 Transport Systems</p>
             </div>
           </div>
         </div>
