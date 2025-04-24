@@ -196,6 +196,43 @@ export type Municipality = {
   code: string;
 };
 
+// SCHEMA DE UNIDADES (VEHÍCULOS)
+export const vehicles = pgTable("vehicles", {
+  id: serial("id").primaryKey(),
+  plates: text("plates").notNull().unique(),
+  brand: text("brand").notNull(),
+  model: text("model").notNull(),
+  economicNumber: text("economic_number").notNull().unique(),
+  capacity: integer("capacity").notNull(),
+  hasAC: boolean("has_ac").default(false),
+  hasRecliningSeats: boolean("has_reclining_seats").default(false),
+  services: text("services").array(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertVehicleSchema = createInsertSchema(vehicles);
+export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
+export type Vehicle = typeof vehicles.$inferSelect;
+
+// SCHEMA DE COMISIONES
+export const commissions = pgTable("commissions", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  amount: doublePrecision("amount").notNull(),
+  percentage: boolean("percentage").default(false),
+  tripId: integer("trip_id").references(() => trips.id),
+  routeId: integer("route_id").references(() => routes.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCommissionSchema = createInsertSchema(commissions);
+export type InsertCommission = z.infer<typeof insertCommissionSchema>;
+export type Commission = typeof commissions.$inferSelect;
+
 // RELACIONES ENTRE TABLAS
 export const routeRelations = relations(routes, ({ many }) => ({
   trips: many(trips),
@@ -280,5 +317,22 @@ export const invitationRelations = relations(invitations, ({ one }) => ({
   createdBy: one(users, {
     fields: [invitations.createdById],
     references: [users.id]
+  })
+}));
+
+// VEHICLE RELATIONS
+export const vehicleRelations = relations(vehicles, ({ many }) => ({
+  // Podemos agregar relaciones en el futuro según se necesite
+}));
+
+// COMMISSION RELATIONS
+export const commissionRelations = relations(commissions, ({ one }) => ({
+  trip: one(trips, {
+    fields: [commissions.tripId],
+    references: [trips.id]
+  }),
+  route: one(routes, {
+    fields: [commissions.routeId],
+    references: [routes.id]
   })
 }));

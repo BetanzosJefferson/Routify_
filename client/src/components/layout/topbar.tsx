@@ -75,19 +75,7 @@ export function Topbar() {
                     <UserIcon className="mr-2 h-4 w-4" />
                     <span>Perfil</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    setProfileOpen(true);
-                    // Asegurarnos que el tab de configuración esté seleccionado
-                    setTimeout(() => {
-                      const configTab = document.querySelector('[value="config"]');
-                      if (configTab) {
-                        (configTab as HTMLElement).click();
-                      }
-                    }, 100);
-                  }}>
-                    <SettingsIcon className="mr-2 h-4 w-4" />
-                    <span>Configuración</span>
-                  </DropdownMenuItem>
+
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
@@ -102,25 +90,17 @@ export function Topbar() {
 
       {/* Modal de perfil */}
       <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
-        <DialogContent className="max-w-4xl p-0 theme-transition">
-          <DialogHeader className="p-6 pb-2">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-2xl font-bold">Mi Perfil</DialogTitle>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => setProfileOpen(false)}
-                className="absolute right-4 top-4"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <DialogDescription>
-              Administra tu información personal y configuraciones
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-6 pb-6 pt-2">
-            <ProfilePage standalone={false} />
+        <DialogContent className="max-w-4xl p-0">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setProfileOpen(false)}
+            className="absolute right-4 top-4"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <div className="px-6 pb-6 pt-6">
+            <ProfilePage standalone={true} />
           </div>
         </DialogContent>
       </Dialog>
