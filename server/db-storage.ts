@@ -142,20 +142,42 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getTrips(): Promise<TripWithRouteInfo[]> {
+    console.time('getTrips-optimized');
+    
+    // Obtener todos los viajes
     const trips = await db.select().from(schema.trips);
     
-    const tripsWithRouteInfo: TripWithRouteInfo[] = [];
-    for (const trip of trips) {
-      const route = await this.getRoute(trip.routeId);
+    // Obtener todas las rutas de una sola vez
+    console.log('Obteniendo todas las rutas en una sola consulta');
+    const routes = await db.select().from(schema.routes);
+    
+    // Crear un mapa de rutas por ID para búsqueda rápida
+    const routeMap = new Map<number, Route>();
+    routes.forEach(route => {
+      routeMap.set(route.id, route);
+    });
+    
+    // Asociar cada viaje con su ruta
+    const tripsWithRouteInfo: TripWithRouteInfo[] = trips.map(trip => {
+      const route = routeMap.get(trip.routeId);
+      
       if (route) {
-        tripsWithRouteInfo.push({
+        return {
           ...trip,
           route,
           numStops: route.stops.length
-        });
+        };
       }
-    }
+      
+      // Si no se encontró la ruta, devolver el viaje sin información de ruta
+      return {
+        ...trip,
+        route: undefined,
+        numStops: 0
+      };
+    });
     
+    console.timeEnd('getTrips-optimized');
     return tripsWithRouteInfo;
   }
   
@@ -206,6 +228,8 @@ export class DatabaseStorage implements IStorage {
     date?: string;
     seats?: number;
   }): Promise<TripWithRouteInfo[]> {
+    console.time('searchTrips-optimized');
+    
     // Base query for trips
     const tripsQuery = db.select().from(schema.trips);
     
@@ -234,12 +258,22 @@ export class DatabaseStorage implements IStorage {
     
     // Get trips
     const trips = await tripsQuery;
+    console.log(`Encontrados ${trips.length} viajes que coinciden con los filtros básicos`);
+    
+    // Get all routes in a single query for better performance
+    const routes = await db.select().from(schema.routes);
+    
+    // Create a map for quick route lookups
+    const routeMap = new Map<number, Route>();
+    routes.forEach(route => {
+      routeMap.set(route.id, route);
+    });
     
     // Now filter by origin and destination if provided
     const tripsWithRouteInfo: TripWithRouteInfo[] = [];
     
     for (const trip of trips) {
-      const route = await this.getRoute(trip.routeId);
+      const route = routeMap.get(trip.routeId);
       if (!route) continue;
       
       // For subtrips, check against segment origin and destination
@@ -262,13 +296,15 @@ export class DatabaseStorage implements IStorage {
       let destMatch = !params.destination;
       
       if (params.origin) {
-        originMatch = route.origin.toLowerCase().includes(params.origin.toLowerCase()) || 
-                      route.stops.some(stop => stop.toLowerCase().includes(params.origin!.toLowerCase()));
+        const searchOrigin = params.origin.toLowerCase();
+        originMatch = route.origin.toLowerCase().includes(searchOrigin) || 
+                      route.stops.some(stop => stop.toLowerCase().includes(searchOrigin));
       }
       
       if (params.destination) {
-        destMatch = route.destination.toLowerCase().includes(params.destination.toLowerCase()) || 
-                    route.stops.some(stop => stop.toLowerCase().includes(params.destination!.toLowerCase()));
+        const searchDest = params.destination.toLowerCase();
+        destMatch = route.destination.toLowerCase().includes(searchDest) || 
+                    route.stops.some(stop => stop.toLowerCase().includes(searchDest));
       }
       
       if (originMatch && destMatch) {
@@ -280,6 +316,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
+    console.timeEnd('searchTrips-optimized');
     return tripsWithRouteInfo;
   }
   

@@ -442,13 +442,17 @@ export function PublishTripForm() {
     
     // Preparar los tiempos de las paradas
     const formattedStopTimes = stopTimes
-      .filter(stop => stop !== null)
-      .map(stop => ({
-        hour: stop!.hour,
-        minute: stop!.minute,
-        ampm: stop!.ampm,
-        location: stop!.location || ""
-      }));
+      .filter(stop => stop !== null && stop.hour && stop.minute && stop.ampm)
+      .map(stop => {
+        // Asegurarse de que se guardan correctamente todos los campos
+        console.log("Enviando tiempo de parada:", stop);
+        return {
+          hour: stop!.hour,
+          minute: stop!.minute,
+          ampm: stop!.ampm,
+          location: stop!.location || ""
+        };
+      });
     
     // Convertir tiempos de segmentos a formato adecuado (HH:MM AM/PM)
     const segmentsWithTimesAndPrices = segmentPrices.map((segment: SegmentTimePrice) => {
@@ -650,7 +654,23 @@ export function PublishTripForm() {
       
       // Cargar tiempos de paradas si están disponibles
       if (tripData.stopTimes && Array.isArray(tripData.stopTimes)) {
-        setStopTimes(tripData.stopTimes);
+        console.log("Cargando tiempos de paradas:", tripData.stopTimes);
+        
+        // Nos aseguramos de que todos los campos estén presentes
+        const validatedStopTimes = tripData.stopTimes.map(stop => {
+          if (!stop.hour || !stop.minute || !stop.ampm) {
+            // Si hay valores faltantes, establecemos valores predeterminados
+            return {
+              hour: stop.hour || "08",
+              minute: stop.minute || "00",
+              ampm: (stop.ampm === "AM" || stop.ampm === "PM") ? stop.ampm : "AM",
+              location: stop.location || ""
+            };
+          }
+          return stop;
+        });
+        
+        setStopTimes(validatedStopTimes);
       }
       
       toast({

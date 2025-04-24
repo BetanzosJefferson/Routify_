@@ -103,8 +103,24 @@ export default function TripList({ onEditTrip }: TripListProps) {
   // Mutación para eliminar un viaje
   const deleteTripMutation = useMutation({
     mutationFn: async (tripId: number) => {
-      const res = await apiRequest('DELETE', `/api/trips/${tripId}`);
-      return res.ok;
+      try {
+        console.log(`Eliminando viaje ${tripId}...`);
+        const res = await apiRequest('DELETE', `/api/trips/${tripId}`);
+        
+        // Incluso si la respuesta no es ok, manejamos el caso y consideramos que se completó
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error(`Error al eliminar viaje ${tripId}:`, errorText);
+          throw new Error(errorText || "No se pudo eliminar el viaje");
+        }
+        
+        return res.ok;
+      } catch (error) {
+        console.error(`Error en la solicitud de eliminación del viaje ${tripId}:`, error);
+        // Invalidamos la consulta de todos modos para refrescar la lista
+        queryClient.invalidateQueries({ queryKey: ['/api/trips'] });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/trips'] });
@@ -115,10 +131,15 @@ export default function TripList({ onEditTrip }: TripListProps) {
       });
       setDeleteDialogOpen(false);
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      // Incluso en caso de error, refrescamos la lista para verificar si realmente se eliminó
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['/api/trips'] });
+      }, 1000);
+      
       toast({
         title: "Error al eliminar el viaje",
-        description: "Ocurrió un error al eliminar el viaje. Por favor, inténtelo nuevamente.",
+        description: "Hubo un problema con la eliminación, pero la acción podría haberse completado. La lista se actualizará automáticamente.",
         variant: "destructive",
       });
       console.error("Error al eliminar viaje:", error);
