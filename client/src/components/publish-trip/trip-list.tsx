@@ -211,11 +211,16 @@ export default function TripList({ onEditTrip }: TripListProps) {
   });
 
   const formatDate = (dateString: string) => {
-    // Corregimos el error de visualización de fecha aplicando el ajuste de zona horaria
-    // El problema era que JavaScript usa UTC como base y puede desplazar un día
+    // Para evitar desplazamiento de día debido a la zona horaria, creamos la fecha
+    // a partir de los componentes individuales (año, mes, día)
     const date = new Date(dateString);
-    // Ajustamos para preservar la fecha original sin conversiones de zona horaria
-    const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60 * 1000);
+    const day = date.getUTCDate();
+    const month = date.getUTCMonth();
+    const year = date.getUTCFullYear();
+    
+    // Crear una nueva fecha usando los componentes extraídos (sin hora)
+    const localDate = new Date(year, month, day, 12, 0, 0);
+    
     return format(localDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: es });
   };
 
@@ -241,8 +246,14 @@ export default function TripList({ onEditTrip }: TripListProps) {
     const grouped: Record<string, Trip[]> = {};
     
     filteredTrips.filter((trip: Trip) => !trip.isSubTrip).forEach((trip: Trip) => {
+      // Manejo explícito de la fecha para evitar problemas de zona horaria
       const date = new Date(trip.departureDate);
-      const dateKey = format(date, 'yyyy-MM-dd');
+      const day = date.getUTCDate();
+      const month = date.getUTCMonth() + 1; // getUTCMonth() devuelve 0-11
+      const year = date.getUTCFullYear();
+      
+      // Formato yyyy-MM-dd
+      const dateKey = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
       
       if (!grouped[dateKey]) {
         grouped[dateKey] = [];
@@ -256,8 +267,12 @@ export default function TripList({ onEditTrip }: TripListProps) {
 
   // Formatear fecha para encabezado
   const formatDateHeader = (dateString: string) => {
+    // Creamos la fecha usando los componentes individuales para evitar problemas de zona horaria
     const date = new Date(dateString);
-    return format(date, "'Viajes para' d 'de' MMMM 'de' yyyy", { locale: es });
+    const [year, month, day] = dateString.split('-').map(num => parseInt(num));
+    const localDate = new Date(year, month - 1, day, 12, 0, 0);
+    
+    return format(localDate, "'Viajes para' d 'de' MMMM 'de' yyyy", { locale: es });
   };
 
   // Formatear hora para mostrar
@@ -401,7 +416,15 @@ export default function TripList({ onEditTrip }: TripListProps) {
                               </h4>
                               <div className="flex items-center text-sm text-muted-foreground">
                                 <CalendarIcon className="h-4 w-4 mr-1" />
-                                <span>{format(new Date(trip.departureDate), "dd/MM/yyyy")}</span>
+                                <span>
+                                {(() => {
+                                  const date = new Date(trip.departureDate);
+                                  const day = date.getUTCDate();
+                                  const month = date.getUTCMonth() + 1;
+                                  const year = date.getUTCFullYear();
+                                  return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+                                })()}
+                                </span>
                                 <ClockIcon className="h-4 w-4 ml-4 mr-1" />
                                 <span>{formatTime(trip.departureTime)} - {formatTime(trip.arrivalTime)}</span>
                               </div>
@@ -463,7 +486,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
                             <Button variant="outline" size="sm" className="whitespace-nowrap">
                               Asignar Conductor
                             </Button>
-                            <Button variant="outline" size="sm" className="bg-orange-500 text-white hover:bg-orange-600 hover:text-white whitespace-nowrap">
+                            <Button variant="secondary" size="sm" className="bg-primary text-white hover:bg-primary/90 hover:text-white whitespace-nowrap">
                               Ver Segmentos
                             </Button>
                           </div>
