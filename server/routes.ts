@@ -544,7 +544,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       orderedStopTimes.forEach((stopTime: any) => {
         if (stopTime && stopTime.location && stopTime.hour && stopTime.minute && stopTime.ampm) {
-          const timeString = `${stopTime.hour}:${stopTime.minute} ${stopTime.ampm}`;
+          // Asegurarnos de preservar exactamente el formato AM/PM como está en el input
+          // y evitar que se convierta incorrectamente a AM
+          const ampm = stopTime.ampm.toUpperCase(); // Normalizar a mayúsculas para evitar errores
+          const timeString = `${stopTime.hour}:${stopTime.minute} ${ampm}`;
           locationTimeMap[stopTime.location] = timeString;
           console.log(`Estableciendo tiempo para ${stopTime.location}: ${timeString}`);
         }
