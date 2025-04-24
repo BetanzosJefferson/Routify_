@@ -622,8 +622,8 @@ export function PublishTripForm() {
             const [arrHour, arrMinute] = arrTime.split(':');
             
             // Validar que los valores AM/PM son correctos
-            const validDepAmPm = depAmPm === "AM" || depAmPm === "PM" ? depAmPm : "AM";
-            const validArrAmPm = arrAmPm === "AM" || arrAmPm === "PM" ? arrAmPm : "AM";
+            const validDepAmPm = (depAmPm === "AM" || depAmPm === "PM") ? depAmPm as ("AM" | "PM") : "AM" as ("AM" | "PM");
+            const validArrAmPm = (arrAmPm === "AM" || arrAmPm === "PM") ? arrAmPm as ("AM" | "PM") : "AM" as ("AM" | "PM");
             
             console.log("Cargando tiempos de segmento:", {
               origin: segment.origin,
@@ -657,13 +657,13 @@ export function PublishTripForm() {
         console.log("Cargando tiempos de paradas:", tripData.stopTimes);
         
         // Nos aseguramos de que todos los campos estén presentes
-        const validatedStopTimes = tripData.stopTimes.map(stop => {
+        const validatedStopTimes = tripData.stopTimes.map((stop: any) => {
           if (!stop.hour || !stop.minute || !stop.ampm) {
             // Si hay valores faltantes, establecemos valores predeterminados
             return {
               hour: stop.hour || "08",
               minute: stop.minute || "00",
-              ampm: (stop.ampm === "AM" || stop.ampm === "PM") ? stop.ampm : "AM",
+              ampm: (stop.ampm === "AM" || stop.ampm === "PM") ? stop.ampm as "AM" | "PM" : "AM" as "AM" | "PM",
               location: stop.location || ""
             };
           }

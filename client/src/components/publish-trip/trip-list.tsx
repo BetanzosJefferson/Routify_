@@ -66,6 +66,13 @@ type Trip = {
   parentTripId?: number;
   segmentOrigin?: string;
   segmentDestination?: string;
+  route?: {
+    id: number;
+    name: string;
+    origin: string;
+    destination: string;
+    stops: string[];
+  };
 };
 
 type TripListProps = {
