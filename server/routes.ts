@@ -247,23 +247,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const tripData = validationResult.data;
       
-      // Usar los tiempos proporcionados por el cliente o extraerlos de los stopTimes
-      let departureTime = tripData.departureTime || "";
-      let arrivalTime = tripData.arrivalTime || "";
+      // Calculate departure/arrival time from stopTimes
+      let departureTime = "";
+      let arrivalTime = "";
       
-      // Si no tenemos tiempos explícitos pero tenemos stopTimes, usamos el primero y último
-      if ((!departureTime || !arrivalTime) && tripData.stopTimes && tripData.stopTimes.length > 0) {
+      if (tripData.stopTimes && tripData.stopTimes.length > 0) {
         const stopTimes = tripData.stopTimes;
         // El primer tiempo de parada es la salida
-        if (!departureTime && stopTimes[0]) {
+        if (stopTimes[0] && stopTimes[0].hour && stopTimes[0].minute && stopTimes[0].ampm) {
           departureTime = `${stopTimes[0].hour.padStart(2, '0')}:${stopTimes[0].minute.padStart(2, '0')} ${stopTimes[0].ampm}`;
         }
+        
         // El último tiempo de parada es la llegada
-        if (!arrivalTime && stopTimes[stopTimes.length - 1]) {
+        if (stopTimes.length > 1) {
           const lastStop = stopTimes[stopTimes.length - 1];
-          arrivalTime = `${lastStop.hour.padStart(2, '0')}:${lastStop.minute.padStart(2, '0')} ${lastStop.ampm}`;
+          if (lastStop && lastStop.hour && lastStop.minute && lastStop.ampm) {
+            arrivalTime = `${lastStop.hour.padStart(2, '0')}:${lastStop.minute.padStart(2, '0')} ${lastStop.ampm}`;
+          }
         }
       }
+      
+      // Si no pudimos extraer los tiempos, usar valores predeterminados
+      if (!departureTime) departureTime = "12:00 PM";
+      if (!arrivalTime) arrivalTime = "01:00 PM";
       
       // Get the route details to generate all possible sub-trips
       const route = await storage.getRouteWithSegments(tripData.routeId);

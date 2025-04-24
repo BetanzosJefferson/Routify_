@@ -79,7 +79,7 @@ import { Label } from "@/components/ui/label";
 import { LocationAdapter } from "@/components/ui/location-adapter";
 import { LocationOption } from "@/components/ui/command-combobox";
 import { TripWithRouteInfo } from "@shared/schema";
-import { ReservationModal } from "./reservation-modal";
+import { ReservationStepsModal } from "./reservation-steps-modal";
 
 interface SearchParams {
   origin?: string;
@@ -493,7 +493,7 @@ export function TripList() {
       
       {/* Reservation Modal */}
       {selectedTrip && (
-        <ReservationModal
+        <ReservationStepsModal
           trip={selectedTrip}
           isOpen={showModal}
           onClose={handleCloseModal}
