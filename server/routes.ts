@@ -1043,7 +1043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Aseguramos que los campos opcionales sean null si no están definidos
       const vehicleData = {
         ...req.body,
-        services: req.body.services || null,
+        services: req.body.services || [], // Array vacío por defecto, no null
         description: req.body.description || null,
         hasAC: typeof req.body.hasAC === 'boolean' ? req.body.hasAC : null,
         hasRecliningSeats: typeof req.body.hasRecliningSeats === 'boolean' ? req.body.hasRecliningSeats : null

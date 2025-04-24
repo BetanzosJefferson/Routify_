@@ -501,7 +501,8 @@ export function TripList() {
       {/* Modal para reservar */}
       {showModal && selectedTrip && (
         <ReservationStepsModal 
-          tripInfo={selectedTrip} 
+          trip={selectedTrip} 
+          isOpen={showModal}
           onClose={handleCloseModal}
         />
       )}
