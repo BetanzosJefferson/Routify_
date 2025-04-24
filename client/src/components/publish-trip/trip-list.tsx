@@ -205,8 +205,12 @@ export default function TripList({ onEditTrip }: TripListProps) {
   });
 
   const formatDate = (dateString: string) => {
+    // Corregimos el error de visualización de fecha aplicando el ajuste de zona horaria
+    // El problema era que JavaScript usa UTC como base y puede desplazar un día
     const date = new Date(dateString);
-    return format(date, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: es });
+    // Ajustamos para preservar la fecha original sin conversiones de zona horaria
+    const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60 * 1000);
+    return format(localDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: es });
   };
 
   const formatCurrency = (amount: number) => {
