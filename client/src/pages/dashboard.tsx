@@ -23,7 +23,7 @@ export default function Dashboard() {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("tab") as TabType | null;
     
-    if (tab && ["create-route", "publish-trip", "trips", "reservations", "trip-summary", "users", "vehicles", "commissions"].includes(tab)) {
+    if (tab && ["create-route", "publish-trip", "trips", "reservations", "trip-summary", "users", "vehicles", "commissions", "boarding-list"].includes(tab)) {
       setActiveTab(tab);
     }
   }, [location]);
@@ -50,6 +50,7 @@ export default function Dashboard() {
             {activeTab === "trips" && <TripList />}
             {activeTab === "reservations" && <ReservationList />}
             {activeTab === "trip-summary" && <TripSummary />}
+            {activeTab === "boarding-list" && <BoardingList />}
             {activeTab === "users" && <UsersPage />}
             {activeTab === "vehicles" && <VehiclesPage />}
             {activeTab === "commissions" && <CommissionsPage />}

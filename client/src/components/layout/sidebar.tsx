@@ -12,7 +12,8 @@ import {
   Settings2,
   ClipboardListIcon,
   TruckIcon,
-  PercentIcon
+  PercentIcon,
+  UsersIcon
 } from "lucide-react";
 
 interface SidebarProps {
@@ -132,6 +133,13 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               onClick={() => handleTabClick("trip-summary")}
             >
               Resumen de Viajes
+            </NavItem>
+            <NavItem 
+              icon={<UsersIcon className="h-5 w-5" />} 
+              active={activeTab === "boarding-list"}
+              onClick={() => handleTabClick("boarding-list")}
+            >
+              Lista de Abordaje
             </NavItem>
           </NavSection>
           
