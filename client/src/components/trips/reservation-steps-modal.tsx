@@ -37,8 +37,7 @@ import {
 } from "lucide-react";
 
 interface ReservationStepsModalProps {
-  trip: TripWithRouteInfo;
-  isOpen: boolean;
+  tripInfo: TripWithRouteInfo;
   onClose: () => void;
 }
 
@@ -57,10 +56,13 @@ interface ReservationFormData {
   notes: string;
 }
 
-export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStepsModalProps) {
+export function ReservationStepsModal({ tripInfo, onClose }: ReservationStepsModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const ticketRef = useRef<HTMLDivElement>(null);
+  
+  // Modal state
+  const [isOpen, setIsOpen] = useState(true);
   
   // Form state
   const [numPassengers, setNumPassengers] = useState(1);
@@ -222,7 +224,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
     }
     
     const reservationData: ReservationFormData = {
-      tripId: trip.id,
+      tripId: tripInfo.id,
       numPassengers,
       passengers,
       email,
@@ -309,7 +311,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
   };
   
   // Calculate total price
-  const totalPrice = numPassengers * trip.price;
+  const totalPrice = numPassengers * tripInfo.price;
   
   // Format reservation ID
   const formatReservationId = (id: number) => {
@@ -349,15 +351,15 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                 <div className="bg-gray-50 p-4 rounded-md">
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div className="text-gray-500">Ruta:</div>
-                    <div className="font-medium">{trip.route.name}</div>
+                    <div className="font-medium">{tripInfo.route.name}</div>
                     <div className="text-gray-500">Fecha:</div>
-                    <div className="font-medium">{formatDate(trip.departureDate)}</div>
+                    <div className="font-medium">{formatDate(tripInfo.departureDate)}</div>
                     <div className="text-gray-500">Salida:</div>
-                    <div className="font-medium">{trip.departureTime}</div>
+                    <div className="font-medium">{tripInfo.departureTime}</div>
                     <div className="text-gray-500">Llegada:</div>
-                    <div className="font-medium">{trip.arrivalTime}</div>
+                    <div className="font-medium">{tripInfo.arrivalTime}</div>
                     <div className="text-gray-500">Precio por pasajero:</div>
-                    <div className="font-medium">{formatPrice(trip.price)}</div>
+                    <div className="font-medium">{formatPrice(tripInfo.price)}</div>
                   </div>
                 </div>
                 
