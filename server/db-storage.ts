@@ -11,7 +11,11 @@ import {
   RouteWithSegments,
   TripWithRouteInfo,
   ReservationWithDetails,
-  SegmentPrice
+  SegmentPrice,
+  Vehicle,
+  InsertVehicle,
+  Commission,
+  InsertCommission
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db } from "./db";
@@ -507,6 +511,92 @@ export class DatabaseStorage implements IStorage {
       .delete(schema.passengers)
       .where(eq(schema.passengers.reservationId, reservationId))
       .returning({ id: schema.passengers.id });
+    return result.length > 0;
+  }
+
+  // Vehicle methods
+  async getVehicles(): Promise<Vehicle[]> {
+    return await db.select().from(schema.vehicles);
+  }
+  
+  async getVehicle(id: number): Promise<Vehicle | undefined> {
+    const [vehicle] = await db.select().from(schema.vehicles).where(eq(schema.vehicles.id, id));
+    return vehicle;
+  }
+  
+  async createVehicle(vehicle: InsertVehicle): Promise<Vehicle> {
+    const [newVehicle] = await db.insert(schema.vehicles).values({
+      ...vehicle,
+      createdAt: new Date(),
+      updatedAt: null,
+      hasAC: vehicle.hasAC ?? null,
+      hasRecliningSeats: vehicle.hasRecliningSeats ?? null,
+      services: vehicle.services ?? null,
+      description: vehicle.description ?? null
+    }).returning();
+    return newVehicle;
+  }
+  
+  async updateVehicle(id: number, vehicleUpdate: Partial<Vehicle>): Promise<Vehicle | undefined> {
+    const [updatedVehicle] = await db
+      .update(schema.vehicles)
+      .set({
+        ...vehicleUpdate,
+        updatedAt: new Date()
+      })
+      .where(eq(schema.vehicles.id, id))
+      .returning();
+    return updatedVehicle;
+  }
+  
+  async deleteVehicle(id: number): Promise<boolean> {
+    const result = await db
+      .delete(schema.vehicles)
+      .where(eq(schema.vehicles.id, id))
+      .returning({ id: schema.vehicles.id });
+    return result.length > 0;
+  }
+  
+  // Commission methods
+  async getCommissions(): Promise<Commission[]> {
+    return await db.select().from(schema.commissions);
+  }
+  
+  async getCommission(id: number): Promise<Commission | undefined> {
+    const [commission] = await db.select().from(schema.commissions).where(eq(schema.commissions.id, id));
+    return commission;
+  }
+  
+  async createCommission(commission: InsertCommission): Promise<Commission> {
+    const [newCommission] = await db.insert(schema.commissions).values({
+      ...commission,
+      createdAt: new Date(),
+      updatedAt: null,
+      routeId: commission.routeId ?? null,
+      tripId: commission.tripId ?? null,
+      description: commission.description ?? null,
+      percentage: commission.percentage ?? null
+    }).returning();
+    return newCommission;
+  }
+  
+  async updateCommission(id: number, commissionUpdate: Partial<Commission>): Promise<Commission | undefined> {
+    const [updatedCommission] = await db
+      .update(schema.commissions)
+      .set({
+        ...commissionUpdate,
+        updatedAt: new Date()
+      })
+      .where(eq(schema.commissions.id, id))
+      .returning();
+    return updatedCommission;
+  }
+  
+  async deleteCommission(id: number): Promise<boolean> {
+    const result = await db
+      .delete(schema.commissions)
+      .where(eq(schema.commissions.id, id))
+      .returning({ id: schema.commissions.id });
     return result.length > 0;
   }
 }

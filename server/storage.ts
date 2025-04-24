@@ -90,11 +90,15 @@ export class MemStorage implements IStorage {
     this.trips = new Map();
     this.reservations = new Map();
     this.passengers = new Map();
+    this.vehicles = new Map();
+    this.commissions = new Map();
     
     this.routeId = 1;
     this.tripId = 1;
     this.reservationId = 1;
     this.passengerId = 1;
+    this.vehicleId = 1;
+    this.commissionId = 1;
 
     // Add some initial data
     this.createRoute({
@@ -555,6 +559,73 @@ export class MemStorage implements IStorage {
     }
     
     return true;
+  }
+  
+  // Vehicle methods
+  async getVehicles(): Promise<Vehicle[]> {
+    return Array.from(this.vehicles.values());
+  }
+  
+  async getVehicle(id: number): Promise<Vehicle | undefined> {
+    return this.vehicles.get(id);
+  }
+  
+  async createVehicle(vehicle: InsertVehicle): Promise<Vehicle> {
+    const id = this.vehicleId++;
+    const newVehicle: Vehicle = { 
+      ...vehicle, 
+      id,
+      createdAt: new Date(),
+      updatedAt: null,
+      hasAC: vehicle.hasAC ?? null,
+      hasRecliningSeats: vehicle.hasRecliningSeats ?? null,
+      services: vehicle.services ?? null,
+      description: vehicle.description ?? null
+    };
+    this.vehicles.set(id, newVehicle);
+    return newVehicle;
+  }
+  
+  async updateVehicle(id: number, vehicleUpdate: Partial<Vehicle>): Promise<Vehicle | undefined> {
+    const existingVehicle = this.vehicles.get(id);
+    if (!existingVehicle) return undefined;
+    
+    const updatedVehicle = { ...existingVehicle, ...vehicleUpdate };
+    this.vehicles.set(id, updatedVehicle);
+    return updatedVehicle;
+  }
+  
+  async deleteVehicle(id: number): Promise<boolean> {
+    return this.vehicles.delete(id);
+  }
+  
+  // Commission methods
+  async getCommissions(): Promise<Commission[]> {
+    return Array.from(this.commissions.values());
+  }
+  
+  async getCommission(id: number): Promise<Commission | undefined> {
+    return this.commissions.get(id);
+  }
+  
+  async createCommission(commission: InsertCommission): Promise<Commission> {
+    const id = this.commissionId++;
+    const newCommission: Commission = { ...commission, id };
+    this.commissions.set(id, newCommission);
+    return newCommission;
+  }
+  
+  async updateCommission(id: number, commissionUpdate: Partial<Commission>): Promise<Commission | undefined> {
+    const existingCommission = this.commissions.get(id);
+    if (!existingCommission) return undefined;
+    
+    const updatedCommission = { ...existingCommission, ...commissionUpdate };
+    this.commissions.set(id, updatedCommission);
+    return updatedCommission;
+  }
+  
+  async deleteCommission(id: number): Promise<boolean> {
+    return this.commissions.delete(id);
   }
 }
 
