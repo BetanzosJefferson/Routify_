@@ -60,7 +60,27 @@ export function PublishTripForm() {
   const queryClient = useQueryClient();
   const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
   const [segmentPrices, setSegmentPrices] = useState<SegmentTimePrice[]>([]);
-  const [stopTimes, setStopTimes] = useState<Array<{hour: string, minute: string, ampm: "AM" | "PM", location?: string} | null>>([]);
+  // Helper para validar y asegurar formato correcto de stopTimes
+  const ensureValidStopTimes = (times: any[]): StopTime[] => {
+    return times.map(time => {
+      if (!time) return null;
+      
+      // Garantizar que ampm sea "AM" o "PM"
+      let ampmValue = (time.ampm || "AM").toUpperCase();
+      if (ampmValue !== "AM" && ampmValue !== "PM") {
+        ampmValue = "AM";
+      }
+      
+      return {
+        hour: time.hour || "12",
+        minute: time.minute || "00",
+        ampm: ampmValue as "AM" | "PM",
+        location: time.location || ""
+      };
+    }).filter(Boolean) as StopTime[];
+  };
+  
+  const [stopTimes, setStopTimes] = useState<StopTime[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingTripId, setEditingTripId] = useState<number | null>(null);
 
@@ -200,7 +220,8 @@ export function PublishTripForm() {
         }
       }
       
-      setStopTimes(initialTimes);
+      // Asegurar que los valores son del tipo correcto antes de establecer el estado
+      setStopTimes(ensureValidStopTimes(initialTimes));
     }
   }, [routeSegmentsQuery.data]);
 
@@ -231,14 +252,19 @@ export function PublishTripForm() {
       ampm,
       location: stopLocation
     };
-    setStopTimes(newStopTimes);
+    
+    // Validar el array para asegurar los tipos correctos
+    const validatedStopTimes = ensureValidStopTimes(newStopTimes);
+    
+    // Actualizar el estado con los valores validados
+    setStopTimes(validatedStopTimes);
     
     // Actualizar tiempos de segmentos automáticamente
-    updateSegmentTimesFromStops(newStopTimes);
+    updateSegmentTimesFromStops(validatedStopTimes);
   };
 
   // Función para calcular los tiempos de los segmentos basados en los tiempos de las paradas
-  const updateSegmentTimesFromStops = (stopTimeArray: Array<{hour: string, minute: string, ampm: "AM" | "PM", location?: string} | null>) => {
+  const updateSegmentTimesFromStops = (stopTimeArray: StopTime[]) => {
     if (!routeSegmentsQuery.data) return;
     
     // Obtener todas las ubicaciones (origen, paradas, destino)
@@ -683,7 +709,7 @@ export function PublishTripForm() {
           // Establecer los estados con los datos procesados
           setEditingTripId(tripId);
           setSegmentPrices(segmentPricesFromTrip);
-          setStopTimes(allStopTimes);
+          setStopTimes(ensureValidStopTimes(allStopTimes));
           
           // Actualizar el formulario con todos los datos disponibles
           const startDate = trip.departureDate?.split("T")[0] || format(new Date(), "yyyy-MM-dd");
@@ -698,7 +724,7 @@ export function PublishTripForm() {
             price: trip.price || 0,
             vehicleType: trip.vehicleType || "standard",
             segmentPrices: segmentPricesFromTrip,
-            stopTimes: allStopTimes,
+            stopTimes: ensureValidStopTimes(allStopTimes),
           }, { 
             // Esta opción es clave para que los campos controlados se actualicen
             keepDirtyValues: false, 
@@ -731,7 +757,7 @@ export function PublishTripForm() {
             form.setValue("capacity", trip.capacity, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("vehicleType", trip.vehicleType || "standard", { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("segmentPrices", segmentPricesFromTrip, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-            form.setValue("stopTimes", allStopTimes, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+            form.setValue("stopTimes", ensureValidStopTimes(allStopTimes), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             
             // Forzar revalidación completa
             form.trigger();
