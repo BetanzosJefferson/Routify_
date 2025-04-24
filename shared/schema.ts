@@ -49,6 +49,24 @@ export const trips = pgTable("trips", {
 
 export const insertTripSchema = createInsertSchema(trips);
 export type InsertTrip = z.infer<typeof insertTripSchema>;
+
+// Extended trip type with additional fields for API usage 
+// (not extending InsertTrip directly to avoid type errors)
+export interface TripWithTimes {
+  routeId: number;
+  departureDate: Date;
+  departureTime?: string;
+  arrivalTime?: string;
+  capacity: number;
+  availableSeats: number;
+  price: number; 
+  vehicleType: string;
+  segmentPrices: any;
+  isSubTrip: boolean;
+  parentTripId: number | null;
+  segmentOrigin?: string;
+  segmentDestination?: string;
+}
 export type Trip = typeof trips.$inferSelect;
 
 // PASSENGER SCHEMA

@@ -312,7 +312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           arrivalTime,
           capacity: tripData.capacity,
           availableSeats: tripData.capacity,
-          price: tripData.price,
+          price: tripData.price || 0, // Asegurar que siempre haya un precio aunque sea 0
           vehicleType: tripData.vehicleType,
           segmentPrices: tripData.segmentPrices,
           isSubTrip: false,
@@ -382,7 +382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           } else {
             // Fallback: usar tiempos calculados proporcionalmente
-            price = calculateProportionalPrice(segment, route, tripData.price);
+            price = calculateProportionalPrice(segment, route, tripData.price || 0);
             departureTime = segmentTimes[`${segment.origin}-${segment.destination}`].departureTime;
             arrivalTime = segmentTimes[`${segment.origin}-${segment.destination}`].arrivalTime;
           }
@@ -681,8 +681,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   function calculateProportionalPrice(
     segment: { origin: string; destination: string },
     route: RouteWithSegments,
-    totalPrice: number
-  ) {
+    totalPrice: number | undefined
+  ): number {
+    // Si no hay precio total, usar valor predeterminado
+    if (totalPrice === undefined) totalPrice = 0;
     const allPoints = [route.origin, ...route.stops, route.destination];
     const totalSegments = allPoints.length - 1;
     
