@@ -105,7 +105,10 @@ export function PublishTripForm() {
       price: 450,
       vehicleType: "standard",
       segmentPrices: [],
+      stopTimes: [], // Añadimos stopTimes para que no sea undefined
     },
+    // Este modo nos ayuda a que el formulario muestre los valores actualizados
+    mode: "onChange",
   });
 
   // Update segment prices when route changes
@@ -600,16 +603,33 @@ export function PublishTripForm() {
           const startDate = trip.departureDate?.split("T")[0] || format(new Date(), "yyyy-MM-dd");
           const endDate = startDate; // Mismo día para edición
           
-          form.reset({
-            routeId: trip.routeId,
-            startDate,
-            endDate,
-            capacity: trip.capacity,
-            price: trip.price || 0,
-            vehicleType: trip.vehicleType || "standard",
-            segmentPrices: segmentPricesFromTrip,
-            stopTimes: allStopTimes
-          });
+          // Primero actualizamos los valores
+          form.setValue("routeId", trip.routeId);
+          form.setValue("startDate", startDate);
+          form.setValue("endDate", endDate);
+          form.setValue("capacity", trip.capacity);
+          form.setValue("price", trip.price || 0);
+          form.setValue("vehicleType", trip.vehicleType || "standard");
+          form.setValue("segmentPrices", segmentPricesFromTrip);
+          form.setValue("stopTimes", allStopTimes);
+            
+          // Luego forzamos que se muestren en el formulario 
+          setTimeout(() => {
+            // Este timeout permite que React actualice los componentes después del setValue
+            console.log("Formulario actualizado con datos:", {
+              routeId: trip.routeId,
+              startDate,
+              endDate, 
+              capacity: trip.capacity,
+              price: trip.price,
+              vehicleType: trip.vehicleType,
+              segmentPrices: segmentPricesFromTrip,
+              stopTimes: allStopTimes
+            });
+            
+            // Trigger rerender del formulario
+            form.trigger();
+          }, 100);
           
           // Mostrar el formulario
           setShowForm(true);
@@ -839,6 +859,7 @@ export function PublishTripForm() {
                                   <Input
                                     type="number"
                                     value={segment.price}
+                                    defaultValue={segment.price.toString()}
                                     onChange={(e) => updateSegmentPrice(index, parseInt(e.target.value) || 0)}
                                     className="w-24"
                                   />
