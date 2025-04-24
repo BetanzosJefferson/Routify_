@@ -983,6 +983,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Rutas de API para vehículos (unidades)
+  app.get(apiRouter("/vehicles"), async (_req: Request, res: Response) => {
+    try {
+      const vehicles = await storage.getVehicles();
+      res.json(vehicles);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vehicles" });
+    }
+  });
+
+  app.get(apiRouter("/vehicles/:id"), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const vehicle = await storage.getVehicle(id);
+      
+      if (!vehicle) {
+        return res.status(404).json({ error: "Vehicle not found" });
+      }
+      
+      res.json(vehicle);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vehicle" });
+    }
+  });
+
+  app.post(apiRouter("/vehicles"), async (req: Request, res: Response) => {
+    try {
+      // Validación básica
+      if (!req.body.plates || !req.body.brand || !req.body.model || !req.body.economicNumber) {
+        return res.status(400).json({ 
+          error: "Missing required fields",
+          details: "plates, brand, model, and economicNumber are required" 
+        });
+      }
+      
+      const vehicle = await storage.createVehicle(req.body);
+      res.status(201).json(vehicle);
+    } catch (error) {
+      console.error("Error creating vehicle:", error);
+      res.status(500).json({ error: "Failed to create vehicle" });
+    }
+  });
+
+  app.put(apiRouter("/vehicles/:id"), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const vehicle = await storage.updateVehicle(id, req.body.data);
+      
+      if (!vehicle) {
+        return res.status(404).json({ error: "Vehicle not found" });
+      }
+      
+      res.json(vehicle);
+    } catch (error) {
+      console.error("Error updating vehicle:", error);
+      res.status(500).json({ error: "Failed to update vehicle" });
+    }
+  });
+
+  app.delete(apiRouter("/vehicles/:id"), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const success = await storage.deleteVehicle(id);
+      
+      if (!success) {
+        return res.status(404).json({ error: "Vehicle not found" });
+      }
+      
+      res.status(204).end();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete vehicle" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

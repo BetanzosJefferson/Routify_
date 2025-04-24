@@ -638,11 +638,11 @@ export function PublishTripForm() {
           let segmentPricesFromTrip: any[] = [];
           if (trip.segmentPrices && Array.isArray(trip.segmentPrices)) {
             console.log("El viaje tiene segmentPrices configurados:", trip.segmentPrices);
-            // Usar directamente los segmentPrices del viaje
+            // Usar directamente los segmentPrices del viaje y asegurarse de que los precios son números
             segmentPricesFromTrip = trip.segmentPrices.map((sp: any) => ({
               origin: sp.origin,
               destination: sp.destination,
-              price: sp.price || 0,
+              price: typeof sp.price === 'number' ? sp.price : 0, // Garantizar que price sea un número
               departureTime: sp.departureTime,
               arrivalTime: sp.arrivalTime
             }));
