@@ -102,7 +102,7 @@ export function Topbar() {
 
       {/* Modal de perfil */}
       <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
-        <DialogContent className="max-w-4xl p-0">
+        <DialogContent className="max-w-4xl p-0 theme-transition">
           <DialogHeader className="p-6 pb-2">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-2xl font-bold">Mi Perfil</DialogTitle>
