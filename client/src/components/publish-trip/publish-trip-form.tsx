@@ -370,14 +370,22 @@ export function PublishTripForm() {
         };
       });
     
+    // Obtener el primer y último tiempo para usar como tiempo de salida/llegada del viaje
+    const departureTime = formattedStopTimes.length > 0 ? 
+      `${formattedStopTimes[0].hour}:${formattedStopTimes[0].minute} ${formattedStopTimes[0].ampm}` : "";
+    const arrivalTime = formattedStopTimes.length > 0 ? 
+      `${formattedStopTimes[formattedStopTimes.length - 1].hour}:${formattedStopTimes[formattedStopTimes.length - 1].minute} ${formattedStopTimes[formattedStopTimes.length - 1].ampm}` : "";
+    
     // Preparar datos comunes para crear o actualizar
     const tripData = {
       ...data,
       routeId: selectedRouteId,
       capacity,
-      price: Number(data.price),
+      price: 0, // Ya no se usa precio base
       segmentPrices,
       stopTimes: formattedStopTimes,
+      departureTime, // Añadido explícitamente
+      arrivalTime,   // Añadido explícitamente
       availableSeats: capacity // Inicializa availableSeats con la capacidad
     };
     
@@ -545,134 +553,127 @@ export function PublishTripForm() {
             
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Selección de ruta */}
-                  <FormField
-                    control={form.control}
-                    name="routeId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ruta</FormLabel>
-                        <Select 
-                          onValueChange={handleRouteChange}
-                          defaultValue={field.value.toString()}
-                          value={selectedRouteId?.toString() || undefined}
-                        >
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Primera columna */}
+                  <div className="space-y-6">
+                    {/* Selección de ruta */}
+                    <FormField
+                      control={form.control}
+                      name="routeId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Ruta</FormLabel>
+                          <Select 
+                            onValueChange={handleRouteChange}
+                            defaultValue={field.value.toString()}
+                            value={selectedRouteId?.toString() || undefined}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccionar ruta" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {routesQuery.data?.map((route: Route) => (
+                                <SelectItem key={route.id} value={route.id.toString()}>
+                                  {route.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {/* Tipo de vehículo */}
+                    <FormField
+                      control={form.control}
+                      name="vehicleType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tipo de Vehículo</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccionar tipo" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="standard">Estándar</SelectItem>
+                              <SelectItem value="vip">VIP</SelectItem>
+                              <SelectItem value="economy">Económico</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  {/* Segunda columna */}
+                  <div className="space-y-6">
+                    {/* Fecha de inicio */}
+                    <FormField
+                      control={form.control}
+                      name="startDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fecha de Inicio</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleccionar ruta" />
-                            </SelectTrigger>
+                            <Input
+                              type="date"
+                              {...field}
+                            />
                           </FormControl>
-                          <SelectContent>
-                            {routesQuery.data?.map((route: Route) => (
-                              <SelectItem key={route.id} value={route.id.toString()}>
-                                {route.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Tipo de vehículo */}
-                  <FormField
-                    control={form.control}
-                    name="vehicleType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tipo de Vehículo</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {/* Fecha de fin */}
+                    <FormField
+                      control={form.control}
+                      name="endDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fecha de Fin</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleccionar tipo" />
-                            </SelectTrigger>
+                            <Input
+                              type="date"
+                              {...field}
+                            />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="standard">Estándar</SelectItem>
-                            <SelectItem value="vip">VIP</SelectItem>
-                            <SelectItem value="economy">Económico</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   
-                  {/* Fecha de inicio */}
-                  <FormField
-                    control={form.control}
-                    name="startDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Fecha de Inicio</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Fecha de fin */}
-                  <FormField
-                    control={form.control}
-                    name="endDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Fecha de Fin</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Capacidad del vehículo */}
-                  <FormField
-                    control={form.control}
-                    name="capacity"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Capacidad</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Precio */}
-                  <FormField
-                    control={form.control}
-                    name="price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Precio Base</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Tercera columna */}
+                  <div className="space-y-6">
+                    {/* Capacidad del vehículo */}
+                    <FormField
+                      control={form.control}
+                      name="capacity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Capacidad</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              {...field}
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {/* Campo oculto para el precio (ya no se muestra en la interfaz) */}
+                    <input type="hidden" {...form.register("price")} value="0" />
+                  </div>
                 </div>
                 
                 {selectedRouteId && routeSegmentsQuery.data && (
