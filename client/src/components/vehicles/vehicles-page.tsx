@@ -22,7 +22,17 @@ export function VehiclesPage() {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   
   // Estado del formulario
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    plates: string,
+    brand: string,
+    model: string,
+    economicNumber: string,
+    capacity: number,
+    hasAC: boolean,
+    hasRecliningSeats: boolean,
+    services: string[],
+    description: string
+  }>({
     plates: "",
     brand: "",
     model: "",
@@ -30,7 +40,7 @@ export function VehiclesPage() {
     capacity: 0,
     hasAC: false,
     hasRecliningSeats: false,
-    services: [] as string[],
+    services: [],
     description: ""
   });
   
@@ -150,8 +160,8 @@ export function VehiclesPage() {
       model: vehicle.model,
       economicNumber: vehicle.economicNumber,
       capacity: vehicle.capacity,
-      hasAC: vehicle.hasAC,
-      hasRecliningSeats: vehicle.hasRecliningSeats,
+      hasAC: vehicle.hasAC || false,
+      hasRecliningSeats: vehicle.hasRecliningSeats || false,
       services: vehicle.services || [],
       description: vehicle.description || ""
     });

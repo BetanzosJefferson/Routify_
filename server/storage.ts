@@ -610,7 +610,16 @@ export class MemStorage implements IStorage {
   
   async createCommission(commission: InsertCommission): Promise<Commission> {
     const id = this.commissionId++;
-    const newCommission: Commission = { ...commission, id };
+    const newCommission: Commission = { 
+      ...commission, 
+      id,
+      createdAt: new Date(),
+      updatedAt: null,
+      routeId: commission.routeId ?? null,
+      tripId: commission.tripId ?? null,
+      description: commission.description ?? null,
+      percentage: commission.percentage ?? null
+    };
     this.commissions.set(id, newCommission);
     return newCommission;
   }
