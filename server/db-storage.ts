@@ -158,24 +158,19 @@ export class DatabaseStorage implements IStorage {
     });
     
     // Asociar cada viaje con su ruta
-    const tripsWithRouteInfo: TripWithRouteInfo[] = trips.map(trip => {
+    const tripsWithRouteInfo: TripWithRouteInfo[] = [];
+    
+    for (const trip of trips) {
       const route = routeMap.get(trip.routeId);
-      
       if (route) {
-        return {
+        tripsWithRouteInfo.push({
           ...trip,
           route,
           numStops: route.stops.length
-        };
+        });
       }
-      
-      // Si no se encontró la ruta, devolver el viaje sin información de ruta
-      return {
-        ...trip,
-        route: undefined,
-        numStops: 0
-      };
-    });
+      // Si no se encuentra la ruta, simplemente no incluimos este viaje
+    }
     
     console.timeEnd('getTrips-optimized');
     return tripsWithRouteInfo;
