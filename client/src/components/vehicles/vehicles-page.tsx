@@ -116,6 +116,11 @@ export function VehiclesPage() {
   const deleteVehicleMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await apiRequest("DELETE", `/api/vehicles/${id}`);
+      // Código 204 (No Content) no devuelve JSON, así que no hay que parsearlo
+      if (res.status === 204) {
+        return { success: true };
+      }
+      // Para otros códigos, podemos intentar parsear la respuesta
       return await res.json();
     },
     onSuccess: () => {

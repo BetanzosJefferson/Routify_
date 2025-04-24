@@ -65,6 +65,7 @@ export async function apiRequest(
 
   const response = await fetch(url, options);
 
+  // Los códigos 2xx indican éxito, incluyendo el 204 (No Content)
   if (!response.ok) {
     let errorMessage = `Error ${response.status}: ${response.statusText}`;
     try {
