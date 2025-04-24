@@ -237,50 +237,82 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
   // Handle printing the ticket
   const handlePrintTicket = () => {
     const content = ticketRef.current;
-    if (!content) return;
-    
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
+    if (!content) {
       toast({
         title: "Error",
-        description: "No se pudo abrir la ventana de impresión. Por favor, desactive el bloqueador de ventanas emergentes.",
+        description: "No se pudo generar el ticket",
         variant: "destructive",
       });
       return;
     }
     
-    // Add the ticket content to the new window
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Ticket de Reservación</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-            .ticket { border: 1px solid #ccc; padding: 20px; max-width: 400px; margin: 0 auto; }
-            .header { text-align: center; margin-bottom: 20px; }
-            .logo { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
-            .qr-code { text-align: center; margin: 20px 0; }
-            .qr-code img { max-width: 150px; }
-            .details { margin-bottom: 20px; }
-            .detail-row { display: flex; margin-bottom: 5px; }
-            .detail-label { font-weight: bold; width: 120px; }
-            .passengers { margin-top: 20px; }
-            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
-          </style>
-        </head>
-        <body>
-          ${content.innerHTML}
-        </body>
-      </html>
-    `);
-    
-    printWindow.document.close();
-    
-    // Give time for the content to load before printing
-    setTimeout(() => {
-      printWindow.print();
-      // printWindow.close();
-    }, 250);
+    try {
+      // Usamos setTimeout para desacoplar la apertura de la ventana del evento principal
+      setTimeout(() => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+          toast({
+            title: "Error",
+            description: "No se pudo abrir la ventana de impresión. Por favor, desactive el bloqueador de ventanas emergentes.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Agregamos el contenido del ticket a la nueva ventana con estilos mejorados
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Ticket de Reservación</title>
+              <style>
+                @media print {
+                  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                }
+                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+                .ticket { border: 1px solid #ccc; padding: 20px; max-width: 400px; margin: 0 auto; background-color: white; }
+                .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+                .logo { font-size: 24px; font-weight: bold; margin-bottom: 5px; color: #333; }
+                .qr-code { text-align: center; margin: 20px 0; }
+                .qr-code img { max-width: 150px; }
+                .details { margin-bottom: 20px; }
+                .detail-row { display: flex; margin-bottom: 10px; }
+                .detail-label { font-weight: bold; width: 120px; color: #555; }
+                .passengers { margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
+                .passenger-item { padding: 5px 0; }
+                .footer { text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 12px; color: #666; }
+              </style>
+            </head>
+            <body>
+              <div class="ticket">
+                ${content.innerHTML}
+              </div>
+              <script>
+                // Esperar un poco para que se carguen los estilos y el contenido
+                setTimeout(() => {
+                  try {
+                    window.print();
+                    window.onfocus = function() { 
+                      setTimeout(function() { window.close(); }, 500);
+                    };
+                  } catch (e) {
+                    console.error("Error al imprimir:", e);
+                  }
+                }, 500);
+              </script>
+            </body>
+          </html>
+        `);
+        
+        printWindow.document.close();
+      }, 100);
+    } catch (error) {
+      console.error("Error al imprimir:", error);
+      toast({
+        title: "Error al imprimir",
+        description: "Ocurrió un error al intentar imprimir el ticket. Por favor, intente nuevamente.",
+        variant: "destructive",
+      });
+    }
   };
   
   // Handle downloading the ticket as PDF
@@ -297,55 +329,64 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
     
     try {
       // Abrimos una nueva ventana con estilos controlados para evitar problemas de formato
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        toast({
-          title: "Error",
-          description: "No se pudo abrir la ventana de impresión. Por favor, desactive el bloqueador de ventanas emergentes.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Agregamos el contenido del ticket a la nueva ventana con estilos mejorados
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Ticket de Reservación</title>
-            <style>
-              @media print {
-                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              }
-              body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-              .ticket { border: 1px solid #ccc; padding: 20px; max-width: 400px; margin: 0 auto; background-color: white; }
-              .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
-              .logo { font-size: 24px; font-weight: bold; margin-bottom: 5px; color: #333; }
-              .qr-code { text-align: center; margin: 20px 0; }
-              .qr-code img { max-width: 150px; }
-              .details { margin-bottom: 20px; }
-              .detail-row { display: flex; margin-bottom: 10px; }
-              .detail-label { font-weight: bold; width: 120px; color: #555; }
-              .passengers { margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
-              .passenger-item { padding: 5px 0; }
-              .footer { text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 12px; color: #666; }
-            </style>
-          </head>
-          <body>
-            <div class="ticket">
-              ${content.innerHTML}
-            </div>
-            <script>
-              // Esperar un poco para que se carguen los estilos y el contenido
-              setTimeout(() => {
-                window.print();
-                // window.close();
-              }, 500);
-            </script>
-          </body>
-        </html>
-      `);
-      
-      printWindow.document.close();
+      // Usamos setTimeout para desacoplar la apertura de la ventana del evento principal
+      setTimeout(() => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+          toast({
+            title: "Error",
+            description: "No se pudo abrir la ventana de impresión. Por favor, desactive el bloqueador de ventanas emergentes.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Agregamos el contenido del ticket a la nueva ventana con estilos mejorados
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Ticket de Reservación</title>
+              <style>
+                @media print {
+                  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                }
+                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+                .ticket { border: 1px solid #ccc; padding: 20px; max-width: 400px; margin: 0 auto; background-color: white; }
+                .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+                .logo { font-size: 24px; font-weight: bold; margin-bottom: 5px; color: #333; }
+                .qr-code { text-align: center; margin: 20px 0; }
+                .qr-code img { max-width: 150px; }
+                .details { margin-bottom: 20px; }
+                .detail-row { display: flex; margin-bottom: 10px; }
+                .detail-label { font-weight: bold; width: 120px; color: #555; }
+                .passengers { margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
+                .passenger-item { padding: 5px 0; }
+                .footer { text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 12px; color: #666; }
+              </style>
+            </head>
+            <body>
+              <div class="ticket">
+                ${content.innerHTML}
+              </div>
+              <script>
+                // Esperar un poco para que se carguen los estilos y el contenido
+                setTimeout(() => {
+                  try {
+                    window.print();
+                    window.onfocus = function() { 
+                      setTimeout(function() { window.close(); }, 500);
+                    };
+                  } catch (e) {
+                    console.error("Error al imprimir:", e);
+                  }
+                }, 500);
+              </script>
+            </body>
+          </html>
+        `);
+        
+        printWindow.document.close();
+      }, 100);
     } catch (error) {
       console.error("Error al generar PDF:", error);
       toast({
