@@ -486,9 +486,6 @@ export default function TripList({ onEditTrip }: TripListProps) {
                             <Button variant="outline" size="sm" className="whitespace-nowrap">
                               Asignar Conductor
                             </Button>
-                            <Button variant="secondary" size="sm" className="bg-primary text-white hover:bg-primary/90 hover:text-white whitespace-nowrap">
-                              Ver Segmentos
-                            </Button>
                           </div>
                           
                           <div className="flex gap-2 mt-0 lg:mt-4">
@@ -508,20 +505,6 @@ export default function TripList({ onEditTrip }: TripListProps) {
                             >
                               <TrashIcon className="h-4 w-4" />
                             </Button>
-                          </div>
-                          
-                          <div className="hidden lg:block mt-4">
-                            <Select defaultValue="programado">
-                              <SelectTrigger className="w-[150px]">
-                                <SelectValue placeholder="Estado" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="programado">Programado</SelectItem>
-                                <SelectItem value="en-ruta">En ruta</SelectItem>
-                                <SelectItem value="completado">Completado</SelectItem>
-                                <SelectItem value="cancelado">Cancelado</SelectItem>
-                              </SelectContent>
-                            </Select>
                           </div>
                         </div>
                       </div>

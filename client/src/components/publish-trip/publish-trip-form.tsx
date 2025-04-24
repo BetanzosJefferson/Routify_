@@ -562,11 +562,73 @@ export function PublishTripForm() {
                 location
               };
             } else {
-              // Paradas intermedias - usamos la hora de salida como estimación inicial
+              // Paradas intermedias - intentamos recuperar los tiempos reales de los tiempos de segmento
+              // Buscamos en los segmentPrices para ubicaciones que podrían tener tiempos calculados
+              if (trip.segmentPrices && Array.isArray(trip.segmentPrices)) {
+                // Buscar un segmento donde esta ubicación sea el origen o destino
+                const segmentAsOrigin = trip.segmentPrices.find(
+                  (seg: any) => seg.origin === location && seg.departureTime
+                );
+                
+                if (segmentAsOrigin) {
+                  const timeParts = segmentAsOrigin.departureTime.split(' ');
+                  const hourMinute = timeParts[0].split(':');
+                  return {
+                    hour: hourMinute[0],
+                    minute: hourMinute[1],
+                    ampm: timeParts[1] as "AM" | "PM",
+                    location
+                  };
+                }
+                
+                const segmentAsDestination = trip.segmentPrices.find(
+                  (seg: any) => seg.destination === location && seg.arrivalTime
+                );
+                
+                if (segmentAsDestination) {
+                  const timeParts = segmentAsDestination.arrivalTime.split(' ');
+                  const hourMinute = timeParts[0].split(':');
+                  return {
+                    hour: hourMinute[0],
+                    minute: hourMinute[1],
+                    ampm: timeParts[1] as "AM" | "PM",
+                    location
+                  };
+                }
+              }
+              
+              // Si no se encontró información específica, calculamos un tiempo proporcional 
+              // entre la salida y la llegada
+              const totalStops = allLocations.length - 1;
+              const position = index / totalStops; // Posición relativa (0 a 1)
+              
+              // Convertir tiempos a minutos desde medianoche para cálculos
+              const getMinutesSinceMidnight = (hour: string, minute: string, ampm: string) => {
+                let hours = parseInt(hour);
+                if (ampm === "PM" && hours < 12) hours += 12;
+                if (ampm === "AM" && hours === 12) hours = 0;
+                return hours * 60 + parseInt(minute);
+              };
+              
+              const departureMinutes = getMinutesSinceMidnight(departureHour, departureMinute, departureAmPm);
+              const arrivalMinutes = getMinutesSinceMidnight(arrivalHour, arrivalMinute, arrivalAmPm);
+              
+              // Calcular minutos intermedios basados en la posición
+              const interpolatedMinutes = Math.round(departureMinutes + position * (arrivalMinutes - departureMinutes));
+              
+              // Convertir minutos de vuelta a horas y minutos
+              const calculatedHours = Math.floor(interpolatedMinutes / 60);
+              const calculatedMinutes = interpolatedMinutes % 60;
+              
+              // Formato 12 horas
+              const isAM = calculatedHours < 12;
+              let hours12 = calculatedHours % 12;
+              if (hours12 === 0) hours12 = 12;
+              
               return {
-                hour: departureHour,
-                minute: departureMinute,
-                ampm: departureAmPm as "AM" | "PM",
+                hour: hours12.toString().padStart(2, '0'),
+                minute: calculatedMinutes.toString().padStart(2, '0'),
+                ampm: isAM ? "AM" : "PM",
                 location
               };
             }
