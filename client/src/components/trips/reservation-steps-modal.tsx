@@ -173,7 +173,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       // Generate QR code for the reservation
       const reservationUrl = `${window.location.origin}/reservations/${data.id}`;
       QRCode.toDataURL(reservationUrl)
-        .then(url => {
+        .then((url: string) => {
           setQrCodeUrl(url);
           setSubmittedReservation(data);
           setCurrentStep(4); // Move to ticket screen
@@ -181,7 +181,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
           queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
           queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
         })
-        .catch(err => {
+        .catch((err: Error) => {
           console.error("Error generating QR code", err);
           setSubmittedReservation(data);
           setCurrentStep(4); // Move to ticket screen even without QR
