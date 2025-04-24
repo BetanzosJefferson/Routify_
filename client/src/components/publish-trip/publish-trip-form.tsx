@@ -302,6 +302,8 @@ export function PublishTripForm() {
   
   // Guardar el tiempo editado
   const saveStopTime = (hour: string, minute: string, ampm: "AM" | "PM") => {
+    console.log("Guardando tiempo de parada...", editingStopIndex, `${hour}:${minute} ${ampm}`);
+    
     if (editingStopIndex === null) return;
     
     // Obtener la ubicación para este índice
@@ -315,6 +317,8 @@ export function PublishTripForm() {
       stopLocation = allLocations[editingStopIndex] || "";
     }
     
+    console.log("Parada:", stopLocation, "Índice:", editingStopIndex);
+    
     // Actualizar el array de tiempos, incluyendo la ubicación
     const newStopTimes = [...stopTimes];
     newStopTimes[editingStopIndex] = { 
@@ -325,19 +329,33 @@ export function PublishTripForm() {
     };
     setStopTimes(newStopTimes);
     
+    console.log("Tiempos actualizados:", newStopTimes);
+    
     // Si es el origen o el destino, actualizar los valores del formulario
+    let allLocationsLength = 0;
+    if (routeSegmentsQuery.data) {
+      allLocationsLength = [
+        routeSegmentsQuery.data.origin,
+        ...(routeSegmentsQuery.data.stops || []),
+        routeSegmentsQuery.data.destination
+      ].length;
+    }
+    
     if (editingStopIndex === 0) {
       // Origen
+      console.log("Actualizando tiempos de origen en el formulario");
       form.setValue('departureHour', hour);
       form.setValue('departureMinute', minute);
       form.setValue('departureAmPm', ampm);
-    } else if (editingStopIndex === newStopTimes.length - 1) {
-      // Destino
+    } else if (editingStopIndex === allLocationsLength - 1) {
+      // Destino - uso de allLocationsLength para ser consistente
+      console.log("Actualizando tiempos de destino en el formulario");
       form.setValue('arrivalHour', hour);
       form.setValue('arrivalMinute', minute);
       form.setValue('arrivalAmPm', ampm);
     }
     
+    // Cerrar el diálogo antes de mostrar la notificación
     setShowTimeDialog(false);
     
     toast({
@@ -1089,13 +1107,23 @@ export function PublishTripForm() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowTimeDialog(false)}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowTimeDialog(false);
+                    }}
                   >
                     Cancelar
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => {
+                    type="button" 
+                    onClick={(e) => {
+                      // Evitar que el evento se propague y envíe el formulario
+                      e.preventDefault();
+                      e.stopPropagation();
+                      
                       if (editingStopIndex === null) return;
                       const currentTime = stopTimes[editingStopIndex];
                       if (currentTime) {
