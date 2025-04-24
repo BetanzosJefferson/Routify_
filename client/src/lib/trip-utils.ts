@@ -11,17 +11,17 @@ export function extractLocationsFromTrips(trips: TripWithRouteInfo[]): LocationO
     const mainRoute = trip.route;
     
     // Procesar el origen principal de la ruta
-    if (mainRoute.origin) {
+    if (mainRoute && mainRoute.origin) {
       processLocation(mainRoute.origin, locationMap);
     }
     
     // Procesar el destino principal de la ruta
-    if (mainRoute.destination) {
+    if (mainRoute && mainRoute.destination) {
       processLocation(mainRoute.destination, locationMap);
     }
     
     // Procesar paradas intermedias
-    if (mainRoute.stops && Array.isArray(mainRoute.stops)) {
+    if (mainRoute && mainRoute.stops && Array.isArray(mainRoute.stops)) {
       mainRoute.stops.forEach(stop => {
         if (stop) processLocation(stop, locationMap);
       });
