@@ -512,10 +512,16 @@ export function PublishTripForm() {
             console.log("El viaje tiene stopTimes configurados:", trip.stopTimes);
             trip.stopTimes.forEach((stopTime: any) => {
               if (stopTime && stopTime.location) {
+                // Asegurarse de que ampm sea "AM" o "PM"
+                let ampmValue = (stopTime.ampm || "AM").toUpperCase();
+                if (ampmValue !== "AM" && ampmValue !== "PM") {
+                  ampmValue = "AM";
+                }
+                
                 existingStopTimes[stopTime.location] = {
                   hour: stopTime.hour || "00",
                   minute: stopTime.minute || "00",
-                  ampm: stopTime.ampm || "AM"
+                  ampm: ampmValue as "AM" | "PM"
                 };
               }
             });
@@ -570,30 +576,48 @@ export function PublishTripForm() {
                   (seg: any) => seg.origin === location && seg.departureTime
                 );
                 
-                if (segmentAsOrigin) {
-                  const timeParts = segmentAsOrigin.departureTime.split(' ');
-                  const hourMinute = timeParts[0].split(':');
-                  return {
-                    hour: hourMinute[0],
-                    minute: hourMinute[1],
-                    ampm: timeParts[1] as "AM" | "PM",
-                    location
-                  };
+                if (segmentAsOrigin && segmentAsOrigin.departureTime) {
+                  try {
+                    const timeParts = segmentAsOrigin.departureTime.split(' ');
+                    if (timeParts.length === 2) {
+                      const hourMinute = timeParts[0].split(':');
+                      const ampm = timeParts[1].toUpperCase();
+                      if (hourMinute.length === 2 && (ampm === "AM" || ampm === "PM")) {
+                        return {
+                          hour: hourMinute[0],
+                          minute: hourMinute[1],
+                          ampm: ampm as "AM" | "PM",
+                          location
+                        };
+                      }
+                    }
+                  } catch (error) {
+                    console.warn("Error parsing departureTime:", error);
+                  }
                 }
                 
                 const segmentAsDestination = trip.segmentPrices.find(
                   (seg: any) => seg.destination === location && seg.arrivalTime
                 );
                 
-                if (segmentAsDestination) {
-                  const timeParts = segmentAsDestination.arrivalTime.split(' ');
-                  const hourMinute = timeParts[0].split(':');
-                  return {
-                    hour: hourMinute[0],
-                    minute: hourMinute[1],
-                    ampm: timeParts[1] as "AM" | "PM",
-                    location
-                  };
+                if (segmentAsDestination && segmentAsDestination.arrivalTime) {
+                  try {
+                    const timeParts = segmentAsDestination.arrivalTime.split(' ');
+                    if (timeParts.length === 2) {
+                      const hourMinute = timeParts[0].split(':');
+                      const ampm = timeParts[1].toUpperCase();
+                      if (hourMinute.length === 2 && (ampm === "AM" || ampm === "PM")) {
+                        return {
+                          hour: hourMinute[0],
+                          minute: hourMinute[1],
+                          ampm: ampm as "AM" | "PM",
+                          location
+                        };
+                      }
+                    }
+                  } catch (error) {
+                    console.warn("Error parsing arrivalTime:", error);
+                  }
                 }
               }
               
