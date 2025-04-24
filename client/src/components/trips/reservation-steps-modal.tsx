@@ -285,11 +285,75 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
   
   // Handle downloading the ticket as PDF
   const handleDownloadTicket = () => {
-    toast({
-      title: "Descarga de ticket",
-      description: "La función de descarga directa no está disponible. Por favor, utilice la opción de imprimir y seleccione 'Guardar como PDF'.",
-    });
-    handlePrintTicket();
+    const content = ticketRef.current;
+    if (!content) {
+      toast({
+        title: "Error",
+        description: "No se pudo generar el ticket",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      // Abrimos una nueva ventana con estilos controlados para evitar problemas de formato
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        toast({
+          title: "Error",
+          description: "No se pudo abrir la ventana de impresión. Por favor, desactive el bloqueador de ventanas emergentes.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Agregamos el contenido del ticket a la nueva ventana con estilos mejorados
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Ticket de Reservación</title>
+            <style>
+              @media print {
+                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              }
+              body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+              .ticket { border: 1px solid #ccc; padding: 20px; max-width: 400px; margin: 0 auto; background-color: white; }
+              .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+              .logo { font-size: 24px; font-weight: bold; margin-bottom: 5px; color: #333; }
+              .qr-code { text-align: center; margin: 20px 0; }
+              .qr-code img { max-width: 150px; }
+              .details { margin-bottom: 20px; }
+              .detail-row { display: flex; margin-bottom: 10px; }
+              .detail-label { font-weight: bold; width: 120px; color: #555; }
+              .passengers { margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
+              .passenger-item { padding: 5px 0; }
+              .footer { text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 12px; color: #666; }
+            </style>
+          </head>
+          <body>
+            <div class="ticket">
+              ${content.innerHTML}
+            </div>
+            <script>
+              // Esperar un poco para que se carguen los estilos y el contenido
+              setTimeout(() => {
+                window.print();
+                // window.close();
+              }, 500);
+            </script>
+          </body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+    } catch (error) {
+      console.error("Error al generar PDF:", error);
+      toast({
+        title: "Error al generar PDF",
+        description: "Ocurrió un error al intentar generar el PDF. Por favor, intente nuevamente.",
+        variant: "destructive",
+      });
+    }
   };
   
   // Handle modal close
@@ -580,26 +644,28 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
               {/* Ticket Preview */}
               <div 
                 ref={ticketRef}
-                className="border-2 border-gray-200 rounded-lg p-6 max-w-md mx-auto"
+                className="border-2 border-gray-200 rounded-lg p-6 max-w-md mx-auto bg-white"
               >
-                <div className="text-center border-b pb-4 mb-4">
-                  <h3 className="text-xl font-bold">TransRoute</h3>
-                  <p className="text-sm text-gray-500">Boleto de Viaje</p>
+                <div className="text-center border-b border-gray-200 pb-4 mb-6">
+                  <h3 className="text-2xl font-bold text-primary">TransRoute</h3>
+                  <p className="text-sm text-gray-600 mt-1">Boleto de Viaje Oficial</p>
                 </div>
                 
                 {qrCodeUrl && (
-                  <div className="flex justify-center mb-4">
-                    <img 
-                      src={qrCodeUrl} 
-                      alt="QR Code" 
-                      className="w-40 h-40"
-                    />
+                  <div className="flex justify-center mb-6">
+                    <div className="p-2 bg-white border border-gray-200 rounded shadow-sm">
+                      <img 
+                        src={qrCodeUrl} 
+                        alt="QR Code" 
+                        className="w-40 h-40"
+                      />
+                    </div>
                   </div>
                 )}
                 
-                <div className="mb-4">
+                <div className="mb-5 bg-gray-50 p-3 rounded-md border border-gray-200">
                   <h4 className="font-bold text-sm text-gray-500 mb-1">Código de Reservación</h4>
-                  <p className="text-lg font-mono">
+                  <p className="text-2xl font-mono text-primary font-bold tracking-wider">
                     {submittedReservation && formatReservationId(submittedReservation.id)}
                   </p>
                 </div>
