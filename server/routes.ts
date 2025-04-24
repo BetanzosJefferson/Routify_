@@ -1029,7 +1029,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put(apiRouter("/vehicles/:id"), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
-      const vehicle = await storage.updateVehicle(id, req.body.data);
+      // El objeto completo está en req.body, no en req.body.data
+      const vehicle = await storage.updateVehicle(id, req.body);
       
       if (!vehicle) {
         return res.status(404).json({ error: "Vehicle not found" });
