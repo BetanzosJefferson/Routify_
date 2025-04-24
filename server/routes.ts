@@ -770,10 +770,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("Preservando precios por segmento existentes");
       }
       
-      // Preservar stopTimes si están configurados
-      if (tripData.stopTimes && Array.isArray(tripData.stopTimes)) {
-        console.log("Actualizando tiempos de parada:", tripData.stopTimes);
-      }
+      // No procesamos stopTimes en el servidor ya que no forma parte del esquema de la base de datos
+      // Solo lo usamos para cálculos en memoria
       
       // Preservar campos críticos que no deberían ser nulos
       if (tripData.price === undefined || tripData.price === null) {
@@ -803,9 +801,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           for (const subTrip of subTrips) {
             // Para cada sub-viaje, actualizamos fecha, capacidad y tipo de vehículo
             // pero preservamos su precio específico por segmento
-            const subTripUpdate: Partial<Trip> = {
+            const subTripUpdate = {
               departureDate: tripData.departureDate || updatedTrip.departureDate,
-              arrivalDate: tripData.arrivalDate || updatedTrip.arrivalDate,
+              departureTime: tripData.departureTime || updatedTrip.departureTime,
+              arrivalTime: tripData.arrivalTime || updatedTrip.arrivalTime,
               capacity: tripData.capacity || updatedTrip.capacity,
               vehicleType: tripData.vehicleType || updatedTrip.vehicleType,
             };
