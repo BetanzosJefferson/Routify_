@@ -116,6 +116,34 @@ export function BoardingList() {
     }))
   ) || [];
 
+  // Función para formatear fecha para su visualización con ajuste para zona horaria
+  const formatDisplayDate = (dateString: string | Date) => {
+    // Si es string, parseamos asegurándonos que la fecha se interprete correctamente
+    let date;
+    if (typeof dateString === 'string') {
+      // Si es formato ISO, extraemos solo la parte de fecha y creamos un objeto Date
+      // con la hora establecida al mediodía para evitar problemas de zona horaria
+      if (dateString.includes('T')) {
+        const datePart = dateString.split('T')[0];
+        const [year, month, day] = datePart.split('-').map(Number);
+        date = new Date(year, month - 1, day, 12, 0, 0);
+      } else {
+        // Para otros formatos, intentamos el constructor normal
+        const parts = dateString.split('-');
+        if (parts.length === 3) {
+          const [year, month, day] = parts.map(Number);
+          date = new Date(year, month - 1, day, 12, 0, 0);
+        } else {
+          date = new Date(dateString);
+        }
+      }
+    } else {
+      date = dateString;
+    }
+    
+    return format(date, "d 'de' MMMM, yyyy", { locale: es });
+  };
+
   // Función para formatear fecha para el encabezado
   const formatHeaderDate = (date: Date) => {
     return format(date, "d 'de' MMMM, yyyy", { locale: es });
@@ -217,7 +245,7 @@ export function BoardingList() {
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center text-gray-600">
                         <Calendar className="h-4 w-4 mr-2" />
-                        {format(new Date(trip.departureDate), "d 'de' MMMM, yyyy", { locale: es })}
+                        {formatDisplayDate(trip.departureDate)}
                       </div>
                       
                       <div className="flex items-center text-gray-600">
@@ -276,6 +304,9 @@ export function BoardingList() {
             </DialogDescription>
             <p className="text-sm text-gray-500 mt-1">
               {getSelectedTripInfo()?.segmentOrigin || getSelectedTripInfo()?.route.origin} → {getSelectedTripInfo()?.segmentDestination || getSelectedTripInfo()?.route.destination}
+            </p>
+            <p className="text-sm text-gray-500 mt-1">
+              {getSelectedTripInfo() && formatDisplayDate(getSelectedTripInfo()!.departureDate)}
             </p>
           </DialogHeader>
 

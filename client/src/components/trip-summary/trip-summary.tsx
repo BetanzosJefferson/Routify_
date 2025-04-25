@@ -43,21 +43,38 @@ export default function TripSummary({ className }: TripSummaryProps) {
     refetchInterval: 15000, // Recargar datos cada 15 segundos
   });
   
+  // Función helper para procesar fecha de viaje en formato consistente
+  const getTripDateStr = (tripDate: any): string => {
+    if (typeof tripDate === 'string') {
+      // Si es formato ISO, extraer solo la parte de fecha
+      if (tripDate.includes('T')) {
+        return tripDate.split('T')[0];
+      }
+      return tripDate;
+    } else if (tripDate instanceof Date) {
+      return format(tripDate, 'yyyy-MM-dd');
+    } else {
+      // En caso de que sea un tipo no esperado, intentar convertir a fecha
+      try {
+        return format(new Date(tripDate), 'yyyy-MM-dd');
+      } catch (e) {
+        console.error("Formato de fecha inválido:", tripDate);
+        return '';
+      }
+    }
+  };
+
   // Filtrar para obtener solo viajes principales (no sub-viajes) y por fecha seleccionada
   const filteredTrips = trips?.filter(trip => {
     // Filtrar por viajes principales
     if (trip.isSubTrip) return false;
     
-    // Convertir cadena de fecha a objeto Date y obtener solo la parte de la fecha (sin hora)
-    // Aseguramos que trip.departureDate sea una cadena (ya que podría ser un objeto Date)
-    const tripDate = typeof trip.departureDate === 'string' 
-      ? trip.departureDate.split('T')[0] 
-      : format(new Date(trip.departureDate), 'yyyy-MM-dd');
-      
+    // Obtener fecha del viaje y fecha actual en formato YYYY-MM-DD
+    const tripDateStr = getTripDateStr(trip.departureDate);
     const currentDateStr = format(currentDate, 'yyyy-MM-dd');
     
     // Comparar las cadenas de fecha directamente
-    return tripDate === currentDateStr;
+    return tripDateStr === currentDateStr;
   }) || [];
   
   // Navegación de fecha
@@ -126,13 +143,36 @@ export default function TripSummary({ className }: TripSummaryProps) {
     }
   }, [filteredTrips, selectedTrip, currentDate]);
 
-  // Función para formatear fecha
+  // Función para formatear fecha con ajuste para zona horaria
   const formatDate = (dateString: string | Date) => {
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    // Si es string, parseamos asegurándonos que la fecha se interprete correctamente
+    let date;
+    if (typeof dateString === 'string') {
+      // Si es formato ISO, extraemos solo la parte de fecha y creamos un objeto Date
+      // con la hora establecida al mediodía para evitar problemas de zona horaria
+      if (dateString.includes('T')) {
+        const datePart = dateString.split('T')[0];
+        const [year, month, day] = datePart.split('-').map(Number);
+        date = new Date(year, month - 1, day, 12, 0, 0);
+      } else {
+        // Para otros formatos, intentamos el constructor normal
+        const parts = dateString.split('-');
+        if (parts.length === 3) {
+          const [year, month, day] = parts.map(Number);
+          date = new Date(year, month - 1, day, 12, 0, 0);
+        } else {
+          date = new Date(dateString);
+        }
+      }
+    } else {
+      date = dateString;
+    }
+    
     return date.toLocaleDateString('es-MX', {
       year: 'numeric',
       month: 'long', 
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'UTC' // Usar UTC para evitar ajustes de zona horaria
     });
   };
   
