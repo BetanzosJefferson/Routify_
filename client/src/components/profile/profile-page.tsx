@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
-import { UserRole } from "@shared/schema";
+import { useQuery } from "@tanstack/react-query";
+import { User } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
 import { 
   UserIcon,
   Building2,
@@ -22,21 +21,19 @@ interface ProfilePageProps {
 export function ProfilePage({ standalone = false }: ProfilePageProps) {
   const [isUploading, setIsUploading] = useState(false);
 
-  // Obtenemos el usuario directamente del hook useAuth
-  const { user, isLoading, logoutMutation } = useAuth();
-  const { toast } = useToast();
-  const [, setLocation] = useLocation();
-  
+  // Consulta para obtener información del usuario
+  const { data: user, isLoading } = useQuery<User>({
+    queryKey: ['/api/user'],
+    queryFn: async () => {
+      const res = await apiRequest('GET', '/api/user');
+      if (!res.ok) throw new Error('Error al cargar usuario');
+      return await res.json();
+    }
+  });
+
   const handleLogout = () => {
-    logoutMutation.mutate(undefined, {
-      onSuccess: () => {
-        setLocation("/auth");
-        toast({
-          title: "Sesión cerrada",
-          description: "Has cerrado sesión correctamente"
-        });
-      }
-    });
+    // Implementar cuando se añada autenticación
+    console.log("Cerrar sesión - funcionalidad pendiente");
   };
 
   const getRoleDisplayName = (role: string) => {
@@ -162,18 +159,6 @@ export function ProfilePage({ standalone = false }: ProfilePageProps) {
               className="bg-muted" 
             />
           </div>
-          {user?.role === "companyOwner" && (
-            <div className="mt-2">
-              <p className="text-sm text-muted-foreground">
-                Dueño de empresa con acceso restringido a recursos propios
-              </p>
-              {user?.companyId && (
-                <p className="text-sm font-medium text-primary mt-1">
-                  ID de Empresa: {user.companyId}
-                </p>
-              )}
-            </div>
-          )}
         </div>
 
         <div>
