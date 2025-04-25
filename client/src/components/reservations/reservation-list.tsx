@@ -48,14 +48,36 @@ export function ReservationList() {
   const [notes, setNotes] = useState<string>("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
-  // Fetch reservations
+  // Estados adicionales para mejorar la UX
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [showLoadingDelay, setShowLoadingDelay] = useState(false);
+
+  // Fetch reservations con mejor manejo de estados y errores
   const { data: reservations, isLoading, isError } = useQuery({
     queryKey: ["/api/reservations"],
     queryFn: async () => {
-      const response = await fetch("/api/reservations");
-      if (!response.ok) throw new Error("Failed to fetch reservations");
-      return await response.json() as ReservationWithDetails[];
+      try {
+        // Mostrar el spinner solo después de 500ms para evitar parpadeos
+        const loadingTimeout = setTimeout(() => setShowLoadingDelay(true), 500);
+        
+        const response = await fetch("/api/reservations");
+        clearTimeout(loadingTimeout);
+        
+        if (!response.ok) throw new Error("Failed to fetch reservations");
+        
+        // Marcamos que ya pasó la carga inicial
+        setIsInitialLoad(false);
+        return await response.json() as ReservationWithDetails[];
+      } catch (error) {
+        console.error("Error fetching reservations:", error);
+        throw error;
+      }
     },
+    // Evitamos que se muestre un error durante la primera carga
+    retry: 3,
+    retryDelay: 1000,
+    // No recargamos automáticamente si hay un error para evitar ciclos de error
+    refetchOnWindowFocus: !isError,
   });
   
   // Filter reservations based on search term
@@ -219,14 +241,14 @@ export function ReservationList() {
       
       <Card>
         <div className="overflow-x-auto">
-          {isLoading ? (
+          {isLoading && showLoadingDelay ? (
             <div className="flex justify-center items-center p-8">
               <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-2">Loading reservations...</span>
+              <span className="ml-2">Cargando reservaciones...</span>
             </div>
-          ) : isError ? (
+          ) : isError && !isInitialLoad ? (
             <div className="text-center p-8 text-red-500">
-              Error loading reservations. Please try again.
+              Error al cargar las reservaciones. Por favor intenta de nuevo.
             </div>
           ) : filteredReservations && filteredReservations.length > 0 ? (
             <table className="min-w-full divide-y divide-gray-200">
