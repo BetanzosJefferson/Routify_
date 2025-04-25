@@ -2,6 +2,8 @@ import React from "react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { TabType } from "@/hooks/use-active-tab";
+import { useUser } from "@/hooks/use-user";
+import { UserRole } from "@shared/schema";
 import { 
   MapIcon, 
   ClockIcon, 
@@ -61,6 +63,7 @@ function NavSection({ title, children }: NavSectionProps) {
 
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const [, setLocation] = useLocation();
+  const { user } = useUser();
   
   const handleTabClick = (tab: TabType) => {
     onTabChange(tab);
@@ -71,6 +74,31 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     window.history.pushState({}, '', url.toString());
   };
   
+  // Función para verificar si un usuario tiene permisos para ver ciertas funciones
+  const hasPermission = (requiredRoles: string[]): boolean => {
+    if (!user || !user.role) return false;
+    return requiredRoles.includes(user.role);
+  };
+  
+  // Definir qué roles pueden ver qué secciones
+  const isAdmin = hasPermission([UserRole.SUPER_ADMIN, UserRole.ADMINISTRATOR]);
+  const isCompanyOwner = hasPermission([UserRole.COMPANY_OWNER]);
+  const isCallCenter = hasPermission([UserRole.CALL_CENTER]);
+  const isChecker = hasPermission([UserRole.CHECKER]);
+  const isDriver = hasPermission([UserRole.DRIVER]);
+  const isTicketOffice = hasPermission([UserRole.TICKET_OFFICE]);
+  
+  // Determinar qué secciones son visibles según el rol
+  const canManageUsers = isAdmin;
+  const canManageRoutes = isAdmin || isCompanyOwner;
+  const canPublishTrips = isAdmin || isCompanyOwner;
+  const canViewTrips = isAdmin || isCompanyOwner || isCallCenter || isChecker || isDriver || isTicketOffice;
+  const canManageReservations = isAdmin || isCompanyOwner || isCallCenter || isTicketOffice;
+  const canViewReports = isAdmin || isCompanyOwner;
+  const canManageBoardingList = isAdmin || isCompanyOwner || isChecker || isDriver;
+  const canManageVehicles = isAdmin || isCompanyOwner;
+  const canManageCommissions = isAdmin || isCompanyOwner;
+  
   return (
     <div className="hidden md:flex md:flex-shrink-0">
       <div className="flex flex-col w-64 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 theme-transition">
@@ -80,7 +108,9 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           </div>
           <div>
             <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-100">TransRoute</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Sistema de Gestión</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {user?.company ? user.company : "Sistema de Gestión"}
+            </p>
           </div>
         </div>
         
@@ -95,80 +125,107 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             </NavItem>
           </NavSection>
           
-          <NavSection title="Gestión de Rutas">
-            <NavItem 
-              icon={<MapIcon className="h-5 w-5" />} 
-              active={activeTab === "create-route"}
-              onClick={() => handleTabClick("create-route")}
-            >
-              Rutas
-            </NavItem>
-            <NavItem 
-              icon={<ClockIcon className="h-5 w-5" />} 
-              active={activeTab === "publish-trip"}
-              onClick={() => handleTabClick("publish-trip")}
-            >
-              Publicar Viajes
-            </NavItem>
-            <NavItem 
-              icon={<BuildingIcon className="h-5 w-5" />} 
-              active={activeTab === "trips"}
-              onClick={() => handleTabClick("trips")}
-            >
-              Viajes
-            </NavItem>
-          </NavSection>
+          {canManageRoutes && (
+            <NavSection title="Gestión de Rutas">
+              <NavItem 
+                icon={<MapIcon className="h-5 w-5" />} 
+                active={activeTab === "create-route"}
+                onClick={() => handleTabClick("create-route")}
+              >
+                Rutas
+              </NavItem>
+              
+              {canPublishTrips && (
+                <NavItem 
+                  icon={<ClockIcon className="h-5 w-5" />} 
+                  active={activeTab === "publish-trip"}
+                  onClick={() => handleTabClick("publish-trip")}
+                >
+                  Publicar Viajes
+                </NavItem>
+              )}
+              
+              {canViewTrips && (
+                <NavItem 
+                  icon={<BuildingIcon className="h-5 w-5" />} 
+                  active={activeTab === "trips"}
+                  onClick={() => handleTabClick("trips")}
+                >
+                  Viajes
+                </NavItem>
+              )}
+            </NavSection>
+          )}
           
-          <NavSection title="Reservaciones y Reportes">
-            <NavItem 
-              icon={<UserIcon className="h-5 w-5" />} 
-              active={activeTab === "reservations"}
-              onClick={() => handleTabClick("reservations")}
-            >
-              Reservaciones
-            </NavItem>
-            <NavItem 
-              icon={<ClipboardListIcon className="h-5 w-5" />} 
-              active={activeTab === "trip-summary"}
-              onClick={() => handleTabClick("trip-summary")}
-            >
-              Resumen de Viajes
-            </NavItem>
-            <NavItem 
-              icon={<UsersIcon className="h-5 w-5" />} 
-              active={activeTab === "boarding-list"}
-              onClick={() => handleTabClick("boarding-list")}
-            >
-              Lista de Abordaje
-            </NavItem>
-          </NavSection>
+          {(canManageReservations || canViewReports || canManageBoardingList) && (
+            <NavSection title="Reservaciones y Reportes">
+              {canManageReservations && (
+                <NavItem 
+                  icon={<UserIcon className="h-5 w-5" />} 
+                  active={activeTab === "reservations"}
+                  onClick={() => handleTabClick("reservations")}
+                >
+                  Reservaciones
+                </NavItem>
+              )}
+              
+              {canViewReports && (
+                <NavItem 
+                  icon={<ClipboardListIcon className="h-5 w-5" />} 
+                  active={activeTab === "trip-summary"}
+                  onClick={() => handleTabClick("trip-summary")}
+                >
+                  Resumen de Viajes
+                </NavItem>
+              )}
+              
+              {canManageBoardingList && (
+                <NavItem 
+                  icon={<UsersIcon className="h-5 w-5" />} 
+                  active={activeTab === "boarding-list"}
+                  onClick={() => handleTabClick("boarding-list")}
+                >
+                  Lista de Abordaje
+                </NavItem>
+              )}
+            </NavSection>
+          )}
           
-          <NavSection title="Usuarios">
-            <NavItem 
-              icon={<UserIcon className="h-5 w-5" />} 
-              active={activeTab === "users"}
-              onClick={() => handleTabClick("users")}
-            >
-              Usuarios
-            </NavItem>
-          </NavSection>
+          {canManageUsers && (
+            <NavSection title="Usuarios">
+              <NavItem 
+                icon={<UserIcon className="h-5 w-5" />} 
+                active={activeTab === "users"}
+                onClick={() => handleTabClick("users")}
+              >
+                Usuarios
+              </NavItem>
+            </NavSection>
+          )}
           
-          <NavSection title="Flota y Finanzas">
-            <NavItem 
-              icon={<TruckIcon className="h-5 w-5" />} 
-              active={activeTab === "vehicles"}
-              onClick={() => handleTabClick("vehicles")}
-            >
-              Unidades
-            </NavItem>
-            <NavItem 
-              icon={<PercentIcon className="h-5 w-5" />} 
-              active={activeTab === "commissions"}
-              onClick={() => handleTabClick("commissions")}
-            >
-              Gestión de comisiones
-            </NavItem>
-          </NavSection>
+          {(canManageVehicles || canManageCommissions) && (
+            <NavSection title="Flota y Finanzas">
+              {canManageVehicles && (
+                <NavItem 
+                  icon={<TruckIcon className="h-5 w-5" />} 
+                  active={activeTab === "vehicles"}
+                  onClick={() => handleTabClick("vehicles")}
+                >
+                  Unidades
+                </NavItem>
+              )}
+              
+              {canManageCommissions && (
+                <NavItem 
+                  icon={<PercentIcon className="h-5 w-5" />} 
+                  active={activeTab === "commissions"}
+                  onClick={() => handleTabClick("commissions")}
+                >
+                  Gestión de comisiones
+                </NavItem>
+              )}
+            </NavSection>
+          )}
           
           <NavSection title="Configuración">
             <NavItem 
