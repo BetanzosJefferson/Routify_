@@ -1,6 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useDataLoader } from "@/hooks/use-data-loader";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useLocation, useRoute } from "wouter";
@@ -108,47 +107,27 @@ export default function PassengerListPage() {
 
   const tripId = Number(params.tripId);
 
-  // Usar DataLoader para verificar estado global de carga
-  const { isDataLoading } = useDataLoader();
-  const queryClient = useQueryClient();
-  
-  // Fetch all trips with optimized settings
+  // Fetch all trips
   const { data: trips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
     queryKey: ["/api/trips"],
-    staleTime: 2 * 60 * 1000, // 2 minutos - reducir peticiones innecesarias
-    refetchInterval: 30 * 1000, // 30 segundos - mantener datos más actualizados
+    staleTime: 5000,
+    refetchInterval: 15000,
   });
 
-  // Fetch trip details specifically by ID for better performance
-  const { data: tripDetails, isLoading: isLoadingTripDetails } = useQuery<Trip>({
-    queryKey: [`/api/trips/${tripId}`],
-    staleTime: 60 * 1000, // 1 minuto
-    // Evitamos esta consulta si no tenemos un ID válido
-    enabled: !!tripId && tripId > 0,
-    // Optimización: usar datos de la caché si ya tenemos el viaje en la lista general
-    initialData: () => {
-      const allTrips = queryClient.getQueryData<Trip[]>(["/api/trips"]);
-      return allTrips?.find(trip => trip.id === tripId);
-    }
-  });
-
-  // Fetch all reservations with optimized settings
+  // Fetch all reservations
   const { data: reservations, isLoading: isLoadingReservations } = useQuery<Reservation[]>({
     queryKey: ["/api/reservations"],
-    staleTime: 60 * 1000, // 1 minuto
-    refetchInterval: 30 * 1000, // 30 segundos
+    staleTime: 5000,
+    refetchInterval: 15000,
   });
 
   // Calcular pasajeros del viaje seleccionado con detección de relaciones de viajes
-  // Usar useMemo para optimizar el procesamiento de pasajeros
-  // @ts-ignore - Ignoramos errores de tipo para este useMemo
-  const passengersList = useMemo(() => {
+  const passengersList = (() => {
     if (!tripId || !reservations || !trips) return [];
     
     try {
       // Obtener el viaje seleccionado para verificar si es principal o subviaje
-      // Primero usamos tripDetails si está disponible, luego buscamos en el array general
-      const currentTrip = tripDetails || trips.find(t => t.id === tripId);
+      const currentTrip = trips.find(t => t.id === tripId);
       if (!currentTrip) return [];
       
       let relevantTripIds = [];
@@ -163,25 +142,23 @@ export default function PassengerListPage() {
           .map(t => t.id);
         
         relevantTripIds = [...relevantTripIds, ...subTripIds];
-        // Reducir logs innecesarios para mejorar rendimiento
-        if (relevantTripIds.length > 1) {
-          console.log("Viaje principal y sus sub-viajes:", relevantTripIds);
-        }
+        console.log("Viaje principal y sus sub-viajes:", relevantTripIds);
       } 
       // 2. Si es un sub-viaje, incluir solo a ese viaje
       else {
         relevantTripIds.push(tripId);
+        console.log("Sub-viaje solamente:", relevantTripIds);
       }
       
-      // Encontrar reservaciones para todos los viajes relevantes - optimizado para rendimiento
+      // Encontrar reservaciones para todos los viajes relevantes
       const relevantReservations = reservations.filter(r => 
         relevantTripIds.includes(r.tripId) && 
-        r.passengers?.length > 0
+        r.passengers && 
+        Array.isArray(r.passengers) && 
+        r.passengers.length > 0
       );
       
-      if (relevantReservations.length > 0) {
-        console.log("Reservaciones encontradas:", relevantReservations.length);
-      }
+      console.log("Reservaciones encontradas:", relevantReservations.length);
       
       // Si no hay reservaciones relevantes, terminar aquí
       if (relevantReservations.length === 0) {
@@ -236,7 +213,7 @@ export default function PassengerListPage() {
       console.error("Error al procesar pasajeros:", error);
       return [];
     }
-  }, [tripId, trips, tripDetails, reservations]);
+  })();
 
   // Función para formatear fecha para su visualización
   const formatDisplayDate = (dateString: string | Date) => {
@@ -266,11 +243,8 @@ export default function PassengerListPage() {
     return format(date, "d 'de' MMMM, yyyy", { locale: es });
   };
 
-  // Obtener información del viaje (primero de tripDetails si está disponible, después de trips)
-  const tripInfo = useMemo(() => {
-    if (tripDetails) return tripDetails;
-    return trips?.find(trip => trip.id === tripId);
-  }, [tripDetails, trips, tripId]);
+  // Obtener información del viaje
+  const tripInfo = trips?.find(trip => trip.id === tripId);
 
   // Función para imprimir la lista de pasajeros
   const handlePrint = () => {
@@ -282,12 +256,10 @@ export default function PassengerListPage() {
     setLocation("/");
   };
 
-  // Mostrar estado de carga mejorado
-  if (isDataLoading || isLoadingTrips || isLoadingReservations || isLoadingTripDetails) {
+  if (isLoadingTrips || isLoadingReservations) {
     return (
-      <div className="flex flex-col justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>
-        <p className="text-sm text-muted-foreground">Cargando información del viaje...</p>
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -412,8 +384,7 @@ export default function PassengerListPage() {
           <CardContent>
             {passengersList.length > 0 ? (
               <div className="space-y-4">
-                {/* @ts-ignore - Ignorar errores de tipado */}
-                {passengersList.map((passenger: Passenger, index: number) => (
+                {passengersList.map((passenger, index) => (
                   <div 
                     key={`passenger-${passenger.id}-${index}`} 
                     className={`p-4 border rounded-md ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
