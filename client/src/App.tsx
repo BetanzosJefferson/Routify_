@@ -15,11 +15,22 @@ import RegisterPage from "@/pages/register-page";
 import PassengerListPage from "@/pages/passenger-list-page";
 import { UsersPage } from "@/components/users/users-page";
 
+// Importamos el componente BoardingList
+import { BoardingList } from "@/components/boarding-list/boarding-list";
+
+// Componente simple para la página de abordaje
+const BoardingListPage = () => (
+  <div className="container mx-auto px-4 py-8">
+    <BoardingList />
+  </div>
+);
+
 function Router() {
   return (
     <Switch>
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/dashboard" component={Dashboard} />
+      <ProtectedRoute path="/boarding" component={BoardingListPage} />
       <ProtectedRoute path="/trip/:tripId/passengers" component={PassengerListPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register/:token" component={RegisterPage} />
