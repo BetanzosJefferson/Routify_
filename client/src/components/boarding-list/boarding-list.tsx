@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { 
@@ -9,13 +9,11 @@ import {
   Users, 
   Calendar,
   Clock,
-  Bus,
-  Loader2
+  Bus
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useDataLoader } from "@/hooks/use-data-loader";
 
 interface Trip {
   id: number;
@@ -68,74 +66,37 @@ interface Reservation {
 export function BoardingList() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [, navigate] = useLocation();
-  const queryClient = useQueryClient();
-  const { isDataLoading } = useDataLoader();
   
-  // Formato para fechas en consultas
-  const currentDateStr = useMemo(() => format(currentDate, 'yyyy-MM-dd'), [currentDate]);
-  
-  // Optimizamos la consulta para incluir el filtrado por fecha desde el servidor
-  const { data: tripsForDate, isLoading: isLoadingTripsForDate } = useQuery<Trip[]>({
-    queryKey: [`/api/trips?date=${currentDateStr}`],
-    staleTime: 60 * 1000, // 1 minuto
-    refetchInterval: 30 * 1000, // 30 segundos
-  });
-  
-  // Esta consulta la usamos como respaldo si no hay datos específicos para la fecha
-  const { data: allTrips, isLoading: isLoadingAllTrips } = useQuery<Trip[]>({
+  // Fetch all trips
+  const { data: trips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
     queryKey: ["/api/trips"],
-    staleTime: 2 * 60 * 1000, // 2 minutos
-    enabled: !tripsForDate || tripsForDate.length === 0, // Solo se ejecuta si no hay datos específicos
+    staleTime: 5000,
+    refetchInterval: 15000,
   });
-  
-  // Reservaciones (necesarias para contar pasajeros)
+
+  // Fetch all reservations
   const { data: reservations, isLoading: isLoadingReservations } = useQuery<Reservation[]>({
     queryKey: ["/api/reservations"],
-    staleTime: 30 * 1000, // 30 segundos
+    staleTime: 5000,
+    refetchInterval: 15000,
   });
-  
-  // Pre-carga de datos para la siguiente fecha (optimización)
-  const prefetchNextDay = () => {
-    const nextDay = new Date(currentDate);
-    nextDay.setDate(nextDay.getDate() + 1);
-    const nextDayStr = format(nextDay, 'yyyy-MM-dd');
+
+  // Filtrar para obtener solo viajes principales (no sub-viajes) y por fecha seleccionada
+  const filteredTrips = trips?.filter(trip => {
+    // Filtrar por viajes principales
+    if (trip.isSubTrip) return false;
     
-    // Prefetch silencioso para el día siguiente
-    queryClient.prefetchQuery({
-      queryKey: [`/api/trips?date=${nextDayStr}`],
-      staleTime: 5 * 60 * 1000,
-    });
-  };
-  
-  // Efecto para precargar el día siguiente
-  useMemo(() => {
-    if (!isDataLoading) {
-      prefetchNextDay();
-    }
-  }, [currentDateStr, isDataLoading]);
-  
-  // Filtrar para obtener solo viajes principales para la fecha seleccionada
-  const filteredTrips = useMemo(() => {
-    // Usamos primero los datos específicos para la fecha
-    const tripsSource = tripsForDate && tripsForDate.length > 0 
-      ? tripsForDate 
-      : allTrips || [];
-        
-    return tripsSource.filter(trip => {
-      // Solo viajes principales (no sub-viajes)
-      if (trip.isSubTrip) return false;
+    // Convertir cadena de fecha a objeto Date y obtener solo la parte de la fecha (sin hora)
+    // Aseguramos que trip.departureDate sea una cadena (ya que podría ser un objeto Date)
+    const tripDate = typeof trip.departureDate === 'string' 
+      ? trip.departureDate.split('T')[0] 
+      : format(new Date(trip.departureDate), 'yyyy-MM-dd');
       
-      // Si estamos usando datos ya filtrados por fecha del servidor, no filtramos de nuevo
-      if (tripsForDate && tripsForDate.length > 0) return true;
-      
-      // Si no, aplicamos filtro manual por fecha
-      const tripDate = typeof trip.departureDate === 'string' 
-        ? trip.departureDate.split('T')[0] 
-        : format(new Date(trip.departureDate), 'yyyy-MM-dd');
-        
-      return tripDate === currentDateStr;
-    });
-  }, [tripsForDate, allTrips, currentDateStr]);
+    const currentDateStr = format(currentDate, 'yyyy-MM-dd');
+    
+    // Comparar las cadenas de fecha directamente
+    return tripDate === currentDateStr;
+  }) || [];
 
   // La lógica de procesamiento de pasajeros ya no es necesaria aquí
   // ya que ahora se maneja en la página dedicada de PassengerListPage
@@ -173,31 +134,26 @@ export function BoardingList() {
     return format(date, "yyyy-MM-dd");
   };
 
-  // Función optimizada para obtener conteo de pasajeros por viaje, incluyendo subviajes si aplica
+  // Función para obtener conteo de pasajeros por viaje, incluyendo subviajes si aplica
   const getPassengerCount = (tripId: number) => {
-    if (!reservations) return 0;
-    
-    // Fuente de datos para viajes (usamos el que tenga datos)
-    const tripsSource = tripsForDate && tripsForDate.length > 0 
-      ? tripsForDate 
-      : allTrips || [];
+    if (!trips || !reservations) return 0;
     
     // Obtener el viaje para determinar si es principal o sub-viaje
-    const trip = tripsSource.find((t: Trip) => t.id === tripId);
+    const trip = trips.find(t => t.id === tripId);
     if (!trip) return 0;
     
     let relevantTripIds = [tripId];
     
     // Si es un viaje principal, incluir también pasajeros de subviajes
     if (!trip.isSubTrip) {
-      const subTripIds = tripsSource
-        .filter((t: Trip) => t.parentTripId === tripId)
-        .map((t: Trip) => t.id);
+      const subTripIds = trips
+        .filter(t => t.parentTripId === tripId)
+        .map(t => t.id);
       
       relevantTripIds = [...relevantTripIds, ...subTripIds];
     }
     
-    // Contar pasajeros en todos los viajes relevantes de manera optimizada
+    // Contar pasajeros en todos los viajes relevantes
     return reservations
       .filter(r => relevantTripIds.includes(r.tripId))
       .reduce((count, reservation) => count + (reservation.passengers?.length || 0), 0);
@@ -239,10 +195,9 @@ export function BoardingList() {
         </div>
       </div>
 
-      {isLoadingTripsForDate || isLoadingAllTrips || isLoadingReservations ? (
-        <div className="flex flex-col justify-center items-center h-64">
-          <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-          <p className="text-sm text-muted-foreground">Cargando viajes...</p>
+      {isLoadingTrips || isLoadingReservations ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : filteredTrips.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
