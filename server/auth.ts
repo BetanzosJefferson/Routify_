@@ -285,7 +285,7 @@ export function setupAuthRoutes(app: Express) {
       }
 
       // Crear el usuario
-      const userData = {
+      const userData: any = {
         firstName,
         lastName,
         email,
@@ -293,6 +293,11 @@ export function setupAuthRoutes(app: Express) {
         role: invitation[0].role,
         company: invitation[0].role === UserRole.COMPANY_OWNER ? companyName : ""
       };
+      
+      // Si es un dueño de empresa, le asignamos el ID de su empresa
+      if (createdCompanyId) {
+        userData.companyId = createdCompanyId;
+      }
 
       const [user] = await db
         .insert(users)
