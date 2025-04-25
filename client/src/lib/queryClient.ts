@@ -67,6 +67,51 @@ type QueryFnOptions = {
 };
 
 /**
+ * Obtiene las credenciales de autenticación básica almacenadas en localStorage
+ */
+export function getStoredCredentials(): { email: string, password: string } | null {
+  const storedEmail = localStorage.getItem('auth_email');
+  const storedPassword = localStorage.getItem('auth_password');
+  
+  if (storedEmail && storedPassword) {
+    return { email: storedEmail, password: storedPassword };
+  }
+  
+  return null;
+}
+
+/**
+ * Almacena las credenciales de autenticación básica en localStorage
+ */
+export function storeCredentials(email: string, password: string): void {
+  localStorage.setItem('auth_email', email);
+  localStorage.setItem('auth_password', password);
+}
+
+/**
+ * Elimina las credenciales de autenticación básica de localStorage
+ */
+export function clearCredentials(): void {
+  localStorage.removeItem('auth_email');
+  localStorage.removeItem('auth_password');
+}
+
+/**
+ * Obtiene el encabezado de Autorización Basic para las peticiones
+ */
+export function getAuthHeader(): string | null {
+  const credentials = getStoredCredentials();
+  
+  if (credentials) {
+    const { email, password } = credentials;
+    const base64Credentials = btoa(`${email}:${password}`);
+    return `Basic ${base64Credentials}`;
+  }
+  
+  return null;
+}
+
+/**
  * Default fetch function for use with react-query
  * Optimizado para rendimiento con soporte para control de caché avanzado
  */
@@ -75,11 +120,19 @@ export function getQueryFn(options: QueryFnOptions = {}) {
     const path = queryKey[0];
     
     // Optimización: usar cache-control para mejorar rendimiento
+    const headers: HeadersInit = {
+      'Cache-Control': 'max-age=300', // Sugerir al navegador cachear por 5 minutos
+      'Pragma': 'no-cache'
+    };
+    
+    // Añadir cabecera de autorización si hay credenciales almacenadas
+    const authHeader = getAuthHeader();
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
+    
     const fetchOptions: RequestInit = {
-      headers: {
-        'Cache-Control': 'max-age=300', // Sugerir al navegador cachear por 5 minutos
-        'Pragma': 'no-cache'
-      },
+      headers,
       // Las siguientes opciones ayudan a evitar recargar datos innecesariamente
       cache: 'default',
       credentials: 'same-origin'
@@ -129,6 +182,12 @@ export async function apiRequest(
       "Content-Type": "application/json",
     },
   };
+
+  // Añadir cabecera de autorización si hay credenciales almacenadas
+  const authHeader = getAuthHeader();
+  if (authHeader) {
+    (options.headers as Record<string, string>)['Authorization'] = authHeader;
+  }
 
   if (data) {
     options.body = JSON.stringify(data);
