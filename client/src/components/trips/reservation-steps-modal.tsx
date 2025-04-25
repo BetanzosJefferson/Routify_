@@ -597,6 +597,10 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div className="text-gray-500">Ruta:</div>
                     <div className="font-medium">{trip.route.name}</div>
+                    <div className="text-gray-500">Origen:</div>
+                    <div className="font-medium">{trip.segmentOrigin || trip.route.origin}</div>
+                    <div className="text-gray-500">Destino:</div>
+                    <div className="font-medium">{trip.segmentDestination || trip.route.destination}</div>
                     <div className="text-gray-500">Fecha:</div>
                     <div className="font-medium">{formatDate(trip.departureDate)}</div>
                     <div className="text-gray-500">Salida:</div>
@@ -715,6 +719,14 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                   <div className="grid grid-cols-3 text-sm">
                     <span className="font-semibold text-gray-500">Ruta:</span>
                     <span className="col-span-2">{trip.route.name}</span>
+                  </div>
+                  <div className="grid grid-cols-3 text-sm">
+                    <span className="font-semibold text-gray-500">Origen:</span>
+                    <span className="col-span-2">{trip.segmentOrigin || trip.route.origin}</span>
+                  </div>
+                  <div className="grid grid-cols-3 text-sm">
+                    <span className="font-semibold text-gray-500">Destino:</span>
+                    <span className="col-span-2">{trip.segmentDestination || trip.route.destination}</span>
                   </div>
                   <div className="grid grid-cols-3 text-sm">
                     <span className="font-semibold text-gray-500">Fecha:</span>
