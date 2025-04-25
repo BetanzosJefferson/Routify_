@@ -7,7 +7,7 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       retry: 2, // Aumentamos los reintentos a 2
       staleTime: 60000, // Datos considerados válidos por 1 minuto
-      cacheTime: 10 * 60 * 1000, // Mantener en caché por 10 minutos
+      gcTime: 10 * 60 * 1000, // Mantener en caché por 10 minutos (antes llamado cacheTime)
       // Aseguramos que datos compartidos entre secciones estén disponibles
       structuralSharing: true,
     },
