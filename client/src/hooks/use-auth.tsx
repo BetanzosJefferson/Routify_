@@ -2,23 +2,19 @@ import { createContext, ReactNode, useContext } from "react";
 import {
   useQuery,
   useMutation,
+  UseMutationResult,
 } from "@tanstack/react-query";
-import { User } from "@shared/schema";
-import { 
-  getQueryFn, 
-  apiRequest, 
-  queryClient, 
-  storeCredentials, 
-  clearCredentials 
-} from "../lib/queryClient";
+import { User, type InsertUser } from "@shared/schema";
+import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
   error: Error | null;
-  loginMutation: any;
-  logoutMutation: any;
+  loginMutation: UseMutationResult<User, Error, LoginData>;
+  logoutMutation: UseMutationResult<void, Error, void>;
+  registerMutation: UseMutationResult<User, Error, InsertUser>;
 };
 
 type LoginData = {
@@ -30,42 +26,69 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
+
   const {
     data: user,
     error,
     isLoading,
   } = useQuery<User | null, Error>({
-    queryKey: ['/api/user'],
-    queryFn: getQueryFn({ on401: "returnNull" }),
+    queryKey: ["/api/user"],
+    queryFn: async ({ queryKey }) => {
+      try {
+        const path = queryKey[0] as string;
+        const response = await fetch(path);
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            return null;
+          }
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error("Error fetching user:", error);
+        return null;
+      }
+    },
   });
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       const res = await apiRequest("POST", "/api/login", credentials);
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Credenciales inválidas");
-      }
       return await res.json();
     },
-    onSuccess: (user: User, variables: LoginData) => {
-      // Almacenar credenciales en localStorage para autenticación futura
-      storeCredentials(variables.email, variables.password);
-      
-      // Actualizar estado de la aplicación
-      queryClient.setQueryData(['/api/user'], user);
-      
+    onSuccess: (user: User) => {
+      queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "Inicio de sesión exitoso",
-        description: `Bienvenido, ${user.firstName}`,
+        description: `Bienvenido, ${user.firstName} ${user.lastName}`,
       });
     },
     onError: (error: Error) => {
-      // Limpiar cualquier credencial almacenada en caso de error
-      clearCredentials();
-      
       toast({
-        title: "Error de inicio de sesión",
+        title: "Error al iniciar sesión",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const registerMutation = useMutation({
+    mutationFn: async (userData: InsertUser) => {
+      const res = await apiRequest("POST", "/api/register", userData);
+      return await res.json();
+    },
+    onSuccess: (user: User) => {
+      queryClient.setQueryData(["/api/user"], user);
+      toast({
+        title: "Registro exitoso",
+        description: `Bienvenido, ${user.firstName} ${user.lastName}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error al registrarse",
         description: error.message,
         variant: "destructive",
       });
@@ -77,12 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
-      // Limpiar credenciales del localStorage
-      clearCredentials();
-      
-      // Actualizar estado de la aplicación
-      queryClient.setQueryData(['/api/user'], null);
-      
+      queryClient.setQueryData(["/api/user"], null);
       toast({
         title: "Sesión cerrada",
         description: "Has cerrado sesión correctamente",
@@ -100,11 +118,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user: user || null,
+        user: user ?? null,
         isLoading,
         error,
         loginMutation,
         logoutMutation,
+        registerMutation,
       }}
     >
       {children}

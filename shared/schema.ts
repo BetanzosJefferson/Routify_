@@ -12,7 +12,6 @@ export const UserRole = {
   CHECKER: "checador",
   DRIVER: "chofer",
   TICKET_OFFICE: "taquilla",
-  DESARROLLO: "desarrollo", // Nuevo rol con acceso total al sistema para desarrollo
 } as const;
 
 export type UserRoleType = typeof UserRole[keyof typeof UserRole];
