@@ -20,9 +20,6 @@ const registerFormSchema = z
     email: z.string().email("Por favor ingrese un correo electrónico válido"),
     password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
     confirmPassword: z.string(),
-    // Campos adicionales para dueños de empresa
-    companyName: z.string().optional(),
-    companyLogo: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Las contraseñas no coinciden",
@@ -50,8 +47,6 @@ export default function RegisterPage() {
       email: "",
       password: "",
       confirmPassword: "",
-      companyName: "",
-      companyLogo: "",
     },
   });
 
@@ -226,31 +221,6 @@ export default function RegisterPage() {
     );
   }
 
-  // Función para mostrar el nombre del rol de manera amigable
-  const getRoleName = (role: string | null) => {
-    switch (role) {
-      case "superAdmin":
-        return "Super Admin";
-      case "admin":
-        return "Administrador";
-      case "callCenter":
-        return "Call Center";
-      case "checker":
-        return "Checador";
-      case "driver":
-        return "Chófer";
-      case "ticketOffice":
-        return "Taquilla";
-      case "companyOwner":
-        return "Dueño de empresa";
-      default:
-        return "Usuario";
-    }
-  };
-
-  // Verificar si el usuario es un dueño de empresa
-  const isCompanyOwner = invitationRole === "companyOwner";
-
   return (
     <div className="flex flex-col lg:flex-row min-h-screen">
       <div className="w-full lg:w-1/2 p-8 flex items-center justify-center">
@@ -260,7 +230,19 @@ export default function RegisterPage() {
             <CardDescription>
               Completa el formulario a continuación para registrarte como{" "}
               <span className="font-semibold">
-                {getRoleName(invitationRole)}
+                {invitationRole === "superAdmin"
+                  ? "Super Admin"
+                  : invitationRole === "admin"
+                  ? "Administrador"
+                  : invitationRole === "callCenter"
+                  ? "Call Center"
+                  : invitationRole === "checker"
+                  ? "Checador"
+                  : invitationRole === "driver"
+                  ? "Chófer"
+                  : invitationRole === "ticketOffice"
+                  ? "Taquilla"
+                  : "Usuario"}
               </span>
             </CardDescription>
           </CardHeader>
@@ -343,49 +325,6 @@ export default function RegisterPage() {
                   )}
                 />
 
-                {/* Campos específicos para dueños de empresa */}
-                {isCompanyOwner && (
-                  <>
-                    <div className="my-4 border-t pt-4">
-                      <h3 className="font-medium text-lg mb-2">Datos de la empresa</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Como dueño de empresa, necesitamos algunos datos adicionales.
-                      </p>
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="companyName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nombre de la empresa</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Transportes S.A. de C.V." {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="companyLogo"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>URL del logo (opcional)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="https://ejemplo.com/logo.png" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </>
-                )}
-
                 <Button type="submit" className="w-full" disabled={mutation.isPending}>
                   {mutation.isPending ? (
                     <>
@@ -420,12 +359,6 @@ export default function RegisterPage() {
               <CheckCircle2 className="h-5 w-5 mr-2 shrink-0" />
               <p>Sistema de roles para organizar tu equipo</p>
             </div>
-            {isCompanyOwner && (
-              <div className="flex items-start">
-                <CheckCircle2 className="h-5 w-5 mr-2 shrink-0" />
-                <p>Administra tu propia empresa de transporte</p>
-              </div>
-            )}
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { Express, Request, Response, NextFunction } from "express";
 import { db } from "./db";
-import { users, insertUserSchema, insertInvitationSchema, invitations, UserRole, companies } from "@shared/schema";
+import { users, insertUserSchema, insertInvitationSchema, invitations, UserRole } from "@shared/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { add } from "date-fns";
 
@@ -97,52 +97,22 @@ export function setupAuthRoutes(app: Express) {
   // Endpoint para crear una invitación
   app.post("/api/invitations", async (req: Request, res: Response) => {
     try {
-      const { role, email, createdById } = req.body;
+      const { role, email } = req.body;
 
       if (!role) {
         return res.status(400).json({ message: "El rol es requerido" });
       }
-      
-      // Verificar que el rol es válido
-      const validRoles = Object.values(UserRole);
-      if (!validRoles.includes(role)) {
-        return res.status(400).json({ message: "Rol inválido" });
-      }
 
-      // Obtenemos el usuario que está creando la invitación
-      let creatorId: number;
-      
-      if (createdById) {
-        // Si se proporciona el ID del creador, lo usamos
-        creatorId = createdById;
-      } else {
-        // Por defecto, usamos al primer SuperAdmin
-        const admin = await db
-          .select()
-          .from(users)
-          .where(eq(users.role, UserRole.SUPER_ADMIN))
-          .limit(1);
+      // Normalmente verificaríamos que el usuario está autenticado y tiene permisos
+      // Por ahora, asumimos que el creador es el primer SuperAdmin
+      const admin = await db
+        .select()
+        .from(users)
+        .where(eq(users.role, UserRole.SUPER_ADMIN))
+        .limit(1);
 
-        if (admin.length === 0) {
-          return res.status(500).json({ message: "No se encontró un administrador para crear la invitación" });
-        }
-        creatorId = admin[0].id;
-      }
-
-      // Verificar permisos: Solo SuperAdmin puede crear invitaciones para dueños de empresa
-      if (role === UserRole.COMPANY_OWNER) {
-        // Verificar que el creador es un SuperAdmin
-        const creator = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, creatorId))
-          .limit(1);
-          
-        if (creator.length === 0 || creator[0].role !== UserRole.SUPER_ADMIN) {
-          return res.status(403).json({ 
-            message: "Solo un SuperAdmin puede crear invitaciones para Dueños de empresa" 
-          });
-        }
+      if (admin.length === 0) {
+        return res.status(500).json({ message: "No se encontró un administrador para crear la invitación" });
       }
 
       // Calcular fecha de expiración (24 horas desde ahora)
@@ -154,7 +124,7 @@ export function setupAuthRoutes(app: Express) {
           role,
           email: email || null,
           expiresAt,
-          createdById: creatorId,
+          createdById: admin[0].id,
         })
         .returning();
 
@@ -216,7 +186,7 @@ export function setupAuthRoutes(app: Express) {
   app.post("/api/register/:token", async (req: Request, res: Response) => {
     try {
       const { token } = req.params;
-      const { firstName, lastName, email, password, companyName, companyLogo } = req.body;
+      const { firstName, lastName, email, password } = req.body;
 
       // Verificar si los datos requeridos están presentes
       if (!firstName || !lastName || !email || !password) {
@@ -255,53 +225,16 @@ export function setupAuthRoutes(app: Express) {
         return res.status(400).json({ message: "El correo electrónico ya está registrado" });
       }
 
-      // Si es un dueño de empresa, verificamos si tenemos el nombre de la empresa
-      if (invitation[0].role === UserRole.COMPANY_OWNER && !companyName) {
-        return res.status(400).json({ message: "Nombre de la empresa es requerido para el rol de Dueño de empresa" });
-      }
-
-      // Si es un dueño de empresa, primero creamos la empresa
-      let createdCompanyId: number | null = null;
-      
-      if (invitation[0].role === UserRole.COMPANY_OWNER && companyName) {
-        try {
-          // Intentar crear la empresa en la base de datos
-          const [company] = await db
-            .insert(companies)
-            .values({
-              name: companyName,
-              logo: companyLogo || ""
-            })
-            .returning();
-          
-          if (company) {
-            createdCompanyId = company.id;
-            console.log(`Empresa creada con éxito: ${companyName}, ID: ${createdCompanyId}`);
-          }
-        } catch (error) {
-          console.error("Error al crear la empresa:", error);
-          return res.status(500).json({ message: "Error al crear la empresa" });
-        }
-      }
-
       // Crear el usuario
-      const userData: any = {
-        firstName,
-        lastName,
-        email,
-        password: await hashPassword(password),
-        role: invitation[0].role,
-        company: invitation[0].role === UserRole.COMPANY_OWNER ? companyName : ""
-      };
-      
-      // Si es un dueño de empresa, le asignamos el ID de su empresa
-      if (createdCompanyId) {
-        userData.companyId = createdCompanyId;
-      }
-
       const [user] = await db
         .insert(users)
-        .values(userData)
+        .values({
+          firstName,
+          lastName,
+          email,
+          password: await hashPassword(password),
+          role: invitation[0].role,
+        })
         .returning();
 
       // Marcar la invitación como utilizada
@@ -312,14 +245,7 @@ export function setupAuthRoutes(app: Express) {
 
       // Ocultar la contraseña en la respuesta
       const { password: _, ...userWithoutPassword } = user;
-      
-      // Incluir información adicional en la respuesta
-      const responseData = {
-        ...userWithoutPassword,
-        companyId: createdCompanyId
-      };
-      
-      res.status(201).json(responseData);
+      res.status(201).json(userWithoutPassword);
     } catch (error) {
       console.error("Error en registro:", error);
       res.status(500).json({ message: "Error interno del servidor" });
