@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { UserRole } from "@shared/schema";
 import { 
   UserIcon,
   Building2,
@@ -162,9 +163,16 @@ export function ProfilePage({ standalone = false }: ProfilePageProps) {
             />
           </div>
           {user?.role === "companyOwner" && (
-            <p className="mt-1 text-sm text-muted-foreground">
-              Dueño de empresa con acceso restringido a recursos propios
-            </p>
+            <div className="mt-2">
+              <p className="text-sm text-muted-foreground">
+                Dueño de empresa con acceso restringido a recursos propios
+              </p>
+              {user?.companyId && (
+                <p className="text-sm font-medium text-primary mt-1">
+                  ID de Empresa: {user.companyId}
+                </p>
+              )}
+            </div>
           )}
         </div>
 

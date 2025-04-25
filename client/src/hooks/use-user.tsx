@@ -1,20 +1,22 @@
 import { useAuth } from "./use-auth";
 import { User, UserRole } from "@shared/schema";
 
-// Extensión de la funcionalidad de autenticación para control de permisos y acceso
+/**
+ * Hook que extiende useAuth proporcionando funciones para la gestión de permisos y roles
+ */
 export function useUser() {
   const auth = useAuth();
   const user = auth.user;
 
   // Verifica si el usuario tiene un rol específico
-  const hasRole = (role: UserRole): boolean => {
+  const hasRole = (role: string): boolean => {
     return user?.role === role;
   };
 
   // Verifica si el usuario tiene alguno de los roles especificados
-  const hasAnyRole = (roles: UserRole[]): boolean => {
+  const hasAnyRole = (roles: string[]): boolean => {
     if (!user || !user.role) return false;
-    return roles.includes(user.role as UserRole);
+    return roles.includes(user.role);
   };
 
   // Verifica si el usuario pertenece a una compañía específica
@@ -38,7 +40,7 @@ export function useUser() {
 
   return {
     ...auth,
-    user: auth.user as User | null,
+    user,
     hasRole,
     hasAnyRole,
     belongsToCompany,
