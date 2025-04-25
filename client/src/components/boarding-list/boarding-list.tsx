@@ -8,15 +8,11 @@ import {
   ClipboardListIcon,
   Users, 
   Calendar,
-  MapPin,
   Clock,
   Bus
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 
 interface Trip {
@@ -133,19 +129,9 @@ export function BoardingList() {
     return format(date, "d 'de' MMMM, yyyy", { locale: es });
   };
 
-  // Función para formatear fecha para el encabezado
-  const formatHeaderDate = (date: Date) => {
-    return format(date, "d 'de' MMMM, yyyy", { locale: es });
-  };
-  
   // Función para formatear fecha para input date
   const formatDateForInput = (date: Date) => {
     return format(date, "yyyy-MM-dd");
-  };
-
-  // Función para obtener información del viaje seleccionado
-  const getSelectedTripInfo = () => {
-    return trips?.find(trip => trip.id === selectedTrip);
   };
 
   // Función para obtener conteo de pasajeros por viaje, incluyendo subviajes si aplica
@@ -200,10 +186,8 @@ export function BoardingList() {
                   // Meses en JavaScript son 0-indexados (0-11), pero en el input date son 1-indexados (1-12)
                   const newDate = new Date(year, month - 1, day, 12, 0, 0);
                   setCurrentDate(newDate);
-                  setSelectedTrip(null); // Reseteamos la selección al cambiar de fecha
                 } else {
                   setCurrentDate(new Date());
-                  setSelectedTrip(null);
                 }
               }}
             />
@@ -295,109 +279,6 @@ export function BoardingList() {
           <p>No se encontraron viajes para la fecha seleccionada.</p>
         </div>
       )}
-
-      {/* Modal Lista de Pasajeros */}
-      <Dialog open={passengerListOpen} onOpenChange={setPassengerListOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Lista de Pasajeros</DialogTitle>
-            <DialogDescription>
-              {getSelectedTripInfo()?.route.name} - {formatHeaderDate(currentDate)}
-            </DialogDescription>
-            <p className="text-sm text-gray-500 mt-1">
-              {getSelectedTripInfo()?.segmentOrigin || getSelectedTripInfo()?.route.origin} → {getSelectedTripInfo()?.segmentDestination || getSelectedTripInfo()?.route.destination}
-            </p>
-            <p className="text-sm text-gray-500 mt-1">
-              {getSelectedTripInfo() && formatDisplayDate(getSelectedTripInfo()!.departureDate)}
-            </p>
-          </DialogHeader>
-
-          <div className="mt-4">
-            {selectedTripPassengers.length > 0 ? (
-              <div className="space-y-4">
-                <div className="bg-gray-50 p-3 rounded-md mb-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Users className="h-5 w-5 mr-2 text-gray-500" />
-                      <span className="font-medium">{selectedTripPassengers.length} pasajeros</span>
-                    </div>
-                    <div>
-                      <Badge variant="outline" className="ml-2">
-                        {getSelectedTripInfo()?.departureTime}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-
-                {Array.isArray(selectedTripPassengers) && selectedTripPassengers.map((passenger, index) => {
-                  // Verificación de seguridad para asegurar que todos los datos necesarios están presentes
-                  if (!passenger || !passenger.firstName || !passenger.lastName) {
-                    return null;
-                  }
-                  
-                  return (
-                    <div 
-                      key={`passenger-${passenger.id}-${index}`} 
-                      className={`p-3 border rounded-md ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="h-10 w-10 border border-gray-200">
-                          <AvatarFallback className="bg-primary/10 text-primary">
-                            {passenger.firstName.charAt(0)}{passenger.lastName.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">
-                            {passenger.firstName} {passenger.lastName}
-                          </p>
-                          <p className="text-sm text-gray-500 truncate">
-                            {passenger.reservationCode} • 
-                            <span className={`ml-1 ${
-                              passenger.paymentStatus === 'paid' 
-                                ? 'text-green-600' 
-                                : 'text-orange-600'
-                            }`}>
-                              {passenger.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
-                            </span>
-                          </p>
-                          {passenger.tripSegment && (
-                            <p className="text-xs text-gray-400 mt-1 truncate">
-                              {passenger.tripSegment}
-                            </p>
-                          )}
-                        </div>
-                        
-                        <Badge 
-                          variant={passenger.paymentStatus === 'paid' ? 'default' : 'outline'}
-                          className="ml-2"
-                        >
-                          {passenger.paymentStatus === 'paid' ? 'Pagado' : 'Pendiente'}
-                        </Badge>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-10 text-gray-500">
-                <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <h3 className="text-lg font-medium mb-2">Sin pasajeros</h3>
-                <p>No hay pasajeros registrados para este viaje.</p>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-6 flex justify-end">
-            <Button 
-              variant="outline" 
-              onClick={() => setPassengerListOpen(false)}
-            >
-              Cerrar
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
