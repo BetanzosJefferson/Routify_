@@ -238,19 +238,6 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
                           </span>
                         </Label>
                       </div>
-
-                      <div>
-                        <RadioGroupItem value={UserRole.COMPANY_OWNER} id="company-owner" className="peer sr-only" />
-                        <Label
-                          htmlFor="company-owner"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                        >
-                          <span className="font-semibold">Dueño de empresa</span>
-                          <span className="text-xs text-muted-foreground">
-                            Gestionar una empresa de transporte
-                          </span>
-                        </Label>
-                      </div>
                     </RadioGroup>
                   </FormControl>
                   <FormMessage />
@@ -258,7 +245,7 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
               )}
             />
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-6">
               <Alert variant="default" className="bg-amber-50 border-amber-200">
                 <AlertCircle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-800">
@@ -266,16 +253,6 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
                   El enlace es de un solo uso y caduca en 24 horas.
                 </AlertDescription>
               </Alert>
-
-              {form.watch("role") === UserRole.COMPANY_OWNER && (
-                <Alert variant="default" className="bg-blue-50 border-blue-200">
-                  <AlertCircle className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-blue-800">
-                    Solo los usuarios con rol <strong>Super Admin</strong> pueden crear dueños de empresa.
-                    Los dueños de empresa necesitarán proporcionar información adicional durante el registro.
-                  </AlertDescription>
-                </Alert>
-              )}
             </div>
 
             <div className="flex justify-end space-x-2 mt-6">
