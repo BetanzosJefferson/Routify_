@@ -81,7 +81,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   };
   
   // Definir qué roles pueden ver qué secciones
-  const isAdmin = hasPermission([UserRole.SUPER_ADMIN, UserRole.ADMINISTRATOR]);
+  const isAdmin = hasPermission([UserRole.SUPER_ADMIN, UserRole.ADMIN]);
   const isCompanyOwner = hasPermission([UserRole.COMPANY_OWNER]);
   const isCallCenter = hasPermission([UserRole.CALL_CENTER]);
   const isChecker = hasPermission([UserRole.CHECKER]);

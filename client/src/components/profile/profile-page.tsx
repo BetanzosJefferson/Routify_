@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { User } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
+import { useUser } from "@/hooks/use-user";
 import { 
   UserIcon,
   Building2,
@@ -21,19 +19,23 @@ interface ProfilePageProps {
 export function ProfilePage({ standalone = false }: ProfilePageProps) {
   const [isUploading, setIsUploading] = useState(false);
 
-  // Consulta para obtener información del usuario
-  const { data: user, isLoading } = useQuery<User>({
-    queryKey: ['/api/user'],
-    queryFn: async () => {
-      const res = await apiRequest('GET', '/api/user');
-      if (!res.ok) throw new Error('Error al cargar usuario');
-      return await res.json();
-    }
-  });
+  // Utilizamos useUser en lugar de una consulta directa
+  const { user, isLoading } = useUser();
 
+  const { logoutMutation } = useAuth();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  
   const handleLogout = () => {
-    // Implementar cuando se añada autenticación
-    console.log("Cerrar sesión - funcionalidad pendiente");
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => {
+        setLocation("/auth");
+        toast({
+          title: "Sesión cerrada",
+          description: "Has cerrado sesión correctamente"
+        });
+      }
+    });
   };
 
   const getRoleDisplayName = (role: string) => {
@@ -159,6 +161,11 @@ export function ProfilePage({ standalone = false }: ProfilePageProps) {
               className="bg-muted" 
             />
           </div>
+          {user?.role === "companyOwner" && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              Dueño de empresa con acceso restringido a recursos propios
+            </p>
+          )}
         </div>
 
         <div>
