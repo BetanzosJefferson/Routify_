@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { useUser } from "@/hooks/use-user";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import { 
   UserIcon,
   Building2,
@@ -19,10 +21,8 @@ interface ProfilePageProps {
 export function ProfilePage({ standalone = false }: ProfilePageProps) {
   const [isUploading, setIsUploading] = useState(false);
 
-  // Utilizamos useUser en lugar de una consulta directa
-  const { user, isLoading } = useUser();
-
-  const { logoutMutation } = useAuth();
+  // Obtenemos el usuario directamente del hook useAuth
+  const { user, isLoading, logoutMutation } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   
