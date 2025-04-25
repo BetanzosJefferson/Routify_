@@ -4,7 +4,13 @@ import {
   useMutation,
 } from "@tanstack/react-query";
 import { User } from "@shared/schema";
-import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
+import { 
+  getQueryFn, 
+  apiRequest, 
+  queryClient, 
+  storeCredentials, 
+  clearCredentials 
+} from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 type AuthContextType = {
@@ -42,14 +48,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return await res.json();
     },
-    onSuccess: (user: User) => {
+    onSuccess: (user: User, variables: LoginData) => {
+      // Almacenar credenciales en localStorage para autenticación futura
+      storeCredentials(variables.email, variables.password);
+      
+      // Actualizar estado de la aplicación
       queryClient.setQueryData(['/api/user'], user);
+      
       toast({
         title: "Inicio de sesión exitoso",
         description: `Bienvenido, ${user.firstName}`,
       });
     },
     onError: (error: Error) => {
+      // Limpiar cualquier credencial almacenada en caso de error
+      clearCredentials();
+      
       toast({
         title: "Error de inicio de sesión",
         description: error.message,
@@ -63,7 +77,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
+      // Limpiar credenciales del localStorage
+      clearCredentials();
+      
+      // Actualizar estado de la aplicación
       queryClient.setQueryData(['/api/user'], null);
+      
       toast({
         title: "Sesión cerrada",
         description: "Has cerrado sesión correctamente",
