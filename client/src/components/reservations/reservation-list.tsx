@@ -51,9 +51,10 @@ export function ReservationList() {
   // Estados adicionales para mejorar la UX
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showLoadingDelay, setShowLoadingDelay] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   // Fetch reservations con mejor manejo de estados y errores
-  const { data: reservations, isLoading, isError } = useQuery({
+  const { data: reservations, isLoading } = useQuery({
     queryKey: ["/api/reservations"],
     queryFn: async () => {
       try {
@@ -63,13 +64,18 @@ export function ReservationList() {
         const response = await fetch("/api/reservations");
         clearTimeout(loadingTimeout);
         
-        if (!response.ok) throw new Error("Failed to fetch reservations");
+        if (!response.ok) {
+          setHasError(true);
+          throw new Error("Failed to fetch reservations");
+        }
         
-        // Marcamos que ya pasó la carga inicial
+        // Marcamos que ya pasó la carga inicial y reseteamos error si hubo éxito
         setIsInitialLoad(false);
+        setHasError(false);
         return await response.json() as ReservationWithDetails[];
       } catch (error) {
         console.error("Error fetching reservations:", error);
+        setHasError(true);
         throw error;
       }
     },
@@ -77,7 +83,7 @@ export function ReservationList() {
     retry: 3,
     retryDelay: 1000,
     // No recargamos automáticamente si hay un error para evitar ciclos de error
-    refetchOnWindowFocus: !isError,
+    refetchOnWindowFocus: !hasError,
   });
   
   // Filter reservations based on search term
@@ -246,7 +252,7 @@ export function ReservationList() {
               <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
               <span className="ml-2">Cargando reservaciones...</span>
             </div>
-          ) : isError && !isInitialLoad ? (
+          ) : hasError && !isInitialLoad ? (
             <div className="text-center p-8 text-red-500">
               Error al cargar las reservaciones. Por favor intenta de nuevo.
             </div>

@@ -91,11 +91,15 @@ export function BoardingList() {
     if (trip.isSubTrip) return false;
     
     // Convertir cadena de fecha a objeto Date y obtener solo la parte de la fecha (sin hora)
-    const tripDateStr = trip.departureDate.split('T')[0];
+    // Aseguramos que trip.departureDate sea una cadena (ya que podría ser un objeto Date)
+    const tripDate = typeof trip.departureDate === 'string' 
+      ? trip.departureDate.split('T')[0] 
+      : format(new Date(trip.departureDate), 'yyyy-MM-dd');
+      
     const currentDateStr = format(currentDate, 'yyyy-MM-dd');
     
     // Comparar las cadenas de fecha directamente
-    return tripDateStr === currentDateStr;
+    return tripDate === currentDateStr;
   }) || [];
 
   // Obtener pasajeros del viaje seleccionado
