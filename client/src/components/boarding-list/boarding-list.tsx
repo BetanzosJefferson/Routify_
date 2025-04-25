@@ -173,7 +173,7 @@ export function BoardingList() {
     return format(date, "yyyy-MM-dd");
   };
 
-  // Función para obtener conteo de pasajeros por viaje, incluyendo subviajes si aplica
+  // Función optimizada para obtener conteo de pasajeros por viaje, incluyendo subviajes si aplica
   const getPassengerCount = (tripId: number) => {
     if (!reservations) return 0;
     
@@ -183,7 +183,7 @@ export function BoardingList() {
       : allTrips || [];
     
     // Obtener el viaje para determinar si es principal o sub-viaje
-    const trip = tripsSource.find(t => t.id === tripId);
+    const trip = tripsSource.find((t: Trip) => t.id === tripId);
     if (!trip) return 0;
     
     let relevantTripIds = [tripId];
@@ -191,13 +191,13 @@ export function BoardingList() {
     // Si es un viaje principal, incluir también pasajeros de subviajes
     if (!trip.isSubTrip) {
       const subTripIds = tripsSource
-        .filter(t => t.parentTripId === tripId)
-        .map(t => t.id);
+        .filter((t: Trip) => t.parentTripId === tripId)
+        .map((t: Trip) => t.id);
       
       relevantTripIds = [...relevantTripIds, ...subTripIds];
     }
     
-    // Contar pasajeros en todos los viajes relevantes
+    // Contar pasajeros en todos los viajes relevantes de manera optimizada
     return reservations
       .filter(r => relevantTripIds.includes(r.tripId))
       .reduce((count, reservation) => count + (reservation.passengers?.length || 0), 0);

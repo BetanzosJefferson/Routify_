@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDataLoader } from "@/hooks/use-data-loader";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useLocation, useRoute } from "wouter";
@@ -107,27 +108,46 @@ export default function PassengerListPage() {
 
   const tripId = Number(params.tripId);
 
-  // Fetch all trips
+  // Usar DataLoader para verificar estado global de carga
+  const { isDataLoading } = useDataLoader();
+  const queryClient = useQueryClient();
+  
+  // Fetch all trips with optimized settings
   const { data: trips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
     queryKey: ["/api/trips"],
-    staleTime: 5000,
-    refetchInterval: 15000,
+    staleTime: 2 * 60 * 1000, // 2 minutos - reducir peticiones innecesarias
+    refetchInterval: 30 * 1000, // 30 segundos - mantener datos más actualizados
   });
 
-  // Fetch all reservations
+  // Fetch trip details specifically by ID for better performance
+  const { data: tripDetails, isLoading: isLoadingTripDetails } = useQuery<Trip>({
+    queryKey: [`/api/trips/${tripId}`],
+    staleTime: 60 * 1000, // 1 minuto
+    // Evitamos esta consulta si no tenemos un ID válido
+    enabled: !!tripId && tripId > 0,
+    // Optimización: usar datos de la caché si ya tenemos el viaje en la lista general
+    initialData: () => {
+      const allTrips = queryClient.getQueryData<Trip[]>(["/api/trips"]);
+      return allTrips?.find(trip => trip.id === tripId);
+    }
+  });
+
+  // Fetch all reservations with optimized settings
   const { data: reservations, isLoading: isLoadingReservations } = useQuery<Reservation[]>({
     queryKey: ["/api/reservations"],
-    staleTime: 5000,
-    refetchInterval: 15000,
+    staleTime: 60 * 1000, // 1 minuto
+    refetchInterval: 30 * 1000, // 30 segundos
   });
 
   // Calcular pasajeros del viaje seleccionado con detección de relaciones de viajes
-  const passengersList = (() => {
+  // Usar useMemo para optimizar el procesamiento de pasajeros
+  const passengersList = useMemo((): Passenger[] => {
     if (!tripId || !reservations || !trips) return [];
     
     try {
       // Obtener el viaje seleccionado para verificar si es principal o subviaje
-      const currentTrip = trips.find(t => t.id === tripId);
+      // Primero usamos tripDetails si está disponible, luego buscamos en el array general
+      const currentTrip = tripDetails || trips.find(t => t.id === tripId);
       if (!currentTrip) return [];
       
       let relevantTripIds = [];
@@ -142,23 +162,25 @@ export default function PassengerListPage() {
           .map(t => t.id);
         
         relevantTripIds = [...relevantTripIds, ...subTripIds];
-        console.log("Viaje principal y sus sub-viajes:", relevantTripIds);
+        // Reducir logs innecesarios para mejorar rendimiento
+        if (relevantTripIds.length > 1) {
+          console.log("Viaje principal y sus sub-viajes:", relevantTripIds);
+        }
       } 
       // 2. Si es un sub-viaje, incluir solo a ese viaje
       else {
         relevantTripIds.push(tripId);
-        console.log("Sub-viaje solamente:", relevantTripIds);
       }
       
-      // Encontrar reservaciones para todos los viajes relevantes
+      // Encontrar reservaciones para todos los viajes relevantes - optimizado para rendimiento
       const relevantReservations = reservations.filter(r => 
         relevantTripIds.includes(r.tripId) && 
-        r.passengers && 
-        Array.isArray(r.passengers) && 
-        r.passengers.length > 0
+        r.passengers?.length > 0
       );
       
-      console.log("Reservaciones encontradas:", relevantReservations.length);
+      if (relevantReservations.length > 0) {
+        console.log("Reservaciones encontradas:", relevantReservations.length);
+      }
       
       // Si no hay reservaciones relevantes, terminar aquí
       if (relevantReservations.length === 0) {
@@ -243,8 +265,11 @@ export default function PassengerListPage() {
     return format(date, "d 'de' MMMM, yyyy", { locale: es });
   };
 
-  // Obtener información del viaje
-  const tripInfo = trips?.find(trip => trip.id === tripId);
+  // Obtener información del viaje (primero de tripDetails si está disponible, después de trips)
+  const tripInfo = useMemo(() => {
+    if (tripDetails) return tripDetails;
+    return trips?.find(trip => trip.id === tripId);
+  }, [tripDetails, trips, tripId]);
 
   // Función para imprimir la lista de pasajeros
   const handlePrint = () => {
@@ -256,10 +281,12 @@ export default function PassengerListPage() {
     setLocation("/");
   };
 
-  if (isLoadingTrips || isLoadingReservations) {
+  // Mostrar estado de carga mejorado
+  if (isDataLoading || isLoadingTrips || isLoadingReservations || isLoadingTripDetails) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex flex-col justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>
+        <p className="text-sm text-muted-foreground">Cargando información del viaje...</p>
       </div>
     );
   }
