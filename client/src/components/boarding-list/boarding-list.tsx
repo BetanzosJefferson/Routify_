@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, memo, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
@@ -14,6 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+// Importamos useDataLoader para aprovechar la caché
+import { useDataLoader } from "@/hooks/use-data-loader";
 
 interface Trip {
   id: number;
@@ -63,40 +65,127 @@ interface Reservation {
   passengers: Passenger[];
 }
 
+// Componente de tarjeta de viaje optimizado
+const TripCard = memo(({ 
+  trip, 
+  passengerCount, 
+  onCardClick,
+  formatDisplayDate
+}: { 
+  trip: Trip; 
+  passengerCount: number; 
+  onCardClick: () => void;
+  formatDisplayDate: (date: string | Date) => string;
+}) => {
+  // Calcular tasa de ocupación una sola vez
+  const occupancyRate = Math.round(((trip.capacity - trip.availableSeats) / trip.capacity) * 100);
+  
+  return (
+    <Card 
+      key={trip.id} 
+      className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+      onClick={onCardClick}
+    >
+      <CardContent className="p-0">
+        <div className="p-4">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <h3 className="font-semibold text-lg">{trip.route.name}</h3>
+              <p className="text-sm text-gray-500">
+                {trip.segmentOrigin || trip.route.origin} → {trip.segmentDestination || trip.route.destination}
+              </p>
+            </div>
+            <Badge variant={trip.status === "scheduled" ? "outline" : trip.status === "in-progress" ? "default" : "secondary"}>
+              {trip.status === "scheduled" 
+                ? "Programado" 
+                : trip.status === "in-progress" 
+                  ? "En Progreso" 
+                  : trip.status === "completed" 
+                    ? "Completado" 
+                    : "Cancelado"}
+            </Badge>
+          </div>
+          
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center text-gray-600">
+              <Calendar className="h-4 w-4 mr-2" />
+              {formatDisplayDate(trip.departureDate)}
+            </div>
+            
+            <div className="flex items-center text-gray-600">
+              <Clock className="h-4 w-4 mr-2" />
+              {trip.departureTime} - {trip.arrivalTime}
+            </div>
+            
+            {trip.vehicleType && (
+              <div className="flex items-center text-gray-600">
+                <Bus className="h-4 w-4 mr-2" />
+                <span className="capitalize">{trip.vehicleType}</span>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-between border-t p-3 bg-gray-50">
+          <div className="flex items-center">
+            <Users className="h-4 w-4 mr-2 text-gray-500" />
+            <span className="text-sm font-medium">{passengerCount} pasajeros</span>
+          </div>
+          
+          <Badge variant={
+            occupancyRate < 50 ? "outline" : 
+            occupancyRate < 80 ? "secondary" : 
+            "default"
+          }>
+            {occupancyRate}% ocupación
+          </Badge>
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
 export function BoardingList() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [, navigate] = useLocation();
+  const { performanceMetrics } = useDataLoader();
   
-  // Fetch all trips
+  // Fetch all trips with optimized caching
   const { data: trips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
     queryKey: ["/api/trips"],
-    staleTime: 5000,
-    refetchInterval: 15000,
+    staleTime: 60 * 1000, // Mayor tiempo de caché para mejor rendimiento (1 minuto)
+    refetchInterval: 60 * 1000, // Refrescar cada minuto es suficiente para boarding
+    gcTime: 5 * 60 * 1000, // Mantener en caché por 5 minutos
   });
 
-  // Fetch all reservations
+  // Fetch all reservations with optimized caching
   const { data: reservations, isLoading: isLoadingReservations } = useQuery<Reservation[]>({
     queryKey: ["/api/reservations"],
-    staleTime: 5000,
-    refetchInterval: 15000,
+    staleTime: 60 * 1000, // Mayor tiempo de caché (1 minuto)
+    refetchInterval: 60 * 1000, // Refrescar cada minuto
+    gcTime: 5 * 60 * 1000, // Mantener en caché por 5 minutos
   });
 
-  // Filtrar para obtener solo viajes principales (no sub-viajes) y por fecha seleccionada
-  const filteredTrips = trips?.filter(trip => {
-    // Filtrar por viajes principales
-    if (trip.isSubTrip) return false;
+  // Filtrar viajes usando useMemo para evitar recálculos innecesarios
+  const filteredTrips = useMemo(() => {
+    if (!trips) return [];
     
-    // Convertir cadena de fecha a objeto Date y obtener solo la parte de la fecha (sin hora)
-    // Aseguramos que trip.departureDate sea una cadena (ya que podría ser un objeto Date)
-    const tripDate = typeof trip.departureDate === 'string' 
-      ? trip.departureDate.split('T')[0] 
-      : format(new Date(trip.departureDate), 'yyyy-MM-dd');
-      
     const currentDateStr = format(currentDate, 'yyyy-MM-dd');
     
-    // Comparar las cadenas de fecha directamente
-    return tripDate === currentDateStr;
-  }) || [];
+    return trips.filter(trip => {
+      // Filtrar por viajes principales
+      if (trip.isSubTrip) return false;
+      
+      // Convertir cadena de fecha a objeto Date y obtener solo la parte de la fecha (sin hora)
+      // Aseguramos que trip.departureDate sea una cadena (ya que podría ser un objeto Date)
+      const tripDate = typeof trip.departureDate === 'string' 
+        ? trip.departureDate.split('T')[0] 
+        : format(new Date(trip.departureDate), 'yyyy-MM-dd');
+      
+      // Comparar las cadenas de fecha directamente
+      return tripDate === currentDateStr;
+    });
+  }, [trips, currentDate]);
 
   // La lógica de procesamiento de pasajeros ya no es necesaria aquí
   // ya que ahora se maneja en la página dedicada de PassengerListPage
@@ -159,6 +248,76 @@ export function BoardingList() {
       .reduce((count, reservation) => count + (reservation.passengers?.length || 0), 0);
   };
 
+  // Memoizar la función para cambiar la fecha para prevenir re-renders innecesarios
+  const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.value) {
+      // Al crear la fecha con formato yyyy-MM-dd, usar el constructor con año, mes, día para evitar problemas de zona horaria
+      const [year, month, day] = e.target.value.split('-').map(Number);
+      // Meses en JavaScript son 0-indexados (0-11), pero en el input date son 1-indexados (1-12)
+      const newDate = new Date(year, month - 1, day, 12, 0, 0);
+      setCurrentDate(newDate);
+    } else {
+      setCurrentDate(new Date());
+    }
+  }, []);
+
+  // Memoizar la función de navegación para prevenir re-renders innecesarios
+  const handleTripClick = useCallback((tripId: number) => {
+    navigate(`/trip/${tripId}/passengers`);
+  }, [navigate]);
+
+  // Pre-calcular las cuentas de pasajeros para todos los viajes de una vez
+  const passengerCountMap = useMemo(() => {
+    if (!trips || !reservations) return new Map<number, number>();
+    
+    const countMap = new Map<number, number>();
+    
+    // Crear mapa de viajes principales a subviajes
+    const mainToSubTripsMap = new Map<number, number[]>();
+    
+    trips.forEach(trip => {
+      if (!trip.isSubTrip && !mainToSubTripsMap.has(trip.id)) {
+        mainToSubTripsMap.set(trip.id, []);
+      }
+      
+      if (trip.isSubTrip && trip.parentTripId) {
+        const subTrips = mainToSubTripsMap.get(trip.parentTripId) || [];
+        subTrips.push(trip.id);
+        mainToSubTripsMap.set(trip.parentTripId, subTrips);
+      }
+    });
+    
+    // Contar pasajeros para cada viaje
+    filteredTrips.forEach(trip => {
+      const relevantTripIds = [trip.id, ...(mainToSubTripsMap.get(trip.id) || [])];
+      
+      // Contar pasajeros en todos los viajes relevantes
+      const count = reservations
+        .filter(r => relevantTripIds.includes(r.tripId))
+        .reduce((total, res) => total + (res.passengers?.length || 0), 0);
+      
+      countMap.set(trip.id, count);
+    });
+    
+    return countMap;
+  }, [trips, reservations, filteredTrips]);
+
+  // Generar el componente de carga
+  const renderLoading = () => (
+    <div className="flex justify-center items-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+  );
+
+  // Generar el componente de estado vacío
+  const renderEmptyState = () => (
+    <div className="text-center py-12 text-gray-500">
+      <ClipboardListIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+      <h3 className="text-lg font-medium mb-2">No hay viajes programados</h3>
+      <p>No se encontraron viajes para la fecha seleccionada.</p>
+    </div>
+  );
+
   return (
     <div className="py-6">
       <div className="flex items-center mb-4">
@@ -179,104 +338,34 @@ export function BoardingList() {
               type="date"
               className="pl-10 pr-4 py-2 w-full"
               value={formatDateForInput(currentDate)}
-              onChange={(e) => {
-                if (e.target.value) {
-                  // Al crear la fecha con formato yyyy-MM-dd, usar el constructor con año, mes, día para evitar problemas de zona horaria
-                  const [year, month, day] = e.target.value.split('-').map(Number);
-                  // Meses en JavaScript son 0-indexados (0-11), pero en el input date son 1-indexados (1-12)
-                  const newDate = new Date(year, month - 1, day, 12, 0, 0);
-                  setCurrentDate(newDate);
-                } else {
-                  setCurrentDate(new Date());
-                }
-              }}
+              onChange={handleDateChange}
             />
           </div>
         </div>
       </div>
 
       {isLoadingTrips || isLoadingReservations ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
+        renderLoading()
       ) : filteredTrips.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTrips.map(trip => {
-            const passengerCount = getPassengerCount(trip.id);
-            const occupancyRate = Math.round(((trip.capacity - trip.availableSeats) / trip.capacity) * 100);
-            
-            return (
-              <Card 
-                key={trip.id} 
-                className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => {
-                  navigate(`/trip/${trip.id}/passengers`);
-                }}
-              >
-                <CardContent className="p-0">
-                  <div className="p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="font-semibold text-lg">{trip.route.name}</h3>
-                        <p className="text-sm text-gray-500">
-                          {trip.segmentOrigin || trip.route.origin} → {trip.segmentDestination || trip.route.destination}
-                        </p>
-                      </div>
-                      <Badge variant={trip.status === "scheduled" ? "outline" : trip.status === "in-progress" ? "default" : "secondary"}>
-                        {trip.status === "scheduled" 
-                          ? "Programado" 
-                          : trip.status === "in-progress" 
-                            ? "En Progreso" 
-                            : trip.status === "completed" 
-                              ? "Completado" 
-                              : "Cancelado"}
-                      </Badge>
-                    </div>
-                    
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center text-gray-600">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        {formatDisplayDate(trip.departureDate)}
-                      </div>
-                      
-                      <div className="flex items-center text-gray-600">
-                        <Clock className="h-4 w-4 mr-2" />
-                        {trip.departureTime} - {trip.arrivalTime}
-                      </div>
-                      
-                      {trip.vehicleType && (
-                        <div className="flex items-center text-gray-600">
-                          <Bus className="h-4 w-4 mr-2" />
-                          <span className="capitalize">{trip.vehicleType}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between border-t p-3 bg-gray-50">
-                    <div className="flex items-center">
-                      <Users className="h-4 w-4 mr-2 text-gray-500" />
-                      <span className="text-sm font-medium">{passengerCount} pasajeros</span>
-                    </div>
-                    
-                    <Badge variant={
-                      occupancyRate < 50 ? "outline" : 
-                      occupancyRate < 80 ? "secondary" : 
-                      "default"
-                    }>
-                      {occupancyRate}% ocupación
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+          {filteredTrips.map(trip => (
+            <TripCard
+              key={trip.id}
+              trip={trip}
+              passengerCount={passengerCountMap.get(trip.id) || 0}
+              formatDisplayDate={formatDisplayDate}
+              onCardClick={() => handleTripClick(trip.id)}
+            />
+          ))}
         </div>
       ) : (
-        <div className="text-center py-12 text-gray-500">
-          <ClipboardListIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-          <h3 className="text-lg font-medium mb-2">No hay viajes programados</h3>
-          <p>No se encontraron viajes para la fecha seleccionada.</p>
+        renderEmptyState()
+      )}
+      
+      {/* Información de rendimiento para depuración */}
+      {performanceMetrics.totalLoadTime && (
+        <div className="mt-4 text-xs text-gray-400 text-right">
+          <p>Datos cargados en: {Math.round(performanceMetrics.totalLoadTime)}ms</p>
         </div>
       )}
     </div>
