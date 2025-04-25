@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
@@ -102,19 +102,62 @@ export function BoardingList() {
     return tripDate === currentDateStr;
   }) || [];
 
-  // Obtener pasajeros del viaje seleccionado
-  const selectedTripPassengers = reservations?.filter(reservation => 
-    reservation.tripId === selectedTrip && reservation.passengers?.length > 0
-  ).flatMap(reservation => 
-    reservation.passengers.map(passenger => ({
-      ...passenger,
-      reservationCode: `R-${reservation.id.toString().padStart(6, '0')}`,
-      paymentMethod: reservation.paymentMethod,
-      paymentStatus: reservation.paymentStatus,
-      email: reservation.email,
-      phone: reservation.phone
-    }))
-  ) || [];
+  // Calcular pasajeros del viaje seleccionado con detección de relaciones de viajes
+  const selectedTripPassengers = (() => {
+    if (!selectedTrip || !reservations || !trips) return [];
+    
+    // Obtener el viaje seleccionado para verificar si es principal o subviaje
+    const currentTrip = trips.find(t => t.id === selectedTrip);
+    if (!currentTrip) return [];
+    
+    let relevantReservations = [];
+    
+    // 1. Si es un viaje principal, incluir también los pasajeros de sus sub-viajes
+    if (!currentTrip.isSubTrip) {
+      // Añadir reservas propias del viaje
+      const directReservations = reservations.filter(
+        r => r.tripId === selectedTrip && r.passengers?.length > 0
+      );
+      
+      // Buscar sub-viajes relacionados
+      const subTripIds = trips
+        .filter(t => t.parentTripId === selectedTrip)
+        .map(t => t.id);
+      
+      // Añadir reservas de sub-viajes
+      const subTripReservations = reservations.filter(
+        r => subTripIds.includes(r.tripId) && r.passengers?.length > 0
+      );
+      
+      relevantReservations = [...directReservations, ...subTripReservations];
+    } 
+    // 2. Si es un sub-viaje, mostrar solo sus pasajeros
+    else {
+      relevantReservations = reservations.filter(
+        r => r.tripId === selectedTrip && r.passengers?.length > 0
+      );
+    }
+    
+    // Transformar a lista de pasajeros con información adicional
+    return relevantReservations.flatMap(reservation => 
+      reservation.passengers.map(passenger => ({
+        ...passenger,
+        reservationCode: `R-${reservation.id.toString().padStart(6, '0')}`,
+        paymentMethod: reservation.paymentMethod,
+        paymentStatus: reservation.paymentStatus,
+        email: reservation.email,
+        phone: reservation.phone,
+        // Añadir información del trayecto específico
+        tripSegment: `${
+          trips.find(t => t.id === reservation.tripId)?.segmentOrigin || 
+          trips.find(t => t.id === reservation.tripId)?.route.origin
+        } → ${
+          trips.find(t => t.id === reservation.tripId)?.segmentDestination || 
+          trips.find(t => t.id === reservation.tripId)?.route.destination
+        }`
+      }))
+    );
+  }, [selectedTrip, reservations, trips]);
 
   // Función para formatear fecha para su visualización con ajuste para zona horaria
   const formatDisplayDate = (dateString: string | Date) => {
@@ -159,10 +202,29 @@ export function BoardingList() {
     return trips?.find(trip => trip.id === selectedTrip);
   };
 
-  // Función para obtener conteo de pasajeros por viaje
+  // Función para obtener conteo de pasajeros por viaje, incluyendo subviajes si aplica
   const getPassengerCount = (tripId: number) => {
-    return reservations?.filter(r => r.tripId === tripId)
-      .reduce((count, reservation) => count + (reservation.passengers?.length || 0), 0) || 0;
+    if (!trips || !reservations) return 0;
+    
+    // Obtener el viaje para determinar si es principal o sub-viaje
+    const trip = trips.find(t => t.id === tripId);
+    if (!trip) return 0;
+    
+    let relevantTripIds = [tripId];
+    
+    // Si es un viaje principal, incluir también pasajeros de subviajes
+    if (!trip.isSubTrip) {
+      const subTripIds = trips
+        .filter(t => t.parentTripId === tripId)
+        .map(t => t.id);
+      
+      relevantTripIds = [...relevantTripIds, ...subTripIds];
+    }
+    
+    // Contar pasajeros en todos los viajes relevantes
+    return reservations
+      .filter(r => relevantTripIds.includes(r.tripId))
+      .reduce((count, reservation) => count + (reservation.passengers?.length || 0), 0);
   };
 
   return (
