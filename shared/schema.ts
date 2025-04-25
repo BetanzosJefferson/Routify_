@@ -23,7 +23,8 @@ export const routes = pgTable("routes", {
   origin: text("origin").notNull(),
   stops: text("stops").array().notNull(),
   destination: text("destination").notNull(),
-  companyId: integer("company_id").references(() => companies.id),
+  // Comentado temporalmente hasta que se agregue la columna a la base de datos
+  // companyId: integer("company_id").references(() => companies.id),
 });
 
 export const insertRouteSchema = createInsertSchema(routes);
@@ -210,7 +211,8 @@ export const vehicles = pgTable("vehicles", {
   hasRecliningSeats: boolean("has_reclining_seats").default(false),
   services: text("services").array(),
   description: text("description"),
-  companyId: integer("company_id").references(() => companies.id),
+  // Comentado temporalmente hasta que se agregue la columna a la base de datos
+  // companyId: integer("company_id").references(() => companies.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -289,7 +291,9 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   role: text("role").notNull().default(UserRole.TICKET_OFFICE),
-  companyId: integer("company_id").references(() => companies.id),
+  company: text("company").default(""),
+  // Comentado temporalmente hasta que se agregue la columna a la base de datos
+  // companyId: integer("company_id").references(() => companies.id),
   profilePicture: text("profile_picture").default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -310,7 +314,8 @@ export const invitations = pgTable("invitations", {
   token: uuid("token").notNull().unique().defaultRandom(),
   role: text("role").notNull(),
   email: text("email"),
-  companyId: integer("company_id").references(() => companies.id),
+  // Comentado temporalmente hasta que se agregue la columna a la base de datos
+  // companyId: integer("company_id").references(() => companies.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   expiresAt: timestamp("expires_at").notNull(),
   usedAt: timestamp("used_at"),
@@ -323,46 +328,29 @@ export type Invitation = typeof invitations.$inferSelect;
 
 // COMPANY RELATIONS
 export const companyRelations = relations(companies, ({ many }) => ({
-  users: many(users),
-  routes: many(routes),
-  vehicles: many(vehicles)
+  // Temporalmente, no establecemos relaciones hasta que existan las columnas en la base de datos
 }));
 
 // USER RELATIONS
-export const userRelations = relations(users, ({ one, many }) => ({
-  invitationsCreated: many(invitations),
-  company: one(companies, {
-    fields: [users.companyId],
-    references: [companies.id]
-  })
+export const userRelations = relations(users, ({ many }) => ({
+  invitationsCreated: many(invitations)
 }));
 
 export const invitationRelations = relations(invitations, ({ one }) => ({
   createdBy: one(users, {
     fields: [invitations.createdById],
     references: [users.id]
-  }),
-  company: one(companies, {
-    fields: [invitations.companyId],
-    references: [companies.id]
   })
 }));
 
 // ROUTE RELATIONS
-export const routeRelations = relations(routes, ({ one, many }) => ({
-  trips: many(trips),
-  company: one(companies, {
-    fields: [routes.companyId],
-    references: [companies.id]
-  })
+export const routeRelations = relations(routes, ({ many }) => ({
+  trips: many(trips)
 }));
 
 // VEHICLE RELATIONS
-export const vehicleRelations = relations(vehicles, ({ one }) => ({
-  company: one(companies, {
-    fields: [vehicles.companyId],
-    references: [companies.id]
-  })
+export const vehicleRelations = relations(vehicles, ({}) => ({
+  // Temporalmente no establecemos relaciones hasta que existan las columnas en la base de datos
 }));
 
 // COMMISSION RELATIONS
