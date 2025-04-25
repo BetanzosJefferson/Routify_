@@ -199,7 +199,12 @@ export function BoardingList() {
                 <CardContent className="p-0">
                   <div className="p-4">
                     <div className="flex justify-between items-start mb-3">
-                      <h3 className="font-semibold text-lg">{trip.route.name}</h3>
+                      <div>
+                        <h3 className="font-semibold text-lg">{trip.route.name}</h3>
+                        <p className="text-sm text-gray-500">
+                          {trip.segmentOrigin || trip.route.origin} → {trip.segmentDestination || trip.route.destination}
+                        </p>
+                      </div>
                       <Badge variant={trip.status === "scheduled" ? "outline" : trip.status === "in-progress" ? "default" : "secondary"}>
                         {trip.status === "scheduled" 
                           ? "Programado" 
@@ -271,6 +276,9 @@ export function BoardingList() {
             <DialogDescription>
               {getSelectedTripInfo()?.route.name} - {formatHeaderDate(currentDate)}
             </DialogDescription>
+            <p className="text-sm text-gray-500 mt-1">
+              {getSelectedTripInfo()?.segmentOrigin || getSelectedTripInfo()?.route.origin} → {getSelectedTripInfo()?.segmentDestination || getSelectedTripInfo()?.route.destination}
+            </p>
           </DialogHeader>
 
           <div className="mt-4">

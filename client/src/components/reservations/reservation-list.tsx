@@ -256,6 +256,9 @@ export function ReservationList() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{reservation.trip.route.name}</div>
+                      <div className="text-sm text-gray-500">
+                        {reservation.trip.segmentOrigin || reservation.trip.route.origin} → {reservation.trip.segmentDestination || reservation.trip.route.destination}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{formatDate(reservation.trip.departureDate)}</div>
@@ -366,6 +369,9 @@ export function ReservationList() {
                 <Label htmlFor="route-info">Route</Label>
                 <div id="route-info" className="text-sm text-gray-500">
                   {editingReservation.trip.route.name}
+                </div>
+                <div className="text-sm text-gray-500">
+                  {editingReservation.trip.segmentOrigin || editingReservation.trip.route.origin} → {editingReservation.trip.segmentDestination || editingReservation.trip.route.destination}
                 </div>
               </div>
               
