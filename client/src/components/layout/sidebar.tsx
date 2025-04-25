@@ -74,19 +74,16 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     window.history.pushState({}, '', url.toString());
   };
   
-  // Función para verificar si un usuario tiene permisos para ver ciertas funciones
-  const hasPermission = (requiredRoles: string[]): boolean => {
-    if (!user || !user.role) return false;
-    return requiredRoles.includes(user.role);
-  };
+  // Usar los métodos proporcionados por useUser para verificar roles
+  const { hasAnyRole } = useUser();
   
   // Definir qué roles pueden ver qué secciones
-  const isAdmin = hasPermission([UserRole.SUPER_ADMIN, UserRole.ADMIN]);
-  const isCompanyOwner = hasPermission([UserRole.COMPANY_OWNER]);
-  const isCallCenter = hasPermission([UserRole.CALL_CENTER]);
-  const isChecker = hasPermission([UserRole.CHECKER]);
-  const isDriver = hasPermission([UserRole.DRIVER]);
-  const isTicketOffice = hasPermission([UserRole.TICKET_OFFICE]);
+  const isAdmin = hasAnyRole([UserRole.SUPER_ADMIN, UserRole.ADMIN]);
+  const isCompanyOwner = hasAnyRole([UserRole.COMPANY_OWNER]);
+  const isCallCenter = hasAnyRole([UserRole.CALL_CENTER]);
+  const isChecker = hasAnyRole([UserRole.CHECKER]);
+  const isDriver = hasAnyRole([UserRole.DRIVER]);
+  const isTicketOffice = hasAnyRole([UserRole.TICKET_OFFICE]);
   
   // Determinar qué secciones son visibles según el rol
   const canManageUsers = isAdmin;
