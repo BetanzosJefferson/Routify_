@@ -2,9 +2,18 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { Express, Request, Response, NextFunction } from "express";
 import { db } from "./db";
-import { users, insertUserSchema, insertInvitationSchema, invitations, UserRole, companies } from "@shared/schema";
+import { users, insertUserSchema, insertInvitationSchema, invitations, UserRole, companies, User } from "@shared/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { add } from "date-fns";
+
+// Extender la interfaz Request para incluir el usuario
+declare global {
+  namespace Express {
+    interface Request {
+      user?: User;
+    }
+  }
+}
 
 const scryptAsync = promisify(scrypt);
 
@@ -19,6 +28,50 @@ async function comparePasswords(supplied: string, stored: string) {
   const hashedBuf = Buffer.from(hashed, "hex");
   const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
   return timingSafeEqual(hashedBuf, suppliedBuf);
+}
+
+// Middleware para verificar si un usuario está autenticado
+function isAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if (!req.headers.authorization) {
+    return res.status(401).json({ message: "No autorizado" });
+  }
+
+  // En un sistema real, verificaríamos el token JWT o la sesión
+  // Por simplicidad, para esta demo estamos usando Basic Authentication
+  const authHeader = req.headers.authorization;
+  if (!authHeader.startsWith('Basic ')) {
+    return res.status(401).json({ message: "Formato de autenticación inválido" });
+  }
+
+  const base64Credentials = authHeader.split(' ')[1];
+  const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+  const [email, password] = credentials.split(':');
+
+  // Verificar las credenciales en la base de datos
+  db.select()
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1)
+    .then(async (userResults) => {
+      if (userResults.length === 0) {
+        return res.status(401).json({ message: "Credenciales inválidas" });
+      }
+
+      const user = userResults[0];
+      const isPasswordValid = await comparePasswords(password, user.password);
+      
+      if (!isPasswordValid) {
+        return res.status(401).json({ message: "Credenciales inválidas" });
+      }
+
+      // Si las credenciales son válidas, añadir el usuario a la solicitud
+      req.user = user;
+      next();
+    })
+    .catch((error) => {
+      console.error("Error en autenticación:", error);
+      res.status(500).json({ message: "Error interno del servidor" });
+    });
 }
 
 export function setupAuthRoutes(app: Express) {
@@ -41,10 +94,85 @@ export function setupAuthRoutes(app: Express) {
       console.log("Usuario Super Admin creado con éxito");
     }
   }
+  
+  // Crear un usuario con rol "desarrollo" si no existe
+  async function createDevelopmentUser() {
+    try {
+      const devUserExists = await db
+        .select()
+        .from(users)
+        .where(eq(users.role, UserRole.DESARROLLO))
+        .limit(1);
 
-  // Intentar crear el usuario inicial
+      if (devUserExists.length === 0) {
+        await db.insert(users).values({
+          firstName: "Usuario",
+          lastName: "Desarrollo",
+          email: "desarrollo@transporte.com",
+          password: await hashPassword("desarrollo123"),
+          role: UserRole.DESARROLLO,
+        });
+        console.log("Usuario de Desarrollo creado con éxito");
+      }
+    } catch (error) {
+      console.error("Error al crear usuario de Desarrollo:", error);
+    }
+  }
+
+  // Intentar crear los usuarios iniciales
   createInitialSuperAdmin().catch((err) => {
-    console.error("Error al crear usuario inicial:", err);
+    console.error("Error al crear usuario Super Admin:", err);
+  });
+  
+  createDevelopmentUser().catch((err) => {
+    console.error("Error al crear usuario de Desarrollo:", err);
+  });
+
+  // Endpoint para obtener el usuario actual (usando las credenciales de autenticación)
+  app.get("/api/user", async (req: Request, res: Response) => {
+    try {
+      // Verificar si hay cabecera de autenticación
+      if (!req.headers.authorization) {
+        return res.status(401).json({ message: "No autorizado" });
+      }
+
+      // Verificar formato de autenticación (Basic Auth)
+      const authHeader = req.headers.authorization;
+      if (!authHeader.startsWith('Basic ')) {
+        return res.status(401).json({ message: "Formato de autenticación inválido" });
+      }
+
+      // Decodificar credenciales
+      const base64Credentials = authHeader.split(' ')[1];
+      const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+      const [email, password] = credentials.split(':');
+
+      // Buscar usuario por email
+      const userResults = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+
+      if (userResults.length === 0) {
+        return res.status(401).json({ message: "Credenciales inválidas" });
+      }
+
+      const user = userResults[0];
+      
+      // Verificar contraseña
+      const isPasswordValid = await comparePasswords(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ message: "Credenciales inválidas" });
+      }
+
+      // Devolver datos del usuario (sin la contraseña)
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error al obtener usuario actual:", error);
+      res.status(500).json({ message: "Error interno del servidor" });
+    }
   });
 
   // Endpoint para obtener todos los usuarios
@@ -90,6 +218,20 @@ export function setupAuthRoutes(app: Express) {
       res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error en login:", error);
+      res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+  
+  // Endpoint para cerrar sesión (en un sistema real, invalidaríamos el token o la sesión)
+  app.post("/api/logout", (_req: Request, res: Response) => {
+    try {
+      // En un sistema real con JWT, no necesitaríamos hacer nada en el servidor
+      // ya que el token se maneja en el cliente
+      // Si usáramos sesiones, aquí destruiríamos la sesión
+      
+      res.status(200).json({ message: "Sesión cerrada con éxito" });
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
       res.status(500).json({ message: "Error interno del servidor" });
     }
   });
