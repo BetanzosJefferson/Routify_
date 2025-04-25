@@ -48,20 +48,12 @@ export default function TripSummary({ className }: TripSummaryProps) {
     // Filtrar por viajes principales
     if (trip.isSubTrip) return false;
     
-    // Filtrar por fecha actual
-    // Convertir la fecha de salida usando la misma técnica para evitar problemas de zona horaria
-    const tripDate = new Date(trip.departureDate);
-    const tripYear = tripDate.getFullYear();
-    const tripMonth = tripDate.getMonth();
-    const tripDay = tripDate.getDate();
+    // Convertir cadena de fecha a objeto Date y obtener solo la parte de la fecha (sin hora)
+    const tripDateStr = trip.departureDate.split('T')[0];
+    const currentDateStr = format(currentDate, 'yyyy-MM-dd');
     
-    // Extraer componentes de la fecha actual para comparación
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth();
-    const currentDay = currentDate.getDate();
-    
-    // Comparar componentes de fecha en lugar de usar isSameDay
-    return tripYear === currentYear && tripMonth === currentMonth && tripDay === currentDay;
+    // Comparar las cadenas de fecha directamente
+    return tripDateStr === currentDateStr;
   }) || [];
   
   // Navegación de fecha
