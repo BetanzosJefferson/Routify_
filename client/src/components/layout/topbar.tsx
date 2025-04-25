@@ -7,6 +7,8 @@ import {
   LogOutIcon,
   X
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -31,10 +33,19 @@ export function Topbar() {
   const [, setLocation] = useLocation();
   const [profileOpen, setProfileOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
+  const { logoutMutation } = useAuth();
+  const { toast } = useToast();
 
   const handleLogout = () => {
-    // Implementar lógica de logout aquí
-    setLocation("/auth");
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => {
+        setLocation("/auth");
+        toast({
+          title: "Sesión cerrada",
+          description: "Has cerrado sesión correctamente"
+        });
+      }
+    });
   };
 
   return (
