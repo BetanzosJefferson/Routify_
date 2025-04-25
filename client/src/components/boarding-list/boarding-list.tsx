@@ -103,61 +103,100 @@ export function BoardingList() {
   }) || [];
 
   // Calcular pasajeros del viaje seleccionado con detección de relaciones de viajes
+  // El uso de la IIFE garantiza que el cálculo se realice cada vez que se renderiza el componente
   const selectedTripPassengers = (() => {
+    // Protección contra datos nulos o no disponibles
     if (!selectedTrip || !reservations || !trips) return [];
     
-    // Obtener el viaje seleccionado para verificar si es principal o subviaje
-    const currentTrip = trips.find(t => t.id === selectedTrip);
-    if (!currentTrip) return [];
-    
-    let relevantReservations = [];
-    
-    // 1. Si es un viaje principal, incluir también los pasajeros de sus sub-viajes
-    if (!currentTrip.isSubTrip) {
-      // Añadir reservas propias del viaje
-      const directReservations = reservations.filter(
-        r => r.tripId === selectedTrip && r.passengers?.length > 0
+    try {
+      // Obtener el viaje seleccionado para verificar si es principal o subviaje
+      const currentTrip = trips.find(t => t.id === selectedTrip);
+      if (!currentTrip) return [];
+      
+      let relevantTripIds = [];
+      
+      // 1. Si es un viaje principal, incluir también a sus sub-viajes
+      if (!currentTrip.isSubTrip) {
+        relevantTripIds.push(selectedTrip);
+        
+        // Añadir IDs de sub-viajes
+        const subTripIds = trips
+          .filter(t => t.parentTripId === selectedTrip)
+          .map(t => t.id);
+        
+        relevantTripIds = [...relevantTripIds, ...subTripIds];
+        console.log("Viaje principal y sus sub-viajes:", relevantTripIds);
+      } 
+      // 2. Si es un sub-viaje, incluir solo a ese viaje
+      else {
+        relevantTripIds.push(selectedTrip);
+        console.log("Sub-viaje solamente:", relevantTripIds);
+      }
+      
+      // Encontrar reservaciones para todos los viajes relevantes
+      const relevantReservations = reservations.filter(r => 
+        relevantTripIds.includes(r.tripId) && 
+        r.passengers && 
+        Array.isArray(r.passengers) && 
+        r.passengers.length > 0
       );
       
-      // Buscar sub-viajes relacionados
-      const subTripIds = trips
-        .filter(t => t.parentTripId === selectedTrip)
-        .map(t => t.id);
+      console.log("Reservaciones encontradas:", relevantReservations.length);
       
-      // Añadir reservas de sub-viajes
-      const subTripReservations = reservations.filter(
-        r => subTripIds.includes(r.tripId) && r.passengers?.length > 0
-      );
+      // Si no hay reservaciones relevantes, terminar aquí
+      if (relevantReservations.length === 0) {
+        return [];
+      }
       
-      relevantReservations = [...directReservations, ...subTripReservations];
-    } 
-    // 2. Si es un sub-viaje, mostrar solo sus pasajeros
-    else {
-      relevantReservations = reservations.filter(
-        r => r.tripId === selectedTrip && r.passengers?.length > 0
-      );
+      // Transformar a lista de pasajeros con información adicional
+      const passengerList = [];
+      
+      for (const reservation of relevantReservations) {
+        if (!reservation.passengers || !Array.isArray(reservation.passengers)) {
+          continue;
+        }
+        
+        for (const passenger of reservation.passengers) {
+          if (!passenger || !passenger.firstName || !passenger.lastName) {
+            continue;
+          }
+          
+          // Obtener datos del viaje asociado a esta reservación
+          const reservationTrip = trips.find(t => t.id === reservation.tripId);
+          
+          if (!reservationTrip) {
+            continue;
+          }
+          
+          // Añadir pasajero con datos enriquecidos
+          passengerList.push({
+            id: passenger.id,
+            firstName: passenger.firstName,
+            lastName: passenger.lastName,
+            reservationId: passenger.reservationId,
+            reservationCode: `R-${reservation.id.toString().padStart(6, '0')}`,
+            paymentMethod: reservation.paymentMethod || 'unknown',
+            paymentStatus: reservation.status === 'confirmed' ? 'paid' : 'pending',
+            email: reservation.email || '',
+            phone: reservation.phone || '',
+            amount: reservation.totalAmount || 0,
+            tripSegment: `${
+              reservationTrip.segmentOrigin || 
+              reservationTrip.route.origin || 'Origen'
+            } → ${
+              reservationTrip.segmentDestination || 
+              reservationTrip.route.destination || 'Destino'
+            }`
+          });
+        }
+      }
+      
+      return passengerList;
+    } catch (error) {
+      console.error("Error al procesar pasajeros:", error);
+      return [];
     }
-    
-    // Transformar a lista de pasajeros con información adicional
-    return relevantReservations.flatMap(reservation => 
-      reservation.passengers.map(passenger => ({
-        ...passenger,
-        reservationCode: `R-${reservation.id.toString().padStart(6, '0')}`,
-        paymentMethod: reservation.paymentMethod,
-        paymentStatus: reservation.paymentStatus,
-        email: reservation.email,
-        phone: reservation.phone,
-        // Añadir información del trayecto específico
-        tripSegment: `${
-          trips.find(t => t.id === reservation.tripId)?.segmentOrigin || 
-          trips.find(t => t.id === reservation.tripId)?.route.origin
-        } → ${
-          trips.find(t => t.id === reservation.tripId)?.segmentDestination || 
-          trips.find(t => t.id === reservation.tripId)?.route.destination
-        }`
-      }))
-    );
-  }, [selectedTrip, reservations, trips]);
+  })();
 
   // Función para formatear fecha para su visualización con ajuste para zona horaria
   const formatDisplayDate = (dateString: string | Date) => {
@@ -389,43 +428,55 @@ export function BoardingList() {
                   </div>
                 </div>
 
-                {selectedTripPassengers.map((passenger, index) => (
-                  <div 
-                    key={passenger.id} 
-                    className={`p-3 border rounded-md ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Avatar className="h-10 w-10 border border-gray-200">
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          {passenger.firstName.charAt(0)}{passenger.lastName.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">
-                          {passenger.firstName} {passenger.lastName}
-                        </p>
-                        <p className="text-sm text-gray-500 truncate">
-                          {passenger.reservationCode} • 
-                          <span className={`ml-1 ${
-                            passenger.paymentStatus === 'paid' 
-                              ? 'text-green-600' 
-                              : 'text-orange-600'
-                          }`}>
-                            {passenger.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
-                          </span>
-                        </p>
+                {Array.isArray(selectedTripPassengers) && selectedTripPassengers.map((passenger, index) => {
+                  // Verificación de seguridad para asegurar que todos los datos necesarios están presentes
+                  if (!passenger || !passenger.firstName || !passenger.lastName) {
+                    return null;
+                  }
+                  
+                  return (
+                    <div 
+                      key={`passenger-${passenger.id}-${index}`} 
+                      className={`p-3 border rounded-md ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="h-10 w-10 border border-gray-200">
+                          <AvatarFallback className="bg-primary/10 text-primary">
+                            {passenger.firstName.charAt(0)}{passenger.lastName.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">
+                            {passenger.firstName} {passenger.lastName}
+                          </p>
+                          <p className="text-sm text-gray-500 truncate">
+                            {passenger.reservationCode} • 
+                            <span className={`ml-1 ${
+                              passenger.paymentStatus === 'paid' 
+                                ? 'text-green-600' 
+                                : 'text-orange-600'
+                            }`}>
+                              {passenger.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
+                            </span>
+                          </p>
+                          {passenger.tripSegment && (
+                            <p className="text-xs text-gray-400 mt-1 truncate">
+                              {passenger.tripSegment}
+                            </p>
+                          )}
+                        </div>
+                        
+                        <Badge 
+                          variant={passenger.paymentStatus === 'paid' ? 'default' : 'outline'}
+                          className="ml-2"
+                        >
+                          {passenger.paymentStatus === 'paid' ? 'Pagado' : 'Pendiente'}
+                        </Badge>
                       </div>
-                      
-                      <Badge 
-                        variant={passenger.paymentStatus === 'paid' ? 'default' : 'outline'}
-                        className="ml-2"
-                      >
-                        {passenger.paymentStatus === 'paid' ? 'Pagado' : 'Pendiente'}
-                      </Badge>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-10 text-gray-500">
