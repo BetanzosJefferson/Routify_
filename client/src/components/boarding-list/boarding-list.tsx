@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
+import { useLocation } from "wouter";
 import { 
   CalendarIcon, 
   ClipboardListIcon,
@@ -68,8 +69,7 @@ interface Reservation {
 
 export function BoardingList() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [selectedTrip, setSelectedTrip] = useState<number | null>(null);
-  const [passengerListOpen, setPassengerListOpen] = useState(false);
+  const [, navigate] = useLocation();
   
   // Fetch all trips
   const { data: trips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
@@ -102,101 +102,8 @@ export function BoardingList() {
     return tripDate === currentDateStr;
   }) || [];
 
-  // Calcular pasajeros del viaje seleccionado con detección de relaciones de viajes
-  // El uso de la IIFE garantiza que el cálculo se realice cada vez que se renderiza el componente
-  const selectedTripPassengers = (() => {
-    // Protección contra datos nulos o no disponibles
-    if (!selectedTrip || !reservations || !trips) return [];
-    
-    try {
-      // Obtener el viaje seleccionado para verificar si es principal o subviaje
-      const currentTrip = trips.find(t => t.id === selectedTrip);
-      if (!currentTrip) return [];
-      
-      let relevantTripIds = [];
-      
-      // 1. Si es un viaje principal, incluir también a sus sub-viajes
-      if (!currentTrip.isSubTrip) {
-        relevantTripIds.push(selectedTrip);
-        
-        // Añadir IDs de sub-viajes
-        const subTripIds = trips
-          .filter(t => t.parentTripId === selectedTrip)
-          .map(t => t.id);
-        
-        relevantTripIds = [...relevantTripIds, ...subTripIds];
-        console.log("Viaje principal y sus sub-viajes:", relevantTripIds);
-      } 
-      // 2. Si es un sub-viaje, incluir solo a ese viaje
-      else {
-        relevantTripIds.push(selectedTrip);
-        console.log("Sub-viaje solamente:", relevantTripIds);
-      }
-      
-      // Encontrar reservaciones para todos los viajes relevantes
-      const relevantReservations = reservations.filter(r => 
-        relevantTripIds.includes(r.tripId) && 
-        r.passengers && 
-        Array.isArray(r.passengers) && 
-        r.passengers.length > 0
-      );
-      
-      console.log("Reservaciones encontradas:", relevantReservations.length);
-      
-      // Si no hay reservaciones relevantes, terminar aquí
-      if (relevantReservations.length === 0) {
-        return [];
-      }
-      
-      // Transformar a lista de pasajeros con información adicional
-      const passengerList = [];
-      
-      for (const reservation of relevantReservations) {
-        if (!reservation.passengers || !Array.isArray(reservation.passengers)) {
-          continue;
-        }
-        
-        for (const passenger of reservation.passengers) {
-          if (!passenger || !passenger.firstName || !passenger.lastName) {
-            continue;
-          }
-          
-          // Obtener datos del viaje asociado a esta reservación
-          const reservationTrip = trips.find(t => t.id === reservation.tripId);
-          
-          if (!reservationTrip) {
-            continue;
-          }
-          
-          // Añadir pasajero con datos enriquecidos
-          passengerList.push({
-            id: passenger.id,
-            firstName: passenger.firstName,
-            lastName: passenger.lastName,
-            reservationId: passenger.reservationId,
-            reservationCode: `R-${reservation.id.toString().padStart(6, '0')}`,
-            paymentMethod: reservation.paymentMethod || 'unknown',
-            paymentStatus: reservation.status === 'confirmed' ? 'paid' : 'pending',
-            email: reservation.email || '',
-            phone: reservation.phone || '',
-            amount: reservation.totalAmount || 0,
-            tripSegment: `${
-              reservationTrip.segmentOrigin || 
-              reservationTrip.route.origin || 'Origen'
-            } → ${
-              reservationTrip.segmentDestination || 
-              reservationTrip.route.destination || 'Destino'
-            }`
-          });
-        }
-      }
-      
-      return passengerList;
-    } catch (error) {
-      console.error("Error al procesar pasajeros:", error);
-      return [];
-    }
-  })();
+  // La lógica de procesamiento de pasajeros ya no es necesaria aquí
+  // ya que ahora se maneja en la página dedicada de PassengerListPage
 
   // Función para formatear fecha para su visualización con ajuste para zona horaria
   const formatDisplayDate = (dateString: string | Date) => {
@@ -319,8 +226,7 @@ export function BoardingList() {
                 key={trip.id} 
                 className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => {
-                  setSelectedTrip(trip.id);
-                  setPassengerListOpen(true);
+                  navigate(`/trip/${trip.id}/passengers`);
                 }}
               >
                 <CardContent className="p-0">
@@ -350,11 +256,6 @@ export function BoardingList() {
                       </div>
                       
                       <div className="flex items-center text-gray-600">
-                        <MapPin className="h-4 w-4 mr-2" />
-                        {trip.route.origin} → {trip.route.destination}
-                      </div>
-                      
-                      <div className="flex items-center text-gray-600">
                         <Clock className="h-4 w-4 mr-2" />
                         {trip.departureTime} - {trip.arrivalTime}
                       </div>
@@ -362,7 +263,7 @@ export function BoardingList() {
                       {trip.vehicleType && (
                         <div className="flex items-center text-gray-600">
                           <Bus className="h-4 w-4 mr-2" />
-                          {trip.vehicleType}
+                          <span className="capitalize">{trip.vehicleType}</span>
                         </div>
                       )}
                     </div>
