@@ -253,11 +253,11 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               </div>
                               <div>
                                 <Label className="text-gray-500">Origen</Label>
-                                <div className="font-medium">{trips.find(t => t.id === selectedTrip)?.route.origin}</div>
+                                <div className="font-medium">{trips.find(t => t.id === selectedTrip)?.segmentOrigin || trips.find(t => t.id === selectedTrip)?.route.origin}</div>
                               </div>
                               <div>
                                 <Label className="text-gray-500">Destino</Label>
-                                <div className="font-medium">{trips.find(t => t.id === selectedTrip)?.route.destination}</div>
+                                <div className="font-medium">{trips.find(t => t.id === selectedTrip)?.segmentDestination || trips.find(t => t.id === selectedTrip)?.route.destination}</div>
                               </div>
                             </div>
                           </div>

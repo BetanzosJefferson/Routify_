@@ -33,6 +33,8 @@ interface Trip {
   driverId?: number;
   isSubTrip: boolean;
   parentTripId?: number;
+  segmentOrigin?: string;
+  segmentDestination?: string;
   route: {
     id: number;
     name: string;
