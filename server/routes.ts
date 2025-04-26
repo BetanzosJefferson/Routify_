@@ -259,13 +259,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Si hay usuario autenticado y no es superAdmin, aplicamos filtro por compañía
       if (user) {
-        if (user.role === UserRole.OWNER || 
-            user.role === UserRole.CALL_CENTER || 
-            user.role === UserRole.CHECKER ||
-            user.role === UserRole.DRIVER ||
-            user.role === UserRole.TICKET_OFFICE) {
-          // Usar companyId del usuario si existe
-          companyId = user.companyId || user.company;
+        if (user.role !== 'superAdmin' && user.role !== 'developer') {
+          // Usar companyId del usuario si existe - simplificamos para evitar problemas de formato
+          companyId = user.companyId || user.company || null;
           console.log(`Filtrando viajes por compañía: ${companyId} para usuario ${user.firstName} ${user.lastName}`);
         }
       }
@@ -280,7 +276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (date) searchParams.date = date as string;
         if (seats) searchParams.seats = parseInt(seats as string, 10);
         
-        // Incluir filtro por compañía si es necesario
+        // Siempre incluir el filtro por compañía si existe, excepto para superAdmin y developer
         if (companyId) {
           searchParams.companyId = companyId;
         }
@@ -291,18 +287,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Si no hay parámetros de búsqueda pero hay un filtro de compañía
       if (companyId) {
+        // Usar searchTrips para mantener consistencia en el filtrado
         const searchParams: any = { companyId };
         const trips = await storage.searchTrips(searchParams);
         return res.json(trips);
-      }
-      
-      // Si no hay filtros, obtener todos los viajes (solo admin y superadmin)
-      // Si el usuario no es superadmin pero tiene companyId, siempre filtrar por compañía
-      if (companyId) {
-        const trips = await storage.getTrips(companyId);
-        return res.json(trips);
       } else {
-        // Solo los superadmin o admin pueden ver todos los viajes sin filtro
+        // Solo los superadmin o developer pueden ver todos los viajes sin filtro
         const trips = await storage.getTrips();
         res.json(trips);
       }
@@ -327,18 +317,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Variable para almacenar el companyId para verificar permisos
       let companyId: string | null = null;
       
-      // Si hay usuario autenticado y no es admin/superAdmin/developer, verificamos permiso
+      // Si hay usuario autenticado y no es superAdmin/developer, verificamos permiso
       if (user) {
-        if (user.role === UserRole.OWNER || 
-            user.role === UserRole.CALL_CENTER || 
-            user.role === UserRole.CHECKER ||
-            user.role === UserRole.DRIVER ||
-            user.role === UserRole.TICKET_OFFICE) {
-          
-          companyId = user.companyId || user.company;
+        if (user.role !== 'superAdmin' && user.role !== 'developer') {
+          // Usar companyId del usuario si existe (simplificado)
+          companyId = user.companyId || user.company || null;
           
           // Verificar si el viaje pertenece a la compañía del usuario
-          if (trip.companyId && trip.companyId !== companyId) {
+          if (trip.companyId && companyId && trip.companyId !== companyId) {
+            console.log(`Acceso denegado: El viaje (${trip.id}) pertenece a la compañía ${trip.companyId} pero el usuario es de ${companyId}`);
             return res.status(403).json({ 
               error: "No tiene permiso para acceder a este viaje",
               details: "El viaje pertenece a otra compañía"
