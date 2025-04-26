@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import { 
   CalendarIcon, 
   ClipboardListIcon,
@@ -66,12 +67,14 @@ interface Reservation {
 export function BoardingList() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [, navigate] = useLocation();
+  const { user } = useAuth();
   
-  // Fetch all trips
+  // Fetch trips assigned to the driver
   const { data: trips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
-    queryKey: ["/api/trips"],
+    queryKey: ["/api/trips", { driverId: user?.id }],
     staleTime: 5000,
     refetchInterval: 15000,
+    enabled: !!user && user.role === "chofer",
   });
 
   // Fetch all reservations
@@ -79,6 +82,7 @@ export function BoardingList() {
     queryKey: ["/api/reservations"],
     staleTime: 5000,
     refetchInterval: 15000,
+    enabled: !!trips && trips.length > 0,
   });
 
   // Filtrar para obtener solo viajes principales (no sub-viajes) y por fecha seleccionada

@@ -49,7 +49,7 @@ export default function ConductorPage() {
 
   // Consulta para obtener los viajes asignados al conductor
   const { data: assignedTrips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
-    queryKey: ["/api/trips"],
+    queryKey: ["/api/trips", { driverId: user?.id }],
     enabled: !!user && user.role === "chofer",
   });
 
@@ -102,7 +102,7 @@ export default function ConductorPage() {
                 </p>
               </div>
             ) : (
-              assignedTrips.map((trip: any) => (
+              assignedTrips.map((trip) => (
                 <Card key={trip.id} className="overflow-hidden">
                   <CardHeader className="pb-3">
                     <CardTitle>{trip.route.name}</CardTitle>
@@ -139,7 +139,7 @@ export default function ConductorPage() {
                       <Button 
                         variant="secondary" 
                         size="sm" 
-                        onClick={() => setActiveTab("abordaje")}
+                        onClick={() => window.location.href = `/trip/${trip.id}/passengers`}
                       >
                         Ver Pasajeros
                       </Button>
