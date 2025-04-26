@@ -52,7 +52,9 @@ type QueryFnOptions = {
 export function getQueryFn(options: QueryFnOptions = {}) {
   return async function queryFn<T>({ queryKey }: { queryKey: string[] }): Promise<T> {
     const path = queryKey[0];
-    const response = await fetch(path);
+    const response = await fetch(path, {
+      credentials: "include",
+    });
 
     if (!response.ok) {
       if (response.status === 401 && options.on401 === "returnNull") {
@@ -90,6 +92,7 @@ export async function apiRequest(
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include", // Importante: incluir cookies en la petición
   };
 
   if (data) {
