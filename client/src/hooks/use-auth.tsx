@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error,
     isLoading,
   } = useQuery<User | null, Error>({
-    queryKey: ["/api/user"],
+    queryKey: ["/api/auth/user"],
     queryFn: async ({ queryKey }) => {
       try {
         const path = queryKey[0] as string;
@@ -55,11 +55,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
+      const res = await apiRequest("POST", "/api/auth/login", credentials);
       return await res.json();
     },
     onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/user"], user);
+      queryClient.setQueryData(["/api/auth/user"], user);
       toast({
         title: "Inicio de sesión exitoso",
         description: `Bienvenido, ${user.firstName} ${user.lastName}`,
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/user"], user);
+      queryClient.setQueryData(["/api/auth/user"], user);
       toast({
         title: "Registro exitoso",
         description: `Bienvenido, ${user.firstName} ${user.lastName}`,
@@ -97,10 +97,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/logout");
+      await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
-      queryClient.setQueryData(["/api/user"], null);
+      queryClient.setQueryData(["/api/auth/user"], null);
       toast({
         title: "Sesión cerrada",
         description: "Has cerrado sesión correctamente",
