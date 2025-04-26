@@ -1073,6 +1073,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create the reservation
       const totalAmount = trip.price * passengerCount;
       
+      // Obtener el companyId del viaje para asignarlo a la reservación (aislamiento de datos)
+      const companyId = trip.companyId;
+      console.log(`Asignando companyId: ${companyId || 'null'} a la nueva reservación (heredado del viaje ${trip.id})`);
+      
       const reservation = await storage.createReservation({
         tripId: reservationData.tripId,
         totalAmount,
@@ -1081,7 +1085,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentMethod: reservationData.paymentMethod || "cash", // Método de pago desde el formulario
         notes: reservationData.notes || null, // Incluir notas desde el formulario
         status: "confirmed",
-        createdAt: new Date()
+        createdAt: new Date(),
+        companyId: companyId || null  // Heredar el companyId del viaje
       });
       
       // Create the passengers

@@ -98,6 +98,8 @@ export const reservations = pgTable("reservations", {
   paymentMethod: text("payment_method").notNull().default("cash"), // 'cash' o 'transfer'
   status: text("status").notNull().default("confirmed"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  // Campo para aislamiento de datos por compañía
+  companyId: text("company_id"),
 });
 
 export const insertReservationSchema = createInsertSchema(reservations);
