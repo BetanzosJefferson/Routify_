@@ -74,18 +74,13 @@ export function BoardingList() {
   
   useEffect(() => {
     if (user?.role === "chofer") {
-      // Mensaje informativo
+      // Mensaje informativo solo cuando se carga inicialmente
       toast({
         title: "Portal de Conductor",
         description: `Mostrando los viajes asignados al conductor ${user.firstName} ${user.lastName} para la fecha ${format(currentDate, 'd MMMM yyyy', { locale: es })}`,
       });
-      
-      // Forzar invalidación de la caché para obtener datos frescos
-      queryClient.invalidateQueries({
-        queryKey: ["/api/trips"]
-      });
     }
-  }, [user, currentDate]);
+  }, [user]); // Solo ejecutar cuando cambia el usuario, no cuando cambia la fecha
   
   // Fetch trips assigned to the driver for current date
   const { data: trips, isLoading: isLoadingTrips, refetch: refetchTrips } = useQuery<Trip[]>({
@@ -189,17 +184,60 @@ export function BoardingList() {
               value={formatDateForInput(currentDate)}
               onChange={(e) => {
                 if (e.target.value) {
-                  // Al crear la fecha con formato yyyy-MM-dd, usar el constructor con año, mes, día para evitar problemas de zona horaria
-                  const [year, month, day] = e.target.value.split('-').map(Number);
-                  // Meses en JavaScript son 0-indexados (0-11), pero en el input date son 1-indexados (1-12)
-                  const newDate = new Date(year, month - 1, day, 12, 0, 0);
-                  setCurrentDate(newDate);
-                  // Forzar refresco de datos para la nueva fecha
-                  setTimeout(() => {
-                    refetchTrips();
-                  }, 100);
+                  try {
+                    // Al crear la fecha con formato yyyy-MM-dd, usar el constructor con año, mes, día para evitar problemas de zona horaria
+                    const [year, month, day] = e.target.value.split('-').map(Number);
+                    
+                    // Validar que todos los componentes sean números válidos
+                    if (isNaN(year) || isNaN(month) || isNaN(day)) {
+                      console.warn("Componentes de fecha inválidos:", {year, month, day});
+                      return;
+                    }
+                    
+                    // Meses en JavaScript son 0-indexados (0-11), pero en el input date son 1-indexados (1-12)
+                    const newDate = new Date(year, month - 1, day, 12, 0, 0);
+                    
+                    // Verificar que la fecha sea válida
+                    if (isNaN(newDate.getTime())) {
+                      console.warn("Fecha inválida:", newDate);
+                      return;
+                    }
+                    
+                    // Mensaje de depuración
+                    console.log("Cambiando fecha a:", format(newDate, "yyyy-MM-dd"));
+                    
+                    // Actualizar estado de fecha
+                    setCurrentDate(newDate);
+                    
+                    // Invalidar y actualizar la consulta con los nuevos parámetros
+                    queryClient.invalidateQueries({
+                      queryKey: ["/api/trips"]
+                    });
+                    
+                    // Mostrar toast informativo
+                    toast({
+                      title: "Actualizando viajes",
+                      description: `Mostrando viajes para: ${format(newDate, "d 'de' MMMM, yyyy", { locale: es })}`,
+                    });
+                    
+                    // Forzar refresco de datos para la nueva fecha
+                    setTimeout(() => {
+                      refetchTrips();
+                    }, 100);
+                  } catch (error) {
+                    console.error("Error al procesar fecha:", error);
+                    toast({
+                      title: "Error de formato",
+                      description: "No se pudo actualizar la fecha. Formato inválido.",
+                      variant: "destructive"
+                    });
+                  }
                 } else {
-                  setCurrentDate(new Date());
+                  const today = new Date();
+                  setCurrentDate(today);
+                  queryClient.invalidateQueries({
+                    queryKey: ["/api/trips"]
+                  });
                   refetchTrips();
                 }
               }}
