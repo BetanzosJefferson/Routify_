@@ -386,8 +386,17 @@ export class DatabaseStorage implements IStorage {
   async getReservations(companyId?: string): Promise<ReservationWithDetails[]> {
     console.log("DB Storage: Consultando reservaciones");
     
-    // Primero obtenemos todas las reservaciones
-    const reservations = await db.select().from(schema.reservations);
+    // Primero, definimos la consulta base
+    let query = db.select().from(schema.reservations);
+    
+    // Si hay un companyId, filtrar directamente por ese campo en la tabla de reservaciones
+    if (companyId) {
+      console.log(`DB Storage: Filtrando reservaciones por compañía: ${companyId}`);
+      query = query.where(eq(schema.reservations.companyId, companyId));
+    }
+    
+    // Ejecutar la consulta
+    const reservations = await query;
     console.log(`DB Storage: Reservaciones encontradas: ${reservations.length}`);
     
     const reservationsWithDetails: ReservationWithDetails[] = [];
@@ -396,12 +405,6 @@ export class DatabaseStorage implements IStorage {
     for (const reservation of reservations) {
       const trip = await this.getTripWithRouteInfo(reservation.tripId);
       if (!trip) continue;
-      
-      // Si hay un filtro de compañía, verificamos si el viaje pertenece a esa compañía
-      if (companyId && trip.companyId !== companyId) {
-        // Si el viaje no pertenece a la compañía solicitada, continuamos con la siguiente reservación
-        continue;
-      }
       
       const passengers = await this.getPassengers(reservation.id);
       
@@ -412,7 +415,7 @@ export class DatabaseStorage implements IStorage {
       });
     }
     
-    console.log(`DB Storage: Reservaciones procesadas después del filtro: ${reservationsWithDetails.length}`);
+    console.log(`DB Storage: Reservaciones procesadas: ${reservationsWithDetails.length}`);
     return reservationsWithDetails;
   }
   
@@ -444,6 +447,18 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createReservation(reservation: InsertReservation): Promise<Reservation> {
+    // Si no se proporciona un companyId, intentamos obtenerlo del viaje relacionado
+    if (!reservation.companyId) {
+      const trip = await this.getTrip(reservation.tripId);
+      if (trip && trip.companyId) {
+        console.log(`Heredando companyId ${trip.companyId} del viaje ${trip.id} para la nueva reservación`);
+        reservation.companyId = trip.companyId;
+      } else {
+        console.warn(`No se pudo obtener companyId del viaje ${reservation.tripId}. La reservación no tendrá companyId.`);
+      }
+    }
+    
+    console.log("Creando reservación con datos:", JSON.stringify(reservation, null, 2));
     const [newReservation] = await db.insert(schema.reservations).values(reservation).returning();
     return newReservation;
   }
@@ -486,8 +501,23 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Métodos para gestión de vehículos (unidades)
-  async getVehicles(): Promise<Vehicle[]> {
-    return await db.select().from(schema.vehicles);
+  async getVehicles(companyId?: string): Promise<Vehicle[]> {
+    console.log("DB Storage: Consultando vehículos");
+    
+    // Definir la consulta base
+    let query = db.select().from(schema.vehicles);
+    
+    // Si hay un companyId, filtrar directamente por ese campo
+    if (companyId) {
+      console.log(`DB Storage: Filtrando vehículos por compañía: ${companyId}`);
+      query = query.where(eq(schema.vehicles.companyId, companyId));
+    }
+    
+    // Ejecutar la consulta
+    const vehicles = await query;
+    console.log(`DB Storage: Vehículos encontrados: ${vehicles.length}`);
+    
+    return vehicles;
   }
   
   async getVehicle(id: number): Promise<Vehicle | undefined> {

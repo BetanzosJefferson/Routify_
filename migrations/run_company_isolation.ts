@@ -37,11 +37,11 @@ async function updateExistingRoutes() {
     console.log("Actualizando rutas existentes con companyId...");
     
     // Obtener el total de rutas sin companyId
-    const routesCount = await db.execute(sql`
-      SELECT COUNT(*) FROM routes WHERE company_id IS NULL
+    const result = await db.execute(sql`
+      SELECT COUNT(*) as count FROM routes WHERE company_id IS NULL
     `);
     
-    if (parseInt(routesCount.rows[0].count) === 0) {
+    if (result.rows.length > 0 && parseInt(result.rows[0].count as string) === 0) {
       console.log("No hay rutas que requieran actualización de companyId");
       return;
     }

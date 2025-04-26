@@ -111,16 +111,23 @@ export async function createTestUsers() {
     
     // Verificar si los usuarios ya existen y crear sólo los que no existen
     for (const userData of testUsers) {
-      const existingUser = await db.select().from(users).where(sql => sql`${users.email} = ${userData.email}`);
+      // Verificar si el usuario ya existe
+      const existingUser = await db.execute(sql`
+        SELECT * FROM users WHERE email = ${userData.email}
+      `);
       
-      if (existingUser.length === 0) {
+      if (existingUser.rows.length === 0) {
         // El usuario no existe, proceder a crearlo
-        await db.insert(users).values({
-          ...userData,
-          profilePicture: "",
-          createdAt: new Date(),
-          updatedAt: new Date()
-        });
+        await db.execute(sql`
+          INSERT INTO users (
+            first_name, last_name, email, password, role, company, profile_picture, 
+            created_at, updated_at, company_id
+          ) VALUES (
+            ${userData.firstName}, ${userData.lastName}, ${userData.email}, ${userData.password},
+            ${userData.role}, ${userData.company}, '', 
+            ${new Date().toISOString()}, ${new Date().toISOString()}, ${userData.companyId}
+          )
+        `);
         
         console.log(`Usuario creado: ${userData.firstName} ${userData.lastName} (${userData.role}) para la compañía ${userData.company}`);
       } else {
