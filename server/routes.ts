@@ -297,8 +297,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Si no hay filtros, obtener todos los viajes (solo admin y superadmin)
-      const trips = await storage.getTrips();
-      res.json(trips);
+      // Si el usuario no es superadmin pero tiene companyId, siempre filtrar por compañía
+      if (companyId) {
+        const trips = await storage.getTrips(companyId);
+        return res.json(trips);
+      } else {
+        // Solo los superadmin o admin pueden ver todos los viajes sin filtro
+        const trips = await storage.getTrips();
+        res.json(trips);
+      }
     } catch (error) {
       console.error("Error al obtener viajes:", error);
       res.status(500).json({ error: "Failed to fetch trips" });
