@@ -26,16 +26,10 @@ export default function AuthPage() {
   const { toast } = useToast();
   const { user, loginMutation } = useAuth();
   
-  // Si el usuario ya está autenticado, redirigir a la página principal o a la de conductor según el rol
+  // Si el usuario ya está autenticado, redirigir a la página principal
   useEffect(() => {
     if (user) {
-      // Si el usuario es conductor, redirigir a la página de conductor
-      if (user.role === "chofer") {
-        setLocation("/conductor");
-      } else {
-        // Para otros roles, redirigir al dashboard principal
-        setLocation("/");
-      }
+      setLocation("/");
     }
   }, [user, setLocation]);
 
