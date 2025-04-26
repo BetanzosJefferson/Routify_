@@ -421,12 +421,18 @@ export class DatabaseStorage implements IStorage {
     return reservation;
   }
   
-  async getReservationWithDetails(id: number): Promise<ReservationWithDetails | undefined> {
+  async getReservationWithDetails(id: number, companyId?: string): Promise<ReservationWithDetails | undefined> {
     const reservation = await this.getReservation(id);
     if (!reservation) return undefined;
     
     const trip = await this.getTripWithRouteInfo(reservation.tripId);
     if (!trip) return undefined;
+    
+    // Si se proporciona companyId, verificar que el viaje pertenezca a esa compañía
+    if (companyId && trip.companyId !== companyId) {
+      console.log(`Acceso denegado: El viaje ${trip.id} pertenece a la compañía ${trip.companyId} pero se solicita acceso desde la compañía ${companyId}`);
+      return undefined; // No permitir acceso a reservaciones de otras compañías
+    }
     
     const passengers = await this.getPassengers(reservation.id);
     

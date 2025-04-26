@@ -984,23 +984,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Obtener todas las reservaciones
-      let reservations = await storage.getReservations();
-      
-      // Si es necesario filtrar por compañía
-      if (companyId) {
-        // Obtener viajes de la compañía
-        const searchParams: any = { companyId };
-        const companyTrips = await storage.searchTrips(searchParams);
-        const companyTripIds = new Set(companyTrips.map(trip => trip.id));
-        
-        // Filtrar reservaciones por viajes de la compañía
-        reservations = reservations.filter(reservation => 
-          companyTripIds.has(reservation.trip.id)
-        );
-        
-        console.log(`Filtradas ${reservations.length} reservaciones para la compañía ${companyId}`);
-      }
+      // Usar la función actualizada que filtra directamente en la capa de datos
+      const reservations = await storage.getReservations(companyId || undefined);
+      console.log(`Obtenidas ${reservations.length} reservaciones después del filtrado`);
       
       res.json(reservations);
     } catch (error: any) {
@@ -1012,11 +998,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(apiRouter("/reservations/:id"), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
-      const reservation = await storage.getReservationWithDetails(id);
-      
-      if (!reservation) {
-        return res.status(404).json({ error: "Reservation not found" });
-      }
       
       // Obtener el usuario autenticado
       const { user } = req as any;
@@ -1024,7 +1005,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Variable para almacenar el companyId para verificar permisos
       let companyId: string | null = null;
       
-      // Si hay usuario autenticado y no es admin/superAdmin/developer, verificamos permiso
+      // Si hay usuario autenticado y no es admin/superAdmin/developer, aplicamos filtro por compañía
       if (user) {
         if (user.role === UserRole.OWNER || 
             user.role === UserRole.CALL_CENTER || 
@@ -1033,23 +1014,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             user.role === UserRole.TICKET_OFFICE) {
           
           companyId = user.companyId || user.company;
-          
-          // Verificar si la reservación pertenece a un viaje de la compañía del usuario
-          const searchParams: any = { companyId };
-          const companyTrips = await storage.searchTrips(searchParams);
-          const companyTripIds = new Set(companyTrips.map(trip => trip.id));
-          
-          // Si el viaje de la reservación no pertenece a la compañía del usuario
-          if (!companyTripIds.has(reservation.trip.id)) {
-            return res.status(403).json({ 
-              error: "No tiene permiso para acceder a esta reservación" 
-            });
-          }
-          
-          console.log(`Usuario de compañía ${companyId} accediendo a reservación ${id} del viaje ${reservation.trip.id}`);
+          console.log(`Verificando acceso a reservación ${id} para compañía: ${companyId}`);
         }
       }
       
+      // Usar la función actualizada que verifica permisos en la capa de datos
+      const reservation = await storage.getReservationWithDetails(id, companyId || undefined);
+      
+      if (!reservation) {
+        // Si la reservación no existe o no pertenece a la compañía del usuario
+        return res.status(404).json({ error: "Reservation not found" });
+      }
+      
+      console.log(`Acceso concedido a reservación ${id} para el usuario ${user?.firstName || 'anónimo'}`);
       res.json(reservation);
     } catch (error) {
       console.error("Error fetching reservation:", error);
