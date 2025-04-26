@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ProfilePage } from "@/components/profile/profile-page";
 
@@ -36,6 +36,30 @@ export function Topbar() {
 
   const handleLogout = () => {
     logoutMutation.mutate();
+  };
+  
+  // Función para obtener el nombre amigable del rol
+  const getRoleDisplayName = (role: string): string => {
+    switch (role) {
+      case "superAdmin":
+        return "Super Admin (Dueño)";
+      case "admin":
+        return "Administrador";
+      case "callCenter":
+        return "Call Center";
+      case "checador":
+        return "Checador";
+      case "chofer":
+        return "Chófer";
+      case "taquillero":
+        return "Taquilla";
+      case "dueno":
+        return "Dueño";
+      case "desarrollador":
+        return "Desarrollador";
+      default:
+        return role || "";
+    }
   };
 
   return (
@@ -62,14 +86,24 @@ export function Topbar() {
                   className="relative h-8 w-8 rounded-full"
                 >
                   <Avatar className="h-8 w-8 border border-gray-200 dark:border-gray-700">
-                    <AvatarFallback className="bg-primary-foreground text-primary">
-                      <UserIcon className="h-4 w-4" />
-                    </AvatarFallback>
+                    {user?.profilePicture ? (
+                      <AvatarImage src={user.profilePicture} alt={`${user.firstName} ${user.lastName}`} />
+                    ) : (
+                      <AvatarFallback className="bg-primary-foreground text-primary">
+                        {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                      </AvatarFallback>
+                    )}
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel>Mi cuenta</DropdownMenuLabel>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{user?.firstName} {user?.lastName}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{getRoleDisplayName(user?.role || "")}</p>
+                  </div>
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   <DropdownMenuItem onClick={() => setProfileOpen(true)}>
