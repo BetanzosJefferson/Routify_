@@ -22,13 +22,23 @@ import { db } from "./db";
 import { eq, and, gte, lt, like, or, sql } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
-  async getRoutes(): Promise<Route[]> {
-    console.log("DB Storage: Consultando todas las rutas");
+  async getRoutes(companyId?: string): Promise<Route[]> {
     try {
-      const routes = await db.select().from(schema.routes);
-      console.log(`DB Storage: Rutas encontradas: ${routes.length}`);
-      console.log("DB Storage: Datos de rutas:", JSON.stringify(routes));
-      return routes;
+      if (companyId) {
+        console.log(`DB Storage: Consultando rutas para la compañía: ${companyId}`);
+        const routes = await db
+          .select()
+          .from(schema.routes)
+          .where(eq(schema.routes.companyId, companyId));
+        console.log(`DB Storage: Rutas filtradas encontradas: ${routes.length}`);
+        return routes;
+      } else {
+        console.log("DB Storage: Consultando todas las rutas");
+        const routes = await db.select().from(schema.routes);
+        console.log(`DB Storage: Rutas encontradas: ${routes.length}`);
+        console.log("DB Storage: Datos de rutas:", JSON.stringify(routes));
+        return routes;
+      }
     } catch (error) {
       console.error("DB Storage: Error al consultar rutas:", error);
       return [];
@@ -145,11 +155,16 @@ export class DatabaseStorage implements IStorage {
     };
   }
   
-  async getTrips(): Promise<TripWithRouteInfo[]> {
+  async getTrips(companyId?: string): Promise<TripWithRouteInfo[]> {
     console.time('getTrips-optimized');
     
-    // Obtener todos los viajes
-    const trips = await db.select().from(schema.trips);
+    // Obtener los viajes, filtrando por compañía si es necesario
+    let tripsQuery = db.select().from(schema.trips);
+    if (companyId) {
+      console.log(`Filtrando viajes por compañía: ${companyId}`);
+      tripsQuery = tripsQuery.where(eq(schema.trips.companyId, companyId));
+    }
+    const trips = await tripsQuery;
     
     // Obtener todas las rutas de una sola vez
     console.log('Obteniendo todas las rutas en una sola consulta');
