@@ -155,23 +155,67 @@ export class DatabaseStorage implements IStorage {
     console.log('Obteniendo todas las rutas en una sola consulta');
     const routes = await db.select().from(schema.routes);
     
-    // Crear un mapa de rutas por ID para búsqueda rápida
+    // Obtener todos los usuarios dueños (Owner) para relacionar con las compañías
+    const owners = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.role, schema.UserRole.OWNER));
+    
+    // Crear un mapa de compañía -> datos del dueño para búsqueda rápida
+    const companyMap = new Map();
+    owners.forEach(owner => {
+      const companyId = owner.companyId || owner.company;
+      if (companyId) {
+        companyMap.set(companyId, {
+          companyName: owner.company,
+          companyLogo: owner.profilePicture
+        });
+      }
+    });
+    
+    // Imprimir el mapa de compañías para depuración
+    console.log("Mapa de compañías:");
+    companyMap.forEach((data, id) => {
+      console.log(`Compañía ${id}: Nombre=${data.companyName}, Logo=${data.companyLogo ? "Sí" : "No"}`);
+    });
+    
+    // Crear mapa de rutas para búsqueda rápida
     const routeMap = new Map<number, Route>();
     routes.forEach(route => {
       routeMap.set(route.id, route);
     });
     
-    // Asociar cada viaje con su ruta
+    // Asociar cada viaje con su ruta y compañía
     const tripsWithRouteInfo: TripWithRouteInfo[] = [];
     
     for (const trip of trips) {
       const route = routeMap.get(trip.routeId);
       if (route) {
-        tripsWithRouteInfo.push({
+        // Obtener datos de la compañía si existen
+        let companyData = { companyName: undefined, companyLogo: undefined };
+        
+        if (trip.companyId && companyMap.has(trip.companyId)) {
+          companyData = companyMap.get(trip.companyId);
+          console.log(`Encontrados datos para compañía ${trip.companyId} en el viaje ${trip.id}`);
+        } else if (trip.companyId) {
+          console.log(`Viaje ${trip.id} tiene companyId=${trip.companyId} pero no se encontraron datos correspondientes`);
+        } else {
+          console.log(`Viaje ${trip.id} no tiene companyId`);
+        }
+        
+        const tripWithInfo = {
           ...trip,
           route,
-          numStops: route.stops.length
-        });
+          numStops: route.stops.length,
+          // Agregar información de la compañía
+          companyName: companyData.companyName,
+          companyLogo: companyData.companyLogo
+        };
+        
+        // Verificar que los datos de la compañía estén presentes
+        console.log(`Viaje ${trip.id} - companyName: ${tripWithInfo.companyName}, companyLogo: ${tripWithInfo.companyLogo}`);
+        
+        tripsWithRouteInfo.push(tripWithInfo);
       }
       // Si no se encuentra la ruta, simplemente no incluimos este viaje
     }
@@ -192,10 +236,37 @@ export class DatabaseStorage implements IStorage {
     const route = await this.getRoute(trip.routeId);
     if (!route) return undefined;
     
+    // Obtener la información de la compañía si existe
+    let companyName = undefined;
+    let companyLogo = undefined;
+    
+    if (trip.companyId) {
+      // Buscar al dueño (Owner) de la compañía para obtener la información
+      const [owner] = await db
+        .select()
+        .from(schema.users)
+        .where(
+          and(
+            eq(schema.users.role, schema.UserRole.OWNER),
+            or(
+              eq(schema.users.companyId, trip.companyId),
+              eq(schema.users.company, trip.companyId)
+            )
+          )
+        );
+      
+      if (owner) {
+        companyName = owner.company;
+        companyLogo = owner.profilePicture;
+      }
+    }
+    
     return {
       ...trip,
       route,
-      numStops: route.stops.length
+      numStops: route.stops.length,
+      companyName,
+      companyLogo
     };
   }
   
@@ -248,6 +319,7 @@ export class DatabaseStorage implements IStorage {
     destination?: string;
     date?: string;
     seats?: number;
+    companyId?: string;  // Añadido para filtrar por compañía
   }): Promise<TripWithRouteInfo[]> {
     console.time('searchTrips-optimized');
     
@@ -257,6 +329,11 @@ export class DatabaseStorage implements IStorage {
     // Apply seat filter
     if (params.seats) {
       tripsQuery.where(gte(schema.trips.availableSeats, params.seats));
+    }
+    
+    // Apply company filter
+    if (params.companyId) {
+      tripsQuery.where(eq(schema.trips.companyId, params.companyId));
     }
     
     // Apply date filter
@@ -284,7 +361,25 @@ export class DatabaseStorage implements IStorage {
     // Get all routes in a single query for better performance
     const routes = await db.select().from(schema.routes);
     
-    // Create a map for quick route lookups
+    // Obtener todos los usuarios dueños (Owner) para relacionar con las compañías
+    const owners = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.role, schema.UserRole.OWNER));
+    
+    // Crear un mapa de compañía -> datos del dueño para búsqueda rápida
+    const companyMap = new Map();
+    owners.forEach(owner => {
+      const companyId = owner.companyId || owner.company;
+      if (companyId) {
+        companyMap.set(companyId, {
+          companyName: owner.company,
+          companyLogo: owner.profilePicture
+        });
+      }
+    });
+    
+    // Create map for quick lookups
     const routeMap = new Map<number, Route>();
     routes.forEach(route => {
       routeMap.set(route.id, route);
@@ -297,6 +392,13 @@ export class DatabaseStorage implements IStorage {
       const route = routeMap.get(trip.routeId);
       if (!route) continue;
       
+      // Buscar información de la compañía si existe
+      let companyData = { companyName: undefined, companyLogo: undefined };
+      
+      if (trip.companyId && companyMap.has(trip.companyId)) {
+        companyData = companyMap.get(trip.companyId);
+      }
+      
       // For subtrips, check against segment origin and destination
       if (trip.isSubTrip && trip.segmentOrigin && trip.segmentDestination) {
         const originMatch = !params.origin || trip.segmentOrigin.toLowerCase().includes(params.origin.toLowerCase());
@@ -306,7 +408,9 @@ export class DatabaseStorage implements IStorage {
           tripsWithRouteInfo.push({
             ...trip,
             route,
-            numStops: route.stops.length
+            numStops: route.stops.length,
+            companyName: companyData.companyName,
+            companyLogo: companyData.companyLogo
           });
         }
         continue;
@@ -332,7 +436,9 @@ export class DatabaseStorage implements IStorage {
         tripsWithRouteInfo.push({
           ...trip,
           route,
-          numStops: route.stops.length
+          numStops: route.stops.length,
+          companyName: companyData.companyName,
+          companyLogo: companyData.companyLogo
         });
       }
     }
