@@ -13,6 +13,8 @@ import Dashboard from "@/pages/dashboard";
 import AuthPage from "@/pages/auth-page";
 import RegisterPage from "@/pages/register-page";
 import PassengerListPage from "@/pages/passenger-list-page";
+import ConductorPage from "@/pages/conductor-page";
+import TripPassengersPage from "@/pages/trip-passengers-page";
 import { UsersPage } from "@/components/users/users-page";
 
 function Router() {
@@ -20,7 +22,8 @@ function Router() {
     <Switch>
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/dashboard" component={Dashboard} />
-      <ProtectedRoute path="/trip/:tripId/passengers" component={PassengerListPage} />
+      <ProtectedRoute path="/conductor" component={ConductorPage} />
+      <ProtectedRoute path="/trip/:id/passengers" component={TripPassengersPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register/:token" component={RegisterPage} />
       <Route component={NotFound} />

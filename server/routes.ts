@@ -285,7 +285,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         searchParams.seats = parseInt(seats as string, 10);
       }
       
-      // APLICAR FILTRO DE COMPAÑÍA - PARTE CRÍTICA
+      // TRATAMIENTO ESPECIAL PARA ROL CHOFER
+      // El chofer solo debe ver los viajes donde él está asignado como conductor
+      if (user && user.role === 'chofer') {
+        console.log(`[GET /trips] Usuario con rol CHOFER: ${user.firstName} ${user.lastName} (ID: ${user.id})`);
+        console.log(`[GET /trips] Filtrando viajes asignados al conductor con ID: ${user.id}`);
+        
+        // Filtrar viajes donde el chofer está asignado como conductor
+        searchParams.driverId = user.id;
+        
+        // Ejecutar búsqueda con filtro de conductor
+        console.log(`[GET /trips] Parámetros de búsqueda para chofer:`, searchParams);
+        const trips = await storage.searchTrips(searchParams);
+        console.log(`[GET /trips] Encontrados ${trips.length} viajes asignados al chofer`);
+        
+        return res.json(trips);
+      }
+      
+      // APLICAR FILTRO DE COMPAÑÍA - PARTE CRÍTICA (para otros roles)
       // Solo superAdmin y taquilla pueden ver viajes de todas las compañías
       if (user) {
         if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
@@ -379,8 +396,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // SEGURIDAD: Verificar permisos según el rol y compañía del usuario
       if (user) {
+        // CASO ESPECIAL: Si el usuario es un CHOFER
+        if (user.role === 'chofer') {
+          // Verificar si este viaje está asignado a este conductor específico
+          if (trip.driverId === user.id) {
+            console.log(`[GET /trips/${id}] Acceso permitido: El viaje está asignado al conductor ${user.firstName} ${user.lastName} (ID: ${user.id})`);
+          } else {
+            console.log(`[GET /trips/${id}] ACCESO DENEGADO: El viaje no está asignado al conductor ${user.firstName} ${user.lastName} (ID: ${user.id})`);
+            return res.status(403).json({
+              error: "No tiene permiso para ver este viaje",
+              details: "Este viaje no está asignado a usted como conductor"
+            });
+          }
+        }
         // Los usuarios con rol superAdmin y taquilla (ticket_office) pueden ver todos los viajes
-        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
+        else if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
           // Para todos los demás roles, verificar que el viaje pertenezca a su compañía
           const userCompanyId = user.companyId || user.company || null;
           
