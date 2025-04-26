@@ -20,6 +20,8 @@ const registerFormSchema = z
     email: z.string().email("Por favor ingrese un correo electrónico válido"),
     password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
     confirmPassword: z.string(),
+    company: z.string().optional(),
+    profilePicture: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Las contraseñas no coinciden",
@@ -47,6 +49,8 @@ export default function RegisterPage() {
       email: "",
       password: "",
       confirmPassword: "",
+      company: "",
+      profilePicture: "",
     },
   });
 

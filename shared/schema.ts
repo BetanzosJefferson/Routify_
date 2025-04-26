@@ -11,6 +11,7 @@ export const UserRole = {
   CHECKER: "checador",
   DRIVER: "chofer",
   TICKET_OFFICE: "taquilla",
+  OWNER: "dueño",
 } as const;
 
 export type UserRoleType = typeof UserRole[keyof typeof UserRole];

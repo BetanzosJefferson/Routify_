@@ -188,6 +188,19 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
                       </div>
 
                       <div>
+                        <RadioGroupItem value={UserRole.OWNER} id="owner" className="peer sr-only" />
+                        <Label
+                          htmlFor="owner"
+                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                        >
+                          <span className="font-semibold">Dueño</span>
+                          <span className="text-xs text-muted-foreground">
+                            Propietario de la empresa de transporte
+                          </span>
+                        </Label>
+                      </div>
+
+                      <div>
                         <RadioGroupItem value={UserRole.CALL_CENTER} id="call-center" className="peer sr-only" />
                         <Label
                           htmlFor="call-center"
