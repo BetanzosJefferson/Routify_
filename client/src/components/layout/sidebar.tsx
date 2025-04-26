@@ -2,6 +2,8 @@ import React from "react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { TabType } from "@/hooks/use-active-tab";
+import { useAuth } from "@/hooks/use-auth";
+import { hasAccessToSection } from "@/lib/role-based-permissions";
 import { 
   MapIcon, 
   ClockIcon, 
@@ -61,6 +63,7 @@ function NavSection({ title, children }: NavSectionProps) {
 
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   
   const handleTabClick = (tab: TabType) => {
     onTabChange(tab);
@@ -69,6 +72,12 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     const url = new URL(window.location.href);
     url.searchParams.set('tab', tab);
     window.history.pushState({}, '', url.toString());
+  };
+
+  // Función para verificar si el usuario tiene acceso a una sección
+  const canAccess = (sectionId: string): boolean => {
+    if (!user) return false;
+    return hasAccessToSection(user.role, sectionId);
   };
   
   return (
@@ -85,100 +94,133 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         </div>
         
         <div className="flex-1 flex flex-col overflow-y-auto pt-5 px-3">
-          <NavSection title="General">
-            <NavItem 
-              icon={<HomeIcon className="h-5 w-5" />} 
-              active={false}
-              onClick={() => {}}
-            >
-              Dashboard
-            </NavItem>
-          </NavSection>
+          {canAccess("dashboard") && (
+            <NavSection title="General">
+              <NavItem 
+                icon={<HomeIcon className="h-5 w-5" />} 
+                active={activeTab === "dashboard"}
+                onClick={() => handleTabClick("dashboard")}
+              >
+                Dashboard
+              </NavItem>
+            </NavSection>
+          )}
           
-          <NavSection title="Gestión de Rutas">
-            <NavItem 
-              icon={<MapIcon className="h-5 w-5" />} 
-              active={activeTab === "create-route"}
-              onClick={() => handleTabClick("create-route")}
-            >
-              Rutas
-            </NavItem>
-            <NavItem 
-              icon={<ClockIcon className="h-5 w-5" />} 
-              active={activeTab === "publish-trip"}
-              onClick={() => handleTabClick("publish-trip")}
-            >
-              Publicar Viajes
-            </NavItem>
-            <NavItem 
-              icon={<BuildingIcon className="h-5 w-5" />} 
-              active={activeTab === "trips"}
-              onClick={() => handleTabClick("trips")}
-            >
-              Viajes
-            </NavItem>
-          </NavSection>
+          {/* Sección de Gestión de Rutas */}
+          {(canAccess("routes") || canAccess("publish-trip") || canAccess("trips")) && (
+            <NavSection title="Gestión de Rutas">
+              {canAccess("routes") && (
+                <NavItem 
+                  icon={<MapIcon className="h-5 w-5" />} 
+                  active={activeTab === "create-route"}
+                  onClick={() => handleTabClick("create-route")}
+                >
+                  Rutas
+                </NavItem>
+              )}
+              {canAccess("publish-trip") && (
+                <NavItem 
+                  icon={<ClockIcon className="h-5 w-5" />} 
+                  active={activeTab === "publish-trip"}
+                  onClick={() => handleTabClick("publish-trip")}
+                >
+                  Publicar Viajes
+                </NavItem>
+              )}
+              {canAccess("trips") && (
+                <NavItem 
+                  icon={<BuildingIcon className="h-5 w-5" />} 
+                  active={activeTab === "trips"}
+                  onClick={() => handleTabClick("trips")}
+                >
+                  Viajes
+                </NavItem>
+              )}
+            </NavSection>
+          )}
           
-          <NavSection title="Reservaciones y Reportes">
-            <NavItem 
-              icon={<UserIcon className="h-5 w-5" />} 
-              active={activeTab === "reservations"}
-              onClick={() => handleTabClick("reservations")}
-            >
-              Reservaciones
-            </NavItem>
-            <NavItem 
-              icon={<ClipboardListIcon className="h-5 w-5" />} 
-              active={activeTab === "trip-summary"}
-              onClick={() => handleTabClick("trip-summary")}
-            >
-              Resumen de Viajes
-            </NavItem>
-            <NavItem 
-              icon={<UsersIcon className="h-5 w-5" />} 
-              active={activeTab === "boarding-list"}
-              onClick={() => handleTabClick("boarding-list")}
-            >
-              Lista de Abordaje
-            </NavItem>
-          </NavSection>
+          {/* Sección de Reservaciones y Reportes */}
+          {(canAccess("reservations") || canAccess("trip-summary") || canAccess("boarding-list")) && (
+            <NavSection title="Reservaciones y Reportes">
+              {canAccess("reservations") && (
+                <NavItem 
+                  icon={<UserIcon className="h-5 w-5" />} 
+                  active={activeTab === "reservations"}
+                  onClick={() => handleTabClick("reservations")}
+                >
+                  Reservaciones
+                </NavItem>
+              )}
+              {canAccess("trip-summary") && (
+                <NavItem 
+                  icon={<ClipboardListIcon className="h-5 w-5" />} 
+                  active={activeTab === "trip-summary"}
+                  onClick={() => handleTabClick("trip-summary")}
+                >
+                  Resumen de Viajes
+                </NavItem>
+              )}
+              {canAccess("boarding-list") && (
+                <NavItem 
+                  icon={<UsersIcon className="h-5 w-5" />} 
+                  active={activeTab === "boarding-list"}
+                  onClick={() => handleTabClick("boarding-list")}
+                >
+                  Lista de Abordaje
+                </NavItem>
+              )}
+            </NavSection>
+          )}
           
-          <NavSection title="Usuarios">
-            <NavItem 
-              icon={<UserIcon className="h-5 w-5" />} 
-              active={activeTab === "users"}
-              onClick={() => handleTabClick("users")}
-            >
-              Usuarios
-            </NavItem>
-          </NavSection>
+          {/* Sección de Usuarios */}
+          {canAccess("users") && (
+            <NavSection title="Usuarios">
+              <NavItem 
+                icon={<UserIcon className="h-5 w-5" />} 
+                active={activeTab === "users"}
+                onClick={() => handleTabClick("users")}
+              >
+                Usuarios
+              </NavItem>
+            </NavSection>
+          )}
           
-          <NavSection title="Flota y Finanzas">
-            <NavItem 
-              icon={<TruckIcon className="h-5 w-5" />} 
-              active={activeTab === "vehicles"}
-              onClick={() => handleTabClick("vehicles")}
-            >
-              Unidades
-            </NavItem>
-            <NavItem 
-              icon={<PercentIcon className="h-5 w-5" />} 
-              active={activeTab === "commissions"}
-              onClick={() => handleTabClick("commissions")}
-            >
-              Gestión de comisiones
-            </NavItem>
-          </NavSection>
+          {/* Sección de Flota y Finanzas */}
+          {(canAccess("vehicles") || canAccess("commissions")) && (
+            <NavSection title="Flota y Finanzas">
+              {canAccess("vehicles") && (
+                <NavItem 
+                  icon={<TruckIcon className="h-5 w-5" />} 
+                  active={activeTab === "vehicles"}
+                  onClick={() => handleTabClick("vehicles")}
+                >
+                  Unidades
+                </NavItem>
+              )}
+              {canAccess("commissions") && (
+                <NavItem 
+                  icon={<PercentIcon className="h-5 w-5" />} 
+                  active={activeTab === "commissions"}
+                  onClick={() => handleTabClick("commissions")}
+                >
+                  Gestión de comisiones
+                </NavItem>
+              )}
+            </NavSection>
+          )}
           
-          <NavSection title="Configuración">
-            <NavItem 
-              icon={<Settings2 className="h-5 w-5" />} 
-              active={false}
-              onClick={() => {}}
-            >
-              Ajustes
-            </NavItem>
-          </NavSection>
+          {/* Sección de Configuración */}
+          {canAccess("settings") && (
+            <NavSection title="Configuración">
+              <NavItem 
+                icon={<Settings2 className="h-5 w-5" />} 
+                active={activeTab === "settings"}
+                onClick={() => handleTabClick("settings")}
+              >
+                Ajustes
+              </NavItem>
+            </NavSection>
+          )}
           
           <div className="mt-auto pt-4 pb-6 px-3">
             <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
