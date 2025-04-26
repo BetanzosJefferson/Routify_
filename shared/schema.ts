@@ -117,6 +117,9 @@ export type RouteWithSegments = Route & {
 export type TripWithRouteInfo = Trip & {
   route: Route;
   numStops: number;
+  // Campos adicionales para mostrar información de la empresa
+  companyName?: string;
+  companyLogo?: string;
 };
 
 export type ReservationWithDetails = Reservation & {
