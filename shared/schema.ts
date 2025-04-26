@@ -216,6 +216,8 @@ export const vehicles = pgTable("vehicles", {
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  // Campo para asociar el vehículo con una compañía
+  companyId: text("company_id"),
 });
 
 export const insertVehicleSchema = createInsertSchema(vehicles);

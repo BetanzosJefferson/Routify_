@@ -940,7 +940,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // RESERVATIONS ENDPOINTS
   app.get(apiRouter("/reservations"), async (req: Request, res: Response) => {
     try {
-      const reservations = await storage.getReservations();
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      // Variable para almacenar el companyId para filtrar reservaciones
+      let companyId: string | null = null;
+      
+      // Si hay usuario autenticado y no es superAdmin, aplicamos filtro por compañía
+      if (user) {
+        if (user.role === UserRole.OWNER || 
+            user.role === UserRole.CALL_CENTER || 
+            user.role === UserRole.CHECKER ||
+            user.role === UserRole.DRIVER ||
+            user.role === UserRole.TICKET_OFFICE) {
+          // Usar companyId del usuario si existe
+          companyId = user.companyId || user.company;
+          console.log(`Filtrando reservaciones por compañía: ${companyId} para usuario ${user.firstName} ${user.lastName}`);
+        }
+      }
+      
+      // Obtener todas las reservaciones
+      let reservations = await storage.getReservations();
+      
+      // Si es necesario filtrar por compañía
+      if (companyId) {
+        // Obtener viajes de la compañía
+        const searchParams: any = { companyId };
+        const companyTrips = await storage.searchTrips(searchParams);
+        const companyTripIds = new Set(companyTrips.map(trip => trip.id));
+        
+        // Filtrar reservaciones por viajes de la compañía
+        reservations = reservations.filter(reservation => 
+          companyTripIds.has(reservation.trip.id)
+        );
+        
+        console.log(`Filtradas ${reservations.length} reservaciones para la compañía ${companyId}`);
+      }
+      
       res.json(reservations);
     } catch (error: any) {
       console.error("Error fetching reservations:", error);
@@ -957,8 +993,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Reservation not found" });
       }
       
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      // Variable para almacenar el companyId para verificar permisos
+      let companyId: string | null = null;
+      
+      // Si hay usuario autenticado y no es admin/superAdmin/developer, verificamos permiso
+      if (user) {
+        if (user.role === UserRole.OWNER || 
+            user.role === UserRole.CALL_CENTER || 
+            user.role === UserRole.CHECKER ||
+            user.role === UserRole.DRIVER ||
+            user.role === UserRole.TICKET_OFFICE) {
+          
+          companyId = user.companyId || user.company;
+          
+          // Verificar si la reservación pertenece a un viaje de la compañía del usuario
+          const searchParams: any = { companyId };
+          const companyTrips = await storage.searchTrips(searchParams);
+          const companyTripIds = new Set(companyTrips.map(trip => trip.id));
+          
+          // Si el viaje de la reservación no pertenece a la compañía del usuario
+          if (!companyTripIds.has(reservation.trip.id)) {
+            return res.status(403).json({ 
+              error: "No tiene permiso para acceder a esta reservación" 
+            });
+          }
+          
+          console.log(`Usuario de compañía ${companyId} accediendo a reservación ${id} del viaje ${reservation.trip.id}`);
+        }
+      }
+      
       res.json(reservation);
     } catch (error) {
+      console.error("Error fetching reservation:", error);
       res.status(500).json({ error: "Failed to fetch reservation" });
     }
   });
@@ -1083,11 +1152,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Rutas de API para vehículos (unidades)
-  app.get(apiRouter("/vehicles"), async (_req: Request, res: Response) => {
+  app.get(apiRouter("/vehicles"), async (req: Request, res: Response) => {
     try {
-      const vehicles = await storage.getVehicles();
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      // Variable para almacenar el companyId para filtrar vehículos
+      let companyId: string | null = null;
+      
+      // Si hay usuario autenticado y no es admin/superAdmin/developer, aplicamos filtro por compañía
+      if (user) {
+        if (user.role === UserRole.OWNER || 
+            user.role === UserRole.CALL_CENTER || 
+            user.role === UserRole.CHECKER ||
+            user.role === UserRole.DRIVER ||
+            user.role === UserRole.TICKET_OFFICE) {
+          
+          companyId = user.companyId || user.company;
+          console.log(`Filtrando vehículos por compañía: ${companyId} para usuario ${user.firstName} ${user.lastName}`);
+        }
+      }
+      
+      // Obtener todos los vehículos
+      let vehicles = await storage.getVehicles();
+      
+      // Si es necesario filtrar por compañía
+      if (companyId) {
+        vehicles = vehicles.filter(vehicle => vehicle.companyId === companyId);
+        console.log(`Filtrados ${vehicles.length} vehículos para la compañía ${companyId}`);
+      }
+      
       res.json(vehicles);
     } catch (error) {
+      console.error("Error fetching vehicles:", error);
       res.status(500).json({ error: "Failed to fetch vehicles" });
     }
   });
@@ -1101,8 +1198,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Vehicle not found" });
       }
       
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      // Variable para almacenar el companyId para verificar permisos
+      let companyId: string | null = null;
+      
+      // Si hay usuario autenticado y no es admin/superAdmin/developer, verificamos permiso
+      if (user) {
+        if (user.role === UserRole.OWNER || 
+            user.role === UserRole.CALL_CENTER || 
+            user.role === UserRole.CHECKER ||
+            user.role === UserRole.DRIVER ||
+            user.role === UserRole.TICKET_OFFICE) {
+          
+          companyId = user.companyId || user.company;
+          
+          // Si el vehículo tiene companyId y no coincide con la del usuario
+          if (vehicle.companyId && vehicle.companyId !== companyId) {
+            return res.status(403).json({ 
+              error: "No tiene permiso para acceder a este vehículo" 
+            });
+          }
+        }
+      }
+      
       res.json(vehicle);
     } catch (error) {
+      console.error("Error fetching vehicle:", error);
       res.status(500).json({ error: "Failed to fetch vehicle" });
     }
   });
@@ -1117,7 +1240,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const vehicle = await storage.createVehicle(req.body);
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      // Obtener companyId del usuario
+      let companyId = null;
+      if (user) {
+        companyId = user.companyId || user.company;
+        console.log(`Asignando vehículo a la compañía: ${companyId} del usuario ${user.firstName} ${user.lastName}`);
+      }
+      
+      // Crear objeto con datos del vehículo más el companyId
+      const vehicleData = {
+        ...req.body,
+        companyId: companyId
+      };
+      
+      const vehicle = await storage.createVehicle(vehicleData);
       res.status(201).json(vehicle);
     } catch (error) {
       console.error("Error creating vehicle:", error);
