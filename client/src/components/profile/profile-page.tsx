@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { User } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { 
   UserIcon,
