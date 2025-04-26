@@ -38,9 +38,6 @@ export async function addCompanyIdToCommissions() {
 }
 
 // Si se ejecuta directamente (no como importación)
-if (require.main === module) {
-  addCompanyIdToCommissions()
-    .then(() => console.log("Migración completada con éxito"))
-    .catch((error) => console.error("Error en la migración:", error))
-    .finally(() => process.exit());
-}
+// En ES modules no hay un 'require.main === module', por lo que simplemente
+// exportamos la función para que sea llamada desde run_company_isolation.ts
+// La función anterior reemplaza esto
