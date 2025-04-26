@@ -78,6 +78,9 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getTrips(): Promise<TripWithRouteInfo[]> {
+    console.log("Obteniendo todas las rutas en una sola consulta");
+    const startTime = performance.now();
+    
     const trips = await db.select().from(schema.trips);
     
     // Obtener todos los usuarios dueños (Owner) para relacionar con las compañías
@@ -98,6 +101,12 @@ export class DatabaseStorage implements IStorage {
       }
     });
     
+    // Imprimir el mapa de compañías para depuración
+    console.log("Mapa de compañías:");
+    companyMap.forEach((data, id) => {
+      console.log(`Compañía ${id}: Nombre=${data.companyName}, Logo=${data.companyLogo ? "Sí" : "No"}`);
+    });
+    
     const tripsWithRouteInfo: TripWithRouteInfo[] = [];
     for (const trip of trips) {
       const route = await this.getRoute(trip.routeId);
@@ -106,18 +115,31 @@ export class DatabaseStorage implements IStorage {
         let companyData = { companyName: undefined, companyLogo: undefined };
         if (trip.companyId && companyMap.has(trip.companyId)) {
           companyData = companyMap.get(trip.companyId);
+          console.log(`Encontrados datos para compañía ${trip.companyId} en el viaje ${trip.id}`);
+        } else if (trip.companyId) {
+          console.log(`Viaje ${trip.id} tiene companyId=${trip.companyId} pero no se encontraron datos correspondientes`);
+        } else {
+          console.log(`Viaje ${trip.id} no tiene companyId`);
         }
         
-        tripsWithRouteInfo.push({
+        const tripWithInfo = {
           ...trip,
           route,
           numStops: route.stops.length,
           // Agregar información de la compañía
           companyName: companyData.companyName,
           companyLogo: companyData.companyLogo
-        });
+        };
+        
+        // Verificar que los datos de la compañía estén presentes
+        console.log(`Viaje ${trip.id} - companyName: ${tripWithInfo.companyName}, companyLogo: ${tripWithInfo.companyLogo}`);
+        
+        tripsWithRouteInfo.push(tripWithInfo);
       }
     }
+    
+    const endTime = performance.now();
+    console.log(`getTrips-optimized: ${(endTime - startTime).toFixed(3)}ms`);
     
     return tripsWithRouteInfo;
   }
