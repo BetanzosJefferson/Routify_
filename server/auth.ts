@@ -225,9 +225,13 @@ export function setupAuthRoutes(app: Express) {
         return res.status(400).json({ message: "El correo electrónico ya está registrado" });
       }
 
-      // Validaciones específicas para el rol "Dueño"
+      // Validaciones específicas para roles que requieren campos adicionales
       if (invitation[0].role === UserRole.OWNER && !company) {
         return res.status(400).json({ message: "El nombre de la empresa es obligatorio para usuarios con rol Dueño" });
+      }
+      
+      if (invitation[0].role === UserRole.DEVELOPER && !company) {
+        return res.status(400).json({ message: "El nombre de la empresa/proyecto es obligatorio para usuarios con rol Desarrollador" });
       }
 
       // Crear el usuario con campos adicionales según el rol
@@ -237,7 +241,7 @@ export function setupAuthRoutes(app: Express) {
         email,
         password: await hashPassword(password),
         role: invitation[0].role,
-        company: invitation[0].role === UserRole.OWNER ? company : "",
+        company: (invitation[0].role === UserRole.OWNER || invitation[0].role === UserRole.DEVELOPER) ? company : "",
         profilePicture: profilePicture || "",
       };
 
