@@ -94,17 +94,18 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         </div>
         
         <div className="flex-1 flex flex-col overflow-y-auto pt-5 px-3">
-          {canAccess("dashboard") && (
+          {/* Sección de Dashboard - no incluida en TabType por el momento */}
+          {/*{canAccess("dashboard") && (
             <NavSection title="General">
               <NavItem 
                 icon={<HomeIcon className="h-5 w-5" />} 
-                active={activeTab === "dashboard"}
-                onClick={() => handleTabClick("dashboard")}
+                active={false}
+                onClick={() => {}}
               >
                 Dashboard
               </NavItem>
             </NavSection>
-          )}
+          )}*/}
           
           {/* Sección de Gestión de Rutas */}
           {(canAccess("routes") || canAccess("publish-trip") || canAccess("trips")) && (
@@ -209,18 +210,18 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             </NavSection>
           )}
           
-          {/* Sección de Configuración */}
-          {canAccess("settings") && (
+          {/* Sección de Configuración - no incluida en TabType por el momento */}
+          {/*{canAccess("settings") && (
             <NavSection title="Configuración">
               <NavItem 
                 icon={<Settings2 className="h-5 w-5" />} 
-                active={activeTab === "settings"}
-                onClick={() => handleTabClick("settings")}
+                active={false}
+                onClick={() => {}}
               >
                 Ajustes
               </NavItem>
             </NavSection>
-          )}
+          )}*/}
           
           <div className="mt-auto pt-4 pb-6 px-3">
             <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
