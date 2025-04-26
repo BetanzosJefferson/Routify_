@@ -13,6 +13,7 @@ import VehiclesPage from "@/components/vehicles/vehicles-page";
 import CommissionsPage from "@/components/commissions/commissions-page";
 import { BoardingList } from "@/components/boarding-list/boarding-list";
 import { TabType } from "@/hooks/use-active-tab";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Dashboard() {
   const [location] = useLocation();
