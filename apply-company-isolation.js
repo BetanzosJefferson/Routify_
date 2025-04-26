@@ -1,5 +1,5 @@
 // Script para aplicar mejoras de aislamiento de datos por compañía
-const { execSync } = require('child_process');
+import { execSync } from 'child_process';
 
 console.log("Iniciando aplicación de mejoras de aislamiento de datos por compañía...");
 
@@ -8,8 +8,8 @@ try {
   console.log("Instalando dependencias necesarias...");
   execSync('npm install bcryptjs', { stdio: 'inherit' });
   
-  // Aplicar migración de base de datos para agregar el campo companyId a la tabla de reservaciones
-  console.log("\nEjecutando migración de base de datos...");
+  // Aplicar migración de base de datos para agregar los campos companyId necesarios
+  console.log("\nEjecutando migración de esquema de base de datos...");
   execSync('npx drizzle-kit push', { stdio: 'inherit' });
   
   // Ejecutar script para crear usuarios de prueba y actualizar datos existentes
