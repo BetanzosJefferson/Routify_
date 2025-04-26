@@ -12,7 +12,8 @@ import {
   createReservationValidationSchema,
   RouteWithSegments,
   SegmentPrice,
-  locationData
+  locationData,
+  UserRole
 } from "@shared/schema";
 
 import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
