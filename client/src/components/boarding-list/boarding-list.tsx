@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { 
   CalendarIcon, 
   ClipboardListIcon,
@@ -68,6 +69,23 @@ export function BoardingList() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  useEffect(() => {
+    if (user?.role === "chofer") {
+      // Mensaje informativo
+      toast({
+        title: "Portal de Conductor",
+        description: `Mostrando los viajes asignados al conductor ${user.firstName} ${user.lastName} para la fecha ${format(currentDate, 'd MMMM yyyy', { locale: es })}`,
+      });
+      
+      // Forzar invalidación de la caché para obtener datos frescos
+      queryClient.invalidateQueries({
+        queryKey: ["/api/trips"]
+      });
+    }
+  }, [user, currentDate]);
   
   // Fetch trips assigned to the driver for current date
   const { data: trips, isLoading: isLoadingTrips, refetch: refetchTrips } = useQuery<Trip[]>({
