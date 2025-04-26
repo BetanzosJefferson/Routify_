@@ -585,7 +585,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
                                   <p className="text-sm font-medium">Vehículo</p>
                                   {trip.vehicleId ? (
                                     <p className="text-xs text-green-600 font-medium">
-                                      {vehicles.find(v => v.id === trip.vehicleId)?.brand} {vehicles.find(v => v.id === trip.vehicleId)?.model} - {vehicles.find(v => v.id === trip.vehicleId)?.licensePlate}
+                                      {vehicles.find(v => v.id === trip.vehicleId)?.brand} {vehicles.find(v => v.id === trip.vehicleId)?.model} - {vehicles.find(v => v.id === trip.vehicleId)?.plates}
                                     </p>
                                   ) : (
                                     <p className="text-xs text-red-500 font-medium">No asignado</p>
@@ -725,7 +725,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
                 <SelectContent>
                   {vehicles.map((vehicle: any) => (
                     <SelectItem key={vehicle.id} value={vehicle.id.toString()}>
-                      {vehicle.brand} {vehicle.model} - {vehicle.licensePlate}
+                      {vehicle.brand} {vehicle.model} - {vehicle.plates}
                     </SelectItem>
                   ))}
                 </SelectContent>
