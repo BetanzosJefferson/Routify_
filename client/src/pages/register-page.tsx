@@ -49,6 +49,13 @@ export default function RegisterPage() {
   >("loading");
   const [invitationRole, setInvitationRole] = useState<string | null>(null);
   const [invitationEmail, setInvitationEmail] = useState<string | null>(null);
+  const [inviterInfo, setInviterInfo] = useState<{
+    firstName: string;
+    lastName: string;
+    company: string;
+    profilePicture: string;
+    role: string;
+  } | null>(null);
   const [registrationComplete, setRegistrationComplete] = useState(false);
 
   const form = useForm<RegisterFormValues>({
@@ -79,6 +86,11 @@ export default function RegisterPage() {
         if (response.ok && data.valid) {
           setInvitationStatus("valid");
           setInvitationRole(data.role);
+          
+          // Guardar información del invitante si está disponible
+          if (data.inviter) {
+            setInviterInfo(data.inviter);
+          }
           
           // Actualizar el formulario con el nuevo esquema basado en el rol
           form.clearErrors();

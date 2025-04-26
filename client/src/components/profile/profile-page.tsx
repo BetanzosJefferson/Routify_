@@ -161,26 +161,31 @@ export function ProfilePage({ standalone = false }: ProfilePageProps) {
               </AvatarFallback>
             )}
           </Avatar>
-          <Button 
-            size="sm" 
-            variant="outline" 
-            className="absolute -bottom-2 -right-2 rounded-full p-2"
-            onClick={() => document.getElementById('profile-picture-upload')?.click()}
-            disabled={isUploading}
-          >
-            {isUploading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Upload className="h-4 w-4" />
-            )}
-          </Button>
-          <Input 
-            id="profile-picture-upload" 
-            type="file" 
-            className="hidden" 
-            onChange={handleProfilePictureUpload}
-            accept="image/*"
-          />
+          {/* Solo los usuarios que no son call center, checador o chofer pueden cambiar la foto de perfil */}
+          {user?.role !== 'callCenter' && user?.role !== 'checador' && user?.role !== 'chofer' && (
+            <>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="absolute -bottom-2 -right-2 rounded-full p-2"
+                onClick={() => document.getElementById('profile-picture-upload')?.click()}
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+              </Button>
+              <Input 
+                id="profile-picture-upload" 
+                type="file" 
+                className="hidden" 
+                onChange={handleProfilePictureUpload}
+                accept="image/*"
+              />
+            </>
+          )}
         </div>
         <h2 className="mt-4 text-xl font-semibold">{user?.firstName} {user?.lastName}</h2>
         <span className="text-sm text-muted-foreground">{getRoleDisplayName(user?.role || "")}</span>
@@ -232,7 +237,7 @@ export function ProfilePage({ standalone = false }: ProfilePageProps) {
             <Building2 className="h-4 w-4 text-gray-400" />
             <Input 
               id="company" 
-              value={user?.company || "No especificada"} 
+              value={user?.company || (user?.companyId ? user.companyId : "No especificada")} 
               readOnly 
               className="bg-muted text-muted-foreground border-dashed cursor-not-allowed opacity-60" 
               disabled

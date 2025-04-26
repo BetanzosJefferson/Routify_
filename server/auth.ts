@@ -241,10 +241,30 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
         return res.status(400).json({ valid: false, message: "La invitación ha expirado" });
       }
 
+      // Obtener información del usuario que invita
+      const inviter = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, invitation[0].createdById))
+        .limit(1);
+
+      // Información del invitante para mostrar en el formulario de registro
+      let inviterInfo = null;
+      if (inviter.length > 0) {
+        inviterInfo = {
+          firstName: inviter[0].firstName,
+          lastName: inviter[0].lastName,
+          company: inviter[0].company,
+          profilePicture: inviter[0].profilePicture,
+          role: inviter[0].role
+        };
+      }
+
       res.json({
         valid: true,
         role: invitation[0].role,
         email: invitation[0].email,
+        inviter: inviterInfo
       });
     } catch (error) {
       console.error("Error al verificar invitación:", error);
