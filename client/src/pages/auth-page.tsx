@@ -1,16 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-// import { useAuth } from "@/hooks/use-auth"; // Temporalmente desactivado
+import { useAuth } from "@/hooks/use-auth";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2 } from "lucide-react"; // Eliminado Loader2 temporalmente
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // Schema de validación para el formulario de login
@@ -24,29 +24,14 @@ type LoginFormValues = z.infer<typeof loginFormSchema>;
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user, loginMutation } = useAuth();
   
-  // Temporalmente deshabilitada la autenticación real
-  // const { user, loginMutation } = useAuth();
-  
-  // Función temporal para simular inicio de sesión 
-  function simulateLogin() {
-    toast({
-      title: "Modo de desarrollo",
-      description: "La autenticación está temporalmente deshabilitada. Redirigiendo al dashboard...",
-    });
-    
-    // Redirigir al dashboard después de un pequeño retraso
-    setTimeout(() => {
+  // Si el usuario ya está autenticado, redirigir a la página principal
+  useEffect(() => {
+    if (user) {
       setLocation("/");
-    }, 1500);
-  }
-  
-  // Comentado temporalmente
-  // // Si el usuario ya está autenticado, redirigir a la página principal
-  // if (user) {
-  //   setLocation("/");
-  //   return null;
-  // }
+    }
+  }, [user, setLocation]);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -57,8 +42,7 @@ export default function AuthPage() {
   });
 
   function onSubmit(data: LoginFormValues) {
-    // En lugar de usar loginMutation, usamos nuestra función simulada
-    simulateLogin();
+    loginMutation.mutate(data);
   }
 
   return (
@@ -102,8 +86,17 @@ export default function AuthPage() {
                   )}
                 />
 
-                <Button type="submit" className="w-full">
-                  Iniciar sesión
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={loginMutation.isPending}
+                >
+                  {loginMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Iniciando sesión...
+                    </>
+                  ) : "Iniciar sesión"}
                 </Button>
               </form>
             </Form>
