@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRoute } from "wouter";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Users, UserCheck, Bus, Calendar, Clock, mapPin, MapPin, ArrowLeft } from "lucide-react";
+import { Users, UserCheck, Bus, Calendar, Clock, MapPin, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
   Card, 
@@ -31,26 +31,78 @@ export default function TripPassengersPage() {
   const [, params] = useRoute("/trip/:id/passengers");
   const tripId = params?.id ? parseInt(params.id, 10) : undefined;
   
+  // Definir tipos para los datos
+  interface Vehicle {
+    id: number;
+    brand: string;
+    model: string;
+    plates: string;
+    economicNumber: string;
+    capacity: number;
+    type: string;
+  }
+
+  interface Route {
+    id: number;
+    name: string;
+    origin: string;
+    destination: string;
+    stops: string[];
+  }
+
+  interface Trip {
+    id: number;
+    routeId: number;
+    departureDate: string;
+    departureTime: string;
+    arrivalTime: string;
+    capacity: number;
+    availableSeats: number;
+    price: number;
+    vehicleType: string;
+    vehicleId: number | null;
+    driverId: number | null;
+    status?: string;
+    route: Route;
+    assignedVehicle?: Vehicle;
+  }
+
+  interface Passenger {
+    id: number;
+    firstName: string;
+    lastName: string;
+    reservationId: number;
+  }
+
+  interface Reservation {
+    id: number;
+    tripId: number;
+    status: string;
+    email: string;
+    phone: string;
+    passengers: Passenger[];
+  }
+
   // Obtener detalles del viaje
-  const { data: trip, isLoading: isLoadingTrip } = useQuery({
+  const { data: trip, isLoading: isLoadingTrip } = useQuery<Trip>({
     queryKey: [`/api/trips/${tripId}`],
     enabled: !!tripId,
   });
 
   // Obtener reservaciones para este viaje
-  const { data: allReservations, isLoading: isLoadingReservations } = useQuery({
+  const { data: allReservations, isLoading: isLoadingReservations } = useQuery<Reservation[]>({
     queryKey: ["/api/reservations"],
     enabled: !!tripId,
   });
 
   // Filtrar reservaciones para este viaje
   const tripReservations = allReservations?.filter(
-    (res: any) => res.tripId === tripId
+    (res) => res.tripId === tripId
   ) || [];
 
   // Obtener todos los pasajeros de este viaje
   const passengers = tripReservations.flatMap(
-    (reservation: any) => reservation.passengers || []
+    (reservation) => reservation.passengers || []
   );
 
   // Función para formatear fecha
@@ -260,10 +312,10 @@ export default function TripPassengersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {passengers.map((passenger: any, index: number) => {
+                {passengers.map((passenger, index: number) => {
                   // Encontrar la reservación a la que pertenece este pasajero
                   const reservation = tripReservations.find(
-                    (res: any) => res.id === passenger.reservationId
+                    (res) => res.id === passenger.reservationId
                   );
 
                   return (
