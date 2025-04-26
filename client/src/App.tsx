@@ -20,8 +20,16 @@ import { UsersPage } from "@/components/users/users-page";
 function Router() {
   return (
     <Switch>
-      <ProtectedRoute path="/" component={Dashboard} />
-      <ProtectedRoute path="/dashboard" component={Dashboard} />
+      <ProtectedRoute 
+        path="/" 
+        component={Dashboard} 
+        requiredRoles={["superAdmin", "admin", "dueño", "callCenter", "checador", "taquilla", "desarrollador"]} 
+      />
+      <ProtectedRoute 
+        path="/dashboard" 
+        component={Dashboard} 
+        requiredRoles={["superAdmin", "admin", "dueño", "callCenter", "checador", "taquilla", "desarrollador"]} 
+      />
       <ProtectedRoute path="/conductor" component={ConductorPage} />
       <ProtectedRoute path="/trip/:id/passengers" component={TripPassengersPage} />
       <Route path="/auth" component={AuthPage} />
