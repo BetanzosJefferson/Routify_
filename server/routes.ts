@@ -1358,41 +1358,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(apiRouter("/vehicles/:id"), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
-      const vehicle = await storage.getVehicle(id);
-      
-      if (!vehicle) {
-        return res.status(404).json({ error: "Vehicle not found" });
-      }
       
       // Obtener el usuario autenticado
       const { user } = req as any;
       
-      // Variable para almacenar el companyId para verificar permisos
+      console.log(`[GET /vehicles/${id}] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
+      if (user) {
+        console.log(`[GET /vehicles/${id}] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
+      }
+      
+      // SEGURIDAD: Control de acceso a datos por compañía
       let companyId: string | null = null;
       
-      // Si hay usuario autenticado y no es admin/superAdmin/developer, verificamos permiso
+      // REGLAS DE ACCESO:
+      // 1. superAdmin y admin pueden ver TODOS los vehículos
+      // 2. El resto de roles solo pueden ver vehículos de SU COMPAÑÍA
       if (user) {
-        if (user.role === UserRole.OWNER || 
-            user.role === UserRole.CALL_CENTER || 
-            user.role === UserRole.CHECKER ||
-            user.role === UserRole.DRIVER ||
-            user.role === UserRole.TICKET_OFFICE) {
-          
+        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+          // Obtener la compañía del usuario
           companyId = user.companyId || user.company;
           
-          // Si el vehículo tiene companyId y no coincide con la del usuario
-          if (vehicle.companyId && vehicle.companyId !== companyId) {
+          if (!companyId) {
+            console.log(`[GET /vehicles/${id}] ACCESO DENEGADO: Usuario sin compañía asignada`);
             return res.status(403).json({ 
-              error: "No tiene permiso para acceder a este vehículo" 
+              error: "Acceso denegado", 
+              details: "Usuario sin compañía asignada" 
             });
           }
+          
+          console.log(`[GET /vehicles/${id}] Verificando permisos para compañía: ${companyId}`);
+        } else {
+          console.log(`[GET /vehicles/${id}] Usuario con rol ${user.role} puede ver cualquier vehículo`);
+        }
+      } else {
+        console.log(`[GET /vehicles/${id}] Acceso no autenticado denegado`);
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Obtener vehículo
+      const vehicle = await storage.getVehicle(id);
+      
+      if (!vehicle) {
+        console.log(`[GET /vehicles/${id}] Vehículo no encontrado`);
+        return res.status(404).json({ error: "Vehículo no encontrado" });
+      }
+      
+      // VERIFICACIÓN DE SEGURIDAD: Comprobar que el usuario tiene acceso a este vehículo
+      if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+        // Si el vehículo tiene companyId y no coincide con la del usuario
+        if (vehicle.companyId && vehicle.companyId !== companyId) {
+          console.log(`[GET /vehicles/${id}] ACCESO DENEGADO: El vehículo pertenece a compañía ${vehicle.companyId} pero el usuario es de ${companyId}`);
+          return res.status(403).json({ 
+            error: "Acceso denegado", 
+            details: "No tiene permiso para acceder a este vehículo" 
+          });
         }
       }
       
+      console.log(`[GET /vehicles/${id}] Acceso concedido`);
       res.json(vehicle);
     } catch (error) {
-      console.error("Error fetching vehicle:", error);
-      res.status(500).json({ error: "Failed to fetch vehicle" });
+      console.error(`[GET /vehicles/:id] Error: ${error}`);
+      res.status(500).json({ error: "Error al obtener el vehículo" });
     }
   });
 
@@ -1409,12 +1436,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Obtener el usuario autenticado
       const { user } = req as any;
       
-      // Obtener companyId del usuario
-      let companyId = null;
+      console.log(`[POST /vehicles] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
       if (user) {
-        companyId = user.companyId || user.company;
-        console.log(`Asignando vehículo a la compañía: ${companyId} del usuario ${user.firstName} ${user.lastName}`);
+        console.log(`[POST /vehicles] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
       }
+      
+      // SEGURIDAD: Verificar autenticación
+      if (!user) {
+        console.log(`[POST /vehicles] Intento de creación sin autenticación`);
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Obtener companyId del usuario
+      let companyId = user.companyId || user.company;
+      
+      // SEGURIDAD: Verificar asignación de compañía
+      if (!companyId && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+        console.log(`[POST /vehicles] ADVERTENCIA: Usuario sin compañía asignada intentando crear vehículo`);
+        return res.status(400).json({ 
+          error: "Datos incompletos", 
+          details: "No se puede crear un vehículo sin asignar una compañía" 
+        });
+      }
+      
+      // SEGURIDAD: Preservar companyId si el usuario es superAdmin o admin
+      if (!companyId && (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN)) {
+        console.log(`[POST /vehicles] Usuario ${user.role} creando vehículo sin asignar compañía específica`);
+        companyId = req.body.companyId || null;
+      }
+      
+      console.log(`[POST /vehicles] Asignando vehículo a compañía: ${companyId || 'ninguna'}`);
       
       // Crear objeto con datos del vehículo más el companyId
       const vehicleData = {
@@ -1423,42 +1474,156 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       const vehicle = await storage.createVehicle(vehicleData);
+      console.log(`[POST /vehicles] Vehículo creado con ID ${vehicle.id}`);
+      
       res.status(201).json(vehicle);
     } catch (error) {
-      console.error("Error creating vehicle:", error);
-      res.status(500).json({ error: "Failed to create vehicle" });
+      console.error(`[POST /vehicles] Error: ${error}`);
+      res.status(500).json({ error: "Error al crear el vehículo" });
     }
   });
 
   app.put(apiRouter("/vehicles/:id"), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
-      // El objeto completo está en req.body, no en req.body.data
-      const vehicle = await storage.updateVehicle(id, req.body);
       
-      if (!vehicle) {
-        return res.status(404).json({ error: "Vehicle not found" });
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      console.log(`[PUT /vehicles/${id}] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
+      if (user) {
+        console.log(`[PUT /vehicles/${id}] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
       }
       
-      res.json(vehicle);
+      // SEGURIDAD: Verificar autenticación
+      if (!user) {
+        console.log(`[PUT /vehicles/${id}] Intento de actualización sin autenticación`);
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // SEGURIDAD: Verificar existencia del vehículo y permisos
+      const existingVehicle = await storage.getVehicle(id);
+      
+      if (!existingVehicle) {
+        console.log(`[PUT /vehicles/${id}] Vehículo no encontrado`);
+        return res.status(404).json({ error: "Vehículo no encontrado" });
+      }
+      
+      // Verificar permisos (solo los superAdmin y admin pueden editar cualquier vehículo)
+      if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+        const userCompanyId = user.companyId || user.company;
+        
+        // Si no tiene compañía asignada, no puede editar
+        if (!userCompanyId) {
+          console.log(`[PUT /vehicles/${id}] ACCESO DENEGADO: Usuario sin compañía asignada`);
+          return res.status(403).json({ 
+            error: "Acceso denegado", 
+            details: "No tiene permisos para editar este vehículo" 
+          });
+        }
+        
+        // Si el vehículo pertenece a otra compañía, no puede editarlo
+        if (existingVehicle.companyId && existingVehicle.companyId !== userCompanyId) {
+          console.log(`[PUT /vehicles/${id}] ACCESO DENEGADO: El vehículo pertenece a compañía ${existingVehicle.companyId} pero el usuario es de ${userCompanyId}`);
+          return res.status(403).json({ 
+            error: "Acceso denegado", 
+            details: "No tiene permisos para editar vehículos de otra compañía" 
+          });
+        }
+      }
+      
+      // SEGURIDAD: Preservar el companyId original a menos que sea superAdmin/admin
+      let vehicleData = { ...req.body };
+      
+      if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+        // Usuarios normales no pueden cambiar la compañía del vehículo
+        vehicleData.companyId = existingVehicle.companyId;
+        console.log(`[PUT /vehicles/${id}] Preservando companyId original: ${existingVehicle.companyId || 'ninguna'}`);
+      } else if (vehicleData.companyId !== existingVehicle.companyId) {
+        // Permitir a superAdmin/admin cambiar la compañía
+        console.log(`[PUT /vehicles/${id}] Usuario ${user.role} cambiando companyId de ${existingVehicle.companyId || 'ninguna'} a ${vehicleData.companyId || 'ninguna'}`);
+      }
+      
+      const updatedVehicle = await storage.updateVehicle(id, vehicleData);
+      
+      console.log(`[PUT /vehicles/${id}] Vehículo actualizado correctamente`);
+      res.json(updatedVehicle);
     } catch (error) {
-      console.error("Error updating vehicle:", error);
-      res.status(500).json({ error: "Failed to update vehicle" });
+      console.error(`[PUT /vehicles/:id] Error: ${error}`);
+      res.status(500).json({ error: "Error al actualizar el vehículo" });
     }
   });
 
   app.delete(apiRouter("/vehicles/:id"), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
+      
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      console.log(`[DELETE /vehicles/${id}] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
+      if (user) {
+        console.log(`[DELETE /vehicles/${id}] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
+      }
+      
+      // SEGURIDAD: Verificar autenticación
+      if (!user) {
+        console.log(`[DELETE /vehicles/${id}] Intento de eliminación sin autenticación`);
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // SEGURIDAD: Verificar existencia del vehículo y permisos
+      const existingVehicle = await storage.getVehicle(id);
+      
+      if (!existingVehicle) {
+        console.log(`[DELETE /vehicles/${id}] Vehículo no encontrado`);
+        return res.status(404).json({ error: "Vehículo no encontrado" });
+      }
+      
+      // Verificar permisos (solo los superAdmin, admin y owner pueden eliminar un vehículo)
+      if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
+        console.log(`[DELETE /vehicles/${id}] ACCESO DENEGADO: El rol ${user.role} no tiene permisos para eliminar vehículos`);
+        return res.status(403).json({ 
+          error: "Acceso denegado", 
+          details: "No tiene permisos para eliminar vehículos" 
+        });
+      }
+      
+      // Si es owner, verificar que el vehículo pertenece a su compañía
+      if (user.role === UserRole.OWNER) {
+        const userCompanyId = user.companyId || user.company;
+        
+        if (!userCompanyId) {
+          console.log(`[DELETE /vehicles/${id}] ACCESO DENEGADO: Usuario sin compañía asignada`);
+          return res.status(403).json({ 
+            error: "Acceso denegado", 
+            details: "No tiene permisos para eliminar este vehículo" 
+          });
+        }
+        
+        // Si el vehículo pertenece a otra compañía, no puede eliminarlo
+        if (existingVehicle.companyId && existingVehicle.companyId !== userCompanyId) {
+          console.log(`[DELETE /vehicles/${id}] ACCESO DENEGADO: El vehículo pertenece a compañía ${existingVehicle.companyId} pero el usuario es de ${userCompanyId}`);
+          return res.status(403).json({ 
+            error: "Acceso denegado", 
+            details: "No tiene permisos para eliminar vehículos de otra compañía" 
+          });
+        }
+      }
+      
+      // Eliminar el vehículo
       const success = await storage.deleteVehicle(id);
       
       if (!success) {
-        return res.status(404).json({ error: "Vehicle not found" });
+        console.log(`[DELETE /vehicles/${id}] Error al eliminar el vehículo`);
+        return res.status(500).json({ error: "Error al eliminar el vehículo" });
       }
       
+      console.log(`[DELETE /vehicles/${id}] Vehículo eliminado correctamente`);
       res.status(204).end();
     } catch (error) {
-      res.status(500).json({ error: "Failed to delete vehicle" });
+      console.error(`[DELETE /vehicles/:id] Error: ${error}`);
+      res.status(500).json({ error: "Error al eliminar el vehículo" });
     }
   });
 
