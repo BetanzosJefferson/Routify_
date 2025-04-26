@@ -80,14 +80,41 @@ export class DatabaseStorage implements IStorage {
   async getTrips(): Promise<TripWithRouteInfo[]> {
     const trips = await db.select().from(schema.trips);
     
+    // Obtener todos los usuarios dueños (Owner) para relacionar con las compañías
+    const owners = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.role, schema.UserRole.OWNER));
+    
+    // Crear un mapa de compañía -> datos del dueño para buscar rápidamente
+    const companyMap = new Map();
+    owners.forEach(owner => {
+      const companyId = owner.companyId || owner.company;
+      if (companyId) {
+        companyMap.set(companyId, {
+          companyName: owner.company,
+          companyLogo: owner.profilePicture
+        });
+      }
+    });
+    
     const tripsWithRouteInfo: TripWithRouteInfo[] = [];
     for (const trip of trips) {
       const route = await this.getRoute(trip.routeId);
       if (route) {
+        // Obtener datos de la compañía si existen
+        let companyData = { companyName: undefined, companyLogo: undefined };
+        if (trip.companyId && companyMap.has(trip.companyId)) {
+          companyData = companyMap.get(trip.companyId);
+        }
+        
         tripsWithRouteInfo.push({
           ...trip,
           route,
-          numStops: route.stops.length
+          numStops: route.stops.length,
+          // Agregar información de la compañía
+          companyName: companyData.companyName,
+          companyLogo: companyData.companyLogo
         });
       }
     }
@@ -107,10 +134,37 @@ export class DatabaseStorage implements IStorage {
     const route = await this.getRoute(trip.routeId);
     if (!route) return undefined;
     
+    // Obtener información de la compañía si existe companyId
+    let companyName = undefined;
+    let companyLogo = undefined;
+    
+    if (trip.companyId) {
+      // Buscar el dueño de la compañía para obtener el nombre y logo
+      const [owner] = await db
+        .select()
+        .from(schema.users)
+        .where(
+          and(
+            eq(schema.users.role, schema.UserRole.OWNER),
+            or(
+              eq(schema.users.companyId, trip.companyId),
+              eq(schema.users.company, trip.companyId)
+            )
+          )
+        );
+      
+      if (owner) {
+        companyName = owner.company;
+        companyLogo = owner.profilePicture;
+      }
+    }
+    
     return {
       ...trip,
       route,
-      numStops: route.stops.length
+      numStops: route.stops.length,
+      companyName,
+      companyLogo
     };
   }
   
@@ -176,12 +230,36 @@ export class DatabaseStorage implements IStorage {
     // Get trips
     const trips = await tripsQuery;
     
+    // Obtener todos los usuarios dueños (Owner) para relacionar con las compañías
+    const owners = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.role, schema.UserRole.OWNER));
+    
+    // Crear un mapa de compañía -> datos del dueño para buscar rápidamente
+    const companyMap = new Map();
+    owners.forEach(owner => {
+      const companyId = owner.companyId || owner.company;
+      if (companyId) {
+        companyMap.set(companyId, {
+          companyName: owner.company,
+          companyLogo: owner.profilePicture
+        });
+      }
+    });
+    
     // Now filter by origin and destination if provided
     const tripsWithRouteInfo: TripWithRouteInfo[] = [];
     
     for (const trip of trips) {
       const route = await this.getRoute(trip.routeId);
       if (!route) continue;
+      
+      // Obtener datos de la compañía si existen
+      let companyData = { companyName: undefined, companyLogo: undefined };
+      if (trip.companyId && companyMap.has(trip.companyId)) {
+        companyData = companyMap.get(trip.companyId);
+      }
       
       // For subtrips, check against segment origin and destination
       if (trip.isSubTrip && trip.segmentOrigin && trip.segmentDestination) {
@@ -192,7 +270,10 @@ export class DatabaseStorage implements IStorage {
           tripsWithRouteInfo.push({
             ...trip,
             route,
-            numStops: route.stops.length
+            numStops: route.stops.length,
+            // Agregar información de la compañía
+            companyName: companyData.companyName,
+            companyLogo: companyData.companyLogo
           });
         }
         continue;
@@ -216,7 +297,10 @@ export class DatabaseStorage implements IStorage {
         tripsWithRouteInfo.push({
           ...trip,
           route,
-          numStops: route.stops.length
+          numStops: route.stops.length,
+          // Agregar información de la compañía
+          companyName: companyData.companyName,
+          companyLogo: companyData.companyLogo
         });
       }
     }
