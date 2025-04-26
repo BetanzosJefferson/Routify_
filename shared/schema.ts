@@ -24,6 +24,7 @@ export const routes = pgTable("routes", {
   origin: text("origin").notNull(),
   stops: text("stops").array().notNull(),
   destination: text("destination").notNull(),
+  companyId: text("company_id"),
 });
 
 export const insertRouteSchema = createInsertSchema(routes);

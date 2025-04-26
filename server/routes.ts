@@ -71,9 +71,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ROUTES ENDPOINTS
   app.get(apiRouter("/routes"), async (req: Request, res: Response) => {
     try {
-      const routes = await storage.getRoutes();
+      // Obtener usuario autenticado y su compañía
+      const { user } = req as any;
+      let companyId = null;
+      
+      if (user) {
+        companyId = user.companyId || user.company;
+        console.log(`DB Storage: Consultando rutas para la compañía: ${companyId}`);
+      }
+      
+      let routes = await storage.getRoutes();
+      
+      // Filtrar rutas por compañía si el usuario tiene una compañía asignada
+      if (companyId && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN && user.role !== UserRole.DEVELOPER) {
+        routes = routes.filter(route => {
+          // Si la ruta no tiene companyId, podemos mostrarla o ocultarla según decidamos
+          // Por ahora, solo mostramos rutas asociadas a la compañía del usuario
+          return route.companyId === companyId;
+        });
+        console.log(`DB Storage: Rutas filtradas por compañía ${companyId}: ${routes.length}`);
+      }
+      
       res.json(routes);
     } catch (error) {
+      console.error("Error fetching routes:", error);
       res.status(500).json({ error: "Failed to fetch routes" });
     }
   });
@@ -85,6 +106,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!route) {
         return res.status(404).json({ error: "Route not found" });
+      }
+      
+      // Obtener usuario autenticado y su compañía
+      const { user } = req as any;
+      let companyId = null;
+      
+      if (user) {
+        companyId = user.companyId || user.company;
+      }
+      
+      // Verificar acceso a la ruta (solo para roles que no son admin)
+      if (companyId && 
+          user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN && 
+          user.role !== UserRole.DEVELOPER &&
+          route.companyId !== companyId) {
+        return res.status(403).json({ error: "No tiene permiso para acceder a esta ruta" });
       }
       
       res.json(route);
@@ -129,6 +167,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Obtener datos del usuario autenticado
+      const { user } = req as any;
+      let companyId = null;
+      
+      if (user) {
+        companyId = user.companyId || user.company;
+        console.log(`Creando ruta para la compañía: ${companyId} del usuario ${user.firstName} ${user.lastName}`);
+      }
+      
       // Asegurarse de que stops sea un array
       const stops = Array.isArray(req.body.stops) ? req.body.stops : [];
       
@@ -137,10 +184,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: req.body.name,
         origin: req.body.origin,
         destination: req.body.destination,
-        stops: stops
+        stops: stops,
+        companyId: companyId // Asignar compañía del usuario a la ruta
       };
       
-      // Ahora validar
+      // Ahora validar (nota: validamos solo los campos obligatorios, companyId no necesita validación)
       const validationResult = createRouteValidationSchema.safeParse(safeRouteData);
       
       if (!validationResult.success) {
