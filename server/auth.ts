@@ -186,7 +186,7 @@ export function setupAuthRoutes(app: Express) {
   app.post("/api/register/:token", async (req: Request, res: Response) => {
     try {
       const { token } = req.params;
-      const { firstName, lastName, email, password } = req.body;
+      const { firstName, lastName, email, password, company, profilePicture } = req.body;
 
       // Verificar si los datos requeridos están presentes
       if (!firstName || !lastName || !email || !password) {
@@ -225,16 +225,25 @@ export function setupAuthRoutes(app: Express) {
         return res.status(400).json({ message: "El correo electrónico ya está registrado" });
       }
 
-      // Crear el usuario
+      // Validaciones específicas para el rol "Dueño"
+      if (invitation[0].role === UserRole.OWNER && !company) {
+        return res.status(400).json({ message: "El nombre de la empresa es obligatorio para usuarios con rol Dueño" });
+      }
+
+      // Crear el usuario con campos adicionales según el rol
+      const userData = {
+        firstName,
+        lastName,
+        email,
+        password: await hashPassword(password),
+        role: invitation[0].role,
+        company: invitation[0].role === UserRole.OWNER ? company : "",
+        profilePicture: profilePicture || "",
+      };
+
       const [user] = await db
         .insert(users)
-        .values({
-          firstName,
-          lastName,
-          email,
-          password: await hashPassword(password),
-          role: invitation[0].role,
-        })
+        .values(userData)
         .returning();
 
       // Marcar la invitación como utilizada
