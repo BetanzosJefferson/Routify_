@@ -630,16 +630,81 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getReservations(): Promise<ReservationWithDetails[]> {
-    const reservations = await db.select().from(schema.reservations);
+  async getReservations(companyId?: string): Promise<ReservationWithDetails[]> {
+    console.time('getReservations-optimized');
     
-    const reservationsWithDetails: ReservationWithDetails[] = [];
-    for (const reservation of reservations) {
-      const trip = await this.getTripWithRouteInfo(reservation.tripId);
-      if (!trip) continue;
+    // NUEVA IMPLEMENTACIÓN CON FILTRADO DE COMPAÑÍA
+    console.log(`[getReservations] Iniciando búsqueda${companyId ? ` para compañía ${companyId}` : ''}`);
+    
+    // Construir condiciones de filtrado como array
+    const condiciones = [];
+    
+    // FILTRO CRÍTICO: Compañía
+    if (companyId) {
+      console.log(`[getReservations] FILTRO CRÍTICO: Compañía ${companyId}`);
       
+      // Verificar cuántas reservas existen para esta compañía
+      const testQuery = await db.execute(
+        sql`SELECT COUNT(*) FROM reservations WHERE company_id = ${companyId}`
+      );
+      
+      const reservasContador = Number(testQuery.rows?.[0]?.count || 0);
+      console.log(`[getReservations] Verificación: Existen ${reservasContador} reservas para compañía ${companyId}`);
+      
+      // Aplicar filtro directo como SQL
+      condiciones.push(sql`company_id = ${companyId}`);
+    } else {
+      console.log(`[getReservations] ADVERTENCIA: Obteniendo TODAS las reservas sin filtro de compañía`);
+    }
+    
+    // Ejecutar consulta
+    let reservations;
+    
+    if (condiciones.length > 0) {
+      // Combinar condiciones con AND
+      let whereClause = condiciones[0];
+      for (let i = 1; i < condiciones.length; i++) {
+        whereClause = sql`${whereClause} AND ${condiciones[i]}`;
+      }
+      
+      // Ejecutar consulta con filtros
+      console.log(`[getReservations] Ejecutando consulta CON filtros`);
+      reservations = await db.select().from(schema.reservations).where(whereClause);
+    } else {
+      // Sin filtros (solo superAdmin debería llegar aquí)
+      console.log(`[getReservations] Ejecutando consulta SIN filtros`);
+      reservations = await db.select().from(schema.reservations);
+    }
+    
+    console.log(`[getReservations] Encontradas ${reservations.length} reservas`);
+    
+    // CAPA DE SEGURIDAD ADICIONAL
+    if (companyId) {
+      // Verificar que todas las reservas sean realmente de la compañía
+      const reservasFiltradas = reservations.filter(r => r.companyId === companyId);
+      
+      if (reservasFiltradas.length !== reservations.length) {
+        console.log(`[getReservations] ALERTA DE SEGURIDAD: La consulta SQL devolvió ${reservations.length} reservas pero solo ${reservasFiltradas.length} son de la compañía ${companyId}`);
+        reservations = reservasFiltradas;
+      }
+    }
+    
+    // Obtener detalles para cada reserva
+    const reservationsWithDetails: ReservationWithDetails[] = [];
+    
+    for (const reservation of reservations) {
+      // Obtener información del viaje asociado 
+      // NOTA: getTripWithRouteInfo ya incluye sus propias verificaciones de seguridad
+      const trip = await this.getTripWithRouteInfo(reservation.tripId);
+      if (!trip) {
+        console.log(`[getReservations] No se encontró el viaje ${reservation.tripId} asociado a la reserva ${reservation.id}`);
+        continue;
+      }
+      
+      // Obtener pasajeros
       const passengers = await this.getPassengers(reservation.id);
       
+      // Agregar a los resultados
       reservationsWithDetails.push({
         ...reservation,
         trip,
@@ -647,6 +712,7 @@ export class DatabaseStorage implements IStorage {
       });
     }
     
+    console.timeEnd('getReservations-optimized');
     return reservationsWithDetails;
   }
   
@@ -655,14 +721,39 @@ export class DatabaseStorage implements IStorage {
     return reservation;
   }
   
-  async getReservationWithDetails(id: number): Promise<ReservationWithDetails | undefined> {
+  async getReservationWithDetails(id: number, companyId?: string): Promise<ReservationWithDetails | undefined> {
+    console.log(`[getReservationWithDetails] Buscando reserva ${id}${companyId ? ` para compañía ${companyId}` : ''}`);
+    
+    // Obtener la reserva
     const reservation = await this.getReservation(id);
-    if (!reservation) return undefined;
+    if (!reservation) {
+      console.log(`[getReservationWithDetails] Reserva ${id} no encontrada`);
+      return undefined;
+    }
     
+    // SEGURIDAD: Verificar acceso por compañía
+    if (companyId && reservation.companyId && reservation.companyId !== companyId) {
+      console.log(`[getReservationWithDetails] ACCESO DENEGADO: La reserva ${id} pertenece a compañía ${reservation.companyId} pero se solicitó desde ${companyId}`);
+      return undefined; // Denegar acceso a reservas de otras compañías
+    }
+    
+    // Obtener información del viaje asociado
     const trip = await this.getTripWithRouteInfo(reservation.tripId);
-    if (!trip) return undefined;
+    if (!trip) {
+      console.log(`[getReservationWithDetails] Viaje ${reservation.tripId} no encontrado para la reserva ${id}`);
+      return undefined;
+    }
     
+    // SEGURIDAD ADICIONAL: Verificar también que el viaje sea de la misma compañía
+    if (companyId && trip.companyId && trip.companyId !== companyId) {
+      console.log(`[getReservationWithDetails] ACCESO DENEGADO: El viaje ${trip.id} pertenece a compañía ${trip.companyId} pero se solicitó desde ${companyId}`);
+      return undefined; // Denegar acceso a viajes de otras compañías
+    }
+    
+    // Obtener los pasajeros
     const passengers = await this.getPassengers(reservation.id);
+    
+    console.log(`[getReservationWithDetails] Acceso concedido a reserva ${id} con ${passengers.length} pasajeros`);
     
     return {
       ...reservation,
@@ -782,7 +873,18 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Commission methods
-  async getCommissions(): Promise<Commission[]> {
+  async getCommissions(companyId?: string): Promise<Commission[]> {
+    // APLICAR FILTRO DE COMPAÑÍA si se proporciona
+    if (companyId) {
+      console.log(`[getCommissions] Filtrando comisiones por compañía: ${companyId}`);
+      return await db
+        .select()
+        .from(schema.commissions)
+        .where(eq(schema.commissions.companyId, companyId));
+    }
+    
+    // Si no hay filtro, devolver todas las comisiones
+    console.log('[getCommissions] Obteniendo todas las comisiones (sin filtro de compañía)');
     return await db.select().from(schema.commissions);
   }
   
