@@ -251,6 +251,19 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
                           </span>
                         </Label>
                       </div>
+
+                      <div>
+                        <RadioGroupItem value={UserRole.DEVELOPER} id="developer" className="peer sr-only" />
+                        <Label
+                          htmlFor="developer"
+                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                        >
+                          <span className="font-semibold">Desarrollador</span>
+                          <span className="text-xs text-muted-foreground">
+                            Acceso técnico al sistema
+                          </span>
+                        </Label>
+                      </div>
                     </RadioGroup>
                   </FormControl>
                   <FormMessage />
