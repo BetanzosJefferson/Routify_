@@ -1033,30 +1033,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Obtener el usuario autenticado
       const { user } = req as any;
       
-      // Variable para almacenar el companyId para filtrar reservaciones
+      console.log(`[GET /reservations] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
+      if (user) {
+        console.log(`[GET /reservations] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
+      }
+      
+      // SEGURIDAD: Filtrado de datos por compañía
       let companyId: string | null = null;
       
-      // Si hay usuario autenticado y no es superAdmin, aplicamos filtro por compañía
+      // REGLAS DE ACCESO:
+      // 1. superAdmin y admin pueden ver TODAS las reservaciones
+      // 2. El resto de roles solo pueden ver reservaciones de SU COMPAÑÍA
       if (user) {
-        if (user.role === UserRole.OWNER || 
-            user.role === UserRole.CALL_CENTER || 
-            user.role === UserRole.CHECKER ||
-            user.role === UserRole.DRIVER ||
-            user.role === UserRole.TICKET_OFFICE) {
-          // Usar companyId del usuario si existe
+        // Los roles que NO son superAdmin o admin tienen acceso restringido
+        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+          // Obtener la compañía del usuario
           companyId = user.companyId || user.company;
-          console.log(`Filtrando reservaciones por compañía: ${companyId} para usuario ${user.firstName} ${user.lastName}`);
+          
+          if (!companyId) {
+            console.log(`[GET /reservations] ADVERTENCIA: Usuario sin compañía asignada`);
+            // Si el usuario no tiene compañía asignada, devolver lista vacía por seguridad
+            return res.json([]);
+          }
+          
+          console.log(`[GET /reservations] FILTRO CRÍTICO: Aplicando filtro por compañía "${companyId}"`);
+        } else {
+          console.log(`[GET /reservations] Usuario con rol ${user.role} puede ver TODAS las reservaciones`);
+        }
+      } else {
+        console.log(`[GET /reservations] Usuario no autenticado`);
+        // Usuarios no autenticados no deberían poder ver reservaciones
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Ejecutar la consulta con el filtro de compañía si aplica
+      const reservations = await storage.getReservations(companyId || undefined);
+      console.log(`[GET /reservations] Encontradas ${reservations.length} reservaciones`);
+      
+      // CAPA ADICIONAL DE SEGURIDAD - FILTRO POST-CONSULTA
+      if (user && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+        // Obtener la compañía del usuario
+        const userCompany = user.companyId || user.company || null;
+        
+        if (userCompany) {
+          // Verificar que todas las reservaciones sean realmente de la compañía del usuario
+          const reservacionesDeOtrasCompanias = reservations.filter(r => 
+            r.companyId && r.companyId !== userCompany
+          );
+          
+          if (reservacionesDeOtrasCompanias.length > 0) {
+            console.log(`[ALERTA DE SEGURIDAD] Se intentaron mostrar ${reservacionesDeOtrasCompanias.length} reservaciones de otras compañías!`);
+            
+            // CRÍTICO: Filtrar y devolver SOLO las reservaciones de la compañía del usuario
+            const reservacionesFiltradas = reservations.filter(r => r.companyId === userCompany);
+            console.log(`[CORRECCIÓN] Devolviendo solo ${reservacionesFiltradas.length} reservaciones de compañía ${userCompany}`);
+            
+            // Reemplazar los resultados
+            return res.json(reservacionesFiltradas);
+          }
         }
       }
       
-      // Usar la función actualizada que filtra directamente en la capa de datos
-      const reservations = await storage.getReservations(companyId || undefined);
-      console.log(`Obtenidas ${reservations.length} reservaciones después del filtrado`);
-      
       res.json(reservations);
     } catch (error: any) {
-      console.error("Error fetching reservations:", error);
-      res.status(500).json({ error: "Failed to fetch reservations", details: error.message || "Unknown error" });
+      console.error("[GET /reservations] Error:", error);
+      res.status(500).json({ error: "Error al obtener reservaciones", details: error.message || "Error desconocido" });
     }
   });
 
@@ -1067,35 +1108,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Obtener el usuario autenticado
       const { user } = req as any;
       
-      // Variable para almacenar el companyId para verificar permisos
-      let companyId: string | null = null;
-      
-      // Si hay usuario autenticado y no es admin/superAdmin/developer, aplicamos filtro por compañía
+      console.log(`[GET /reservations/${id}] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
       if (user) {
-        if (user.role === UserRole.OWNER || 
-            user.role === UserRole.CALL_CENTER || 
-            user.role === UserRole.CHECKER ||
-            user.role === UserRole.DRIVER ||
-            user.role === UserRole.TICKET_OFFICE) {
-          
-          companyId = user.companyId || user.company;
-          console.log(`Verificando acceso a reservación ${id} para compañía: ${companyId}`);
-        }
+        console.log(`[GET /reservations/${id}] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
       }
       
-      // Usar la función actualizada que verifica permisos en la capa de datos
+      // SEGURIDAD: Control de acceso a datos por compañía
+      let companyId: string | null = null;
+      
+      // REGLAS DE ACCESO:
+      // 1. superAdmin y admin pueden ver TODAS las reservaciones
+      // 2. El resto de roles solo pueden ver reservaciones de SU COMPAÑÍA
+      if (user) {
+        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+          // Obtener la compañía del usuario
+          companyId = user.companyId || user.company;
+          
+          if (!companyId) {
+            console.log(`[GET /reservations/${id}] ACCESO DENEGADO: Usuario sin compañía asignada`);
+            return res.status(403).json({ 
+              error: "Acceso denegado", 
+              details: "Usuario sin compañía asignada" 
+            });
+          }
+          
+          console.log(`[GET /reservations/${id}] Verificando permisos para compañía: ${companyId}`);
+        } else {
+          console.log(`[GET /reservations/${id}] Usuario con rol ${user.role} puede ver todas las reservaciones`);
+        }
+      } else {
+        console.log(`[GET /reservations/${id}] Acceso no autenticado denegado`);
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Obtener la reservación con filtrado por compañía
       const reservation = await storage.getReservationWithDetails(id, companyId || undefined);
       
       if (!reservation) {
-        // Si la reservación no existe o no pertenece a la compañía del usuario
-        return res.status(404).json({ error: "Reservation not found" });
+        console.log(`[GET /reservations/${id}] No encontrada o acceso denegado`);
+        return res.status(404).json({ error: "Reservación no encontrada" });
       }
       
-      console.log(`Acceso concedido a reservación ${id} para el usuario ${user?.firstName || 'anónimo'}`);
+      console.log(`[GET /reservations/${id}] Acceso concedido`);
       res.json(reservation);
     } catch (error) {
-      console.error("Error fetching reservation:", error);
-      res.status(500).json({ error: "Failed to fetch reservation" });
+      console.error(`[GET /reservations/:id] Error: ${error}`);
+      res.status(500).json({ error: "Error al obtener la reservación" });
     }
   });
 
@@ -1229,29 +1287,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Obtener el usuario autenticado
       const { user } = req as any;
       
-      // Variable para almacenar el companyId para filtrar vehículos
+      console.log(`[GET /vehicles] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
+      if (user) {
+        console.log(`[GET /vehicles] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
+      }
+      
+      // SEGURIDAD: Filtrado de datos por compañía
       let companyId: string | null = null;
       
-      // Si hay usuario autenticado y no es admin/superAdmin/developer, aplicamos filtro por compañía
+      // REGLAS DE ACCESO:
+      // 1. superAdmin y admin pueden ver TODOS los vehículos
+      // 2. El resto de roles solo pueden ver vehículos de SU COMPAÑÍA
       if (user) {
-        if (user.role === UserRole.OWNER || 
-            user.role === UserRole.CALL_CENTER || 
-            user.role === UserRole.CHECKER ||
-            user.role === UserRole.DRIVER ||
-            user.role === UserRole.TICKET_OFFICE) {
-          
+        // Los roles que NO son superAdmin o admin tienen acceso restringido
+        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+          // Obtener la compañía del usuario
           companyId = user.companyId || user.company;
-          console.log(`Filtrando vehículos por compañía: ${companyId} para usuario ${user.firstName} ${user.lastName}`);
+          
+          if (!companyId) {
+            console.log(`[GET /vehicles] ADVERTENCIA: Usuario sin compañía asignada`);
+            // Si el usuario no tiene compañía asignada, devolver lista vacía por seguridad
+            return res.json([]);
+          }
+          
+          console.log(`[GET /vehicles] FILTRO CRÍTICO: Aplicando filtro por compañía "${companyId}"`);
+        } else {
+          console.log(`[GET /vehicles] Usuario con rol ${user.role} puede ver TODOS los vehículos`);
+        }
+      } else {
+        console.log(`[GET /vehicles] Usuario no autenticado`);
+        // Usuarios no autenticados no deberían poder ver vehículos
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Ejecutar la consulta con el filtro de compañía si aplica
+      const vehicles = await storage.getVehicles(companyId || undefined);
+      console.log(`[GET /vehicles] Encontrados ${vehicles.length} vehículos`);
+      
+      // CAPA ADICIONAL DE SEGURIDAD - FILTRO POST-CONSULTA
+      if (user && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+        // Obtener la compañía del usuario
+        const userCompany = user.companyId || user.company || null;
+        
+        if (userCompany) {
+          // Verificar que todos los vehículos sean realmente de la compañía del usuario
+          const vehiculosDeOtrasCompanias = vehicles.filter(v => 
+            v.companyId && v.companyId !== userCompany
+          );
+          
+          if (vehiculosDeOtrasCompanias.length > 0) {
+            console.log(`[ALERTA DE SEGURIDAD] Se intentaron mostrar ${vehiculosDeOtrasCompanias.length} vehículos de otras compañías!`);
+            
+            // CRÍTICO: Filtrar y devolver SOLO los vehículos de la compañía del usuario
+            const vehiculosFiltrados = vehicles.filter(v => v.companyId === userCompany);
+            console.log(`[CORRECCIÓN] Devolviendo solo ${vehiculosFiltrados.length} vehículos de compañía ${userCompany}`);
+            
+            // Reemplazar los resultados
+            return res.json(vehiculosFiltrados);
+          }
         }
       }
       
-      // Usar la función actualizada que filtra directamente en la base de datos
-      const vehicles = await storage.getVehicles(companyId || undefined);
-      
       res.json(vehicles);
     } catch (error) {
-      console.error("Error fetching vehicles:", error);
-      res.status(500).json({ error: "Failed to fetch vehicles" });
+      console.error("[GET /vehicles] Error:", error);
+      res.status(500).json({ error: "Error al obtener vehículos" });
     }
   });
 
