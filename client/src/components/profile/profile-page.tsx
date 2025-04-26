@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { User } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 import { 
   UserIcon,
   Building2,
@@ -20,20 +21,10 @@ interface ProfilePageProps {
 
 export function ProfilePage({ standalone = false }: ProfilePageProps) {
   const [isUploading, setIsUploading] = useState(false);
-
-  // Consulta para obtener información del usuario
-  const { data: user, isLoading } = useQuery<User>({
-    queryKey: ['/api/user'],
-    queryFn: async () => {
-      const res = await apiRequest('GET', '/api/user');
-      if (!res.ok) throw new Error('Error al cargar usuario');
-      return await res.json();
-    }
-  });
+  const { user, isLoading, logoutMutation } = useAuth();
 
   const handleLogout = () => {
-    // Implementar cuando se añada autenticación
-    console.log("Cerrar sesión - funcionalidad pendiente");
+    logoutMutation.mutate();
   };
 
   const getRoleDisplayName = (role: string) => {
