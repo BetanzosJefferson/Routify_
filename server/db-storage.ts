@@ -424,6 +424,25 @@ export class DatabaseStorage implements IStorage {
   }): Promise<TripWithRouteInfo[]> {
     console.time('searchTrips-optimized');
     
+    // CRÍTICO: Para los conductores, hacer una verificación previa directa
+    if (params.driverId) {
+      // Consulta directa para verificar si hay viajes para este conductor en esta fecha
+      let checkQuery = `
+        SELECT id, company_id, driver_id, departure_date, departure_time 
+        FROM trips 
+        WHERE driver_id = ${params.driverId}`;
+      
+      // Añadir filtro de fecha si está presente
+      if (params.date) {
+        checkQuery += ` AND DATE(departure_date) = '${params.date}'`;
+      }
+      
+      console.log(`[searchTrips-PRE-CHECK] CONSULTA DIRECTA PARA CONDUCTOR ${params.driverId}:`, checkQuery);
+      
+      const testResult = await db.execute(sql.raw(checkQuery));
+      console.log(`[searchTrips-PRE-CHECK] RESULTADO:`, testResult.rows);
+    }
+    
     // SOLUCIÓN ACTUALIZADA PARA EL FILTRADO DE COMPAÑÍA QUE RESPETA PRIVILEGIOS DE superAdmin
     console.log(`[searchTrips-v2] Iniciando búsqueda con parámetros:`, params);
     
