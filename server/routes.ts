@@ -15,7 +15,8 @@ import {
   locationData
 } from "@shared/schema";
 
-import { setupAuthRoutes } from "./auth";
+import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
+import { setupAuthentication } from "./auth-session";
 // Utility function to check if two locations are in the same city
 function isSameCity(location1: string, location2: string): boolean {
   // Validar que ambas ubicaciones tienen el formato esperado
@@ -40,8 +41,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // prefix all routes with /api
   const apiRouter = (path: string) => `/api${path}`;
 
-  // Setup authentication routes
-  setupAuthRoutes(app);
+  // Setup authentication routes (both old and new)
+  setupAuthRoutes(app); // Mantenemos la versión anterior por compatibilidad
+  
+  // Setup session-based auth system
+  const { isAuthenticated, hasRole } = setupAuthentication(app);
 
   // Populate location data on server start
   try {
@@ -110,7 +114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post(apiRouter("/routes"), async (req: Request, res: Response) => {
+  app.post(apiRouter("/routes"), isAuthenticated, async (req: Request, res: Response) => {
     try {
       console.log("POST /routes - Request recibido:", req.body);
       
@@ -155,7 +159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put(apiRouter("/routes/:id"), async (req: Request, res: Response) => {
+  app.put(apiRouter("/routes/:id"), isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
       const validationResult = insertRouteSchema.partial().safeParse(req.body);
