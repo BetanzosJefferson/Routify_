@@ -141,6 +141,7 @@ export class DatabaseStorage implements IStorage {
     destination?: string;
     date?: string;
     seats?: number;
+    companyId?: string | null;
   }): Promise<TripWithRouteInfo[]> {
     // Base query for trips
     const tripsQuery = db.select().from(schema.trips);
@@ -164,6 +165,12 @@ export class DatabaseStorage implements IStorage {
           lt(schema.trips.departureDate, nextDay)
         )
       );
+    }
+    
+    // Apply company filter if provided
+    if (params.companyId) {
+      tripsQuery.where(eq(schema.trips.companyId, params.companyId));
+      console.log(`Filtrando viajes por compañía ID: ${params.companyId}`);
     }
     
     // Get trips
