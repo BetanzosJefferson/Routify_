@@ -385,12 +385,36 @@ export function TripList() {
             <div key={trip.id} className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-white">
               <div className="border-b border-gray-100 p-3 flex justify-between items-center">
                 <div className="flex items-center">
-                  <div className="mr-2 p-1.5 bg-gray-100 rounded-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
+                  {/* Logo de la compañía con fallback a icono predeterminado */}
+                  <div className="mr-3 h-8 w-8 flex-shrink-0">
+                    {trip.companyLogo ? (
+                      <img 
+                        src={trip.companyLogo} 
+                        alt={trip.companyName || "Logo de transportista"} 
+                        className="h-full w-full object-cover rounded-full"
+                        onError={(e) => {
+                          // Si falla la carga, mostrar el icono predeterminado
+                          const target = e.currentTarget as HTMLImageElement;
+                          target.style.display = 'none';
+                        }} 
+                      />
+                    ) : (
+                      <div className="h-full w-full bg-gray-100 rounded-full flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    )}
+                    {/* No necesitamos un icono de fallback duplicado ya que tenemos uno alternativo en el bloque anterior */}
                   </div>
-                  <div>
+                  <div className="flex flex-col">
+                    {/* Nombre de la compañía */}
+                    {trip.companyName && (
+                      <span className="text-xs text-gray-600 mb-1">
+                        {trip.companyName}
+                      </span>
+                    )}
+                    {/* Información del viaje */}
                     <div className="text-sm font-medium">
                       {trip.isSubTrip ? (
                         <span>Directo · {trip.availableSeats} asientos disponibles</span>

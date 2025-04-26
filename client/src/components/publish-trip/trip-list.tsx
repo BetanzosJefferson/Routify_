@@ -55,10 +55,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 
 // Define la estructura de un viaje
-type Trip = {
+interface Trip {
   id: number;
   routeId: number;
-  routeName?: string;
   origin?: string;
   destination?: string;
   departureDate: string;
@@ -68,8 +67,10 @@ type Trip = {
   availableSeats: number;
   price: number;
   vehicleType: string;
-  isSubTrip?: boolean;
-  parentTripId?: number;
+  segmentPrices?: any[];
+  isSubTrip: boolean;
+  parentTripId?: number | null;
+  routeName?: string;
   segmentOrigin?: string;
   segmentDestination?: string;
   route?: {
@@ -79,7 +80,11 @@ type Trip = {
     destination: string;
     stops: string[];
   };
-};
+  // Propiedades adicionales para información de la compañía
+  companyId?: string;
+  companyName?: string;
+  companyLogo?: string;
+}
 
 type TripListProps = {
   onEditTrip: (tripId: number) => void;
@@ -201,45 +206,15 @@ export default function TripList({ onEditTrip }: TripListProps) {
         tripDate.getMonth() === dateFilter.getMonth() &&
         tripDate.getDate() === dateFilter.getDate();
     }
-
+    
     // Filtrar por ruta
     if (routeFilter !== "all") {
-      matchesRoute = trip.routeId === parseInt(routeFilter);
+      const routeId = parseInt(routeFilter, 10);
+      matchesRoute = trip.routeId === routeId;
     }
 
     return matchesSearch && matchesDate && matchesRoute;
   });
-
-  const formatDate = (dateString: string) => {
-    // Para evitar desplazamiento de día debido a la zona horaria, creamos la fecha
-    // a partir de los componentes individuales (año, mes, día)
-    const date = new Date(dateString);
-    const day = date.getUTCDate();
-    const month = date.getUTCMonth();
-    const year = date.getUTCFullYear();
-    
-    // Crear una nueva fecha usando los componentes extraídos (sin hora)
-    const localDate = new Date(year, month, day, 12, 0, 0);
-    
-    return format(localDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: es });
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN',
-      minimumFractionDigits: 2
-    }).format(amount);
-  };
-
-  const getVehicleTypeLabel = (type: string) => {
-    switch (type) {
-      case "standard": return "Estándar";
-      case "premium": return "Premium";
-      case "luxury": return "Lujo";
-      default: return type;
-    }
-  };
 
   // Agrupar viajes por fecha
   const groupTripsByDate = () => {
@@ -268,7 +243,6 @@ export default function TripList({ onEditTrip }: TripListProps) {
   // Formatear fecha para encabezado
   const formatDateHeader = (dateString: string) => {
     // Creamos la fecha usando los componentes individuales para evitar problemas de zona horaria
-    const date = new Date(dateString);
     const [year, month, day] = dateString.split('-').map(num => parseInt(num));
     const localDate = new Date(year, month - 1, day, 12, 0, 0);
     
@@ -338,7 +312,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
                     {dateFilter ? (
                       format(dateFilter, "dd/MM/yyyy")
                     ) : (
-                      "Filtrar por fecha"
+                      <span>Seleccionar fecha</span>
                     )}
                   </Button>
                 </PopoverTrigger>
@@ -354,12 +328,12 @@ export default function TripList({ onEditTrip }: TripListProps) {
             </div>
 
             <div>
-              <Select 
-                value={routeFilter} 
+              <Select
+                value={routeFilter}
                 onValueChange={setRouteFilter}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Filtrar por ruta" />
+                  <SelectValue placeholder="Todas las rutas" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas las rutas</SelectItem>
@@ -372,8 +346,12 @@ export default function TripList({ onEditTrip }: TripListProps) {
               </Select>
             </div>
 
-            <div className="flex items-center">
-              <Button variant="ghost" onClick={clearFilters} className="ml-auto">
+            <div>
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={clearFilters}
+              >
                 Limpiar filtros
               </Button>
             </div>
@@ -410,23 +388,46 @@ export default function TripList({ onEditTrip }: TripListProps) {
                       <div className="flex flex-col lg:flex-row">
                         <div className="p-4 lg:p-6 flex-1">
                           <div className="flex justify-between items-start">
-                            <div>
-                              <h4 className="text-base font-medium mb-1">
-                                {trip.route?.name || trip.routeName || `Ruta #${trip.routeId}`}
-                              </h4>
-                              <div className="flex items-center text-sm text-muted-foreground">
-                                <CalendarIcon className="h-4 w-4 mr-1" />
-                                <span>
-                                {(() => {
-                                  const date = new Date(trip.departureDate);
-                                  const day = date.getUTCDate();
-                                  const month = date.getUTCMonth() + 1;
-                                  const year = date.getUTCFullYear();
-                                  return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
-                                })()}
-                                </span>
-                                <ClockIcon className="h-4 w-4 ml-4 mr-1" />
-                                <span>{formatTime(trip.departureTime)} - {formatTime(trip.arrivalTime)}</span>
+                            <div className="flex">
+                              {/* Logo de la compañía (solo para TypeScript) */}
+                              {trip.companyLogo ? (
+                                <div className="mr-3 h-12 w-12 flex-shrink-0">
+                                  <img 
+                                    src={trip.companyLogo} 
+                                    alt={trip.companyName || "Logo de transportista"} 
+                                    className="h-full w-full object-cover rounded-full border border-gray-100"
+                                    onError={(e) => {
+                                      // Si falla la carga, ocultar la imagen
+                                      const target = e.currentTarget as HTMLImageElement;
+                                      target.style.display = 'none';
+                                    }} 
+                                  />
+                                </div>
+                              ) : null}
+                              
+                              <div>
+                                <h4 className="text-base font-medium mb-1">
+                                  {trip.route?.name || trip.routeName || `Ruta #${trip.routeId}`}
+                                </h4>
+                                {trip.companyName && (
+                                  <div className="text-xs text-gray-500 mb-1">
+                                    {trip.companyName}
+                                  </div>
+                                )}
+                                <div className="flex items-center text-sm text-muted-foreground">
+                                  <CalendarIcon className="h-4 w-4 mr-1" />
+                                  <span>
+                                    {(() => {
+                                      const date = new Date(trip.departureDate);
+                                      const day = date.getUTCDate();
+                                      const month = date.getUTCMonth() + 1;
+                                      const year = date.getUTCFullYear();
+                                      return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+                                    })()}
+                                  </span>
+                                  <ClockIcon className="h-4 w-4 ml-4 mr-1" />
+                                  <span>{formatTime(trip.departureTime)} - {formatTime(trip.arrivalTime)}</span>
+                                </div>
                               </div>
                             </div>
                             <Badge className="ml-auto" variant="outline">Programado</Badge>
