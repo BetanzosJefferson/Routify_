@@ -18,8 +18,37 @@ export default function ConductorPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("viajes");
 
+  // Definimos la estructura de un viaje para TypeScript
+  interface Trip {
+    id: number;
+    routeId: number;
+    departureDate: string;
+    departureTime: string;
+    arrivalTime: string;
+    capacity: number;
+    availableSeats: number;
+    price: number;
+    vehicleType: string;
+    vehicleId: number | null;
+    driverId: number | null;
+    status?: string;
+    route: {
+      id: number;
+      name: string;
+      origin: string;
+      destination: string;
+    };
+    assignedVehicle?: {
+      id: number;
+      brand: string;
+      model: string;
+      plates: string;
+      economicNumber: string;
+    };
+  }
+
   // Consulta para obtener los viajes asignados al conductor
-  const { data: assignedTrips, isLoading: isLoadingTrips } = useQuery({
+  const { data: assignedTrips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
     queryKey: ["/api/trips"],
     enabled: !!user && user.role === "chofer",
   });
