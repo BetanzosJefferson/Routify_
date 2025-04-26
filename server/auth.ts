@@ -21,7 +21,7 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
-export function setupAuthRoutes(app: Express) {
+export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
   // Crear un usuario SuperAdmin inicial si no existe ninguno
   async function createInitialSuperAdmin() {
     const superAdminExists = await db
@@ -79,15 +79,11 @@ export function setupAuthRoutes(app: Express) {
   });
 
   // Endpoint para obtener usuarios filtrados por rol y/o compañía
-  app.get("/api/users", async (req: Request, res: Response) => {
+  app.get("/api/users", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { user } = req as any; // Obtener el usuario autenticado desde la sesión
       
-      // Si no hay usuario autenticado, devolver error
-      if (!user) {
-        return res.status(401).json({ message: "No autenticado" });
-      }
-      
+      // El middleware isAuthenticated ya garantiza que el usuario está autenticado
       let query = db.select().from(users);
       
       // Filtrar según el rol del usuario autenticado
@@ -148,7 +144,7 @@ export function setupAuthRoutes(app: Express) {
   });
 
   // Endpoint para crear una invitación
-  app.post("/api/invitations", async (req: Request, res: Response) => {
+  app.post("/api/invitations", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { role, email } = req.body;
       const { user } = req as any; // Obtener el usuario autenticado
@@ -157,10 +153,7 @@ export function setupAuthRoutes(app: Express) {
         return res.status(400).json({ message: "El rol es requerido" });
       }
 
-      // Verificar que el usuario está autenticado
-      if (!user) {
-        return res.status(401).json({ message: "No autenticado" });
-      }
+      // El middleware isAuthenticated ya garantiza que el usuario está autenticado
 
       // Verificar permisos según el rol
       // Solo los SUPER_ADMIN pueden crear cualquier tipo de usuario
@@ -195,15 +188,11 @@ export function setupAuthRoutes(app: Express) {
   });
 
   // Endpoint para obtener invitaciones filtradas por rol
-  app.get("/api/invitations", async (req: Request, res: Response) => {
+  app.get("/api/invitations", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { user } = req as any; // Obtener el usuario autenticado desde la sesión
       
-      // Si no hay usuario autenticado, devolver error
-      if (!user) {
-        return res.status(401).json({ message: "No autenticado" });
-      }
-      
+      // El middleware isAuthenticated ya garantiza que el usuario está autenticado
       let query = db.select().from(invitations);
       
       // Filtrar según el rol del usuario autenticado

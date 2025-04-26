@@ -41,11 +41,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // prefix all routes with /api
   const apiRouter = (path: string) => `/api${path}`;
 
-  // Setup authentication routes (both old and new)
-  setupAuthRoutes(app); // Mantenemos la versión anterior por compatibilidad
-  
   // Setup session-based auth system
   const { isAuthenticated, hasRole } = setupAuthentication(app);
+  
+  // Setup authentication routes (both old and new)
+  // Pasamos el middleware de autenticación al setup de rutas de autenticación
+  setupAuthRoutes(app, isAuthenticated);
 
   // Populate location data on server start
   try {
