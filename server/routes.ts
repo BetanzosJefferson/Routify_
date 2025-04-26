@@ -257,12 +257,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Variable para almacenar el companyId para filtrar viajes
       let companyId: string | null = null;
       
-      // Si hay usuario autenticado y no es superAdmin, aplicamos filtro por compañía
+      // Si hay usuario autenticado, aplicamos filtro por compañía (excepto superAdmin y taquilla)
       if (user) {
-        if (user.role !== 'superAdmin' && user.role !== 'developer') {
-          // Usar companyId del usuario si existe - simplificamos para evitar problemas de formato
+        // El rol debe ser exactamente igual a uno de los valores de UserRole
+        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
+          // Usar companyId del usuario si existe
           companyId = user.companyId || user.company || null;
           console.log(`Filtrando viajes por compañía: ${companyId} para usuario ${user.firstName} ${user.lastName}`);
+          console.log(`Rol del usuario: ${user.role}`);
+        } else {
+          console.log(`Usuario ${user.firstName} con rol ${user.role} - sin filtro de compañía`);
         }
       }
       
@@ -317,9 +321,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Variable para almacenar el companyId para verificar permisos
       let companyId: string | null = null;
       
-      // Si hay usuario autenticado y no es superAdmin/developer, verificamos permiso
+      // Si hay usuario autenticado y no es superAdmin/taquillero, verificamos permiso
       if (user) {
-        if (user.role !== 'superAdmin' && user.role !== 'developer') {
+        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
           // Usar companyId del usuario si existe (simplificado)
           companyId = user.companyId || user.company || null;
           
