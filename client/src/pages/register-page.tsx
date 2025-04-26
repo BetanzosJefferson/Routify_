@@ -13,20 +13,29 @@ import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // Esquema de validación para el formulario de registro
-const registerFormSchema = z
-  .object({
-    firstName: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-    lastName: z.string().min(2, "Los apellidos deben tener al menos 2 caracteres"),
-    email: z.string().email("Por favor ingrese un correo electrónico válido"),
-    password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
-    confirmPassword: z.string(),
-    company: z.string().optional(),
-    profilePicture: z.string().optional(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Las contraseñas no coinciden",
-    path: ["confirmPassword"],
-  });
+// Esquema de validación para el formulario de registro - lo hacemos dinámico
+// porque el campo company es obligatorio solo para el rol de Dueño
+const createRegisterFormSchema = (role: string | null) => {
+  return z
+    .object({
+      firstName: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+      lastName: z.string().min(2, "Los apellidos deben tener al menos 2 caracteres"),
+      email: z.string().email("Por favor ingrese un correo electrónico válido"),
+      password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+      confirmPassword: z.string(),
+      company: role === "dueño" 
+        ? z.string().min(1, "El nombre de la empresa es obligatorio para el rol de Dueño")
+        : z.string().optional(),
+      profilePicture: z.string().optional(),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: "Las contraseñas no coinciden",
+      path: ["confirmPassword"],
+    });
+};
+
+// Esquema inicial (se actualizará cuando se verifique el rol)
+const registerFormSchema = createRegisterFormSchema(null);
 
 type RegisterFormValues = z.infer<typeof registerFormSchema>;
 
@@ -69,6 +78,13 @@ export default function RegisterPage() {
         if (response.ok && data.valid) {
           setInvitationStatus("valid");
           setInvitationRole(data.role);
+          
+          // Actualizar el resolver del formulario con el esquema basado en el rol
+          form.clearErrors();
+          const newSchema = createRegisterFormSchema(data.role);
+          form.setError = form.setError.bind(form);
+          form.resolver = zodResolver(newSchema);
+          
           if (data.email) {
             setInvitationEmail(data.email);
             form.setValue("email", data.email);
@@ -246,6 +262,8 @@ export default function RegisterPage() {
                   ? "Chófer"
                   : invitationRole === "ticketOffice"
                   ? "Taquilla"
+                  : invitationRole === "dueño"
+                  ? "Dueño"
                   : "Usuario"}
               </span>
             </CardDescription>
@@ -328,6 +346,41 @@ export default function RegisterPage() {
                     </FormItem>
                   )}
                 />
+
+                {invitationRole === "dueño" && (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="company"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nombre de Empresa</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Transportes S.A. de C.V." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="profilePicture"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Logo de la Empresa (URL)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="https://ejemplo.com/logo.png" 
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
 
                 <Button type="submit" className="w-full" disabled={mutation.isPending}>
                   {mutation.isPending ? (
