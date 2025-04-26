@@ -1,5 +1,6 @@
 import { db } from "../server/db";
 import { sql } from "drizzle-orm";
+import { addVehicleDriverToTrips } from "./add_vehicle_driver_to_trips";
 
 // Función principal que ejecuta todas las migraciones en secuencia
 async function runMigrations() {
@@ -14,6 +15,9 @@ async function runMigrations() {
       ADD COLUMN IF NOT EXISTS company_id TEXT DEFAULT ''
     `);
     console.log("Columnas agregadas exitosamente.");
+    
+    // Añadir columnas vehicleId y driverId a la tabla trips
+    await addVehicleDriverToTrips();
 
     console.log("Migraciones completadas con éxito.");
   } catch (error) {
