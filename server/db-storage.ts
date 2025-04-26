@@ -486,8 +486,19 @@ export class DatabaseStorage implements IStorage {
     if (params.date) {
       console.log(`[searchTrips-v2] Filtro de fecha: ${params.date}`);
       
+      // Sanitizar y estandarizar el formato de fecha
+      let fechaFormateada = params.date;
+      
+      // Asegurarse de que la fecha esté en formato YYYY-MM-DD
+      if (fechaFormateada.includes('T')) {
+        fechaFormateada = fechaFormateada.split('T')[0];
+      }
+      
+      console.log(`[searchTrips-v2] Fecha sanitizada: ${fechaFormateada}`);
+      
       // Filtrado directo por SQL para máxima seguridad en el formato de fecha
-      condiciones.push(sql`DATE(departure_date) = ${params.date}`);
+      // Usar TO_CHAR para asegurar que se compara correctamente con el formato de fecha en la BD
+      condiciones.push(sql`TO_CHAR(departure_date, 'YYYY-MM-DD') = ${fechaFormateada}`);
     }
     
     // Aplicar filtro de conductor (driverId)
