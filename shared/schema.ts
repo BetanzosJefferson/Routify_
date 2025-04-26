@@ -46,7 +46,9 @@ export const trips = pgTable("trips", {
   isSubTrip: boolean("is_sub_trip").default(false),
   parentTripId: integer("parent_trip_id"),
   segmentOrigin: text("segment_origin"),
-  segmentDestination: text("segment_destination")
+  segmentDestination: text("segment_destination"),
+  // Nuevo campo para aislamiento de datos por compañía
+  companyId: text("company_id")
 });
 
 export const insertTripSchema = createInsertSchema(trips);
@@ -68,6 +70,7 @@ export interface TripWithTimes {
   parentTripId: number | null;
   segmentOrigin?: string;
   segmentDestination?: string;
+  companyId?: string | null;
 }
 export type Trip = typeof trips.$inferSelect;
 

@@ -284,6 +284,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Obtener los datos del usuario autenticado
+      const { user } = req as any;
+      
+      // Obtener companyId del usuario (preferimos companyId pero usamos company como respaldo)
+      let companyId = null;
+      if (user) {
+        companyId = user.companyId || user.company;
+        console.log(`Asignando viaje a la compañía: ${companyId} del usuario ${user.firstName} ${user.lastName}`);
+      }
+      
       const tripData = validationResult.data;
       
       // Calculate departure/arrival time from stopTimes
@@ -360,7 +370,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           vehicleType: tripData.vehicleType,
           segmentPrices: tripData.segmentPrices,
           isSubTrip: false,
-          parentTripId: null
+          parentTripId: null,
+          companyId: companyId // Asignar la compañía del usuario al viaje
         };
         
         const mainTrip = await storage.createTrip(mainTripToCreate);
@@ -444,7 +455,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             isSubTrip: true,
             parentTripId: mainTrip.id,
             segmentOrigin: segment.origin,
-            segmentDestination: segment.destination
+            segmentDestination: segment.destination,
+            companyId: companyId // Asignar la misma compañía del usuario a todos los sub-viajes
           };
           
           const subTrip = await storage.createTrip(subTripToCreate);
