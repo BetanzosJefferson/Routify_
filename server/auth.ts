@@ -82,14 +82,32 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
   app.get("/api/users", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { user } = req as any; // Obtener el usuario autenticado desde la sesión
+      const { role } = req.query; // Obtener el filtro de rol de la consulta (opcional)
+      
+      console.log(`[GET /api/users] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
+      if (role) {
+        console.log(`[GET /api/users] Filtro de rol solicitado: ${role}`);
+      }
       
       // El middleware isAuthenticated ya garantiza que el usuario está autenticado
       let query = db.select().from(users);
       
-      // Filtrar según el rol del usuario autenticado
+      // Aplicar filtro de rol si está presente en la consulta
+      if (role) {
+        // Si se solicita un rol específico, aplicar ese filtro
+        query = query.where(eq(users.role, role as string));
+      }
+      
+      // Filtrar ADEMÁS según el rol del usuario autenticado
       if (user.role === UserRole.OWNER) {
-        // Los "Dueños" solo ven a los usuarios que ellos han invitado
-        query = query.where(eq(users.invitedById, user.id));
+        // Los "Dueños" solo ven a los usuarios que ellos han invitado o de su compañía
+        if (user.companyId) {
+          // Filtrar por usuarios de la misma compañía
+          query = query.where(eq(users.companyId, user.companyId));
+        } else {
+          // Si no tiene companyId, usar el filtro por invitados
+          query = query.where(eq(users.invitedById, user.id));
+        }
       } else if (user.role === UserRole.ADMIN) {
         // Los administradores ven a todos los usuarios excepto los superadmin
         query = query.where(ne(users.role, UserRole.SUPER_ADMIN));
@@ -97,9 +115,11 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
         // Otros roles solo se ven a sí mismos
         query = query.where(eq(users.id, user.id));
       }
-      // Los superadmin ven a todos los usuarios
+      // Los superadmin ven a todos los usuarios (aunque se puede filtrar por rol)
       
       const filteredUsers = await query;
+      console.log(`[GET /api/users] Encontrados ${filteredUsers.length} usuarios`);
+      
       res.json(filteredUsers);
     } catch (error) {
       console.error("Error al obtener usuarios:", error);

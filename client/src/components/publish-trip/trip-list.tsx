@@ -14,7 +14,9 @@ import {
   CheckCircleIcon,
   UsersIcon,
   CarIcon, 
-  UserIcon
+  UserIcon,
+  CheckIcon,
+  Loader2Icon
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -53,6 +55,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
+import { UserRole } from "@shared/schema";
 
 // Define la estructura de un viaje
 interface Trip {
@@ -99,6 +102,10 @@ export default function TripList({ onEditTrip }: TripListProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [tripToDelete, setTripToDelete] = useState<number | null>(null);
   const [routeFilter, setRouteFilter] = useState<string>("all");
+  const [assignVehicleDialogOpen, setAssignVehicleDialogOpen] = useState<number | null>(null);
+  const [assignDriverDialogOpen, setAssignDriverDialogOpen] = useState<number | null>(null);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
 
   // Consulta para obtener todos los viajes
   const { data: trips = [], isLoading, refetch } = useQuery({
@@ -114,6 +121,24 @@ export default function TripList({ onEditTrip }: TripListProps) {
     queryKey: ['/api/routes'],
     queryFn: async () => {
       const res = await apiRequest('GET', '/api/routes');
+      return await res.json();
+    }
+  });
+  
+  // Consulta para obtener todos los vehículos
+  const { data: vehicles = [], isLoading: isLoadingVehicles } = useQuery({
+    queryKey: ['/api/vehicles'],
+    queryFn: async () => {
+      const res = await apiRequest('GET', '/api/vehicles');
+      return await res.json();
+    }
+  });
+  
+  // Consulta para obtener los usuarios con rol "chofer"
+  const { data: drivers = [], isLoading: isLoadingDrivers } = useQuery({
+    queryKey: ['/api/users', 'chofer'],
+    queryFn: async () => {
+      const res = await apiRequest('GET', '/api/users?role=chofer');
       return await res.json();
     }
   });
@@ -161,6 +186,72 @@ export default function TripList({ onEditTrip }: TripListProps) {
         variant: "destructive",
       });
       console.error("Error al eliminar viaje:", error);
+    }
+  });
+  
+  // Mutación para asignar vehículo a un viaje
+  const assignVehicleMutation = useMutation({
+    mutationFn: async ({ tripId, vehicleId }: { tripId: number, vehicleId: number }) => {
+      const res = await apiRequest('PATCH', `/api/trips/${tripId}`, {
+        vehicleId
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || "No se pudo asignar el vehículo al viaje");
+      }
+      
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/trips'] });
+      toast({
+        title: "Vehículo asignado",
+        description: "El vehículo ha sido asignado al viaje correctamente",
+        variant: "default",
+      });
+      setAssignVehicleDialogOpen(null);
+      setSelectedVehicleId(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al asignar vehículo",
+        description: error.message || "Hubo un problema con la asignación del vehículo",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Mutación para asignar conductor a un viaje
+  const assignDriverMutation = useMutation({
+    mutationFn: async ({ tripId, driverId }: { tripId: number, driverId: number }) => {
+      const res = await apiRequest('PATCH', `/api/trips/${tripId}`, {
+        driverId
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || "No se pudo asignar el conductor al viaje");
+      }
+      
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/trips'] });
+      toast({
+        title: "Conductor asignado",
+        description: "El conductor ha sido asignado al viaje correctamente",
+        variant: "default",
+      });
+      setAssignDriverDialogOpen(null);
+      setSelectedDriverId(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al asignar conductor",
+        description: error.message || "Hubo un problema con la asignación del conductor",
+        variant: "destructive",
+      });
     }
   });
 
