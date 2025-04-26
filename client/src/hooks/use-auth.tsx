@@ -36,7 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: async ({ queryKey }) => {
       try {
         const path = queryKey[0] as string;
-        const response = await fetch(path);
+        const response = await fetch(path, {
+          credentials: "include", // Importante: incluir cookies en la petición
+        });
         
         if (!response.ok) {
           if (response.status === 401) {
@@ -55,7 +57,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/auth/login", credentials);
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(credentials),
+        credentials: "include",
+      });
+      
+      if (!res.ok) {
+        throw new Error("Credenciales inválidas");
+      }
+      
       return await res.json();
     },
     onSuccess: (user: User) => {
@@ -76,7 +90,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const registerMutation = useMutation({
     mutationFn: async (userData: InsertUser) => {
-      const res = await apiRequest("POST", "/api/register", userData);
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userData),
+        credentials: "include",
+      });
+      
+      if (!res.ok) {
+        throw new Error("Error en el registro");
+      }
+      
       return await res.json();
     },
     onSuccess: (user: User) => {
@@ -97,7 +123,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/auth/logout");
+      const res = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      
+      if (!res.ok) {
+        throw new Error("Error al cerrar sesión");
+      }
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/auth/user"], null);
