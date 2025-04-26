@@ -20,7 +20,7 @@ import {
 
 export interface IStorage {
   // Route methods
-  getRoutes(): Promise<Route[]>;
+  getRoutes(companyId?: string): Promise<Route[]>;
   getRoute(id: number): Promise<Route | undefined>;
   createRoute(route: InsertRoute): Promise<Route>;
   updateRoute(id: number, route: Partial<Route>): Promise<Route | undefined>;
@@ -39,11 +39,12 @@ export interface IStorage {
     destination?: string;
     date?: string;
     seats?: number;
+    companyId?: string | null;
   }): Promise<TripWithRouteInfo[]>;
   updateRelatedTripsAvailability(tripId: number, seatChange: number): Promise<void>;
   
   // Reservation methods
-  getReservations(): Promise<ReservationWithDetails[]>;
+  getReservations(companyId?: string): Promise<ReservationWithDetails[]>;
   getReservation(id: number): Promise<Reservation | undefined>;
   getReservationWithDetails(id: number): Promise<ReservationWithDetails | undefined>;
   createReservation(reservation: InsertReservation): Promise<Reservation>;
@@ -56,14 +57,14 @@ export interface IStorage {
   deletePassengersByReservation(reservationId: number): Promise<boolean>;
   
   // Vehicle methods
-  getVehicles(): Promise<Vehicle[]>;
+  getVehicles(companyId?: string): Promise<Vehicle[]>;
   getVehicle(id: number): Promise<Vehicle | undefined>;
   createVehicle(vehicle: InsertVehicle): Promise<Vehicle>;
   updateVehicle(id: number, vehicle: Partial<Vehicle>): Promise<Vehicle | undefined>;
   deleteVehicle(id: number): Promise<boolean>;
   
   // Commission methods
-  getCommissions(): Promise<Commission[]>;
+  getCommissions(companyId?: string): Promise<Commission[]>;
   getCommission(id: number): Promise<Commission | undefined>;
   createCommission(commission: InsertCommission): Promise<Commission>;
   updateCommission(id: number, commission: Partial<Commission>): Promise<Commission | undefined>;
