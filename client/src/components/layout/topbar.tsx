@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import { 
   BellIcon, 
   UserIcon, 
@@ -31,10 +32,10 @@ export function Topbar() {
   const [, setLocation] = useLocation();
   const [profileOpen, setProfileOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
+  const { logoutMutation, user } = useAuth();
 
   const handleLogout = () => {
-    // Implementar lógica de logout aquí
-    setLocation("/auth");
+    logoutMutation.mutate();
   };
 
   return (
