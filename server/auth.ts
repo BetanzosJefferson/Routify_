@@ -106,6 +106,55 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
       res.status(500).json({ message: "Error al obtener usuarios" });
     }
   });
+  
+  // Endpoint para eliminar un usuario - SOLO SUPERADMIN
+  app.delete("/api/users/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any; // Obtener el usuario autenticado
+      const userId = parseInt(req.params.id);
+      
+      // Verificar que el usuario tenga permisos (solo superadmin)
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        return res.status(403).json({ 
+          message: "No tienes permisos para eliminar usuarios"
+        });
+      }
+      
+      // Verificar que no se esté eliminando a sí mismo
+      if (user.id === userId) {
+        return res.status(400).json({ 
+          message: "No puedes eliminar tu propia cuenta" 
+        });
+      }
+      
+      // Verificar que el usuario a eliminar exista
+      const userToDelete = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+        
+      if (userToDelete.length === 0) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+      
+      // Eliminar el usuario
+      await db
+        .delete(users)
+        .where(eq(users.id, userId));
+      
+      console.log(`Usuario ${userId} eliminado por ${user.email} (${user.role})`);
+      
+      res.status(200).json({ 
+        message: "Usuario eliminado correctamente"
+      });
+    } catch (error) {
+      console.error("Error al eliminar usuario:", error);
+      res.status(500).json({ 
+        message: "Error al eliminar usuario"
+      });
+    }
+  });
 
   // Endpoint para iniciar sesión
   app.post("/api/login", async (req: Request, res: Response) => {
