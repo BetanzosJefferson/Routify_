@@ -621,7 +621,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Vehicle methods
-  async getVehicles(): Promise<Vehicle[]> {
+  async getVehicles(companyId?: string): Promise<Vehicle[]> {
+    // Si se proporciona un companyId, filtrar por compañía
+    if (companyId) {
+      console.log(`DB Storage: Obteniendo vehículos filtrados por compañía ${companyId}`);
+      return await db
+        .select()
+        .from(schema.vehicles)
+        .where(eq(schema.vehicles.companyId, companyId));
+    }
+    
+    // Si no hay filtro, devolver todos los vehículos
+    console.log('DB Storage: Obteniendo todos los vehículos (sin filtro de compañía)');
     return await db.select().from(schema.vehicles);
   }
   
