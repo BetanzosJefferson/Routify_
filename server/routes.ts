@@ -76,24 +76,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let companyId = null;
       
       if (user) {
-        companyId = user.companyId || user.company;
-        console.log(`DB Storage: Consultando rutas para la compañía: ${companyId}`);
+        // Si no es admin/superAdmin/developer, aplicamos filtro por compañía
+        if (user.role !== UserRole.SUPER_ADMIN && 
+            user.role !== UserRole.ADMIN && 
+            user.role !== UserRole.DEVELOPER) {
+          companyId = user.companyId || user.company;
+          console.log(`DB Storage: Consultando rutas para la compañía: ${companyId}`);
+        } else {
+          console.log(`Usuario con rol ${user.role}: mostrando todas las rutas`);
+        }
       }
       
-      let routes = await storage.getRoutes();
-      
-      // Filtrar rutas por compañía si el usuario tiene una compañía asignada
-      if (companyId && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN && user.role !== UserRole.DEVELOPER) {
-        routes = routes.filter(route => {
-          // Solo mostrar rutas asociadas a la compañía del usuario
-          return route.companyId === companyId;
-        });
-        console.log(`DB Storage: Rutas filtradas por compañía ${companyId}: ${routes.length}`);
-      } else if (user.role === UserRole.SUPER_ADMIN) {
-        console.log("Usuario superAdmin: mostrando todas las rutas");
-      } else {
-        console.log(`Usuario sin compañía asignada o con rol especial: ${user.role}`);
-      }
+      // Usar la función actualizada que filtra directamente en la base de datos
+      const routes = await storage.getRoutes(companyId || undefined);
+      console.log(`Rutas encontradas: ${routes.length}`);
       
       res.json(routes);
     } catch (error) {
@@ -1202,14 +1198,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Obtener todos los vehículos
-      let vehicles = await storage.getVehicles();
-      
-      // Si es necesario filtrar por compañía
-      if (companyId) {
-        vehicles = vehicles.filter(vehicle => vehicle.companyId === companyId);
-        console.log(`Filtrados ${vehicles.length} vehículos para la compañía ${companyId}`);
-      }
+      // Usar la función actualizada que filtra directamente en la base de datos
+      const vehicles = await storage.getVehicles(companyId || undefined);
       
       res.json(vehicles);
     } catch (error) {

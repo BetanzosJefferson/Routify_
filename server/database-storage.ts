@@ -22,8 +22,25 @@ import { db } from "./db";
 import { eq, and, gte, lt, like, or, sql } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
-  async getRoutes(): Promise<Route[]> {
-    return await db.select().from(schema.routes);
+  async getRoutes(companyId?: string): Promise<Route[]> {
+    console.log("DB Storage: Consultando rutas");
+    
+    // Si se proporciona un companyId, filtrar por compañía
+    if (companyId) {
+      console.log(`DB Storage: Filtrando rutas por compañía ${companyId}`);
+      const routes = await db
+        .select()
+        .from(schema.routes)
+        .where(eq(schema.routes.companyId, companyId));
+      
+      console.log(`DB Storage: Rutas filtradas encontradas: ${routes.length}`);
+      return routes;
+    }
+    
+    // Si no hay filtro, obtener todas las rutas
+    const routes = await db.select().from(schema.routes);
+    console.log(`DB Storage: Todas las rutas encontradas: ${routes.length}`);
+    return routes;
   }
   
   async getRoute(id: number): Promise<Route | undefined> {
