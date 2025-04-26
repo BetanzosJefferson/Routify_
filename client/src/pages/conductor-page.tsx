@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { BoardingList } from "@/components/boarding-list/boarding-list";
 import { Button } from "@/components/ui/button";
@@ -10,51 +11,62 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Sidebar } from "@/components/layout/sidebar";
+import { MobileNav } from "@/components/layout/mobile-nav";
+import { Topbar } from "@/components/layout/topbar";
+import { TabType } from "@/hooks/use-active-tab";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, UserCircle, CalendarDays, MapPin, BusFront } from "lucide-react";
 
+// Definimos la estructura de un viaje para TypeScript
+interface Trip {
+  id: number;
+  routeId: number;
+  departureDate: string;
+  departureTime: string;
+  arrivalTime: string;
+  capacity: number;
+  availableSeats: number;
+  price: number;
+  vehicleType: string;
+  vehicleId: number | null;
+  driverId: number | null;
+  status?: string;
+  route: {
+    id: number;
+    name: string;
+    origin: string;
+    destination: string;
+  };
+  assignedVehicle?: {
+    id: number;
+    brand: string;
+    model: string;
+    plates: string;
+    economicNumber: string;
+  };
+}
+
 export default function ConductorPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("viajes");
-
-  // Definimos la estructura de un viaje para TypeScript
-  interface Trip {
-    id: number;
-    routeId: number;
-    departureDate: string;
-    departureTime: string;
-    arrivalTime: string;
-    capacity: number;
-    availableSeats: number;
-    price: number;
-    vehicleType: string;
-    vehicleId: number | null;
-    driverId: number | null;
-    status?: string;
-    route: {
-      id: number;
-      name: string;
-      origin: string;
-      destination: string;
-    };
-    assignedVehicle?: {
-      id: number;
-      brand: string;
-      model: string;
-      plates: string;
-      economicNumber: string;
-    };
-  }
+  const [, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState<TabType>("boarding-list");
+  const [localContentTab, setLocalContentTab] = useState("viajes");
 
   // Consulta para obtener los viajes asignados al conductor
   const { data: assignedTrips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
     queryKey: ["/api/trips", { driverId: user?.id }],
     enabled: !!user && user.role === "chofer",
   });
+  
+  // Tab change handler for child components
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+  };
 
-  return (
-    <div className="container mx-auto py-6 px-4 md:px-6">
+  const DriverContent = () => (
+    <div className="py-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Portal del Conductor</h1>
@@ -62,24 +74,12 @@ export default function ConductorPage() {
             Gestiona tus viajes asignados y listas de abordaje
           </p>
         </div>
-        
-        <div className="flex items-center gap-2">
-          <UserCircle className="h-10 w-10 text-primary" />
-          <div>
-            <div className="font-medium">
-              {user?.firstName} {user?.lastName}
-            </div>
-            <Badge variant="outline" className="capitalize">
-              {user?.role || "conductor"}
-            </Badge>
-          </div>
-        </div>
       </div>
 
       <Tabs 
         defaultValue="viajes" 
-        value={activeTab}
-        onValueChange={setActiveTab}
+        value={localContentTab}
+        onValueChange={setLocalContentTab}
         className="space-y-4"
       >
         <TabsList className="grid w-full md:w-auto grid-cols-1 md:grid-cols-2">
@@ -155,6 +155,23 @@ export default function ConductorPage() {
           <BoardingList />
         </TabsContent>
       </Tabs>
+    </div>
+  );
+
+  return (
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar activeTab={activeTab} onTabChange={handleTabChange} />
+      
+      <div className="flex flex-col flex-1 w-0 overflow-hidden">
+        <MobileNav activeTab={activeTab} onTabChange={handleTabChange} />
+        <Topbar />
+        
+        <div className="flex-1 overflow-auto focus:outline-none">
+          <main className="relative z-0 flex-1 overflow-y-auto py-6 px-4 sm:px-6 lg:px-8">
+            <DriverContent />
+          </main>
+        </div>
+      </div>
     </div>
   );
 }
