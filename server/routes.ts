@@ -294,10 +294,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Filtrar viajes donde el chofer está asignado como conductor
         searchParams.driverId = user.id;
         
-        // Ejecutar búsqueda con filtro de conductor
+        // Si no se especificó una fecha en la consulta, usar la fecha actual por defecto
+        if (!searchParams.date) {
+          const today = new Date();
+          const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+          searchParams.date = formattedDate;
+          console.log(`[GET /trips] No se proporcionó fecha. Usando fecha actual: ${formattedDate}`);
+        }
+        
+        // Ejecutar búsqueda con filtro de conductor y fecha
         console.log(`[GET /trips] Parámetros de búsqueda para chofer:`, searchParams);
         const trips = await storage.searchTrips(searchParams);
-        console.log(`[GET /trips] Encontrados ${trips.length} viajes asignados al chofer`);
+        console.log(`[GET /trips] Encontrados ${trips.length} viajes asignados al chofer para la fecha ${searchParams.date}`);
         
         return res.json(trips);
       }

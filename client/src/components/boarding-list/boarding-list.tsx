@@ -69,9 +69,9 @@ export function BoardingList() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   
-  // Fetch trips assigned to the driver
-  const { data: trips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
-    queryKey: ["/api/trips", { driverId: user?.id }],
+  // Fetch trips assigned to the driver for current date
+  const { data: trips, isLoading: isLoadingTrips, refetch: refetchTrips } = useQuery<Trip[]>({
+    queryKey: ["/api/trips", { driverId: user?.id, date: format(currentDate, 'yyyy-MM-dd') }],
     staleTime: 5000,
     refetchInterval: 15000,
     enabled: !!user && user.role === "chofer",
@@ -85,22 +85,8 @@ export function BoardingList() {
     enabled: !!trips && trips.length > 0,
   });
 
-  // Filtrar para obtener solo viajes principales (no sub-viajes) y por fecha seleccionada
-  const filteredTrips = trips?.filter(trip => {
-    // Filtrar por viajes principales
-    if (trip.isSubTrip) return false;
-    
-    // Convertir cadena de fecha a objeto Date y obtener solo la parte de la fecha (sin hora)
-    // Aseguramos que trip.departureDate sea una cadena (ya que podría ser un objeto Date)
-    const tripDate = typeof trip.departureDate === 'string' 
-      ? trip.departureDate.split('T')[0] 
-      : format(new Date(trip.departureDate), 'yyyy-MM-dd');
-      
-    const currentDateStr = format(currentDate, 'yyyy-MM-dd');
-    
-    // Comparar las cadenas de fecha directamente
-    return tripDate === currentDateStr;
-  }) || [];
+  // El backend ya filtra los viajes por fecha y conductor, solo necesitamos filtrar por subviajes
+  const filteredTrips = trips?.filter(trip => !trip.isSubTrip) || [];
 
   // La lógica de procesamiento de pasajeros ya no es necesaria aquí
   // ya que ahora se maneja en la página dedicada de PassengerListPage
@@ -190,8 +176,13 @@ export function BoardingList() {
                   // Meses en JavaScript son 0-indexados (0-11), pero en el input date son 1-indexados (1-12)
                   const newDate = new Date(year, month - 1, day, 12, 0, 0);
                   setCurrentDate(newDate);
+                  // Forzar refresco de datos para la nueva fecha
+                  setTimeout(() => {
+                    refetchTrips();
+                  }, 100);
                 } else {
                   setCurrentDate(new Date());
+                  refetchTrips();
                 }
               }}
             />
