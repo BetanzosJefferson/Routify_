@@ -208,7 +208,16 @@ export default function TripList({ onEditTrip }: TripListProps) {
           throw new Error(errorText || "No se pudo asignar el vehículo al viaje");
         }
         
-        return await res.json();
+        // Primero intentamos verificar si la respuesta es JSON válido
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          return await res.json();
+        } else {
+          // Si no es JSON, simplemente retornamos un objeto con éxito
+          const text = await res.text();
+          console.log("Respuesta no-JSON recibida:", text.substring(0, 100));
+          return { success: true };
+        }
       } catch (error) {
         console.error('Error en la mutación de asignar vehículo:', error);
         throw error;
@@ -248,7 +257,16 @@ export default function TripList({ onEditTrip }: TripListProps) {
           throw new Error(errorText || "No se pudo asignar el conductor al viaje");
         }
         
-        return await res.json();
+        // Primero intentamos verificar si la respuesta es JSON válido
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          return await res.json();
+        } else {
+          // Si no es JSON, simplemente retornamos un objeto con éxito
+          const text = await res.text();
+          console.log("Respuesta no-JSON recibida:", text.substring(0, 100));
+          return { success: true };
+        }
       } catch (error) {
         console.error('Error en la mutación de asignar conductor:', error);
         throw error;
