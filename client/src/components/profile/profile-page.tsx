@@ -95,7 +95,47 @@ export function ProfilePage({ standalone = false }: ProfilePageProps) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
+      reader.onload = () => {
+        // Optimizar la imagen antes de enviarla
+        const img = new Image();
+        img.src = reader.result as string;
+        img.onload = () => {
+          // Crear un canvas para redimensionar la imagen
+          const canvas = document.createElement('canvas');
+          // Reducir la imagen a un tamaño máximo razonable
+          const MAX_SIZE = 500;
+          let width = img.width;
+          let height = img.height;
+          
+          // Calcular las nuevas dimensiones manteniendo la proporción
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Dibujar la imagen redimensionada en el canvas
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Convertir el canvas a una imagen base64 con calidad reducida
+          const optimizedImage = canvas.toDataURL('image/jpeg', 0.7);
+          resolve(optimizedImage);
+        };
+        img.onerror = () => {
+          // Si hay un error al cargar la imagen, usamos el original
+          resolve(reader.result as string);
+        };
+      };
       reader.onerror = (error) => reject(error);
     });
   };
