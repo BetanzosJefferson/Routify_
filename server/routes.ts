@@ -2,6 +2,8 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
+import { sql } from "drizzle-orm";
+import { db } from "./db";
 import { 
   insertRouteSchema, 
   insertTripSchema, 
@@ -36,7 +38,6 @@ function isSameCity(location1: string, location2: string): boolean {
   return city1 === city2;
 }
 import { populateLocationData } from "./populate-locations";
-import { db } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // prefix all routes with /api
@@ -301,6 +302,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           searchParams.date = formattedDate;
           console.log(`[GET /trips] No se proporcionó fecha. Usando fecha actual: ${formattedDate}`);
         }
+        
+        // DEPURACIÓN ADICIONAL: consultar directamente la BD para comparar resultados
+        console.log(`[GET /trips] DEPURACIÓN: Verificando viajes con SQL directo para driverId=${user.id} y fecha=${searchParams.date}`);
+        const directQuery = await db.execute(
+          sql`SELECT id, company_id, driver_id, departure_date, departure_time 
+              FROM trips 
+              WHERE driver_id = ${user.id} 
+              AND DATE(departure_date) = ${searchParams.date}`
+        );
+        console.log(`[GET /trips] DEPURACIÓN: Resultado SQL directo:`, directQuery.rows);
         
         // Ejecutar búsqueda con filtro de conductor y fecha
         console.log(`[GET /trips] Parámetros de búsqueda para chofer:`, searchParams);
