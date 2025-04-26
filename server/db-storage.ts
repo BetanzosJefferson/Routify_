@@ -386,7 +386,7 @@ export class DatabaseStorage implements IStorage {
   }): Promise<TripWithRouteInfo[]> {
     console.time('searchTrips-optimized');
     
-    // SOLUCIÓN COMPLETAMENTE NUEVA PARA EL FILTRADO DE COMPAÑÍA
+    // SOLUCIÓN ACTUALIZADA PARA EL FILTRADO DE COMPAÑÍA QUE RESPETA PRIVILEGIOS DE superAdmin
     console.log(`[searchTrips-v2] Iniciando búsqueda con parámetros:`, params);
     
     // Construir los filtros como un array de condiciones 
@@ -394,20 +394,28 @@ export class DatabaseStorage implements IStorage {
     
     // 1. FILTRADO POR COMPAÑÍA (PRIORIDAD MÁXIMA)
     if (params.companyId) {
-      console.log(`[searchTrips-v2] FILTRADO CRÍTICO POR COMPAÑÍA: "${params.companyId}"`);
+      // Importante: Los usuarios con privilegios especiales como superAdmin y taquilla pueden pasar un
+      // parámetro especial "ALL" para indicar que quieren ver todos los viajes
       
-      // Hacemos un SELECT COUNT para verificar que existen viajes para esta compañía
-      const testQuery = await db.execute(
-        sql`SELECT COUNT(*) FROM trips WHERE company_id = ${params.companyId}`
-      );
-      
-      const viajesContador = Number(testQuery.rows?.[0]?.count || 0);
-      console.log(`[searchTrips-v2] Verificación: Existen ${viajesContador} viajes para compañía ${params.companyId}`);
-      
-      // Añadimos la condición de compañía como SQL directo para máxima seguridad
-      condiciones.push(sql`company_id = ${params.companyId}`);
+      if (params.companyId === 'ALL') {
+        console.log(`[searchTrips-v2] ACCESO TOTAL SOLICITADO: Mostrando todos los viajes sin filtrar por compañía`);
+        // No añadir ningún filtro de compañía
+      } else {
+        console.log(`[searchTrips-v2] FILTRADO CRÍTICO POR COMPAÑÍA: "${params.companyId}"`);
+        
+        // Hacemos un SELECT COUNT para verificar que existen viajes para esta compañía
+        const testQuery = await db.execute(
+          sql`SELECT COUNT(*) FROM trips WHERE company_id = ${params.companyId}`
+        );
+        
+        const viajesContador = Number(testQuery.rows?.[0]?.count || 0);
+        console.log(`[searchTrips-v2] Verificación: Existen ${viajesContador} viajes para compañía ${params.companyId}`);
+        
+        // Añadimos la condición de compañía como SQL directo para máxima seguridad
+        condiciones.push(sql`company_id = ${params.companyId}`);
+      }
     } else {
-      console.log(`[searchTrips-v2] ADVERTENCIA DE SEGURIDAD: No se está filtrando por compañía`);
+      console.log(`[searchTrips-v2] ADVERTENCIA DE SEGURIDAD: No se está filtrando por compañía - ACCESO TOTAL`);
     }
     
     // 2. FILTROS ADICIONALES
@@ -450,7 +458,7 @@ export class DatabaseStorage implements IStorage {
     let viajesFiltrados = trips;
     
     // Verificación extra si se requiere filtro de compañía
-    if (params.companyId) {
+    if (params.companyId && params.companyId !== 'ALL') {
       console.log(`[searchTrips-v2] VERIFICACIÓN ADICIONAL de compañía: ${params.companyId}`);
       // Aplicar un segundo filtro después de la base de datos como capa adicional de seguridad
       viajesFiltrados = trips.filter(trip => trip.companyId === params.companyId);
@@ -462,6 +470,8 @@ export class DatabaseStorage implements IStorage {
       
       // Actualizar trips a la versión filtrada
       trips = viajesFiltrados;
+    } else if (!params.companyId || params.companyId === 'ALL') {
+      console.log(`[searchTrips-v2] ACCESO TOTAL: Mostrando todos los viajes sin filtro adicional de compañía`);
     }
     console.log(`Encontrados ${trips.length} viajes que coinciden con los filtros básicos`);
     

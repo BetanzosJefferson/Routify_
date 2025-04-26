@@ -303,15 +303,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.json([]);
           }
         } else {
-          // Usuarios superAdmin o taquilla
+          // Usuarios superAdmin o taquilla - ACCESO TOTAL
           console.log(`[GET /trips] Usuario ${user.firstName} con rol ${user.role} - ACCESO TOTAL (sin filtrar compañía)`);
           
-          // Importante: NO establecer searchParams.companyId para estos roles
-          // Asegurarnos que cualquier companyId que venga de la query se ignore para estos roles
-          if (searchParams.companyId) {
-            delete searchParams.companyId;
-            console.log(`[GET /trips] Removiendo filtro de compañía para rol privilegiado`);
-          }
+          // SOLUCIÓN ESPECIAL: Establecer un valor especial 'ALL' para indicar acceso total
+          // Esto es mejor que eliminar el parámetro porque evita que la lógica predeterminada
+          // de filtrado por compañía se active en capas inferiores
+          searchParams.companyId = 'ALL'; 
+          console.log(`[GET /trips] Estableciendo acceso total para rol privilegiado`);
         } 
       } else {
         // Usuario no autenticado
