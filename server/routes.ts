@@ -1053,6 +1053,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to delete trip" });
     }
   });
+  
+  // Endpoint específico para asignar vehículo o conductor a un viaje (PATCH)
+  app.patch(apiRouter("/trips/:id"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      console.log(`PATCH /trips/${id} - Datos recibidos:`, req.body);
+      
+      // Validación de datos
+      const validationResult = insertTripSchema.partial().safeParse(req.body);
+      if (!validationResult.success) {
+        console.error(`Validación fallida para PATCH /trips/${id}:`, validationResult.error.format());
+        return res.status(400).json({ 
+          error: "Invalid trip update data", 
+          details: validationResult.error.format() 
+        });
+      }
+      
+      // Obtener viaje actual
+      const currentTrip = await storage.getTrip(id);
+      if (!currentTrip) {
+        console.error(`Viaje no encontrado para PATCH /trips/${id}`);
+        return res.status(404).json({ error: "Trip not found" });
+      }
+      
+      // Datos a actualizar - solo permitir vehicleId y driverId en PATCH
+      const updateData: Partial<any> = {};
+      
+      // Procesar vehicleId (si está presente)
+      if (req.body.vehicleId !== undefined) {
+        console.log(`Asignando vehículo ${req.body.vehicleId} al viaje ${id}`);
+        // Convertir a número si viene como string
+        updateData.vehicleId = typeof req.body.vehicleId === 'string' 
+          ? parseInt(req.body.vehicleId, 10) 
+          : req.body.vehicleId;
+      }
+      
+      // Procesar driverId (si está presente)
+      if (req.body.driverId !== undefined) {
+        console.log(`Asignando conductor ${req.body.driverId} al viaje ${id}`);
+        // Convertir a número si viene como string
+        updateData.driverId = typeof req.body.driverId === 'string' 
+          ? parseInt(req.body.driverId, 10) 
+          : req.body.driverId;
+      }
+      
+      // Si no hay datos para actualizar, devolver el trip actual
+      if (Object.keys(updateData).length === 0) {
+        console.log(`No hay datos para actualizar en PATCH /trips/${id}`);
+        return res.json(currentTrip);
+      }
+      
+      // Actualizar el viaje con los nuevos datos
+      console.log(`Actualizando viaje ${id} con datos:`, updateData);
+      const updatedTrip = await storage.updateTrip(id, updateData);
+      
+      if (!updatedTrip) {
+        console.error(`Error al actualizar viaje ${id}`);
+        return res.status(500).json({ error: "Failed to update trip" });
+      }
+      
+      console.log(`Viaje ${id} actualizado correctamente:`, updatedTrip);
+      res.json(updatedTrip);
+    } catch (error) {
+      console.error(`Error al procesar PATCH /trips:`, error);
+      res.status(500).json({ error: "Failed to update trip" });
+    }
+  });
 
   // RESERVATIONS ENDPOINTS
   app.get(apiRouter("/reservations"), async (req: Request, res: Response) => {
