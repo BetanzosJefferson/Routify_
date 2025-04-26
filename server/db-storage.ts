@@ -348,6 +348,13 @@ export class DatabaseStorage implements IStorage {
     
     // Apply company filter
     if (params.companyId) {
+      console.log(`DEBUG: Aplicando filtro de compañía en searchTrips: "${params.companyId}"`);
+      // Imprimimos la consulta SQL para depuración
+      console.log(`DEBUG SQL: SELECT * FROM trips WHERE company_id = '${params.companyId}'`);
+      // Verificar si hay viajes para este companyId antes del filtro
+      const testQuery = `SELECT COUNT(*) FROM trips WHERE company_id = '${params.companyId}'`;
+      console.log(`Ejecutando consulta de prueba: ${testQuery}`);
+      // Aplicar el filtro
       tripsQuery.where(eq(schema.trips.companyId, params.companyId));
     }
     

@@ -104,6 +104,7 @@ export class DatabaseStorage implements IStorage {
     // Si hay un companyId, filtrar por esa compañía
     if (companyId) {
       console.log(`DB Storage: Filtrando viajes por compañía: ${companyId}`);
+      console.log(`DEBUG SQL: SELECT * FROM trips WHERE company_id = '${companyId}'`);
       query = query.where(eq(schema.trips.companyId, companyId));
     }
     
