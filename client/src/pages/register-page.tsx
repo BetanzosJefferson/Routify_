@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 
 // Esquema de validación para el formulario de registro
 // Esquema de validación para el formulario de registro - lo hacemos dinámico
-// porque el campo company es obligatorio solo para el rol de Dueño
+// porque el campo company es obligatorio solo para el rol de Dueño y Desarrollador
 const createRegisterFormSchema = (role: string | null) => {
   return z
     .object({
@@ -23,10 +23,11 @@ const createRegisterFormSchema = (role: string | null) => {
       email: z.string().email("Por favor ingrese un correo electrónico válido"),
       password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
       confirmPassword: z.string(),
-      company: role === "dueño" 
-        ? z.string().min(1, "El nombre de la empresa es obligatorio para el rol de Dueño")
+      company: (role === "dueño" || role === "desarrollador")
+        ? z.string().min(1, `El nombre de la empresa es obligatorio para el rol de ${role === "dueño" ? "Dueño" : "Desarrollador"}`)
         : z.string().optional(),
       profilePicture: z.string().optional(),
+      // Podemos añadir más campos específicos para el rol desarrollador en el futuro
     })
     .refine((data) => data.password === data.confirmPassword, {
       message: "Las contraseñas no coinciden",
@@ -79,11 +80,15 @@ export default function RegisterPage() {
           setInvitationStatus("valid");
           setInvitationRole(data.role);
           
-          // Actualizar el resolver del formulario con el esquema basado en el rol
+          // Actualizar el formulario con el nuevo esquema basado en el rol
           form.clearErrors();
           const newSchema = createRegisterFormSchema(data.role);
-          form.setError = form.setError.bind(form);
-          form.resolver = zodResolver(newSchema);
+          
+          // No podemos modificar directamente el resolver, pero podemos 
+          // cambiar algunos valores predeterminados basados en el rol
+          if (data.role === "dueño" || data.role === "desarrollador") {
+            form.setValue("company", "");  // Reset the company value
+          }
           
           if (data.email) {
             setInvitationEmail(data.email);
@@ -264,6 +269,8 @@ export default function RegisterPage() {
                   ? "Taquilla"
                   : invitationRole === "dueño"
                   ? "Dueño"
+                  : invitationRole === "desarrollador"
+                  ? "Desarrollador"
                   : "Usuario"}
               </span>
             </CardDescription>
@@ -347,16 +354,30 @@ export default function RegisterPage() {
                   )}
                 />
 
-                {invitationRole === "dueño" && (
+                {(invitationRole === "dueño" || invitationRole === "desarrollador") && (
                   <>
                     <FormField
                       control={form.control}
                       name="company"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Nombre de Empresa</FormLabel>
+                          <FormLabel>
+                            {invitationRole === "dueño" 
+                              ? "Nombre de Empresa" 
+                              : invitationRole === "desarrollador" 
+                              ? "Nombre de Empresa/Proyecto"
+                              : "Nombre de Empresa"
+                            }
+                          </FormLabel>
                           <FormControl>
-                            <Input placeholder="Transportes S.A. de C.V." {...field} />
+                            <Input 
+                              placeholder={
+                                invitationRole === "dueño" 
+                                  ? "Transportes S.A. de C.V." 
+                                  : "Digital Solutions / Proyecto XYZ"
+                              } 
+                              {...field} 
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -368,10 +389,17 @@ export default function RegisterPage() {
                       name="profilePicture"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Logo de la Empresa (URL)</FormLabel>
+                          <FormLabel>
+                            {invitationRole === "dueño" 
+                              ? "Logo de la Empresa (URL)" 
+                              : invitationRole === "desarrollador" 
+                              ? "Foto de Perfil (URL)"
+                              : "Imagen (URL)"
+                            }
+                          </FormLabel>
                           <FormControl>
                             <Input 
-                              placeholder="https://ejemplo.com/logo.png" 
+                              placeholder="https://ejemplo.com/imagen.png" 
                               {...field}
                             />
                           </FormControl>
