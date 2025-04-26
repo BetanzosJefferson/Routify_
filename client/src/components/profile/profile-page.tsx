@@ -145,7 +145,8 @@ export function ProfilePage({ standalone = false }: ProfilePageProps) {
               id="company" 
               value={user?.company || "No especificada"} 
               readOnly 
-              className="bg-muted" 
+              className="bg-muted text-muted-foreground border-dashed cursor-not-allowed opacity-60" 
+              disabled
             />
           </div>
         </div>
@@ -156,7 +157,8 @@ export function ProfilePage({ standalone = false }: ProfilePageProps) {
             id="role" 
             value={getRoleDisplayName(user?.role || "")} 
             readOnly 
-            className="bg-muted" 
+            className="bg-muted text-muted-foreground border-dashed cursor-not-allowed opacity-60" 
+            disabled
           />
         </div>
       </div>
