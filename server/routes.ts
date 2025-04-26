@@ -297,16 +297,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[GET /trips] Encontrados ${trips.length} viajes`);
       
-      // Si el usuario no está autenticado o no tiene permisos para ver todos los viajes,
-      // realizamos una verificación adicional de seguridad
-      if (!user || (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE)) {
-        // Solo para depuración
-        const userCompany = user ? (user.companyId || user.company) : null;
-        const viajesDeOtrasCompanias = trips.filter(t => t.companyId && t.companyId !== userCompany);
+      // CAPA ADICIONAL DE SEGURIDAD - FILTRO POST-CONSULTA
+      // Si el usuario no tiene permisos para ver todos los viajes,
+      // realizamos una verificación adicional de seguridad y FILTRAMOS los resultados
+      if (user && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
+        // Obtener la compañía del usuario
+        const userCompany = user.companyId || user.company || null;
         
-        if (viajesDeOtrasCompanias.length > 0) {
-          console.log(`[ALERTA] Encontrados ${viajesDeOtrasCompanias.length} viajes de otras compañías!`);
-          console.log(`IDs problemáticos: ${viajesDeOtrasCompanias.map(t => t.id).join(', ')}`);
+        if (userCompany) {
+          // Filtrar para asegurarnos que solo devolvemos viajes de su compañía
+          const viajesDeOtrasCompanias = trips.filter(t => t.companyId && t.companyId !== userCompany);
+          
+          if (viajesDeOtrasCompanias.length > 0) {
+            console.log(`[ALERTA DE SEGURIDAD] Se intentaron mostrar ${viajesDeOtrasCompanias.length} viajes de otras compañías!`);
+            console.log(`IDs bloqueados: ${viajesDeOtrasCompanias.map(t => t.id).join(', ')}`);
+            
+            // CRÍTICO: Filtrar y devolver SOLO los viajes de la compañía del usuario
+            const viajesFiltrados = trips.filter(t => t.companyId === userCompany);
+            console.log(`[CORRECCIÓN] Devolviendo solo ${viajesFiltrados.length} viajes de compañía ${userCompany}`);
+            
+            // Reemplazar los resultados con solo los viajes de su compañía
+            return res.json(viajesFiltrados);
+          }
         }
       }
       
@@ -409,8 +421,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[POST /trips] CREANDO VIAJE PARA COMPAÑÍA: ${companyId} del usuario ${user.firstName} ${user.lastName}`);
       
       // Verificar que el usuario tenga permisos para crear viajes
-      // En este caso, solo los roles superAdmin, administrator, owner y developer
-      const allowedRoles = [UserRole.SUPER_ADMIN, UserRole.ADMINISTRATOR, UserRole.OWNER, UserRole.DEVELOPER];
+      // En este caso, solo los roles superAdmin, admin, owner y developer
+      const allowedRoles = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.OWNER, UserRole.DEVELOPER];
       
       if (!allowedRoles.includes(user.role)) {
         console.log(`[POST /trips] DENEGADO: Usuario con rol ${user.role} no tiene permisos para crear viajes`);
