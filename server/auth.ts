@@ -333,14 +333,26 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
         
       // Si el invitador es un dueño, se usa su foto de perfil y compañía para los invitados
       let companyId = "";
+      let companyName = "";
       let profilePictureToUse = profilePicture || "";
+      let companyToUse = company || ""; // Variable para guardar el nombre de la empresa a utilizar
       
       if (inviter.length > 0 && inviter[0].role === UserRole.OWNER) {
         companyId = inviter[0].companyId || inviter[0].company; // Usar companyId si existe, si no, usar el valor de company
+        companyName = inviter[0].company || ""; // Guardar el nombre de la empresa explícitamente
         
         // Si el usuario que se está registrando NO es un dueño, asignarle la foto de perfil del dueño invitador
+        // y asignarle la empresa del invitador
         if (invitation[0].role !== UserRole.OWNER && invitation[0].role !== UserRole.SUPER_ADMIN) {
           profilePictureToUse = inviter[0].profilePicture || "";
+          
+          // Para roles como call center, checador y chofer, heredan la empresa del dueño
+          if (invitation[0].role === UserRole.CALL_CENTER || 
+              invitation[0].role === UserRole.CHECKER ||
+              invitation[0].role === UserRole.DRIVER ||
+              invitation[0].role === UserRole.TICKET_OFFICE) {
+            companyToUse = companyName;
+          }
         }
       }
       
@@ -351,7 +363,7 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
         email,
         password: await hashPassword(password),
         role: invitation[0].role,
-        company: (invitation[0].role === UserRole.OWNER || invitation[0].role === UserRole.DEVELOPER) ? company : "",
+        company: (invitation[0].role === UserRole.OWNER || invitation[0].role === UserRole.DEVELOPER) ? company : companyToUse,
         profilePicture: profilePictureToUse,
         invitedById: invitation[0].createdById, // Guardar referencia al usuario que invitó
         companyId: companyId, // Guardar referencia a la compañía

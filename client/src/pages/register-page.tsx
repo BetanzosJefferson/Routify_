@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -286,6 +287,35 @@ export default function RegisterPage() {
                   : "Usuario"}
               </span>
             </CardDescription>
+
+            {/* Mostrar información del invitante si está disponible */}
+            {inviterInfo && (
+              <div className="mt-4 p-4 bg-muted rounded-lg flex items-start space-x-4">
+                <div className="flex-shrink-0">
+                  {inviterInfo.profilePicture ? (
+                    <Avatar className="h-12 w-12 border-2 border-primary/20">
+                      <AvatarImage src={inviterInfo.profilePicture} alt={`${inviterInfo.firstName} ${inviterInfo.lastName}`} />
+                    </Avatar>
+                  ) : (
+                    <Avatar className="h-12 w-12 border-2 border-primary/20">
+                      <AvatarFallback className="bg-primary/5 text-primary">
+                        {inviterInfo.firstName.charAt(0)}{inviterInfo.lastName.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium">Invitado por</h4>
+                  <p className="text-sm">{inviterInfo.firstName} {inviterInfo.lastName}</p>
+                  {inviterInfo.role === "dueño" && (
+                    <>
+                      <h4 className="text-sm font-medium mt-1">Empresa</h4>
+                      <p className="text-sm">{inviterInfo.company || "No especificada"}</p>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <Form {...form}>
