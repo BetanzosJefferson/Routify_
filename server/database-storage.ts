@@ -94,11 +94,21 @@ export class DatabaseStorage implements IStorage {
     };
   }
   
-  async getTrips(): Promise<TripWithRouteInfo[]> {
-    console.log("Obteniendo todas las rutas en una sola consulta");
+  async getTrips(companyId?: string): Promise<TripWithRouteInfo[]> {
+    console.log("DB Storage: Obteniendo viajes");
     const startTime = performance.now();
     
-    const trips = await db.select().from(schema.trips);
+    // Construir la consulta base
+    let query = db.select().from(schema.trips);
+    
+    // Si hay un companyId, filtrar por esa compañía
+    if (companyId) {
+      console.log(`DB Storage: Filtrando viajes por compañía: ${companyId}`);
+      query = query.where(eq(schema.trips.companyId, companyId));
+    }
+    
+    // Ejecutar la consulta construida
+    const trips = await query;
     
     // Obtener todos los usuarios dueños (Owner) para relacionar con las compañías
     const owners = await db
