@@ -184,7 +184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete(apiRouter("/routes/:id"), async (req: Request, res: Response) => {
+  app.delete(apiRouter("/routes/:id"), isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
       const success = await storage.deleteRoute(id);
@@ -238,7 +238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post(apiRouter("/trips"), async (req: Request, res: Response) => {
+  app.post(apiRouter("/trips"), isAuthenticated, async (req: Request, res: Response) => {
     try {
       const validationResult = publishTripValidationSchema.safeParse(req.body);
       
