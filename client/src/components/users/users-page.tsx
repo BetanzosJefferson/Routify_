@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserPlus, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { CreateInvitationForm } from "./create-invitation";
 import { UserRole, UserRoleType, type User, type Invitation } from "@shared/schema";
 
@@ -104,6 +105,7 @@ export function UsersPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
+                        <th className="px-4 py-2 text-left">Foto</th>
                         <th className="px-4 py-2 text-left">Nombre</th>
                         <th className="px-4 py-2 text-left">Correo</th>
                         <th className="px-4 py-2 text-left">Rol</th>
@@ -114,6 +116,17 @@ export function UsersPage() {
                     <tbody>
                       {usersQuery.data.map((user) => (
                         <tr key={user.id} className="border-b hover:bg-muted/50">
+                          <td className="px-4 py-2">
+                            <Avatar className="h-10 w-10">
+                              {user.profilePicture ? (
+                                <AvatarImage src={user.profilePicture} alt={`${user.firstName} ${user.lastName}`} />
+                              ) : (
+                                <AvatarFallback className="bg-primary/5 text-primary">
+                                  {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                          </td>
                           <td className="px-4 py-2">
                             {user.firstName} {user.lastName}
                           </td>

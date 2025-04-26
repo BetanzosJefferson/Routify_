@@ -42,6 +42,37 @@ export function setupAuthRoutes(app: Express) {
     }
   }
 
+  // Función para crear un superAdmin adicional
+  async function createAdditionalSuperAdmin(email: string, password: string) {
+    // Verificar si el usuario ya existe
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (existingUser.length > 0) {
+      console.log(`El usuario con email ${email} ya existe`);
+      return false;
+    }
+
+    // Crear el nuevo superAdmin
+    await db.insert(users).values({
+      firstName: "William",
+      lastName: "Jefferson",
+      email: email,
+      password: await hashPassword(password),
+      role: UserRole.SUPER_ADMIN,
+    });
+    console.log(`Nuevo Super Admin creado con éxito: ${email}`);
+    return true;
+  }
+
+  // Crear William Jefferson como superAdmin
+  createAdditionalSuperAdmin("bahenawilliamjefferson@gmail.com", "12345678").catch((err) => {
+    console.error("Error al crear superAdmin adicional:", err);
+  });
+
   // Intentar crear el usuario inicial
   createInitialSuperAdmin().catch((err) => {
     console.error("Error al crear usuario inicial:", err);
