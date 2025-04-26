@@ -138,8 +138,12 @@ export default function TripList({ onEditTrip }: TripListProps) {
   const { data: drivers = [], isLoading: isLoadingDrivers } = useQuery({
     queryKey: ['/api/users', 'chofer'],
     queryFn: async () => {
+      console.log("Obteniendo usuarios con rol chofer");
       const res = await apiRequest('GET', '/api/users?role=chofer');
-      return await res.json();
+      const data = await res.json();
+      console.log("Conductores obtenidos:", data);
+      // Filtramos explícitamente para asegurarnos de que solo se incluyan usuarios con rol 'chofer'
+      return data.filter((user: any) => user.role === 'chofer');
     }
   });
 
@@ -192,16 +196,23 @@ export default function TripList({ onEditTrip }: TripListProps) {
   // Mutación para asignar vehículo a un viaje
   const assignVehicleMutation = useMutation({
     mutationFn: async ({ tripId, vehicleId }: { tripId: number, vehicleId: number }) => {
-      const res = await apiRequest('PATCH', `/api/trips/${tripId}`, {
-        vehicleId
-      });
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || "No se pudo asignar el vehículo al viaje");
+      try {
+        console.log(`Asignando vehículo ${vehicleId} al viaje ${tripId}`);
+        const res = await apiRequest('PATCH', `/api/trips/${tripId}`, {
+          vehicleId: parseInt(vehicleId.toString())
+        });
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error(`Error al asignar vehículo:`, errorText);
+          throw new Error(errorText || "No se pudo asignar el vehículo al viaje");
+        }
+        
+        return await res.json();
+      } catch (error) {
+        console.error('Error en la mutación de asignar vehículo:', error);
+        throw error;
       }
-      
-      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/trips'] });
@@ -225,16 +236,23 @@ export default function TripList({ onEditTrip }: TripListProps) {
   // Mutación para asignar conductor a un viaje
   const assignDriverMutation = useMutation({
     mutationFn: async ({ tripId, driverId }: { tripId: number, driverId: number }) => {
-      const res = await apiRequest('PATCH', `/api/trips/${tripId}`, {
-        driverId
-      });
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || "No se pudo asignar el conductor al viaje");
+      try {
+        console.log(`Asignando conductor ${driverId} al viaje ${tripId}`);
+        const res = await apiRequest('PATCH', `/api/trips/${tripId}`, {
+          driverId: parseInt(driverId.toString())
+        });
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error(`Error al asignar conductor:`, errorText);
+          throw new Error(errorText || "No se pudo asignar el conductor al viaje");
+        }
+        
+        return await res.json();
+      } catch (error) {
+        console.error('Error en la mutación de asignar conductor:', error);
+        throw error;
       }
-      
-      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/trips'] });
