@@ -583,7 +583,13 @@ export default function TripList({ onEditTrip }: TripListProps) {
                                 <CarIcon className="h-5 w-5 mr-2 text-primary shrink-0 mt-0.5" />
                                 <div>
                                   <p className="text-sm font-medium">Vehículo</p>
-                                  <p className="text-xs text-red-500 font-medium">No asignado</p>
+                                  {trip.vehicleId ? (
+                                    <p className="text-xs text-green-600 font-medium">
+                                      {vehicles.find(v => v.id === trip.vehicleId)?.brand} {vehicles.find(v => v.id === trip.vehicleId)?.model} - {vehicles.find(v => v.id === trip.vehicleId)?.licensePlate}
+                                    </p>
+                                  ) : (
+                                    <p className="text-xs text-red-500 font-medium">No asignado</p>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -594,7 +600,13 @@ export default function TripList({ onEditTrip }: TripListProps) {
                                 <UserIcon className="h-5 w-5 mr-2 text-primary shrink-0 mt-0.5" />
                                 <div>
                                   <p className="text-sm font-medium">Conductor</p>
-                                  <p className="text-xs text-red-500 font-medium">No asignado</p>
+                                  {trip.driverId ? (
+                                    <p className="text-xs text-green-600 font-medium">
+                                      {drivers.find(d => d.id === trip.driverId)?.firstName} {drivers.find(d => d.id === trip.driverId)?.lastName}
+                                    </p>
+                                  ) : (
+                                    <p className="text-xs text-red-500 font-medium">No asignado</p>
+                                  )}
                                 </div>
                               </div>
                             </div>
