@@ -572,10 +572,22 @@ export default function TripList({ onEditTrip }: TripListProps) {
                         
                         <div className="p-4 lg:p-6 flex flex-row lg:flex-col items-center justify-between border-t lg:border-t-0 lg:border-l bg-muted/20">
                           <div className="flex lg:flex-col gap-2">
-                            <Button variant="outline" size="sm" className="whitespace-nowrap">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="whitespace-nowrap"
+                              onClick={() => setAssignVehicleDialogOpen(trip.id)}
+                            >
+                              <CarIcon className="h-3 w-3 mr-1" />
                               Asignar Vehículo
                             </Button>
-                            <Button variant="outline" size="sm" className="whitespace-nowrap">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="whitespace-nowrap"
+                              onClick={() => setAssignDriverDialogOpen(trip.id)}
+                            >
+                              <UserIcon className="h-3 w-3 mr-1" />
                               Asignar Conductor
                             </Button>
                           </div>
@@ -626,6 +638,144 @@ export default function TripList({ onEditTrip }: TripListProps) {
               className="bg-red-600 hover:bg-red-700"
             >
               Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Dialog para asignar vehículo */}
+      <AlertDialog 
+        open={assignVehicleDialogOpen !== null} 
+        onOpenChange={(open) => !open && setAssignVehicleDialogOpen(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Asignar Vehículo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Seleccione un vehículo para asignar a este viaje.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="py-4">
+            {isLoadingVehicles ? (
+              <div className="flex justify-center items-center py-4">
+                <Loader2Icon className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2">Cargando vehículos...</span>
+              </div>
+            ) : vehicles.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                No hay vehículos disponibles. Añada vehículos en la sección de "Unidades".
+              </div>
+            ) : (
+              <Select
+                value={selectedVehicleId || ""}
+                onValueChange={(value) => setSelectedVehicleId(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar vehículo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vehicles.map((vehicle: any) => (
+                    <SelectItem key={vehicle.id} value={vehicle.id.toString()}>
+                      {vehicle.brand} {vehicle.model} - {vehicle.licensePlate}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (assignVehicleDialogOpen !== null && selectedVehicleId) {
+                  assignVehicleMutation.mutate({
+                    tripId: assignVehicleDialogOpen,
+                    vehicleId: parseInt(selectedVehicleId)
+                  });
+                }
+              }}
+              disabled={!selectedVehicleId || assignVehicleMutation.isPending}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {assignVehicleMutation.isPending ? (
+                <>
+                  <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                  Asignando...
+                </>
+              ) : (
+                "Asignar Vehículo"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Dialog para asignar conductor */}
+      <AlertDialog 
+        open={assignDriverDialogOpen !== null} 
+        onOpenChange={(open) => !open && setAssignDriverDialogOpen(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Asignar Conductor</AlertDialogTitle>
+            <AlertDialogDescription>
+              Seleccione un conductor para asignar a este viaje.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="py-4">
+            {isLoadingDrivers ? (
+              <div className="flex justify-center items-center py-4">
+                <Loader2Icon className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2">Cargando conductores...</span>
+              </div>
+            ) : drivers.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                No hay conductores disponibles. Invite usuarios con rol "Chofer".
+              </div>
+            ) : (
+              <Select
+                value={selectedDriverId || ""}
+                onValueChange={(value) => setSelectedDriverId(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar conductor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {drivers.map((driver: any) => (
+                    <SelectItem key={driver.id} value={driver.id.toString()}>
+                      {driver.firstName} {driver.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (assignDriverDialogOpen !== null && selectedDriverId) {
+                  assignDriverMutation.mutate({
+                    tripId: assignDriverDialogOpen,
+                    driverId: parseInt(selectedDriverId)
+                  });
+                }
+              }}
+              disabled={!selectedDriverId || assignDriverMutation.isPending}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {assignDriverMutation.isPending ? (
+                <>
+                  <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                  Asignando...
+                </>
+              ) : (
+                "Asignar Conductor"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
