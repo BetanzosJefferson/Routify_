@@ -274,21 +274,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // APLICAR FILTRO DE COMPAÑÍA - PARTE CRÍTICA
       // Solo superAdmin y taquilla pueden ver viajes de todas las compañías
-      if (user && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
-        // Obtener companyId del usuario (preferimos companyId pero también aceptamos company como respaldo)
-        const userCompanyId = user.companyId || user.company || null;
-        
-        if (userCompanyId) {
-          // Aplicar filtro por compañía - OBLIGATORIO para usuarios que no son superAdmin o taquilla
-          searchParams.companyId = userCompanyId;
-          console.log(`[GET /trips] Filtro compañía aplicado: ${userCompanyId}`);
+      if (user) {
+        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
+          // Usuarios normales - SIEMPRE FILTRAR POR SU COMPAÑÍA
+          // Obtener companyId del usuario (preferimos companyId pero también aceptamos company como respaldo)
+          const userCompanyId = user.companyId || user.company || null;
+          
+          if (userCompanyId) {
+            // Aplicar filtro por compañía - OBLIGATORIO para usuarios que no son superAdmin o taquilla
+            searchParams.companyId = userCompanyId;
+            console.log(`[GET /trips] Filtro compañía aplicado: ${userCompanyId}`);
+          } else {
+            console.log(`[GET /trips] Usuario sin compañía asignada, no verá ningún viaje`);
+            // Si el usuario no tiene compañía asignada, devolver lista vacía
+            return res.json([]);
+          }
         } else {
-          console.log(`[GET /trips] Usuario sin compañía asignada, no verá ningún viaje`);
-          // Si el usuario no tiene compañía asignada, devolver lista vacía
-          return res.json([]);
-        }
-      } else if (user) {
-        console.log(`[GET /trips] Usuario ${user.firstName} con rol ${user.role} - Sin filtro de compañía`);
+          // Usuarios superAdmin o taquilla
+          console.log(`[GET /trips] Usuario ${user.firstName} con rol ${user.role} - ACCESO TOTAL (sin filtrar compañía)`);
+          
+          // Importante: NO establecer searchParams.companyId para estos roles
+          // Asegurarnos que cualquier companyId que venga de la query se ignore para estos roles
+          if (searchParams.companyId) {
+            delete searchParams.companyId;
+            console.log(`[GET /trips] Removiendo filtro de compañía para rol privilegiado`);
+          }
+        } 
+      } else {
+        // Usuario no autenticado
+        console.log(`[GET /trips] Acceso anónimo denegado`);
+        return res.status(401).json({ error: "No autenticado" });
       }
       
       // Ejecutar búsqueda con todos los parámetros
