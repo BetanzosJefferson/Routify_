@@ -126,7 +126,11 @@ export class MemStorage implements IStorage {
   
   async createRoute(route: InsertRoute): Promise<Route> {
     const id = this.routeId++;
-    const newRoute: Route = { ...route, id };
+    const newRoute: Route = { 
+      ...route, 
+      id, 
+      companyId: route.companyId || null 
+    };
     this.routes.set(id, newRoute);
     return newRoute;
   }
@@ -242,7 +246,8 @@ export class MemStorage implements IStorage {
       isSubTrip: trip.isSubTrip ?? false,
       parentTripId: trip.parentTripId ?? null,
       segmentOrigin: trip.segmentOrigin ?? null,
-      segmentDestination: trip.segmentDestination ?? null
+      segmentDestination: trip.segmentDestination ?? null,
+      companyId: trip.companyId || null
     };
     this.trips.set(id, newTrip);
     return newTrip;
@@ -432,8 +437,14 @@ export class MemStorage implements IStorage {
   }
   
   // Reservation methods
-  async getReservations(): Promise<ReservationWithDetails[]> {
-    const reservations = Array.from(this.reservations.values());
+  async getReservations(companyId?: string): Promise<ReservationWithDetails[]> {
+    let reservations = Array.from(this.reservations.values());
+    
+    // Filtrar por companyId si se proporciona
+    if (companyId) {
+      reservations = reservations.filter(reservation => reservation.companyId === companyId);
+    }
+    
     const result: ReservationWithDetails[] = [];
     
     for (const reservation of reservations) {
@@ -456,9 +467,14 @@ export class MemStorage implements IStorage {
     return this.reservations.get(id);
   }
   
-  async getReservationWithDetails(id: number): Promise<ReservationWithDetails | undefined> {
+  async getReservationWithDetails(id: number, companyId?: string): Promise<ReservationWithDetails | undefined> {
     const reservation = await this.getReservation(id);
     if (!reservation) return undefined;
+    
+    // Si se proporciona un companyId, verificar que la reserva pertenezca a esa compañía
+    if (companyId && reservation.companyId !== companyId) {
+      return undefined;
+    }
     
     const tripWithRoute = await this.getTripWithRouteInfo(reservation.tripId);
     if (!tripWithRoute) return undefined;
@@ -487,7 +503,8 @@ export class MemStorage implements IStorage {
       notes: reservation.notes || null, // Aseguramos que notas sea string | null (nunca undefined)
       paymentMethod: reservation.paymentMethod || "cash", // Valor por defecto si no se proporciona
       status: reservation.status || "confirmed",
-      createdAt: new Date()  
+      createdAt: new Date(),
+      companyId: reservation.companyId || null // Aseguramos companyId sea string | null (nunca undefined)
     };
     
     this.reservations.set(id, newReservation);
@@ -571,8 +588,15 @@ export class MemStorage implements IStorage {
   }
   
   // Vehicle methods
-  async getVehicles(): Promise<Vehicle[]> {
-    return Array.from(this.vehicles.values());
+  async getVehicles(companyId?: string): Promise<Vehicle[]> {
+    let vehicles = Array.from(this.vehicles.values());
+    
+    // Filtrar por companyId si se proporciona
+    if (companyId) {
+      vehicles = vehicles.filter(vehicle => vehicle.companyId === companyId);
+    }
+    
+    return vehicles;
   }
   
   async getVehicle(id: number): Promise<Vehicle | undefined> {
@@ -589,7 +613,8 @@ export class MemStorage implements IStorage {
       hasAC: vehicle.hasAC ?? null,
       hasRecliningSeats: vehicle.hasRecliningSeats ?? null,
       services: vehicle.services ?? null,
-      description: vehicle.description ?? null
+      description: vehicle.description ?? null,
+      companyId: vehicle.companyId || null
     };
     this.vehicles.set(id, newVehicle);
     return newVehicle;
@@ -609,8 +634,15 @@ export class MemStorage implements IStorage {
   }
   
   // Commission methods
-  async getCommissions(): Promise<Commission[]> {
-    return Array.from(this.commissions.values());
+  async getCommissions(companyId?: string): Promise<Commission[]> {
+    let commissions = Array.from(this.commissions.values());
+    
+    // Filtrar por companyId si se proporciona
+    if (companyId) {
+      commissions = commissions.filter(commission => commission.companyId === companyId);
+    }
+    
+    return commissions;
   }
   
   async getCommission(id: number): Promise<Commission | undefined> {
