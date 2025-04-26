@@ -107,6 +107,7 @@ export function UsersPage() {
                         <th className="px-4 py-2 text-left">Nombre</th>
                         <th className="px-4 py-2 text-left">Correo</th>
                         <th className="px-4 py-2 text-left">Rol</th>
+                        <th className="px-4 py-2 text-left">Contraseña</th>
                         <th className="px-4 py-2 text-left">Fecha Registro</th>
                       </tr>
                     </thead>
@@ -120,6 +121,12 @@ export function UsersPage() {
                           <td className="px-4 py-2">
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
                               {getRoleDisplayName(user.role)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className="font-mono text-xs bg-gray-100 p-1 rounded">
+                              {/* Mostramos solo los 6 primeros caracteres de la contraseña para debugging */}
+                              {user.password?.substring(0, 6) || ''}...
                             </span>
                           </td>
                           <td className="px-4 py-2">
