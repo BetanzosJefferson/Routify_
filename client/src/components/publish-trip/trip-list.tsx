@@ -76,6 +76,8 @@ interface Trip {
   routeName?: string;
   segmentOrigin?: string;
   segmentDestination?: string;
+  vehicleId?: number | null; // ID del vehículo asignado
+  driverId?: number | null; // ID del conductor asignado
   route?: {
     id: number;
     name: string;
@@ -87,6 +89,9 @@ interface Trip {
   companyId?: string;
   companyName?: string;
   companyLogo?: string;
+  // Información de vehículo y conductor asignados (objetos completos)
+  assignedVehicle?: any;
+  assignedDriver?: any;
 }
 
 type TripListProps = {
@@ -583,9 +588,12 @@ export default function TripList({ onEditTrip }: TripListProps) {
                                 <CarIcon className="h-5 w-5 mr-2 text-primary shrink-0 mt-0.5" />
                                 <div>
                                   <p className="text-sm font-medium">Vehículo</p>
-                                  {trip.vehicleId ? (
+                                  {trip.vehicleId || trip.assignedVehicle ? (
                                     <p className="text-xs text-green-600 font-medium">
-                                      {vehicles.find(v => v.id === trip.vehicleId)?.brand} {vehicles.find(v => v.id === trip.vehicleId)?.model} - {vehicles.find(v => v.id === trip.vehicleId)?.plates}
+                                      {trip.assignedVehicle ? 
+                                        `${trip.assignedVehicle.brand} ${trip.assignedVehicle.model} - ${trip.assignedVehicle.plates}` :
+                                        `${vehicles.find(v => v.id === trip.vehicleId)?.brand || ''} ${vehicles.find(v => v.id === trip.vehicleId)?.model || ''} - ${vehicles.find(v => v.id === trip.vehicleId)?.plates || ''}`
+                                      }
                                     </p>
                                   ) : (
                                     <p className="text-xs text-red-500 font-medium">No asignado</p>
@@ -600,9 +608,12 @@ export default function TripList({ onEditTrip }: TripListProps) {
                                 <UserIcon className="h-5 w-5 mr-2 text-primary shrink-0 mt-0.5" />
                                 <div>
                                   <p className="text-sm font-medium">Conductor</p>
-                                  {trip.driverId ? (
+                                  {trip.driverId || trip.assignedDriver ? (
                                     <p className="text-xs text-green-600 font-medium">
-                                      {drivers.find(d => d.id === trip.driverId)?.firstName} {drivers.find(d => d.id === trip.driverId)?.lastName}
+                                      {trip.assignedDriver ? 
+                                        `${trip.assignedDriver.firstName} ${trip.assignedDriver.lastName}` :
+                                        `${drivers.find(d => d.id === trip.driverId)?.firstName || ''} ${drivers.find(d => d.id === trip.driverId)?.lastName || ''}`
+                                      }
                                     </p>
                                   ) : (
                                     <p className="text-xs text-red-500 font-medium">No asignado</p>
