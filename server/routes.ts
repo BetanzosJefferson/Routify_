@@ -203,6 +203,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TRIPS ENDPOINTS
   app.get(apiRouter("/trips"), async (req: Request, res: Response) => {
     try {
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      // Variable para almacenar el companyId para filtrar viajes
+      let companyId: string | null = null;
+      
+      // Si hay usuario autenticado y no es superAdmin, aplicamos filtro por compañía
+      if (user) {
+        if (user.role === UserRole.OWNER || 
+            user.role === UserRole.CALL_CENTER || 
+            user.role === UserRole.CHECKER ||
+            user.role === UserRole.DRIVER ||
+            user.role === UserRole.TICKET_OFFICE) {
+          // Usar companyId del usuario si existe
+          companyId = user.companyId || user.company;
+          console.log(`Filtrando viajes por compañía: ${companyId} para usuario ${user.firstName} ${user.lastName}`);
+        }
+      }
+      
       // Check if query parameters for search are provided
       const { origin, destination, date, seats } = req.query;
       
@@ -213,13 +232,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (date) searchParams.date = date as string;
         if (seats) searchParams.seats = parseInt(seats as string, 10);
         
+        // Incluir filtro por compañía si es necesario
+        if (companyId) {
+          searchParams.companyId = companyId;
+        }
+        
         const trips = await storage.searchTrips(searchParams);
         return res.json(trips);
       }
       
+      // Si no hay parámetros de búsqueda pero hay un filtro de compañía
+      if (companyId) {
+        const searchParams: any = { companyId };
+        const trips = await storage.searchTrips(searchParams);
+        return res.json(trips);
+      }
+      
+      // Si no hay filtros, obtener todos los viajes (solo admin y superadmin)
       const trips = await storage.getTrips();
       res.json(trips);
     } catch (error) {
+      console.error("Error al obtener viajes:", error);
       res.status(500).json({ error: "Failed to fetch trips" });
     }
   });

@@ -19,7 +19,16 @@ export function UsersPage() {
     queryFn: async () => {
       const res = await fetch("/api/users");
       if (!res.ok) throw new Error("Error al cargar usuarios");
-      return res.json() as Promise<User[]>;
+      const users = await res.json() as User[];
+      
+      // Filtrado adicional en el cliente para asegurar que los permisos se aplican
+      // Esto actúa como una capa extra de seguridad
+      const authUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+      if (authUser && authUser.role === UserRole.OWNER) {
+        return users.filter(user => user.invitedById === authUser.id);
+      }
+      
+      return users;
     },
   });
 
