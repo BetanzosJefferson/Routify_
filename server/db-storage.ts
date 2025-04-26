@@ -158,11 +158,24 @@ export class DatabaseStorage implements IStorage {
   async getTrips(companyId?: string): Promise<TripWithRouteInfo[]> {
     console.time('getTrips-optimized');
     
-    // Obtener los viajes, filtrando por compañía si es necesario
+    // FILTRO CRÍTICO: Obtener viajes, filtrando por compañía si es necesario
     let tripsQuery = db.select().from(schema.trips);
+    
     if (companyId) {
-      console.log(`Filtrando viajes por compañía: ${companyId}`);
+      console.log(`[getTrips] FILTRO CRÍTICO: Filtrando viajes solo de compañía: "${companyId}"`);
+      
+      // Verificar primero si hay viajes para este companyId
+      const testCountQuery = await db.select({ count: sql`COUNT(*)` })
+        .from(schema.trips)
+        .where(eq(schema.trips.companyId, companyId));
+        
+      const viajesCount = Number(testCountQuery[0]?.count || 0);
+      console.log(`[getTrips] La compañía ${companyId} tiene ${viajesCount} viajes en la base de datos`);
+      
+      // Aplicar el filtro de compañía
       tripsQuery = tripsQuery.where(eq(schema.trips.companyId, companyId));
+    } else {
+      console.log(`[getTrips] ALERTA: Obteniendo todos los viajes sin filtro de compañía`);
     }
     const trips = await tripsQuery;
     
@@ -341,21 +354,30 @@ export class DatabaseStorage implements IStorage {
     // Base query for trips
     const tripsQuery = db.select().from(schema.trips);
     
-    // Apply seat filter
-    if (params.seats) {
-      tripsQuery.where(gte(schema.trips.availableSeats, params.seats));
+    // PRIORIDAD #1: FILTRAR POR COMPAÑÍA
+    // ¡Importante! Este filtro debe aplicarse primero y es obligatorio para usuarios no superAdmin/taquilla
+    if (params.companyId) {
+      console.log(`[searchTrips] FILTRO CRÍTICO: Filtrando viajes solo de compañía: "${params.companyId}"`);
+      
+      // Verificar antes si hay viajes para este companyId 
+      const testCountQuery = await db.select({ count: sql`COUNT(*)` })
+        .from(schema.trips)
+        .where(eq(schema.trips.companyId, params.companyId));
+        
+      const viajesCount = Number(testCountQuery[0]?.count || 0);
+      console.log(`[searchTrips] La compañía ${params.companyId} tiene ${viajesCount} viajes en la base de datos`);
+      
+      // Aplicar el filtro de compañía usando SQL parametrizado seguro
+      tripsQuery.where(eq(schema.trips.companyId, params.companyId));
+    } else {
+      console.log(`[searchTrips] ALERTA: No se está aplicando filtro de compañía`);
     }
     
-    // Apply company filter
-    if (params.companyId) {
-      console.log(`DEBUG: Aplicando filtro de compañía en searchTrips: "${params.companyId}"`);
-      // Imprimimos la consulta SQL para depuración
-      console.log(`DEBUG SQL: SELECT * FROM trips WHERE company_id = '${params.companyId}'`);
-      // Verificar si hay viajes para este companyId antes del filtro
-      const testQuery = `SELECT COUNT(*) FROM trips WHERE company_id = '${params.companyId}'`;
-      console.log(`Ejecutando consulta de prueba: ${testQuery}`);
-      // Aplicar el filtro
-      tripsQuery.where(eq(schema.trips.companyId, params.companyId));
+    // PRIORIDAD #2: FILTROS ADICIONALES
+    // Apply seat filter
+    if (params.seats) {
+      console.log(`[searchTrips] Filtro: Mínimo ${params.seats} asientos disponibles`);
+      tripsQuery.where(gte(schema.trips.availableSeats, params.seats));
     }
     
     // Apply date filter

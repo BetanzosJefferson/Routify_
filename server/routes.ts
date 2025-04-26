@@ -254,93 +254,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Obtener el usuario autenticado
       const { user } = req as any;
       
-      // Variable para almacenar el companyId para filtrar viajes
-      let companyId: string | null = null;
-      
-      // Si hay usuario autenticado, aplicamos filtro por compañía (excepto superAdmin y taquilla)
+      // Log para depuración
+      console.log(`[GET /trips] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
       if (user) {
-        // El rol debe ser exactamente igual a uno de los valores de UserRole
-        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
-          // Usar companyId del usuario si existe
-          companyId = user.companyId || user.company || null;
-          console.log(`Filtrando viajes por compañía: ${companyId} para usuario ${user.firstName} ${user.lastName}`);
-          console.log(`Rol del usuario: ${user.role}`);
-        } else {
-          console.log(`Usuario ${user.firstName} con rol ${user.role} - sin filtro de compañía`);
-        }
+        console.log(`[GET /trips] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
       }
       
-      // Check if query parameters for search are provided
+      // Parámetros de búsqueda desde la query
       const { origin, destination, date, seats } = req.query;
+      const searchParams: any = {};
       
-      if (origin || destination || date || seats) {
-        const searchParams: any = {};
-        if (origin) searchParams.origin = origin as string;
-        if (destination) searchParams.destination = destination as string;
-        if (date) searchParams.date = date as string;
-        if (seats) searchParams.seats = parseInt(seats as string, 10);
+      // Agregar parámetros de búsqueda si existen
+      if (origin) searchParams.origin = origin as string;
+      if (destination) searchParams.destination = destination as string;
+      if (date) searchParams.date = date as string;
+      if (seats && !isNaN(parseInt(seats as string, 10))) {
+        searchParams.seats = parseInt(seats as string, 10);
+      }
+      
+      // APLICAR FILTRO DE COMPAÑÍA - PARTE CRÍTICA
+      // Solo superAdmin y taquilla pueden ver viajes de todas las compañías
+      if (user && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
+        // Obtener companyId del usuario (preferimos companyId pero también aceptamos company como respaldo)
+        const userCompanyId = user.companyId || user.company || null;
         
-        // Siempre incluir el filtro por compañía si existe, excepto para superAdmin y developer
-        if (companyId) {
-          searchParams.companyId = companyId;
+        if (userCompanyId) {
+          // Aplicar filtro por compañía - OBLIGATORIO para usuarios que no son superAdmin o taquilla
+          searchParams.companyId = userCompanyId;
+          console.log(`[GET /trips] Filtro compañía aplicado: ${userCompanyId}`);
+        } else {
+          console.log(`[GET /trips] Usuario sin compañía asignada, no verá ningún viaje`);
+          // Si el usuario no tiene compañía asignada, devolver lista vacía
+          return res.json([]);
         }
-        
-        const trips = await storage.searchTrips(searchParams);
-        return res.json(trips);
+      } else if (user) {
+        console.log(`[GET /trips] Usuario ${user.firstName} con rol ${user.role} - Sin filtro de compañía`);
       }
       
-      // Si no hay parámetros de búsqueda pero hay un filtro de compañía
-      if (companyId) {
-        // Usar searchTrips para mantener consistencia en el filtrado
-        const searchParams: any = { companyId };
-        const trips = await storage.searchTrips(searchParams);
-        return res.json(trips);
-      } else {
-        // Solo los superadmin o developer pueden ver todos los viajes sin filtro
-        const trips = await storage.getTrips();
-        res.json(trips);
+      // Ejecutar búsqueda con todos los parámetros
+      console.log(`[GET /trips] Parámetros de búsqueda finales:`, searchParams);
+      const trips = await storage.searchTrips(searchParams);
+      
+      console.log(`[GET /trips] Encontrados ${trips.length} viajes`);
+      
+      // Si el usuario no está autenticado o no tiene permisos para ver todos los viajes,
+      // realizamos una verificación adicional de seguridad
+      if (!user || (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE)) {
+        // Solo para depuración
+        const userCompany = user ? (user.companyId || user.company) : null;
+        const viajesDeOtrasCompanias = trips.filter(t => t.companyId && t.companyId !== userCompany);
+        
+        if (viajesDeOtrasCompanias.length > 0) {
+          console.log(`[ALERTA] Encontrados ${viajesDeOtrasCompanias.length} viajes de otras compañías!`);
+          console.log(`IDs problemáticos: ${viajesDeOtrasCompanias.map(t => t.id).join(', ')}`);
+        }
       }
+      
+      return res.json(trips);
     } catch (error) {
       console.error("Error al obtener viajes:", error);
-      res.status(500).json({ error: "Failed to fetch trips" });
+      res.status(500).json({ error: "Error al obtener viajes" });
     }
   });
 
   app.get(apiRouter("/trips/:id"), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
-      const trip = await storage.getTripWithRouteInfo(id);
       
-      if (!trip) {
-        return res.status(404).json({ error: "Trip not found" });
-      }
-
       // Obtener el usuario autenticado
       const { user } = req as any;
       
-      // Variable para almacenar el companyId para verificar permisos
-      let companyId: string | null = null;
-      
-      // Si hay usuario autenticado y no es superAdmin/taquillero, verificamos permiso
+      console.log(`[GET /trips/${id}] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
       if (user) {
-        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
-          // Usar companyId del usuario si existe (simplificado)
-          companyId = user.companyId || user.company || null;
-          
-          // Verificar si el viaje pertenece a la compañía del usuario
-          if (trip.companyId && companyId && trip.companyId !== companyId) {
-            console.log(`Acceso denegado: El viaje (${trip.id}) pertenece a la compañía ${trip.companyId} pero el usuario es de ${companyId}`);
-            return res.status(403).json({ 
-              error: "No tiene permiso para acceder a este viaje",
-              details: "El viaje pertenece a otra compañía"
-            });
-          }
-        }
+        console.log(`[GET /trips/${id}] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
       }
       
+      // Primero obtenemos el viaje
+      const trip = await storage.getTripWithRouteInfo(id);
+      
+      if (!trip) {
+        return res.status(404).json({ error: "Viaje no encontrado" });
+      }
+      
+      console.log(`[GET /trips/${id}] Viaje encontrado - companyId: ${trip.companyId || 'No definido'}`);
+      
+      // SEGURIDAD: Verificar permisos según el rol y compañía del usuario
+      if (user) {
+        // Los usuarios con rol superAdmin y taquilla (ticket_office) pueden ver todos los viajes
+        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
+          // Para todos los demás roles, verificar que el viaje pertenezca a su compañía
+          const userCompanyId = user.companyId || user.company || null;
+          
+          if (!userCompanyId) {
+            console.log(`[GET /trips/${id}] Usuario sin compañía asignada intenta acceder a un viaje`);
+            return res.status(403).json({ 
+              error: "No tiene permiso para ver este viaje",
+              details: "Usuario sin compañía asignada" 
+            });
+          }
+          
+          if (trip.companyId && trip.companyId !== userCompanyId) {
+            console.log(`[GET /trips/${id}] ACCESO DENEGADO: Viaje pertenece a compañía ${trip.companyId} pero usuario es de ${userCompanyId}`);
+            return res.status(403).json({ 
+              error: "No tiene permiso para ver este viaje",
+              details: "El viaje pertenece a otra compañía" 
+            });
+          }
+          
+          console.log(`[GET /trips/${id}] Acceso permitido: El viaje pertenece a la misma compañía del usuario (${userCompanyId})`);
+        } else {
+          console.log(`[GET /trips/${id}] Acceso permitido: Usuario con rol ${user.role} puede ver todos los viajes`);
+        }
+      } else {
+        // Para usuarios no autenticados, verificar si el viaje es público
+        // Por ahora, permitir ver el viaje pero se podría ajustar según necesidades
+        console.log(`[GET /trips/${id}] Usuario no autenticado accediendo al viaje`);
+      }
+      
+      // Si llegamos aquí, el usuario tiene permiso para ver el viaje
       res.json(trip);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch trip" });
+      console.error(`Error al obtener viaje por ID: ${error}`);
+      res.status(500).json({ error: "Error al obtener información del viaje" });
     }
   });
 
@@ -350,7 +385,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!validationResult.success) {
         return res.status(400).json({ 
-          error: "Invalid trip data", 
+          error: "Datos de viaje inválidos", 
           details: validationResult.error.format() 
         });
       }
@@ -358,11 +393,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Obtener los datos del usuario autenticado
       const { user } = req as any;
       
-      // Obtener companyId del usuario (preferimos companyId pero usamos company como respaldo)
-      let companyId = null;
-      if (user) {
-        companyId = user.companyId || user.company;
-        console.log(`Asignando viaje a la compañía: ${companyId} del usuario ${user.firstName} ${user.lastName}`);
+      console.log(`[POST /trips] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
+      
+      // SEGURIDAD: Verificar que el usuario tenga una compañía asignada
+      let companyId = user.companyId || user.company || null;
+      
+      if (!companyId) {
+        console.log(`[POST /trips] ERROR: Usuario sin companyId intenta crear un viaje`);
+        return res.status(403).json({
+          error: "No puede crear viajes",
+          details: "El usuario no tiene una compañía asignada"
+        });
+      }
+      
+      console.log(`[POST /trips] CREANDO VIAJE PARA COMPAÑÍA: ${companyId} del usuario ${user.firstName} ${user.lastName}`);
+      
+      // Verificar que el usuario tenga permisos para crear viajes
+      // En este caso, solo los roles superAdmin, administrator, owner y developer
+      const allowedRoles = [UserRole.SUPER_ADMIN, UserRole.ADMINISTRATOR, UserRole.OWNER, UserRole.DEVELOPER];
+      
+      if (!allowedRoles.includes(user.role)) {
+        console.log(`[POST /trips] DENEGADO: Usuario con rol ${user.role} no tiene permisos para crear viajes`);
+        return res.status(403).json({
+          error: "Acceso denegado",
+          details: "No tiene permisos para crear viajes"
+        });
       }
       
       const tripData = validationResult.data;
