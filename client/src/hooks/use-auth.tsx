@@ -73,7 +73,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: User) => {
+      // Primero, limpiar cualquier dato en caché de sesiones anteriores
+      // Esto es especialmente importante cuando se cambia entre cuentas de diferentes compañías
+      console.log("Limpiando caché antes de iniciar sesión...");
+      queryClient.removeQueries();
+      
+      // Luego, establecer los datos del usuario actual
       queryClient.setQueryData(["/api/auth/user"], user);
+      
       toast({
         title: "Inicio de sesión exitoso",
         description: `Bienvenido, ${user.firstName} ${user.lastName}`,
@@ -106,7 +113,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: User) => {
+      // Limpiar caché previa antes de establecer el nuevo usuario
+      console.log("Limpiando caché antes de registrar usuario...");
+      queryClient.removeQueries();
+      
+      // Luego, establecer los datos del usuario actual
       queryClient.setQueryData(["/api/auth/user"], user);
+      
       toast({
         title: "Registro exitoso",
         description: `Bienvenido, ${user.firstName} ${user.lastName}`,
@@ -133,7 +146,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     onSuccess: () => {
+      // Primero, establecer el usuario actual como null
       queryClient.setQueryData(["/api/auth/user"], null);
+      
+      // IMPORTANTE: Invalidar TODAS las consultas en caché
+      // Esto forzará una recarga de datos cuando el usuario inicie sesión nuevamente
+      // y evitará problemas de datos de diferentes cuentas mezclados
+      console.log("Limpiando caché de todas las consultas...");
+      queryClient.removeQueries();
+      
       toast({
         title: "Sesión cerrada",
         description: "Has cerrado sesión correctamente",
