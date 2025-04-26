@@ -28,7 +28,7 @@ export interface IStorage {
   getRouteWithSegments(id: number): Promise<RouteWithSegments | undefined>;
   
   // Trip methods
-  getTrips(): Promise<TripWithRouteInfo[]>;
+  getTrips(companyId?: string): Promise<TripWithRouteInfo[]>;
   getTrip(id: number): Promise<Trip | undefined>;
   getTripWithRouteInfo(id: number): Promise<TripWithRouteInfo | undefined>;
   createTrip(trip: InsertTrip): Promise<Trip>;
@@ -192,8 +192,14 @@ export class MemStorage implements IStorage {
   }
   
   // Trip methods
-  async getTrips(): Promise<TripWithRouteInfo[]> {
-    const trips = Array.from(this.trips.values());
+  async getTrips(companyId?: string): Promise<TripWithRouteInfo[]> {
+    let trips = Array.from(this.trips.values());
+    
+    // Filtrar por companyId si se proporciona
+    if (companyId) {
+      trips = trips.filter(trip => trip.companyId === companyId);
+    }
+    
     const tripsWithRoute: TripWithRouteInfo[] = [];
     
     for (const trip of trips) {
@@ -260,8 +266,10 @@ export class MemStorage implements IStorage {
     destination?: string;
     date?: string;
     seats?: number;
+    companyId?: string | null;
   }): Promise<TripWithRouteInfo[]> {
-    let trips = await this.getTrips();
+    // Pasar el companyId a getTrips si está presente
+    let trips = await this.getTrips(params.companyId || undefined);
     
     // First, filter by sub-trips
     if ((params.origin || params.destination) && !(params.origin && params.destination)) {
