@@ -16,7 +16,7 @@ import { User, UserCircle, CalendarDays, MapPin, BusFront } from "lucide-react";
 
 export default function ConductorPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("viajes");
+  const [activeTab, setActiveTab] = useState("abordaje");
 
   // Definimos la estructura de un viaje para TypeScript
   interface Trip {
