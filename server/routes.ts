@@ -76,20 +76,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let companyId = null;
       
       if (user) {
-        // Si no es admin/superAdmin/developer, aplicamos filtro por compañía
-        if (user.role !== UserRole.SUPER_ADMIN && 
-            user.role !== UserRole.ADMIN && 
-            user.role !== UserRole.DEVELOPER) {
-          companyId = user.companyId || user.company;
-          console.log(`DB Storage: Consultando rutas para la compañía: ${companyId}`);
+        console.log(`[GET /routes] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
+        
+        // ACCESO TOTAL para superAdmin, admin y developer - sin restricciones
+        if (user.role === UserRole.SUPER_ADMIN || 
+            user.role === UserRole.ADMIN || 
+            user.role === UserRole.DEVELOPER) {
+          console.log(`[GET /routes] Usuario con rol ${user.role}: ACCESO TOTAL - mostrando todas las rutas`);
+          // No establecer companyId para estos roles para ver TODAS las rutas
         } else {
-          console.log(`Usuario con rol ${user.role}: mostrando todas las rutas`);
+          // USUARIOS NORMALES - Filtrar por su compañía
+          companyId = user.companyId || user.company;
+          
+          if (!companyId) {
+            console.log(`[GET /routes] Usuario sin compañía - no verá ninguna ruta`);
+            return res.json([]);
+          }
+          
+          console.log(`[GET /routes] Consultando rutas para la compañía: ${companyId}`);
         }
+      } else {
+        // Usuario no autenticado
+        console.log(`[GET /routes] Acceso anónimo: mostrando todas las rutas públicas`);
       }
       
       // Usar la función actualizada que filtra directamente en la base de datos
       const routes = await storage.getRoutes(companyId || undefined);
-      console.log(`Rutas encontradas: ${routes.length}`);
+      console.log(`[GET /routes] Encontradas ${routes.length} rutas`);
       
       res.json(routes);
     } catch (error) {
