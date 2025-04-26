@@ -88,6 +88,10 @@ export default function TripPassengersPage() {
     queryKey: [`/api/trips/${tripId}`],
     enabled: !!tripId,
   });
+  
+  // Verificar si el usuario es un conductor y si tiene acceso a este viaje
+  const isDriverWithAccess = user?.role === "chofer" && trip?.driverId === user?.id;
+  const hasAccessToTrip = !user || user.role !== "chofer" || isDriverWithAccess;
 
   // Obtener reservaciones para este viaje
   const { data: allReservations, isLoading: isLoadingReservations } = useQuery<Reservation[]>({
@@ -151,13 +155,15 @@ export default function TripPassengersPage() {
     );
   }
 
-  if (!trip) {
+  if (!trip || !hasAccessToTrip) {
     return (
       <div className="container mx-auto py-6 px-4 md:px-6 text-center">
         <div className="py-12">
           <h1 className="text-2xl font-bold mb-4">Viaje no encontrado</h1>
           <p className="text-muted-foreground mb-6">
-            El viaje que buscas no existe o no tienes permiso para verlo.
+            {!trip 
+              ? "El viaje que buscas no existe o no tienes permiso para verlo."
+              : "No tienes permiso para ver este viaje. Solo puedes ver viajes que te han sido asignados como conductor."}
           </p>
           <Button onClick={() => window.history.back()}>
             Volver atrás
