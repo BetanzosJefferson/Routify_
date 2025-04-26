@@ -1,17 +1,67 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserPlus, RefreshCw } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { UserPlus, RefreshCw, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { CreateInvitationForm } from "./create-invitation";
 import { UserRole, UserRoleType, type User, type Invitation } from "@shared/schema";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 export function UsersPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<number | null>(null);
   const [currentTab, setCurrentTab] = useState<"users" | "invitations">("users");
+  const { user: currentUser } = useAuth();
+  const { toast } = useToast();
+  
+  // Mutation para eliminar usuario
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const response = await apiRequest("DELETE", `/api/users/${userId}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Error al eliminar usuario");
+      }
+      return userId;
+    },
+    onSuccess: () => {
+      // Refrescar lista de usuarios
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setIsDeleteDialogOpen(false);
+      setUserToDelete(null);
+      
+      toast({
+        title: "Usuario eliminado",
+        description: "El usuario ha sido eliminado correctamente",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "No se pudo eliminar el usuario",
+      });
+    }
+  });
+  
+  // Función para iniciar el proceso de eliminación
+  const handleDeleteUser = (userId: number) => {
+    setUserToDelete(userId);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  // Función para confirmar la eliminación
+  const confirmDeleteUser = () => {
+    if (userToDelete) {
+      deleteUserMutation.mutate(userToDelete);
+    }
+  };
 
   // Fetch users
   const usersQuery = useQuery({
@@ -118,8 +168,8 @@ export function UsersPage() {
                         <th className="px-4 py-2 text-left">Nombre</th>
                         <th className="px-4 py-2 text-left">Correo</th>
                         <th className="px-4 py-2 text-left">Rol</th>
-                        <th className="px-4 py-2 text-left">Contraseña</th>
                         <th className="px-4 py-2 text-left">Fecha Registro</th>
+                        <th className="px-4 py-2 text-left">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -146,13 +196,21 @@ export function UsersPage() {
                             </span>
                           </td>
                           <td className="px-4 py-2">
-                            <span className="font-mono text-xs bg-gray-100 p-1 rounded">
-                              {/* Mostramos solo los 6 primeros caracteres de la contraseña para debugging */}
-                              {user.password?.substring(0, 6) || ''}...
-                            </span>
+                            {new Date(user.createdAt).toLocaleDateString()}
                           </td>
                           <td className="px-4 py-2">
-                            {new Date(user.createdAt).toLocaleDateString()}
+                            {/* Botón de eliminar solo visible para superAdmin */}
+                            {currentUser?.role === UserRole.SUPER_ADMIN && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeleteUser(user.id)}
+                                disabled={deleteUserMutation.isPending || (user.id === currentUser.id)}
+                                title={user.id === currentUser.id ? "No puedes eliminar tu propia cuenta" : "Eliminar usuario"}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -267,6 +325,42 @@ export function UsersPage() {
           <CreateInvitationForm onComplete={() => {
             invitationsQuery.refetch();
           }} />
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog para confirmar eliminación */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>Confirmar Eliminación</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro que deseas eliminar este usuario? Esta acción no puede deshacerse.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDeleteUser}
+              disabled={deleteUserMutation.isPending}
+            >
+              {deleteUserMutation.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Eliminando...
+                </>
+              ) : (
+                "Eliminar Usuario"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
