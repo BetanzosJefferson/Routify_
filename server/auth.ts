@@ -3,7 +3,7 @@ import { promisify } from "util";
 import { Express, Request, Response, NextFunction } from "express";
 import { db } from "./db";
 import { users, insertUserSchema, insertInvitationSchema, invitations, UserRole } from "@shared/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, ne } from "drizzle-orm";
 import { add } from "date-fns";
 
 const scryptAsync = promisify(scrypt);
@@ -78,11 +78,33 @@ export function setupAuthRoutes(app: Express) {
     console.error("Error al crear usuario inicial:", err);
   });
 
-  // Endpoint para obtener todos los usuarios
-  app.get("/api/users", async (_req: Request, res: Response) => {
+  // Endpoint para obtener usuarios filtrados por rol y/o compañía
+  app.get("/api/users", async (req: Request, res: Response) => {
     try {
-      const allUsers = await db.select().from(users);
-      res.json(allUsers);
+      const { user } = req as any; // Obtener el usuario autenticado desde la sesión
+      
+      // Si no hay usuario autenticado, devolver error
+      if (!user) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      let query = db.select().from(users);
+      
+      // Filtrar según el rol del usuario autenticado
+      if (user.role === UserRole.OWNER) {
+        // Los "Dueños" solo ven a los usuarios que ellos han invitado
+        query = query.where(eq(users.invitedById, user.id));
+      } else if (user.role === UserRole.ADMIN) {
+        // Los administradores ven a todos los usuarios excepto los superadmin
+        query = query.where(ne(users.role, UserRole.SUPER_ADMIN));
+      } else if (user.role !== UserRole.SUPER_ADMIN) {
+        // Otros roles solo se ven a sí mismos
+        query = query.where(eq(users.id, user.id));
+      }
+      // Los superadmin ven a todos los usuarios
+      
+      const filteredUsers = await query;
+      res.json(filteredUsers);
     } catch (error) {
       console.error("Error al obtener usuarios:", error);
       res.status(500).json({ message: "Error al obtener usuarios" });
@@ -166,11 +188,33 @@ export function setupAuthRoutes(app: Express) {
     }
   });
 
-  // Endpoint para obtener todas las invitaciones
-  app.get("/api/invitations", async (_req: Request, res: Response) => {
+  // Endpoint para obtener invitaciones filtradas por rol
+  app.get("/api/invitations", async (req: Request, res: Response) => {
     try {
-      const allInvitations = await db.select().from(invitations);
-      res.json(allInvitations);
+      const { user } = req as any; // Obtener el usuario autenticado desde la sesión
+      
+      // Si no hay usuario autenticado, devolver error
+      if (!user) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      let query = db.select().from(invitations);
+      
+      // Filtrar según el rol del usuario autenticado
+      if (user.role === UserRole.OWNER) {
+        // Los "Dueños" solo ven las invitaciones que ellos han creado
+        query = query.where(eq(invitations.createdById, user.id));
+      } else if (user.role === UserRole.ADMIN) {
+        // Los administradores ven todas las invitaciones
+        // No necesitamos filtro adicional
+      } else if (user.role !== UserRole.SUPER_ADMIN) {
+        // Otros roles no ven ninguna invitación (lista vacía)
+        return res.json([]);
+      }
+      // Los superadmin ven todas las invitaciones
+      
+      const filteredInvitations = await query;
+      res.json(filteredInvitations);
     } catch (error) {
       console.error("Error al obtener invitaciones:", error);
       res.status(500).json({ message: "Error al obtener invitaciones" });
@@ -265,6 +309,26 @@ export function setupAuthRoutes(app: Express) {
         return res.status(400).json({ message: "El nombre de la empresa/proyecto es obligatorio para usuarios con rol Desarrollador" });
       }
 
+      // Obtener el usuario invitador
+      const inviter = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, invitation[0].createdById))
+        .limit(1);
+        
+      // Si el invitador es un dueño, se usa su foto de perfil y compañía para los invitados
+      let companyId = "";
+      let profilePictureToUse = profilePicture || "";
+      
+      if (inviter.length > 0 && inviter[0].role === UserRole.OWNER) {
+        companyId = inviter[0].companyId || inviter[0].company; // Usar companyId si existe, si no, usar el valor de company
+        
+        // Si el usuario que se está registrando NO es un dueño, asignarle la foto de perfil del dueño invitador
+        if (invitation[0].role !== UserRole.OWNER && invitation[0].role !== UserRole.SUPER_ADMIN) {
+          profilePictureToUse = inviter[0].profilePicture || "";
+        }
+      }
+      
       // Crear el usuario con campos adicionales según el rol
       const userData = {
         firstName,
@@ -273,7 +337,9 @@ export function setupAuthRoutes(app: Express) {
         password: await hashPassword(password),
         role: invitation[0].role,
         company: (invitation[0].role === UserRole.OWNER || invitation[0].role === UserRole.DEVELOPER) ? company : "",
-        profilePicture: profilePicture || "",
+        profilePicture: profilePictureToUse,
+        invitedById: invitation[0].createdById, // Guardar referencia al usuario que invitó
+        companyId: companyId, // Guardar referencia a la compañía
       };
 
       const [user] = await db

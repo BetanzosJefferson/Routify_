@@ -283,6 +283,10 @@ export const users = pgTable("users", {
   profilePicture: text("profile_picture").default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  // Campo para referenciar al usuario que invitó/creó este usuario
+  invitedById: integer("invited_by_id").references(() => users.id),
+  // Campo para referenciar la compañía a la que pertenece el usuario
+  companyId: text("company_id").default(""),
 });
 
 export const insertUserSchema = createInsertSchema(users)
@@ -311,8 +315,16 @@ export type InsertInvitation = z.infer<typeof insertInvitationSchema>;
 export type Invitation = typeof invitations.$inferSelect;
 
 // USER RELATIONS
-export const userRelations = relations(users, ({ many }) => ({
-  invitationsCreated: many(invitations)
+export const userRelations = relations(users, ({ many, one }) => ({
+  invitationsCreated: many(invitations),
+  // Relación para los usuarios invitados por este usuario
+  invitedUsers: many(users, { relationName: 'invitedBy' }),
+  // Relación con el usuario que invitó a este usuario
+  invitedBy: one(users, {
+    fields: [users.invitedById],
+    references: [users.id],
+    relationName: 'invitedBy'
+  })
 }));
 
 export const invitationRelations = relations(invitations, ({ one }) => ({
