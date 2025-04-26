@@ -324,12 +324,49 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
+    // Obtener información del vehículo asignado si existe
+    let assignedVehicle = undefined;
+    if (trip.vehicleId) {
+      console.log(`Buscando vehículo asignado con ID: ${trip.vehicleId}`);
+      const [vehicle] = await db
+        .select()
+        .from(schema.vehicles)
+        .where(eq(schema.vehicles.id, trip.vehicleId));
+      
+      if (vehicle) {
+        console.log(`Vehículo encontrado: ${vehicle.brand} ${vehicle.model} (${vehicle.plates})`);
+        assignedVehicle = vehicle;
+      }
+    }
+    
+    // Obtener información del conductor asignado si existe
+    let assignedDriver = undefined;
+    if (trip.driverId) {
+      console.log(`Buscando conductor asignado con ID: ${trip.driverId}`);
+      const [driver] = await db
+        .select()
+        .from(schema.users)
+        .where(
+          and(
+            eq(schema.users.id, trip.driverId),
+            eq(schema.users.role, "chofer")
+          )
+        );
+      
+      if (driver) {
+        console.log(`Conductor encontrado: ${driver.firstName} ${driver.lastName}`);
+        assignedDriver = driver;
+      }
+    }
+    
     return {
       ...trip,
       route,
       numStops: route.stops.length,
       companyName,
-      companyLogo
+      companyLogo,
+      assignedVehicle,
+      assignedDriver
     };
   }
   

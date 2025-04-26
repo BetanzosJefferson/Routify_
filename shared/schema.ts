@@ -48,6 +48,9 @@ export const trips = pgTable("trips", {
   parentTripId: integer("parent_trip_id"),
   segmentOrigin: text("segment_origin"),
   segmentDestination: text("segment_destination"),
+  // Campos para asignación de vehículo y conductor
+  vehicleId: integer("vehicle_id"),
+  driverId: integer("driver_id"),
   // Nuevo campo para aislamiento de datos por compañía
   companyId: text("company_id")
 });
@@ -71,6 +74,8 @@ export interface TripWithTimes {
   parentTripId: number | null;
   segmentOrigin?: string;
   segmentDestination?: string;
+  vehicleId?: number | null;
+  driverId?: number | null;
   companyId?: string | null;
 }
 export type Trip = typeof trips.$inferSelect;
@@ -122,6 +127,9 @@ export type TripWithRouteInfo = Trip & {
   // Campos adicionales para mostrar información de la empresa
   companyName?: string;
   companyLogo?: string;
+  // Información del vehículo y conductor asignados
+  assignedVehicle?: Vehicle;
+  assignedDriver?: User;
 };
 
 export type ReservationWithDetails = Reservation & {
@@ -265,6 +273,14 @@ export const tripRelations = relations(trips, ({ one, many }) => ({
     fields: [trips.parentTripId],
     references: [trips.id],
     relationName: 'parentTrip'
+  }),
+  vehicle: one(vehicles, {
+    fields: [trips.vehicleId],
+    references: [vehicles.id]
+  }),
+  driver: one(users, {
+    fields: [trips.driverId],
+    references: [users.id]
   }),
   reservations: many(reservations)
 }));
