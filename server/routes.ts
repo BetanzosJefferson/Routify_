@@ -85,11 +85,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Filtrar rutas por compañía si el usuario tiene una compañía asignada
       if (companyId && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN && user.role !== UserRole.DEVELOPER) {
         routes = routes.filter(route => {
-          // Si la ruta no tiene companyId, podemos mostrarla o ocultarla según decidamos
-          // Por ahora, solo mostramos rutas asociadas a la compañía del usuario
+          // Solo mostrar rutas asociadas a la compañía del usuario
           return route.companyId === companyId;
         });
         console.log(`DB Storage: Rutas filtradas por compañía ${companyId}: ${routes.length}`);
+      } else if (user.role === UserRole.SUPER_ADMIN) {
+        console.log("Usuario superAdmin: mostrando todas las rutas");
+      } else {
+        console.log(`Usuario sin compañía asignada o con rol especial: ${user.role}`);
       }
       
       res.json(routes);
@@ -313,6 +316,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!trip) {
         return res.status(404).json({ error: "Trip not found" });
+      }
+
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      // Variable para almacenar el companyId para verificar permisos
+      let companyId: string | null = null;
+      
+      // Si hay usuario autenticado y no es admin/superAdmin/developer, verificamos permiso
+      if (user) {
+        if (user.role === UserRole.OWNER || 
+            user.role === UserRole.CALL_CENTER || 
+            user.role === UserRole.CHECKER ||
+            user.role === UserRole.DRIVER ||
+            user.role === UserRole.TICKET_OFFICE) {
+          
+          companyId = user.companyId || user.company;
+          
+          // Verificar si el viaje pertenece a la compañía del usuario
+          if (trip.companyId && trip.companyId !== companyId) {
+            return res.status(403).json({ 
+              error: "No tiene permiso para acceder a este viaje",
+              details: "El viaje pertenece a otra compañía"
+            });
+          }
+        }
       }
       
       res.json(trip);
