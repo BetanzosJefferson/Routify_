@@ -238,6 +238,8 @@ export const commissions = pgTable("commissions", {
   percentage: boolean("percentage").default(false),
   tripId: integer("trip_id").references(() => trips.id),
   routeId: integer("route_id").references(() => routes.id),
+  // Campo para asociar la comisión con una compañía
+  companyId: text("company_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

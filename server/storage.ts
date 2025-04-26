@@ -659,7 +659,8 @@ export class MemStorage implements IStorage {
       routeId: commission.routeId ?? null,
       tripId: commission.tripId ?? null,
       description: commission.description ?? null,
-      percentage: commission.percentage ?? null
+      percentage: commission.percentage ?? null,
+      companyId: commission.companyId || null
     };
     this.commissions.set(id, newCommission);
     return newCommission;
