@@ -197,5 +197,40 @@ export function setupAuthentication(app: Express) {
     res.json(req.user);
   });
 
+  // Actualizar foto de perfil
+  app.post("/api/auth/update-profile-picture", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const { profilePicture } = req.body;
+      
+      if (!userId || !profilePicture) {
+        return res.status(400).json({ message: "Se requiere un usuario autenticado y una imagen de perfil" });
+      }
+      
+      // Actualizar la foto de perfil en la base de datos
+      const [updatedUser] = await db
+        .update(users)
+        .set({ profilePicture })
+        .where(eq(users.id, userId))
+        .returning();
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+      
+      // Actualizar el usuario en la sesión
+      const { password: _, ...userWithoutPassword } = updatedUser;
+      req.login(userWithoutPassword, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Error al actualizar la sesión" });
+        }
+        return res.json(userWithoutPassword);
+      });
+    } catch (error) {
+      console.error("Error al actualizar la foto de perfil:", error);
+      res.status(500).json({ message: "Error al actualizar la foto de perfil" });
+    }
+  });
+
   return { isAuthenticated, hasRole };
 }

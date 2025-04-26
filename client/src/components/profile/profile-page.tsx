@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 
 interface ProfilePageProps {
   standalone?: boolean;
@@ -20,6 +22,7 @@ interface ProfilePageProps {
 export function ProfilePage({ standalone = false }: ProfilePageProps) {
   const [isUploading, setIsUploading] = useState(false);
   const { user, isLoading, logoutMutation } = useAuth();
+  const { toast } = useToast();
 
   const handleLogout = () => {
     logoutMutation.mutate();
@@ -33,22 +36,68 @@ export function ProfilePage({ standalone = false }: ProfilePageProps) {
       case "checador": return "Checador";
       case "chofer": return "Chofer";
       case "taquilla": return "Taquilla";
+      case "dueño": return "Dueño";
+      case "desarrollador": return "Desarrollador";
       default: return role;
     }
   };
 
-  const handleProfilePictureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploading(true);
     
-    // Simular una subida de archivo (implementar más adelante)
-    setTimeout(() => {
+    try {
+      // Convertir la imagen a base64
+      const base64Image = await convertFileToBase64(file);
+      
+      // Enviar al servidor
+      const response = await fetch('/api/auth/update-profile-picture', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ profilePicture: base64Image }),
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al actualizar la foto de perfil');
+      }
+      
+      // Actualizar el estado local
+      const updatedUser = await response.json();
+      
+      // Invalidar la caché para forzar una nueva consulta
+      queryClient.setQueryData(["/api/auth/user"], updatedUser);
+      
+      toast({
+        title: "Foto actualizada",
+        description: "Tu foto de perfil ha sido actualizada correctamente.",
+      });
+      
+      console.log("Foto de perfil actualizada:", file.name);
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo actualizar la foto de perfil. Inténtalo de nuevo.",
+      });
+    } finally {
       setIsUploading(false);
-      // Aquí se implementaría la subida al servidor
-      console.log("Archivo seleccionado:", file.name);
-    }, 1500);
+    }
+  };
+  
+  // Función para convertir un archivo a base64
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
   };
 
   if (isLoading) {
