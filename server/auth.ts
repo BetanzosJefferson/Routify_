@@ -151,21 +151,27 @@ export function setupAuthRoutes(app: Express) {
   app.post("/api/invitations", async (req: Request, res: Response) => {
     try {
       const { role, email } = req.body;
+      const { user } = req as any; // Obtener el usuario autenticado
 
       if (!role) {
         return res.status(400).json({ message: "El rol es requerido" });
       }
 
-      // Normalmente verificaríamos que el usuario está autenticado y tiene permisos
-      // Por ahora, asumimos que el creador es el primer SuperAdmin
-      const admin = await db
-        .select()
-        .from(users)
-        .where(eq(users.role, UserRole.SUPER_ADMIN))
-        .limit(1);
+      // Verificar que el usuario está autenticado
+      if (!user) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
 
-      if (admin.length === 0) {
-        return res.status(500).json({ message: "No se encontró un administrador para crear la invitación" });
+      // Verificar permisos según el rol
+      // Solo los SUPER_ADMIN pueden crear cualquier tipo de usuario
+      // Los OWNER solo pueden crear usuarios que no sean SUPER_ADMIN ni OWNER
+      // Los ADMIN solo pueden crear usuarios que no sean SUPER_ADMIN, ADMIN ni OWNER
+      if (
+        (user.role === UserRole.OWNER && (role === UserRole.SUPER_ADMIN || role === UserRole.OWNER)) ||
+        (user.role === UserRole.ADMIN && (role === UserRole.SUPER_ADMIN || role === UserRole.ADMIN || role === UserRole.OWNER)) ||
+        (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER)
+      ) {
+        return res.status(403).json({ message: "No tiene permisos para crear este tipo de usuario" });
       }
 
       // Calcular fecha de expiración (24 horas desde ahora)
@@ -177,7 +183,7 @@ export function setupAuthRoutes(app: Express) {
           role,
           email: email || null,
           expiresAt,
-          createdById: admin[0].id,
+          createdById: user.id, // Usar el ID del usuario autenticado como creador
         })
         .returning();
 
