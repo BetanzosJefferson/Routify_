@@ -420,6 +420,7 @@ export class DatabaseStorage implements IStorage {
     date?: string;
     seats?: number;
     companyId?: string;  // Añadido para filtrar por compañía
+    driverId?: number;   // Añadido para filtrar por conductor
   }): Promise<TripWithRouteInfo[]> {
     console.time('searchTrips-optimized');
     
@@ -470,6 +471,13 @@ export class DatabaseStorage implements IStorage {
       condiciones.push(sql`DATE(departure_date) = ${params.date}`);
     }
     
+    // Aplicar filtro de conductor (driverId)
+    if (params.driverId) {
+      console.log(`[searchTrips-v2] Filtro por conductor (driverId): ${params.driverId}`);
+      // Filtrar los viajes asignados a este conductor
+      condiciones.push(sql`driver_id = ${params.driverId}`);
+    }
+    
     // CONSULTA FINAL: Construir y ejecutar la consulta SQL con todas las condiciones
     let trips;
     
@@ -509,6 +517,21 @@ export class DatabaseStorage implements IStorage {
       trips = viajesFiltrados;
     } else if (!params.companyId || params.companyId === 'ALL') {
       console.log(`[searchTrips-v2] ACCESO TOTAL: Mostrando todos los viajes sin filtro adicional de compañía`);
+    }
+
+    // Verificación extra para filtro de conductor (driverId)
+    if (params.driverId) {
+      console.log(`[searchTrips-v2] VERIFICACIÓN ADICIONAL por conductor ID: ${params.driverId}`);
+      // Aplicar un segundo filtro de conductor después de la consulta SQL
+      const viajesConductor = trips.filter(trip => trip.driverId === params.driverId);
+      
+      // Verificar si hubo diferencia
+      if (viajesConductor.length !== trips.length) {
+        console.log(`[searchTrips-v2] ALERTA DE SEGURIDAD: La consulta SQL devolvió ${trips.length} viajes pero solo ${viajesConductor.length} están asignados al conductor ${params.driverId}`);
+      }
+      
+      // Actualizar la lista de viajes con el filtro aplicado
+      trips = viajesConductor;
     }
     console.log(`Encontrados ${trips.length} viajes que coinciden con los filtros básicos`);
     
