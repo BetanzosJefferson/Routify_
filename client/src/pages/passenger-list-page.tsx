@@ -160,10 +160,58 @@ export default function PassengerListPage() {
           console.log(`Verificando si el viaje ${tripId} pertenece al conductor ${user.id}`);
           console.log(`Datos del viaje: driverId=${tripData.driverId}, conductor actual=${user.id}`);
           
-          // Si el viaje no está asignado a este conductor, lanzar error
+          // Si el viaje no está asignado a este conductor, verificar si hay viajes relacionados
           if (tripData.driverId !== user.id) {
-            console.error(`El viaje ${tripId} no está asignado al conductor ${user.id}`);
-            throw new Error("No tienes permisos para ver los pasajeros de este viaje");
+            console.log(`El viaje ${tripId} no está asignado directamente al conductor ${user.id}, verificando viajes relacionados...`);
+            
+            // Comprobar si es un sub-viaje y el viaje principal está asignado al conductor
+            // O si es un viaje principal y tiene sub-viajes asignados al conductor
+            let hasAccess = false;
+            
+            try {
+              // Si es un sub-viaje, verificar si el viaje principal está asignado al conductor
+              if (tripData.isSubTrip && tripData.parentTripId) {
+                console.log(`Es un sub-viaje del viaje principal ${tripData.parentTripId}, verificando asignación...`);
+                
+                const parentResponse = await fetch(`/api/trips/${tripData.parentTripId}`);
+                if (parentResponse.ok) {
+                  const parentTrip = await parentResponse.json();
+                  if (parentTrip.driverId === user.id) {
+                    console.log(`El viaje principal ${tripData.parentTripId} está asignado al conductor ${user.id}`);
+                    hasAccess = true;
+                  }
+                }
+              } 
+              // Si es un viaje principal, verificar si tiene sub-viajes asignados al conductor
+              else if (!tripData.isSubTrip) {
+                console.log(`Es un viaje principal, verificando si tiene sub-viajes asignados al conductor ${user.id}...`);
+                
+                // Obtener todos los viajes para buscar sub-viajes
+                const allTripsResponse = await fetch(`/api/trips`);
+                if (allTripsResponse.ok) {
+                  const allTrips = await allTripsResponse.json();
+                  
+                  // Buscar sub-viajes de este viaje principal asignados al conductor
+                  const assignedSubTrips = allTrips.filter(t => 
+                    t.parentTripId === tripId && t.driverId === user.id);
+                  
+                  if (assignedSubTrips.length > 0) {
+                    console.log(`Encontrados ${assignedSubTrips.length} sub-viajes asignados al conductor ${user.id}`);
+                    hasAccess = true;
+                  }
+                }
+              }
+              
+              // Si después de verificar, sigue sin tener acceso, denegar
+              if (!hasAccess) {
+                console.error(`El viaje ${tripId} no está asignado al conductor ${user.id} ni tiene relación con viajes asignados`);
+                throw new Error("No tienes permisos para ver los pasajeros de este viaje");
+              }
+            } catch (error) {
+              // Si ocurre algún error en la verificación, denegar acceso por seguridad
+              console.error(`Error al verificar relaciones de viajes para el conductor ${user.id}:`, error);
+              throw new Error("No tienes permisos para ver los pasajeros de este viaje");
+            }
           }
           
           // El viaje pertenece al conductor, obtener las reservaciones
