@@ -130,16 +130,18 @@ export default function PassengerListPage() {
     enabled: !!tripDetails, // Only fetch all trips after we have the specific trip
   });
 
-  // Fetch all reservations - AHORA CON SOPORTE PARA CONDUCTORES
+  // Fetch all reservations - AHORA CON SOPORTE COMPLETO PARA TODOS LOS ROLES
   const { data: reservations, isLoading: isLoadingReservations } = useQuery<Reservation[]>({
     queryKey: ["/api/reservations", {
-      tripId: tripId // Añadimos tripId para obtener reservas específicas de este viaje
+      tripId: tripId,
+      includeRelated: true // Añadimos el flag para obtener también reservas de viajes relacionados (sub-viajes)
     }],
     staleTime: 5000,
     refetchInterval: 15000,
     queryFn: async ({ queryKey }) => {
-      console.log(`Consultando reservaciones específicas para viaje: ${tripId}`);
-      const response = await fetch(`/api/reservations?tripId=${tripId}`);
+      console.log(`Consultando reservaciones específicas para viaje: ${tripId} (incluye viajes relacionados)`);
+      // Añadimos el parámetro includeRelated=true para que el backend incluya reservas de sub-viajes
+      const response = await fetch(`/api/reservations?tripId=${tripId}&includeRelated=true`);
       if (!response.ok) {
         throw new Error(`Error al obtener reservaciones: ${response.statusText}`);
       }

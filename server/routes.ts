@@ -1281,11 +1281,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // SEGURIDAD: Filtrado de datos por compañía
       let companyId: string | null = null;
       let tripId: number | null = null;
+      let includeRelatedTrips = req.query.includeRelated === 'true';
       
-      // Verificar si se solicita filtrar por viaje específico (para conductores)
+      // Verificar si se solicita filtrar por viaje específico
       if (req.query.tripId) {
         tripId = parseInt(req.query.tripId as string, 10);
         console.log(`[GET /reservations] Solicitando específicamente reservaciones del viaje ID: ${tripId}`);
+        
+        if (includeRelatedTrips) {
+          console.log(`[GET /reservations] Se incluirán reservaciones de viajes relacionados (principal/subviajes)`);
+        }
       }
       
       // REGLAS DE ACCESO:
@@ -1303,8 +1308,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (trip && trip.driverId === user.id) {
             console.log(`[GET /reservations] Permitiendo a conductor ver reservaciones del viaje ${tripId} asignado a él`);
-            // No aplicamos filtro de compañía para permitir ver las reservaciones de este viaje específico
-            // El storage filtrará solo por tripId
+            
+            // Si se solicita incluir viajes relacionados
+            if (includeRelatedTrips) {
+              try {
+                console.log(`[GET /reservations] Buscando viajes relacionados con ${tripId}`);
+                
+                // Obtener el viaje completo con información de ruta
+                const fullTrip = await storage.getTripWithRouteInfo(tripId);
+                if (!fullTrip) {
+                  throw new Error(`No se encontró información completa del viaje ${tripId}`);
+                }
+                
+                // Obtener todos los viajes para identificar relaciones
+                const allTrips = await storage.getTrips();
+                let relatedTripIds = [tripId]; // Incluir el viaje solicitado
+                
+                // Determinar viajes relacionados según el tipo
+                if (!fullTrip.isSubTrip) {
+                  // Es un viaje principal, buscar sus subviajes
+                  const subTrips = allTrips.filter(t => t.parentTripId === tripId);
+                  relatedTripIds = [...relatedTripIds, ...subTrips.map(t => t.id)];
+                  console.log(`[GET /reservations] Incluyendo ${subTrips.length} sub-viajes del viaje principal ${tripId}`);
+                } else if (fullTrip.parentTripId) {
+                  // Es un sub-viaje, incluir el viaje principal y otros sub-viajes hermanos
+                  relatedTripIds.push(fullTrip.parentTripId);
+                  const siblingTrips = allTrips.filter(t => 
+                    t.parentTripId === fullTrip.parentTripId && t.id !== tripId);
+                  relatedTripIds = [...relatedTripIds, ...siblingTrips.map(t => t.id)];
+                  console.log(`[GET /reservations] Incluyendo viaje principal ${fullTrip.parentTripId} y ${siblingTrips.length} sub-viajes hermanos`);
+                }
+                
+                // Obtener reservaciones de todos los viajes relacionados
+                const allReservations = [];
+                
+                for (const id of relatedTripIds) {
+                  const tripReservations = await storage.getReservations(undefined, id);
+                  allReservations.push(...tripReservations);
+                  console.log(`[GET /reservations] Encontradas ${tripReservations.length} reservaciones para viaje relacionado ${id}`);
+                }
+                
+                console.log(`[GET /reservations] Total: ${allReservations.length} reservaciones de todos los viajes relacionados`);
+                return res.json(allReservations);
+              } catch (error) {
+                console.error('[GET /reservations] Error al obtener viajes relacionados:', error);
+                // Si hay error, caer al comportamiento normal (solo el viaje solicitado)
+              }
+            }
+            
+            // Comportamiento original: solo reservaciones del viaje específico
             const tripReservations = await storage.getReservations(undefined, tripId);
             return res.json(tripReservations);
           } else {
@@ -1333,8 +1385,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "No autenticado" });
       }
       
-      // Ejecutar la consulta con el filtro de compañía si aplica
-      const reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
+      // Si se solicita incluir viajes relacionados para cualquier rol (dueño, admin, etc.)
+      let reservations = [];
+      
+      if (tripId && includeRelatedTrips) {
+        try {
+          console.log(`[GET /reservations] Usuario con rol ${user.role} solicitando viajes relacionados con ${tripId}`);
+          
+          // Obtener el viaje completo con información de ruta
+          const fullTrip = await storage.getTripWithRouteInfo(tripId);
+          if (!fullTrip) {
+            throw new Error(`No se encontró información completa del viaje ${tripId}`);
+          }
+          
+          // Obtener todos los viajes para identificar relaciones
+          const allTrips = await storage.getTrips();
+          let relatedTripIds = [tripId]; // Incluir el viaje solicitado
+          
+          // Determinar viajes relacionados según el tipo
+          if (!fullTrip.isSubTrip) {
+            // Es un viaje principal, buscar sus subviajes
+            const subTrips = allTrips.filter(t => t.parentTripId === tripId);
+            relatedTripIds = [...relatedTripIds, ...subTrips.map(t => t.id)];
+            console.log(`[GET /reservations] Incluyendo ${subTrips.length} sub-viajes del viaje principal ${tripId}`);
+          } else if (fullTrip.parentTripId) {
+            // Es un sub-viaje, incluir el viaje principal y otros sub-viajes hermanos
+            relatedTripIds.push(fullTrip.parentTripId);
+            const siblingTrips = allTrips.filter(t => 
+              t.parentTripId === fullTrip.parentTripId && t.id !== tripId);
+            relatedTripIds = [...relatedTripIds, ...siblingTrips.map(t => t.id)];
+            console.log(`[GET /reservations] Incluyendo viaje principal ${fullTrip.parentTripId} y ${siblingTrips.length} sub-viajes hermanos`);
+          }
+          
+          // Obtener reservaciones de todos los viajes relacionados
+          const allReservations = [];
+          
+          for (const id of relatedTripIds) {
+            // Aplicar filtro de compañía solo si es necesario para este rol
+            const tripReservations = await storage.getReservations(
+              (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN) ? undefined : companyId,
+              id
+            );
+            allReservations.push(...tripReservations);
+            console.log(`[GET /reservations] Encontradas ${tripReservations.length} reservaciones para viaje relacionado ${id}`);
+          }
+          
+          console.log(`[GET /reservations] Total: ${allReservations.length} reservaciones de todos los viajes relacionados`);
+          reservations = allReservations;
+        } catch (error) {
+          console.error('[GET /reservations] Error al obtener viajes relacionados:', error);
+          // Si hay error, caer al comportamiento normal (solo el viaje solicitado)
+          reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
+        }
+      } else {
+        // Ejecutar la consulta normal con el filtro de compañía si aplica
+        reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
+      }
+      
       console.log(`[GET /reservations] Encontradas ${reservations.length} reservaciones`);
       
       // CAPA ADICIONAL DE SEGURIDAD - FILTRO POST-CONSULTA
