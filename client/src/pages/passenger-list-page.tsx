@@ -336,21 +336,6 @@ export default function PassengerListPage() {
         <Card className="md:col-span-1">
           <CardHeader>
             <CardTitle>Información del Viaje</CardTitle>
-            <Badge 
-              variant={
-                tripInfo.status === "scheduled" ? "outline" : 
-                tripInfo.status === "in-progress" ? "default" : 
-                "secondary"
-              }
-            >
-              {tripInfo.status === "scheduled" 
-                ? "Programado" 
-                : tripInfo.status === "in-progress" 
-                  ? "En Progreso" 
-                  : tripInfo.status === "completed" 
-                    ? "Completado" 
-                    : "Cancelado"}
-            </Badge>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
