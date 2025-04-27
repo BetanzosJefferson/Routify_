@@ -34,6 +34,7 @@ interface Trip {
   parentTripId?: number;
   segmentOrigin?: string;
   segmentDestination?: string;
+  companyId?: string;
   route: {
     id: number;
     name: string;
@@ -72,11 +73,7 @@ export function BoardingList() {
   
   // Fetch trips with proper filtering based on user role
   const { data: trips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
-    queryKey: ["/api/trips", { 
-      companyId: user?.companyId || undefined,
-      // No aplicamos filtro de fecha aquí para obtener todos los viajes
-      // Luego los filtraremos por fecha en el componente
-    }],
+    queryKey: ["/api/trips"], // No filtramos aquí para obtener todos los viajes de la compañía
     staleTime: 5000,
     refetchInterval: 15000,
     enabled: !!user, // Solo ejecutar la consulta cuando tengamos datos del usuario
