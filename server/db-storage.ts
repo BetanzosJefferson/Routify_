@@ -420,6 +420,7 @@ export class DatabaseStorage implements IStorage {
     date?: string;
     seats?: number;
     companyId?: string;  // Añadido para filtrar por compañía
+    driverId?: number;   // Añadido para filtrar viajes de un conductor específico
   }): Promise<TripWithRouteInfo[]> {
     console.time('searchTrips-optimized');
     
@@ -468,6 +469,20 @@ export class DatabaseStorage implements IStorage {
       
       // Filtrado directo por SQL para máxima seguridad en el formato de fecha
       condiciones.push(sql`DATE(departure_date) = ${params.date}`);
+    }
+    
+    // Aplicar filtro por conductor (driverId)
+    if (params.driverId) {
+      console.log(`[searchTrips-v2] Filtro por conductor ID: ${params.driverId}`);
+      condiciones.push(sql`driver_id = ${params.driverId}`);
+      
+      // Verificar que existen viajes para este conductor
+      const testQuery = await db.execute(
+        sql`SELECT COUNT(*) FROM trips WHERE driver_id = ${params.driverId}`
+      );
+      
+      const viajesContador = Number(testQuery.rows?.[0]?.count || 0);
+      console.log(`[searchTrips-v2] Verificación: Existen ${viajesContador} viajes asignados al conductor ID ${params.driverId}`);
     }
     
     // CONSULTA FINAL: Construir y ejecutar la consulta SQL con todas las condiciones
