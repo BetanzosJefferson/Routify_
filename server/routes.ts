@@ -298,7 +298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Parámetros de búsqueda desde la query
-      const { origin, destination, date, seats } = req.query;
+      const { origin, destination, date, seats, driverId } = req.query;
       const searchParams: any = {};
       
       // Agregar parámetros de búsqueda si existen
@@ -309,10 +309,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         searchParams.seats = parseInt(seats as string, 10);
       }
       
+      // Agregar filtro por conductor (driverId) si existe
+      if (driverId && !isNaN(parseInt(driverId as string, 10))) {
+        searchParams.driverId = parseInt(driverId as string, 10);
+        console.log(`[GET /trips] Filtro por conductor ID: ${searchParams.driverId}`);
+      }
+      
       // APLICAR FILTRO DE COMPAÑÍA - PARTE CRÍTICA
       // Solo superAdmin y taquilla pueden ver viajes de todas las compañías
       if (user) {
-        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
+        // CASO ESPECIAL PARA CONDUCTORES: Filtrar por su ID de usuario cuando son role=DRIVER
+        if (user.role === UserRole.DRIVER || user.role === 'CHOFER') {
+          // Para conductores, filtrar siempre por su ID (que debería coincidir con driverId en viajes)
+          console.log(`[GET /trips] Usuario es CONDUCTOR (ID: ${user.id}), filtrando viajes asignados`);
+          
+          // Si no se envió un driverId explícitamente en la URL, usar el ID del usuario conductor
+          if (!searchParams.driverId) {
+            searchParams.driverId = user.id;
+            console.log(`[GET /trips] Asignando driverId=${user.id} automáticamente para conductor`);
+          }
+          
+          // Aplicar también el filtro de compañía normal
+          const userCompanyId = user.companyId || user.company || null;
+          if (userCompanyId) {
+            searchParams.companyId = userCompanyId;
+            console.log(`[GET /trips] Filtro compañía para conductor: ${userCompanyId}`);
+          } else {
+            console.log(`[GET /trips] Conductor sin compañía asignada, aplicando solo filtro por driverId`);
+          }
+        } else if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
           // Usuarios normales - SIEMPRE FILTRAR POR SU COMPAÑÍA
           // Obtener companyId del usuario (preferimos companyId pero también aceptamos company como respaldo)
           const userCompanyId = user.companyId || user.company || null;
@@ -352,7 +377,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Si el usuario no tiene permisos para ver todos los viajes,
       // realizamos una verificación adicional de seguridad y FILTRAMOS los resultados
       if (user && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
-        // Obtener la compañía del usuario
+        // Caso especial para conductores - verificar que solo vean sus viajes asignados
+        if (user.role === UserRole.DRIVER || user.role === 'CHOFER') {
+          console.log(`[GET /trips] VERIFICACIÓN CONDUCTOR: Asegurando que el chofer solo vea sus viajes`);
+          
+          // Verificar que todos los viajes tengan el driverId correcto
+          const viajesNoAsignados = trips.filter(t => t.driverId !== user.id);
+          
+          if (viajesNoAsignados.length > 0) {
+            console.log(`[ALERTA DE SEGURIDAD] Se intentaron mostrar ${viajesNoAsignados.length} viajes no asignados al conductor!`);
+            console.log(`IDs bloqueados: ${viajesNoAsignados.map(t => t.id).join(', ')}`);
+            
+            // CRÍTICO: Filtrar y devolver SOLO los viajes asignados al conductor
+            const viajesFiltradosConductor = trips.filter(t => t.driverId === user.id);
+            console.log(`[CORRECCIÓN] Devolviendo solo ${viajesFiltradosConductor.length} viajes asignados al conductor ${user.id}`);
+            
+            // Reemplazar los resultados con solo los viajes asignados
+            return res.json(viajesFiltradosConductor);
+          }
+        }
+        
+        // Verificación de compañía para todos los usuarios (incluyendo conductores)
         const userCompany = user.companyId || user.company || null;
         
         if (userCompany) {
@@ -405,7 +450,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user) {
         // Los usuarios con rol superAdmin y taquilla (ticket_office) pueden ver todos los viajes
         if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
-          // Para todos los demás roles, verificar que el viaje pertenezca a su compañía
+          // CASO ESPECIAL: Verificar que los conductores solo vean los viajes asignados a ellos
+          if (user.role === UserRole.DRIVER || user.role === 'CHOFER') {
+            console.log(`[GET /trips/${id}] VERIFICACIÓN CONDUCTOR: Verificando que el viaje esté asignado al conductor`);
+            
+            if (trip.driverId !== user.id) {
+              console.log(`[GET /trips/${id}] ACCESO DENEGADO: El viaje está asignado al conductor ${trip.driverId || 'ninguno'} pero el usuario es el conductor ${user.id}`);
+              return res.status(403).json({ 
+                error: "No tiene permiso para ver este viaje",
+                details: "Este viaje no está asignado a usted" 
+              });
+            }
+            
+            console.log(`[GET /trips/${id}] Acceso permitido: El viaje está asignado al conductor ${user.id}`);
+          }
+          
+          // Para todos los roles, verificar también que el viaje pertenezca a su compañía
           const userCompanyId = user.companyId || user.company || null;
           
           if (!userCompanyId) {
