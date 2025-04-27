@@ -9,11 +9,13 @@ import {
   Users, 
   Calendar,
   Clock,
-  Bus
+  Bus,
+  User
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/use-auth";
 
 interface Trip {
   id: number;
@@ -66,6 +68,7 @@ interface Reservation {
 export function BoardingList() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [, navigate] = useLocation();
+  const { user } = useAuth();
   
   // Fetch all trips
   const { data: trips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
@@ -81,22 +84,35 @@ export function BoardingList() {
     refetchInterval: 15000,
   });
 
-  // Filtrar para obtener solo viajes principales (no sub-viajes) y por fecha seleccionada
-  const filteredTrips = trips?.filter(trip => {
-    // Filtrar por viajes principales
-    if (trip.isSubTrip) return false;
+  // Filtrar viajes según el rol del usuario y la fecha seleccionada
+  const filteredTrips = useMemo(() => {
+    if (!trips) return [];
     
-    // Convertir cadena de fecha a objeto Date y obtener solo la parte de la fecha (sin hora)
-    // Aseguramos que trip.departureDate sea una cadena (ya que podría ser un objeto Date)
-    const tripDate = typeof trip.departureDate === 'string' 
-      ? trip.departureDate.split('T')[0] 
-      : format(new Date(trip.departureDate), 'yyyy-MM-dd');
+    let filteredList = trips;
+    
+    // Si el usuario es un chofer, solo mostrar viajes asignados a él
+    if (user && user.role === 'chofer' && user.id) {
+      console.log(`Filtrando viajes para conductor ID: ${user.id}`);
+      filteredList = trips.filter(trip => trip.driverId === user.id);
+      console.log(`Encontrados ${filteredList.length} viajes asignados al conductor`);
+    }
+    
+    // Filtrar viajes por fecha y excluir sub-viajes
+    return filteredList.filter(trip => {
+      // Excluir sub-viajes
+      if (trip.isSubTrip) return false;
       
-    const currentDateStr = format(currentDate, 'yyyy-MM-dd');
-    
-    // Comparar las cadenas de fecha directamente
-    return tripDate === currentDateStr;
-  }) || [];
+      // Convertir cadena de fecha a objeto Date y obtener solo la parte de la fecha (sin hora)
+      const tripDate = typeof trip.departureDate === 'string' 
+        ? trip.departureDate.split('T')[0] 
+        : format(new Date(trip.departureDate), 'yyyy-MM-dd');
+        
+      const currentDateStr = format(currentDate, 'yyyy-MM-dd');
+      
+      // Comparar las cadenas de fecha directamente
+      return tripDate === currentDateStr;
+    });
+  }, [trips, user, currentDate]);
 
   // La lógica de procesamiento de pasajeros ya no es necesaria aquí
   // ya que ahora se maneja en la página dedicada de PassengerListPage
@@ -250,6 +266,13 @@ export function BoardingList() {
                           <span className="capitalize">{trip.vehicleType}</span>
                         </div>
                       )}
+                      
+                      {trip.driverId && user?.role === 'chofer' && (
+                        <div className="flex items-center text-green-600">
+                          <User className="h-4 w-4 mr-2" />
+                          <span className="font-medium">Asignado a ti</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
@@ -276,7 +299,11 @@ export function BoardingList() {
         <div className="text-center py-12 text-gray-500">
           <ClipboardListIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
           <h3 className="text-lg font-medium mb-2">No hay viajes programados</h3>
-          <p>No se encontraron viajes para la fecha seleccionada.</p>
+          {user?.role === 'chofer' ? (
+            <p>No tienes viajes asignados para la fecha seleccionada.</p>
+          ) : (
+            <p>No se encontraron viajes para la fecha seleccionada.</p>
+          )}
         </div>
       )}
     </div>
