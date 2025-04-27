@@ -49,8 +49,15 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createRoute(route: InsertRoute): Promise<Route> {
-    console.log("Creando ruta con los datos:", JSON.stringify(route));
+    console.log("DB Storage: Creando ruta con los datos:", JSON.stringify(route));
+    
+    // Validación adicional para asegurar que rutas no superadmin tengan companyId
+    if (!route.companyId) {
+      console.log("DB Storage - ADVERTENCIA: Intento de crear ruta sin companyId");
+    }
+    
     const [newRoute] = await db.insert(schema.routes).values(route).returning();
+    console.log("DB Storage: Ruta creada con ID:", newRoute.id, "CompanyId:", newRoute.companyId);
     return newRoute;
   }
   
