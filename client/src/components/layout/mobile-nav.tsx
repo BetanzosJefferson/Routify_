@@ -4,6 +4,8 @@ import { MenuIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { TabType } from "@/hooks/use-active-tab";
+import { useAuth } from "@/hooks/use-auth";
+import { hasAccessToSection } from "@/lib/role-based-permissions";
 
 interface MobileNavProps {
   activeTab: TabType;
@@ -13,6 +15,13 @@ interface MobileNavProps {
 export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  
+  // Función para verificar si el usuario tiene acceso a una sección
+  const canAccess = (sectionId: string): boolean => {
+    if (!user) return false;
+    return hasAccessToSection(user.role, sectionId);
+  };
   
   const handleNavClick = (tab: TabType) => {
     onTabChange(tab);
@@ -43,48 +52,78 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
             </div>
           </div>
           <nav className="flex flex-col p-4">
-            <NavLink 
-              active={activeTab === "create-route"}
-              onClick={() => handleNavClick("create-route")}
-            >
-              Rutas
-            </NavLink>
-            <NavLink 
-              active={activeTab === "publish-trip"}
-              onClick={() => handleNavClick("publish-trip")}
-            >
-              Publicar Viajes
-            </NavLink>
-            <NavLink 
-              active={activeTab === "trips"}
-              onClick={() => handleNavClick("trips")}
-            >
-              Viajes
-            </NavLink>
-            <NavLink 
-              active={activeTab === "reservations"}
-              onClick={() => handleNavClick("reservations")}
-            >
-              Reservaciones
-            </NavLink>
-            <NavLink 
-              active={activeTab === "trip-summary"}
-              onClick={() => handleNavClick("trip-summary")}
-            >
-              Resumen de Viajes
-            </NavLink>
-            <NavLink 
-              active={activeTab === "boarding-list"}
-              onClick={() => handleNavClick("boarding-list")}
-            >
-              Lista de Abordaje
-            </NavLink>
-            <NavLink 
-              active={activeTab === "users"}
-              onClick={() => handleNavClick("users")}
-            >
-              Usuarios
-            </NavLink>
+            {canAccess("routes") && (
+              <NavLink 
+                active={activeTab === "create-route"}
+                onClick={() => handleNavClick("create-route")}
+              >
+                Rutas
+              </NavLink>
+            )}
+            {canAccess("publish-trip") && (
+              <NavLink 
+                active={activeTab === "publish-trip"}
+                onClick={() => handleNavClick("publish-trip")}
+              >
+                Publicar Viajes
+              </NavLink>
+            )}
+            {canAccess("trips") && (
+              <NavLink 
+                active={activeTab === "trips"}
+                onClick={() => handleNavClick("trips")}
+              >
+                Viajes
+              </NavLink>
+            )}
+            {canAccess("reservations") && (
+              <NavLink 
+                active={activeTab === "reservations"}
+                onClick={() => handleNavClick("reservations")}
+              >
+                Reservaciones
+              </NavLink>
+            )}
+            {canAccess("trip-summary") && (
+              <NavLink 
+                active={activeTab === "trip-summary"}
+                onClick={() => handleNavClick("trip-summary")}
+              >
+                Resumen de Viajes
+              </NavLink>
+            )}
+            {canAccess("boarding-list") && (
+              <NavLink 
+                active={activeTab === "boarding-list"}
+                onClick={() => handleNavClick("boarding-list")}
+              >
+                Lista de Abordaje
+              </NavLink>
+            )}
+            {canAccess("users") && (
+              <NavLink 
+                active={activeTab === "users"}
+                onClick={() => handleNavClick("users")}
+              >
+                Usuarios
+              </NavLink>
+            )}
+            {canAccess("vehicles") && (
+              <NavLink 
+                active={activeTab === "vehicles"}
+                onClick={() => handleNavClick("vehicles")}
+              >
+                Unidades
+              </NavLink>
+            )}
+            {canAccess("commissions") && (
+              <NavLink 
+                active={activeTab === "commissions"}
+                onClick={() => handleNavClick("commissions")}
+              >
+                Gestión de comisiones
+              </NavLink>
+            )}
           </nav>
         </SheetContent>
       </Sheet>

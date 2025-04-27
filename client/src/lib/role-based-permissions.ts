@@ -41,7 +41,6 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "boarding-list"
   ],
   [UserRole.CHECKER]: [
-    "trips",
     "boarding-list" 
   ],
   [UserRole.DRIVER]: [
