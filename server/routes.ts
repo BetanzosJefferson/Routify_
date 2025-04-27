@@ -1423,7 +1423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           for (const id of relatedTripIds) {
             // Aplicar filtro de compañía solo si es necesario para este rol
             const tripReservations = await storage.getReservations(
-              (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN) ? undefined : companyId,
+              (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN) ? undefined : (companyId || undefined),
               id
             );
             allReservations.push(...tripReservations);
