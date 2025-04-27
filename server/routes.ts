@@ -463,6 +463,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             console.log(`[GET /trips/${id}] Acceso permitido: El viaje está asignado al conductor ${user.id}`);
+            
+            // Para conductores, si el viaje está asignado a ellos, no importa la compañía
+            // permitimos el acceso sin verificar el companyId (ya se verificó el driverId)
+            return res.json(trip);
           }
           
           // Para todos los roles, verificar también que el viaje pertenezca a su compañía
