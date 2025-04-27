@@ -5,7 +5,6 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { TripWithRouteInfo } from "@shared/schema";
 import QRCode from "qrcode";
-import { openPrintWindow } from "./enhanced-ticket";
 
 import {
   Dialog,
