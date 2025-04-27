@@ -74,10 +74,30 @@ export function BoardingList() {
   
   // Fetch trips with proper filtering based on user role
   const { data: trips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
-    queryKey: ["/api/trips"], // No filtramos aquí para obtener todos los viajes de la compañía
+    queryKey: [
+      "/api/trips", 
+      // Para conductores, incluimos su ID en la consulta para filtrar en el servidor
+      ...(user?.role === 'chofer' ? [{ driverId: user.id }] : [])
+    ], 
     staleTime: 5000,
     refetchInterval: 15000,
     enabled: !!user, // Solo ejecutar la consulta cuando tengamos datos del usuario
+    queryFn: async ({ queryKey }) => {
+      // Construir la URL con los parámetros necesarios
+      let url = "/api/trips";
+      
+      // Si el usuario es conductor, añadimos el parámetro driverId
+      if (user?.role === 'chofer' && user.id) {
+        url += `?driverId=${user.id}`;
+        console.log(`Solicitando viajes para conductor ID: ${user.id}`);
+      }
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("Error al cargar viajes");
+      }
+      return response.json();
+    }
   });
 
   // Fetch reservations
@@ -113,17 +133,10 @@ export function BoardingList() {
     
     let filteredList = trips;
     
-    // Si el usuario es un chofer, solo mostrar viajes asignados a él
+    // Ya no necesitamos filtrar por conductor aquí porque se hace en el servidor
+    // Ahora solo registramos el conteo para depuración
     if (user && user.role === 'chofer' && user.id) {
-      console.log(`Filtrando viajes para conductor ID: ${user.id}`);
-      
-      // Verificar viajes que tienen driverId (asignados a algún conductor)
-      const assignedTrips = trips.filter(trip => trip.driverId !== undefined && trip.driverId !== null);
-      console.log(`Viajes con conductor asignado: ${assignedTrips.length}`);
-      
-      // Filtrar los viajes asignados específicamente a este conductor
-      filteredList = trips.filter(trip => trip.driverId === user.id);
-      console.log(`Encontrados ${filteredList.length} viajes asignados al conductor actual`);
+      console.log(`Total de viajes asignados al conductor: ${trips.length}`);
     }
     
     // Filtrar viajes excluyendo sub-viajes primero
