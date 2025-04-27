@@ -456,11 +456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`[GET /trips/${id}] VERIFICACIÓN CONDUCTOR: Verificando que el viaje esté asignado al conductor`);
             
             // Buscamos el conductor para depuración
-            console.log(`Buscando conductor asignado con ID: ${user.id}`);
-            const driver = await db.select().from(schema.users).where(eq(schema.users.id, user.id)).limit(1);
-            if (driver && driver[0]) {
-              console.log(`Conductor encontrado: ${driver[0].firstName} ${driver[0].lastName}`);
-            }
+            console.log(`Buscando conductor con ID: ${user.id} (${user.firstName} ${user.lastName})`)
             
             // Comprobar si este viaje está asignado directamente al conductor
             const isDirectlyAssigned = trip.driverId === user.id;
