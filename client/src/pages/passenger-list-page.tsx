@@ -260,7 +260,8 @@ export default function PassengerListPage() {
   };
 
   // Usar directamente los detalles del viaje obtenidos
-  const tripInfo = tripDetails;
+  // tripInfo no puede ser undefined en este punto porque ya verificamos con tripDetails
+  const tripInfo = tripDetails!;
 
   // Función para imprimir la lista de pasajeros
   const handlePrint = () => {
