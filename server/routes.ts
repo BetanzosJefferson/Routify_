@@ -454,18 +454,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (user.role === UserRole.DRIVER || user.role === 'CHOFER') {
             console.log(`[GET /trips/${id}] VERIFICACIÓN CONDUCTOR: Verificando que el viaje esté asignado al conductor`);
             
-            if (trip.driverId !== user.id) {
-              console.log(`[GET /trips/${id}] ACCESO DENEGADO: El viaje está asignado al conductor ${trip.driverId || 'ninguno'} pero el usuario es el conductor ${user.id}`);
+            // Comprobar si este viaje está asignado directamente al conductor
+            const isDirectlyAssigned = trip.driverId === user.id;
+            
+            // Si el viaje no está asignado directamente, verificar si:
+            // 1. Es un viaje principal con subviajes asignados al conductor
+            // 2. Es un subviaje y su viaje principal está asignado al conductor
+            let isRelatedTripAssigned = false;
+            
+            if (!isDirectlyAssigned) {
+              try {
+                // Caso 1: Es un viaje principal, verificar si algún subviaje está asignado al conductor
+                if (!trip.isSubTrip) {
+                  // Obtener todos los sub-viajes de este viaje principal
+                  const allTrips = await storage.getTrips();
+                  const subTrips = allTrips.filter(t => t.parentTripId === trip.id);
+                  
+                  isRelatedTripAssigned = subTrips.some(subTrip => subTrip.driverId === user.id);
+                  console.log(`[GET /trips/${id}] Viaje principal - Sub-viajes asignados al conductor: ${isRelatedTripAssigned}`);
+                } 
+                // Caso 2: Es un sub-viaje, verificar si el viaje principal está asignado al conductor
+                else if (trip.parentTripId) {
+                  const parentTrip = await storage.getTripWithRouteInfo(trip.parentTripId);
+                  
+                  if (parentTrip && parentTrip.driverId === user.id) {
+                    isRelatedTripAssigned = true;
+                    console.log(`[GET /trips/${id}] Sub-viaje - Viaje principal asignado al conductor: ${isRelatedTripAssigned}`);
+                  }
+                }
+              } catch (error) {
+                console.error(`[GET /trips/${id}] Error al verificar viajes relacionados: ${error}`);
+              }
+            }
+            
+            // Si ni el viaje actual ni ningún viaje relacionado está asignado al conductor, denegar acceso
+            if (!isDirectlyAssigned && !isRelatedTripAssigned) {
+              console.log(`[GET /trips/${id}] ACCESO DENEGADO: Ni este viaje ni sus relacionados están asignados al conductor ${user.id}`);
               return res.status(403).json({ 
                 error: "No tiene permiso para ver este viaje",
                 details: "Este viaje no está asignado a usted" 
               });
             }
             
-            console.log(`[GET /trips/${id}] Acceso permitido: El viaje está asignado al conductor ${user.id}`);
+            console.log(`[GET /trips/${id}] Acceso permitido: El viaje o un viaje relacionado está asignado al conductor ${user.id}`);
             
-            // Para conductores, si el viaje está asignado a ellos, no importa la compañía
-            // permitimos el acceso sin verificar el companyId (ya se verificó el driverId)
+            // Para conductores, si el viaje o algún viaje relacionado está asignado a ellos, no importa la compañía
+            // permitimos el acceso sin verificar el companyId
             return res.json(trip);
           }
           
