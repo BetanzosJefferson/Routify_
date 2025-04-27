@@ -1,10 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
 import { 
   CalendarIcon, 
   ClipboardListIcon,
@@ -68,26 +66,12 @@ interface Reservation {
 export function BoardingList() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [, navigate] = useLocation();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
   
-  useEffect(() => {
-    if (user?.role === "chofer") {
-      // Mensaje informativo solo cuando se carga inicialmente
-      toast({
-        title: "Portal de Conductor",
-        description: `Mostrando los viajes asignados al conductor ${user.firstName} ${user.lastName} para la fecha ${format(currentDate, 'd MMMM yyyy', { locale: es })}`,
-      });
-    }
-  }, [user]); // Solo ejecutar cuando cambia el usuario, no cuando cambia la fecha
-  
-  // Fetch trips assigned to the driver for current date
-  const { data: trips, isLoading: isLoadingTrips, refetch: refetchTrips } = useQuery<Trip[]>({
-    queryKey: ["/api/trips", { driverId: user?.id, date: format(currentDate, 'yyyy-MM-dd') }],
+  // Fetch all trips
+  const { data: trips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
+    queryKey: ["/api/trips"],
     staleTime: 5000,
     refetchInterval: 15000,
-    enabled: !!user && user.role === "chofer",
   });
 
   // Fetch all reservations
@@ -95,11 +79,24 @@ export function BoardingList() {
     queryKey: ["/api/reservations"],
     staleTime: 5000,
     refetchInterval: 15000,
-    enabled: !!trips && trips.length > 0,
   });
 
-  // El backend ya filtra los viajes por fecha y conductor, solo necesitamos filtrar por subviajes
-  const filteredTrips = trips?.filter(trip => !trip.isSubTrip) || [];
+  // Filtrar para obtener solo viajes principales (no sub-viajes) y por fecha seleccionada
+  const filteredTrips = trips?.filter(trip => {
+    // Filtrar por viajes principales
+    if (trip.isSubTrip) return false;
+    
+    // Convertir cadena de fecha a objeto Date y obtener solo la parte de la fecha (sin hora)
+    // Aseguramos que trip.departureDate sea una cadena (ya que podría ser un objeto Date)
+    const tripDate = typeof trip.departureDate === 'string' 
+      ? trip.departureDate.split('T')[0] 
+      : format(new Date(trip.departureDate), 'yyyy-MM-dd');
+      
+    const currentDateStr = format(currentDate, 'yyyy-MM-dd');
+    
+    // Comparar las cadenas de fecha directamente
+    return tripDate === currentDateStr;
+  }) || [];
 
   // La lógica de procesamiento de pasajeros ya no es necesaria aquí
   // ya que ahora se maneja en la página dedicada de PassengerListPage
@@ -184,61 +181,13 @@ export function BoardingList() {
               value={formatDateForInput(currentDate)}
               onChange={(e) => {
                 if (e.target.value) {
-                  try {
-                    // Al crear la fecha con formato yyyy-MM-dd, usar el constructor con año, mes, día para evitar problemas de zona horaria
-                    const [year, month, day] = e.target.value.split('-').map(Number);
-                    
-                    // Validar que todos los componentes sean números válidos
-                    if (isNaN(year) || isNaN(month) || isNaN(day)) {
-                      console.warn("Componentes de fecha inválidos:", {year, month, day});
-                      return;
-                    }
-                    
-                    // Meses en JavaScript son 0-indexados (0-11), pero en el input date son 1-indexados (1-12)
-                    const newDate = new Date(year, month - 1, day, 12, 0, 0);
-                    
-                    // Verificar que la fecha sea válida
-                    if (isNaN(newDate.getTime())) {
-                      console.warn("Fecha inválida:", newDate);
-                      return;
-                    }
-                    
-                    // Mensaje de depuración
-                    console.log("Cambiando fecha a:", format(newDate, "yyyy-MM-dd"));
-                    
-                    // Actualizar estado de fecha
-                    setCurrentDate(newDate);
-                    
-                    // Invalidar y actualizar la consulta con los nuevos parámetros
-                    queryClient.invalidateQueries({
-                      queryKey: ["/api/trips"]
-                    });
-                    
-                    // Mostrar toast informativo
-                    toast({
-                      title: "Actualizando viajes",
-                      description: `Mostrando viajes para: ${format(newDate, "d 'de' MMMM, yyyy", { locale: es })}`,
-                    });
-                    
-                    // Forzar refresco de datos para la nueva fecha
-                    setTimeout(() => {
-                      refetchTrips();
-                    }, 100);
-                  } catch (error) {
-                    console.error("Error al procesar fecha:", error);
-                    toast({
-                      title: "Error de formato",
-                      description: "No se pudo actualizar la fecha. Formato inválido.",
-                      variant: "destructive"
-                    });
-                  }
+                  // Al crear la fecha con formato yyyy-MM-dd, usar el constructor con año, mes, día para evitar problemas de zona horaria
+                  const [year, month, day] = e.target.value.split('-').map(Number);
+                  // Meses en JavaScript son 0-indexados (0-11), pero en el input date son 1-indexados (1-12)
+                  const newDate = new Date(year, month - 1, day, 12, 0, 0);
+                  setCurrentDate(newDate);
                 } else {
-                  const today = new Date();
-                  setCurrentDate(today);
-                  queryClient.invalidateQueries({
-                    queryKey: ["/api/trips"]
-                  });
-                  refetchTrips();
+                  setCurrentDate(new Date());
                 }
               }}
             />
