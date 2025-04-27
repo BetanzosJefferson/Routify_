@@ -149,16 +149,30 @@ export default function PassengerListPage() {
     }
   });
 
-  // Calcular pasajeros del viaje seleccionado - SIMPLIFICADO
+  // Calcular pasajeros del viaje seleccionado - MEJORADO CON SOPORTE PARA VIAJES RELACIONADOS
   const passengersList = (() => {
     if (!tripId || !reservations || !trips) return [];
     
     try {
-      console.log(`Procesando reservaciones para viaje ${tripId}...`);
+      console.log(`Procesando reservaciones para viaje ${tripId} (incluyendo relacionados)...`);
       console.log(`Total de reservaciones recibidas: ${reservations.length}`);
       
-      // Ya no necesitamos filtrar por viaje porque la consulta ya trae solo las reservaciones del viaje actual
-      // debido a nuestra modificación del endpoint con ?tripId=X
+      // Agrupar reservaciones por viaje para depuración
+      const reservationsByTrip: Record<number, Reservation[]> = {};
+      for (const res of reservations) {
+        if (!reservationsByTrip[res.tripId]) {
+          reservationsByTrip[res.tripId] = [];
+        }
+        reservationsByTrip[res.tripId].push(res);
+      }
+      
+      // Mostrar desglose de reservaciones por viaje
+      console.log("Desglose de reservaciones por viaje:");
+      Object.entries(reservationsByTrip).forEach(([tripId, resList]) => {
+        console.log(`Viaje ${tripId}: ${resList.length} reservaciones`);
+      });
+      
+      // Filtrar solo las reservaciones que tienen pasajeros
       const relevantReservations = reservations.filter(r => 
         r.passengers && 
         Array.isArray(r.passengers) && 
