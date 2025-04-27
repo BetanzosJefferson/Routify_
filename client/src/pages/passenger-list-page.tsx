@@ -560,11 +560,15 @@ export default function PassengerListPage() {
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">Contacto</div>
-                          <div className="text-sm">{reservation.email || 'N/A'}</div>
+                          <div className="text-sm truncate max-w-[120px] md:max-w-full" title={reservation.email || 'N/A'}>
+                            {reservation.email || 'N/A'}
+                          </div>
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">Teléfono</div>
-                          <div className="text-sm">{reservation.phone || 'N/A'}</div>
+                          <div className="text-sm truncate" title={reservation.phone || 'N/A'}>
+                            {reservation.phone || 'N/A'}
+                          </div>
                         </div>
                         <div className="col-span-2 md:col-span-3 text-right">
                           <div className="font-semibold">${reservation.amount}</div>
