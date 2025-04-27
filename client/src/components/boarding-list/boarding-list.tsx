@@ -100,14 +100,51 @@ export function BoardingList() {
     }
   });
 
-  // Fetch reservations
+  // Fetch reservations con lógica especial para conductores
   const { data: reservations, isLoading: isLoadingReservations } = useQuery<Reservation[]>({
     queryKey: ["/api/reservations", { 
-      companyId: user?.companyId || undefined,
+      // Si el usuario es conductor, no aplicamos filtro de compañía para poder ver todas sus reservaciones
+      // ya que la API de reservaciones filtrará por las de los viajes asignados
+      companyId: user?.role === 'chofer' ? undefined : user?.companyId || undefined,
+      // Si es conductor, pasamos su ID para filtrar por sus viajes asignados
+      driverId: user?.role === 'chofer' ? user.id : undefined
     }],
     staleTime: 5000,
     refetchInterval: 15000,
     enabled: !!user, // Solo ejecutar cuando tengamos datos del usuario
+    queryFn: async ({ queryKey }) => {
+      // Si somos conductor, necesitamos personalizar la consulta para obtener
+      // las reservaciones de nuestros viajes independientemente de la compañía
+      if (user?.role === 'chofer' && trips && trips.length > 0) {
+        console.log(`Obteniendo reservaciones para viajes del conductor: ${trips.length} viajes`);
+        const tripIds = trips.map(trip => trip.id);
+        
+        // Consultar reservaciones para cada viaje del conductor
+        const allReservations = [];
+        for (const tripId of tripIds) {
+          try {
+            const response = await fetch(`/api/reservations?tripId=${tripId}`);
+            if (response.ok) {
+              const tripReservations = await response.json();
+              allReservations.push(...tripReservations);
+              console.log(`Encontradas ${tripReservations.length} reservaciones para viaje ${tripId}`);
+            }
+          } catch (err) {
+            console.error(`Error al obtener reservaciones para viaje ${tripId}:`, err);
+          }
+        }
+        
+        console.log(`Total de reservaciones obtenidas: ${allReservations.length}`);
+        return allReservations;
+      }
+      
+      // Para roles que no son conductor, usar la consulta normal
+      const response = await fetch('/api/reservations');
+      if (!response.ok) {
+        throw new Error('Error al cargar reservaciones');
+      }
+      return response.json();
+    }
   });
 
   // Filtrar viajes según el rol del usuario y la fecha seleccionada
@@ -316,15 +353,7 @@ export function BoardingList() {
                           {trip.segmentOrigin || trip.route.origin} → {trip.segmentDestination || trip.route.destination}
                         </p>
                       </div>
-                      <Badge variant={trip.status === "scheduled" ? "outline" : trip.status === "in-progress" ? "default" : "secondary"}>
-                        {trip.status === "scheduled" 
-                          ? "Programado" 
-                          : trip.status === "in-progress" 
-                            ? "En Progreso" 
-                            : trip.status === "completed" 
-                              ? "Completado" 
-                              : "Cancelado"}
-                      </Badge>
+                      <Badge variant="outline">Programado</Badge>
                     </div>
                     
                     <div className="space-y-2 text-sm">
