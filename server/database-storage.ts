@@ -23,24 +23,44 @@ import { eq, and, gte, lt, like, or, sql } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   async getRoutes(companyId?: string): Promise<Route[]> {
-    console.log("DB Storage: Consultando rutas");
+    console.log(companyId ? `DB Storage: Consultando rutas para la compañía: ${companyId}` : "DB Storage: Consultando todas las rutas");
     
-    // Si se proporciona un companyId, filtrar por compañía
-    if (companyId) {
-      console.log(`DB Storage: Filtrando rutas por compañía ${companyId}`);
-      const routes = await db
-        .select()
-        .from(schema.routes)
-        .where(eq(schema.routes.companyId, companyId));
+    try {
+      // Si se proporciona un companyId, filtrar por compañía
+      if (companyId) {
+        // SEGURIDAD: Primero verificar si existen rutas para esta compañía
+        const countQuery = await db
+          .select({ count: sql`count(*)` })
+          .from(schema.routes)
+          .where(eq(schema.routes.companyId, companyId));
+        
+        const routeCount = parseInt(countQuery[0].count.toString());
+        console.log(`DB Storage: Existen ${routeCount} rutas para compañía ${companyId}`);
+        
+        // Obtener las rutas filtradas
+        const routes = await db
+          .select()
+          .from(schema.routes)
+          .where(eq(schema.routes.companyId, companyId));
+        
+        console.log(`DB Storage: Rutas filtradas encontradas: ${routes.length}`);
+        
+        // Verificación adicional - imprimir datos para depuración
+        if (routes.length > 0) {
+          console.log(`DB Storage: Datos de rutas:`, JSON.stringify(routes));
+        }
+        
+        return routes;
+      }
       
-      console.log(`DB Storage: Rutas filtradas encontradas: ${routes.length}`);
+      // Si no hay filtro, obtener todas las rutas
+      const routes = await db.select().from(schema.routes);
+      console.log(`DB Storage: Rutas encontradas: ${routes.length}`);
       return routes;
+    } catch (error) {
+      console.error(`DB Storage ERROR - getRoutes: ${error}`);
+      return [];
     }
-    
-    // Si no hay filtro, obtener todas las rutas
-    const routes = await db.select().from(schema.routes);
-    console.log(`DB Storage: Todas las rutas encontradas: ${routes.length}`);
-    return routes;
   }
   
   async getRoute(id: number): Promise<Route | undefined> {
