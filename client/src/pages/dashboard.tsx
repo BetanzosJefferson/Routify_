@@ -13,10 +13,15 @@ import VehiclesPage from "@/components/vehicles/vehicles-page";
 import CommissionsPage from "@/components/commissions/commissions-page";
 import { BoardingList } from "@/components/boarding-list/boarding-list";
 import { TabType } from "@/hooks/use-active-tab";
+import { useAuth } from "@/hooks/use-auth";
+import { hasAccessToSection } from "@/lib/role-based-permissions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 export default function Dashboard() {
   const [location] = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>("create-route");
+  const { user } = useAuth();
   
   // Update active tab when URL changes
   useEffect(() => {
@@ -24,9 +29,33 @@ export default function Dashboard() {
     const tab = params.get("tab") as TabType | null;
     
     if (tab && ["create-route", "publish-trip", "trips", "reservations", "trip-summary", "users", "vehicles", "commissions", "boarding-list"].includes(tab)) {
-      setActiveTab(tab);
+      // Solo actualizar si el usuario tiene acceso a esta sección
+      if (user && hasAccessToSection(user.role, tab)) {
+        setActiveTab(tab);
+      } else {
+        // Si no tiene acceso, buscar la primera sección a la que sí tenga acceso
+        const accessibleSections = [
+          "create-route", "publish-trip", "trips", "reservations", 
+          "trip-summary", "boarding-list", "users", "vehicles", "commissions"
+        ].filter(section => hasAccessToSection(user?.role || "", section));
+        
+        if (accessibleSections.length > 0) {
+          setActiveTab(accessibleSections[0] as TabType);
+          
+          // Actualizar la URL para reflejar la sección a la que sí tiene acceso
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.set('tab', accessibleSections[0]);
+          window.history.replaceState({}, '', newUrl.toString());
+        }
+      }
     }
-  }, [location]);
+  }, [location, user]);
+  
+  // Verificar si el usuario tiene acceso a la sección actual
+  const canAccess = (sectionId: string): boolean => {
+    if (!user) return false;
+    return hasAccessToSection(user.role, sectionId);
+  };
   
   // Tab change handler for child components
   const handleTabChange = (tab: TabType) => {
@@ -45,18 +74,75 @@ export default function Dashboard() {
           <main className="relative z-0 flex-1 overflow-y-auto py-6 px-4 sm:px-6 lg:px-8">
             {/* Se eliminó TabNavigation para no duplicar la navegación */}
             
-            {activeTab === "create-route" && <RouteList />}
-            {activeTab === "publish-trip" && <PublishTripForm />}
-            {activeTab === "trips" && <TripList />}
-            {activeTab === "reservations" && <ReservationList />}
-            {activeTab === "trip-summary" && <TripSummary />}
-            {activeTab === "boarding-list" && <BoardingList />}
-            {activeTab === "users" && <UsersPage />}
-            {activeTab === "vehicles" && <VehiclesPage />}
-            {activeTab === "commissions" && <CommissionsPage />}
+            {activeTab === "create-route" && canAccess("routes") ? (
+              <RouteList />
+            ) : activeTab === "create-route" && (
+              <AccessDeniedAlert />
+            )}
+            
+            {activeTab === "publish-trip" && canAccess("publish-trip") ? (
+              <PublishTripForm />
+            ) : activeTab === "publish-trip" && (
+              <AccessDeniedAlert />
+            )}
+            
+            {activeTab === "trips" && canAccess("trips") ? (
+              <TripList />
+            ) : activeTab === "trips" && (
+              <AccessDeniedAlert />
+            )}
+            
+            {activeTab === "reservations" && canAccess("reservations") ? (
+              <ReservationList />
+            ) : activeTab === "reservations" && (
+              <AccessDeniedAlert />
+            )}
+            
+            {activeTab === "trip-summary" && canAccess("trip-summary") ? (
+              <TripSummary />
+            ) : activeTab === "trip-summary" && (
+              <AccessDeniedAlert />
+            )}
+            
+            {activeTab === "boarding-list" && canAccess("boarding-list") ? (
+              <BoardingList />
+            ) : activeTab === "boarding-list" && (
+              <AccessDeniedAlert />
+            )}
+            
+            {activeTab === "users" && canAccess("users") ? (
+              <UsersPage />
+            ) : activeTab === "users" && (
+              <AccessDeniedAlert />
+            )}
+            
+            {activeTab === "vehicles" && canAccess("vehicles") ? (
+              <VehiclesPage />
+            ) : activeTab === "vehicles" && (
+              <AccessDeniedAlert />
+            )}
+            
+            {activeTab === "commissions" && canAccess("commissions") ? (
+              <CommissionsPage />
+            ) : activeTab === "commissions" && (
+              <AccessDeniedAlert />
+            )}
           </main>
         </div>
       </div>
     </div>
+  );
+}
+
+// Componente para mostrar una alerta de acceso denegado
+function AccessDeniedAlert() {
+  return (
+    <Alert variant="destructive" className="mb-6">
+      <AlertCircle className="h-4 w-4 mr-2" />
+      <AlertTitle>Acceso Denegado</AlertTitle>
+      <AlertDescription>
+        No tienes permisos para acceder a esta sección. Contacta al administrador si crees que deberías tener acceso.
+      </AlertDescription>
+    </Alert>
   );
 }
