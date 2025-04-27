@@ -130,51 +130,40 @@ export default function PassengerListPage() {
     enabled: !!tripDetails, // Only fetch all trips after we have the specific trip
   });
 
-  // Fetch all reservations
+  // Fetch all reservations - AHORA CON SOPORTE PARA CONDUCTORES
   const { data: reservations, isLoading: isLoadingReservations } = useQuery<Reservation[]>({
-    queryKey: ["/api/reservations"],
+    queryKey: ["/api/reservations", {
+      tripId: tripId // Añadimos tripId para obtener reservas específicas de este viaje
+    }],
     staleTime: 5000,
     refetchInterval: 15000,
+    queryFn: async ({ queryKey }) => {
+      console.log(`Consultando reservaciones específicas para viaje: ${tripId}`);
+      const response = await fetch(`/api/reservations?tripId=${tripId}`);
+      if (!response.ok) {
+        throw new Error(`Error al obtener reservaciones: ${response.statusText}`);
+      }
+      return response.json();
+    }
   });
 
-  // Calcular pasajeros del viaje seleccionado con detección de relaciones de viajes
+  // Calcular pasajeros del viaje seleccionado - SIMPLIFICADO
   const passengersList = (() => {
     if (!tripId || !reservations || !trips) return [];
     
     try {
-      // Obtener el viaje seleccionado para verificar si es principal o subviaje
-      const currentTrip = trips.find(t => t.id === tripId);
-      if (!currentTrip) return [];
+      console.log(`Procesando reservaciones para viaje ${tripId}...`);
+      console.log(`Total de reservaciones recibidas: ${reservations.length}`);
       
-      let relevantTripIds = [];
-      
-      // 1. Si es un viaje principal, incluir también a sus sub-viajes
-      if (!currentTrip.isSubTrip) {
-        relevantTripIds.push(tripId);
-        
-        // Añadir IDs de sub-viajes
-        const subTripIds = trips
-          .filter(t => t.parentTripId === tripId)
-          .map(t => t.id);
-        
-        relevantTripIds = [...relevantTripIds, ...subTripIds];
-        console.log("Viaje principal y sus sub-viajes:", relevantTripIds);
-      } 
-      // 2. Si es un sub-viaje, incluir solo a ese viaje
-      else {
-        relevantTripIds.push(tripId);
-        console.log("Sub-viaje solamente:", relevantTripIds);
-      }
-      
-      // Encontrar reservaciones para todos los viajes relevantes
+      // Ya no necesitamos filtrar por viaje porque la consulta ya trae solo las reservaciones del viaje actual
+      // debido a nuestra modificación del endpoint con ?tripId=X
       const relevantReservations = reservations.filter(r => 
-        relevantTripIds.includes(r.tripId) && 
         r.passengers && 
         Array.isArray(r.passengers) && 
         r.passengers.length > 0
       );
       
-      console.log("Reservaciones encontradas:", relevantReservations.length);
+      console.log("Reservaciones con pasajeros:", relevantReservations.length);
       
       // Si no hay reservaciones relevantes, terminar aquí
       if (relevantReservations.length === 0) {
