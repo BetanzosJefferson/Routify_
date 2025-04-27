@@ -44,7 +44,8 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "boarding-list" 
   ],
   [UserRole.DRIVER]: [
-    "boarding-list"
+    "boarding-list",
+    "trips"  // Añadimos permiso para ver viajes
   ],
   [UserRole.TICKET_OFFICE]: [
     "trips",
