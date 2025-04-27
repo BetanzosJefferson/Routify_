@@ -1,0 +1,116 @@
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+
+// Tipos de datos básicos para viajes
+export interface Trip {
+  id: number;
+  routeId: number;
+  departureDate: string;
+  departureTime: string;
+  arrivalTime: string;
+  price: number;
+  status?: "scheduled" | "in-progress" | "completed" | "cancelled";
+  capacity: number;
+  availableSeats: number;
+  vehicleType?: string;
+  vehicleId?: number;
+  driverId?: number;
+  isSubTrip: boolean;
+  parentTripId?: number;
+  segmentOrigin?: string;
+  segmentDestination?: string;
+  companyId?: string;
+  route?: {
+    id: number;
+    name: string;
+    origin: string;
+    destination: string;
+    stops: string[];
+  };
+}
+
+/**
+ * Hook personalizado para obtener viajes del conductor actual
+ * 
+ * Este hook simplifica la carga de datos para conductores, asegurando
+ * que se carguen sus viajes asignados directamente sin depender de 
+ * otras secciones de la aplicación
+ */
+export function useDriverTrips() {
+  const { user } = useAuth();
+  
+  // Verificar si el usuario es un conductor
+  const isDriver = user?.role === 'chofer' || user?.role === 'DRIVER';
+  
+  // Obtener viajes asignados al conductor
+  return useQuery<Trip[]>({
+    queryKey: [
+      "/api/trips", 
+      // Para conductores, incluimos su ID en la consulta para filtrar en el servidor
+      ...(isDriver ? [{ driverId: user.id }] : [])
+    ], 
+    staleTime: 5000,
+    refetchInterval: 15000,
+    enabled: !!user && isDriver, // Solo ejecutar la consulta cuando tengamos datos del usuario y sea conductor
+    queryFn: async () => {
+      // Construir la URL con los parámetros necesarios
+      let url = "/api/trips";
+      
+      // Si el usuario es conductor, añadimos el parámetro driverId
+      if (isDriver && user.id) {
+        url += `?driverId=${user.id}`;
+        console.log(`[useDriverTrips] Solicitando viajes para conductor ID: ${user.id}`);
+      }
+      
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Error al cargar viajes: ${response.statusText}`);
+        }
+        
+        const trips = await response.json();
+        console.log(`[useDriverTrips] Obtenidos ${trips.length} viajes para el conductor ${user.id}`);
+        return trips;
+      } catch (error) {
+        console.error("[useDriverTrips] Error al cargar viajes:", error);
+        throw error;
+      }
+    }
+  });
+}
+
+/**
+ * Hook para obtener detalles de un viaje específico
+ * 
+ * Este hook permite cargar los detalles de un viaje sin depender de
+ * que se hayan cargado todos los viajes previamente
+ */
+export function useTripDetails(tripId: number | null) {
+  const { user } = useAuth();
+  
+  return useQuery<Trip>({
+    queryKey: ["/api/trips", tripId],
+    staleTime: 5000,
+    refetchInterval: 15000,
+    enabled: !!tripId && !!user, // Solo ejecutar si tenemos un ID de viaje y el usuario está autenticado
+    queryFn: async () => {
+      if (!tripId) throw new Error("ID de viaje no proporcionado");
+      
+      try {
+        console.log(`[useTripDetails] Cargando detalles de viaje: ${tripId}`);
+        const response = await fetch(`/api/trips/${tripId}`);
+        
+        if (!response.ok) {
+          throw new Error(`Error al cargar detalles del viaje: ${response.statusText}`);
+        }
+        
+        const trip = await response.json();
+        console.log(`[useTripDetails] Viaje cargado correctamente:`, trip);
+        return trip;
+      } catch (error) {
+        console.error(`[useTripDetails] Error al cargar detalles del viaje ${tripId}:`, error);
+        throw error;
+      }
+    }
+  });
+}

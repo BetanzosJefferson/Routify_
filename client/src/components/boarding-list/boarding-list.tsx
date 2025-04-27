@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { useLocation } from "wouter";
@@ -17,54 +16,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 
-interface Trip {
-  id: number;
-  routeId: number;
-  departureDate: string;
-  departureTime: string;
-  arrivalTime: string;
-  price: number;
-  status: "scheduled" | "in-progress" | "completed" | "cancelled";
-  capacity: number;
-  availableSeats: number;
-  vehicleType?: string;
-  vehicleId?: number;
-  driverId?: number;
-  isSubTrip: boolean;
-  parentTripId?: number;
-  segmentOrigin?: string;
-  segmentDestination?: string;
-  companyId?: string;
-  route: {
-    id: number;
-    name: string;
-    origin: string;
-    destination: string;
-    stops: string[];
-  };
-}
-
-interface Passenger {
-  id: number;
-  firstName: string;
-  lastName: string;
-  reservationId: number;
-}
-
-interface Reservation {
-  id: number;
-  tripId: number;
-  createdAt: string;
-  updatedAt: string;
-  status: string;
-  email: string;
-  phone: string;
-  paymentMethod: string;
-  paymentStatus: string;
-  notes?: string;
-  totalAmount: number;
-  passengers: Passenger[];
-}
+// Importamos nuestros nuevos hooks especializados para conductores
+import { useDriverTrips, Trip } from "@/hooks/use-driver-trips";
+import { useAllDriverReservations, Reservation, Passenger } from "@/hooks/use-driver-reservations";
 
 export function BoardingList() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -72,112 +26,19 @@ export function BoardingList() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   
-  // Fetch trips with proper filtering based on user role
-  const { data: trips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
-    queryKey: [
-      "/api/trips", 
-      // Para conductores, incluimos su ID en la consulta para filtrar en el servidor
-      ...(user?.role === 'chofer' ? [{ driverId: user.id }] : [])
-    ], 
-    staleTime: 5000,
-    refetchInterval: 15000,
-    enabled: !!user, // Solo ejecutar la consulta cuando tengamos datos del usuario
-    queryFn: async ({ queryKey }) => {
-      // Construir la URL con los parámetros necesarios
-      let url = "/api/trips";
-      
-      // Si el usuario es conductor, añadimos el parámetro driverId
-      if (user?.role === 'chofer' && user.id) {
-        url += `?driverId=${user.id}`;
-        console.log(`Solicitando viajes para conductor ID: ${user.id}`);
-      }
-      
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error("Error al cargar viajes");
-      }
-      return response.json();
-    }
-  });
-
-  // Fetch reservations con lógica especial para conductores
-  const { data: reservations, isLoading: isLoadingReservations } = useQuery<Reservation[]>({
-    queryKey: ["/api/reservations", { 
-      // Si el usuario es conductor, no aplicamos filtro de compañía para poder ver todas sus reservaciones
-      // ya que la API de reservaciones filtrará por las de los viajes asignados
-      companyId: user?.role === 'chofer' ? undefined : user?.companyId || undefined,
-      // Si es conductor, pasamos su ID para filtrar por sus viajes asignados
-      driverId: user?.role === 'chofer' ? user.id : undefined
-    }],
-    staleTime: 5000,
-    refetchInterval: 15000,
-    enabled: !!user, // Solo ejecutar cuando tengamos datos del usuario
-    queryFn: async ({ queryKey }) => {
-      // Si somos conductor, necesitamos personalizar la consulta para obtener
-      // las reservaciones de nuestros viajes independientemente de la compañía
-      if (user?.role === 'chofer' && trips && trips.length > 0) {
-        console.log(`Obteniendo reservaciones para viajes del conductor: ${trips.length} viajes`);
-        const tripIds = trips.map(trip => trip.id);
-        
-        // Consultar reservaciones para cada viaje del conductor
-        // Este enfoque es más robusto para manejar viajes principales y sub-viajes
-        const allReservations = [];
-        
-        // Primero obtenemos todas las reservaciones de una sola vez y luego filtramos
-        // Este enfoque es más robusto porque permite que el backend aplique los permisos correctos
-        try {
-          // Pasar el driverId directamente al servidor para que verifique permisos
-          const response = await fetch(`/api/reservations?driverId=${user.id}`);
-          if (response.ok) {
-            const driverReservations = await response.json();
-            console.log(`Obtenidas ${driverReservations.length} reservaciones totales para conductor ${user.id}`);
-            
-            // Filtrar solo las que pertenecen a los viajes cargados
-            const filteredReservations = driverReservations.filter(r => tripIds.includes(r.tripId));
-            allReservations.push(...filteredReservations);
-            
-            // Agrupar por viaje para depuración
-            const resCountByTrip = tripIds.map(tid => ({
-              tripId: tid,
-              count: filteredReservations.filter(r => r.tripId === tid).length
-            }));
-            
-            console.log(`Desglose por viaje:`, resCountByTrip);
-            console.log(`Total de reservaciones relevantes: ${allReservations.length}`);
-            
-            return allReservations;
-          }
-        } catch (err) {
-          console.error(`Error al obtener reservaciones para el conductor: ${err}`);
-        }
-        
-        // Si hay un error o no hay resultados con el enfoque principal, caer al enfoque de respaldo
-        // consultando cada viaje individualmente
-        for (const tripId of tripIds) {
-          try {
-            const response = await fetch(`/api/reservations?tripId=${tripId}`);
-            if (response.ok) {
-              const tripReservations = await response.json();
-              allReservations.push(...tripReservations);
-              console.log(`Encontradas ${tripReservations.length} reservaciones para viaje ${tripId} (respaldo)`);
-            }
-          } catch (err) {
-            console.error(`Error al obtener reservaciones para viaje ${tripId}:`, err);
-          }
-        }
-        
-        console.log(`Total de reservaciones obtenidas (respaldo): ${allReservations.length}`);
-        return allReservations;
-      }
-      
-      // Para roles que no son conductor, usar la consulta normal
-      const response = await fetch('/api/reservations');
-      if (!response.ok) {
-        throw new Error('Error al cargar reservaciones');
-      }
-      return response.json();
-    }
-  });
+  // Usamos nuestro nuevo hook para obtener viajes directamente sin depender de la sección "viajes"
+  const { 
+    data: trips, 
+    isLoading: isLoadingTrips,
+    error: tripsError
+  } = useDriverTrips();
+  
+  // Usamos el nuevo hook para obtener todas las reservaciones del conductor sin depender de otros datos
+  const {
+    data: reservations,
+    isLoading: isLoadingReservations,
+    error: reservationsError
+  } = useAllDriverReservations();
 
   // Filtrar viajes según el rol del usuario y la fecha seleccionada
   const filteredTrips = useMemo(() => {
