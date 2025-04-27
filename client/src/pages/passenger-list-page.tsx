@@ -140,22 +140,40 @@ export default function PassengerListPage() {
     queryKey: ["/api/reservations", {
       tripId: tripId,
       includeRelated: true, // Añadimos el flag para obtener también reservas de viajes relacionados (sub-viajes)
-      driverId: user?.role === 'chofer' ? user.id : undefined, // Añadimos el ID del conductor si es chofer
+      driverId: user?.role === 'chofer' ? user.id : undefined // Añadimos el ID del conductor si es chofer
     }],
     staleTime: 5000,
     refetchInterval: 15000,
     queryFn: async ({ queryKey }) => {
       console.log(`Consultando reservaciones específicas para viaje: ${tripId} (incluye viajes relacionados)`);
       
-      // Si es conductor, usamos una lógica especial como en el componente boarding-list
+      // Si es conductor, verificamos primero que el viaje pertenezca al conductor
       if (user?.role === 'chofer') {
         try {
-          // Añadimos el parámetro includeRelated=true para que el backend incluya reservas de sub-viajes
-          const response = await fetch(`/api/reservations?tripId=${tripId}&includeRelated=true`);
-          if (!response.ok) {
-            throw new Error(`Error al obtener reservaciones: ${response.statusText}`);
+          // Verificar primero si el viaje pertenece al conductor
+          const tripResponse = await fetch(`/api/trips/${tripId}`);
+          if (!tripResponse.ok) {
+            throw new Error(`Error al obtener detalles del viaje: ${tripResponse.statusText}`);
           }
-          const data = await response.json();
+          
+          const tripData = await tripResponse.json();
+          console.log(`Verificando si el viaje ${tripId} pertenece al conductor ${user.id}`);
+          console.log(`Datos del viaje: driverId=${tripData.driverId}, conductor actual=${user.id}`);
+          
+          // Si el viaje no está asignado a este conductor, lanzar error
+          if (tripData.driverId !== user.id) {
+            console.error(`El viaje ${tripId} no está asignado al conductor ${user.id}`);
+            throw new Error("No tienes permisos para ver los pasajeros de este viaje");
+          }
+          
+          // El viaje pertenece al conductor, obtener las reservaciones
+          console.log(`El viaje ${tripId} pertenece al conductor ${user.id}, obteniendo reservaciones`);
+          const reservationResponse = await fetch(`/api/reservations?tripId=${tripId}&includeRelated=true`);
+          if (!reservationResponse.ok) {
+            throw new Error(`Error al obtener reservaciones: ${reservationResponse.statusText}`);
+          }
+          
+          const data = await reservationResponse.json();
           console.log(`Reservaciones obtenidas como chofer para viaje ${tripId}: ${data.length}`);
           return data;
         } catch (error) {
@@ -358,6 +376,10 @@ export default function PassengerListPage() {
     );
   }
 
+  // Manejar errores específicos de rol como chofer
+  const isPermissionError = tripError instanceof Error && 
+                          tripError.message.includes("No tienes permisos");
+  
   if (tripError) {
     return (
       <div className="container mx-auto p-6 max-w-7xl">
@@ -367,11 +389,17 @@ export default function PassengerListPage() {
         </Button>
         <Card>
           <CardHeader>
-            <CardTitle>Error al cargar el viaje</CardTitle>
+            <CardTitle>
+              {isPermissionError 
+                ? "Acceso denegado" 
+                : "Error al cargar el viaje"}
+            </CardTitle>
             <CardDescription>
-              {tripError instanceof Error 
-                ? tripError.message 
-                : "Ocurrió un error al cargar los detalles del viaje"}
+              {user?.role === 'chofer' && isPermissionError 
+                ? "No tienes permiso para ver este viaje porque no está asignado a ti. Solo puedes ver los pasajeros de tus viajes asignados."
+                : tripError instanceof Error 
+                  ? tripError.message 
+                  : "Ocurrió un error al cargar los detalles del viaje"}
             </CardDescription>
           </CardHeader>
         </Card>
