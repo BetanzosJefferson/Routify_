@@ -13,19 +13,10 @@ import VehiclesPage from "@/components/vehicles/vehicles-page";
 import CommissionsPage from "@/components/commissions/commissions-page";
 import { BoardingList } from "@/components/boarding-list/boarding-list";
 import { TabType } from "@/hooks/use-active-tab";
-import { useAuth } from "@/hooks/use-auth";
 
 export default function Dashboard() {
-  const [location, setLocation] = useLocation();
+  const [location] = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>("create-route");
-  const { user } = useAuth();
-  
-  // Redireccionar a los conductores a su página específica
-  useEffect(() => {
-    if (user && user.role === "chofer") {
-      setLocation("/conductor");
-    }
-  }, [user, setLocation]);
   
   // Update active tab when URL changes
   useEffect(() => {

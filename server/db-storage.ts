@@ -420,28 +420,8 @@ export class DatabaseStorage implements IStorage {
     date?: string;
     seats?: number;
     companyId?: string;  // Añadido para filtrar por compañía
-    driverId?: number;   // Añadido para filtrar por conductor
   }): Promise<TripWithRouteInfo[]> {
     console.time('searchTrips-optimized');
-    
-    // CRÍTICO: Para los conductores, hacer una verificación previa directa
-    if (params.driverId) {
-      // Consulta directa para verificar si hay viajes para este conductor en esta fecha
-      let checkQuery = `
-        SELECT id, company_id, driver_id, departure_date, departure_time 
-        FROM trips 
-        WHERE driver_id = ${params.driverId}`;
-      
-      // Añadir filtro de fecha si está presente
-      if (params.date) {
-        checkQuery += ` AND DATE(departure_date) = '${params.date}'`;
-      }
-      
-      console.log(`[searchTrips-PRE-CHECK] CONSULTA DIRECTA PARA CONDUCTOR ${params.driverId}:`, checkQuery);
-      
-      const testResult = await db.execute(sql.raw(checkQuery));
-      console.log(`[searchTrips-PRE-CHECK] RESULTADO:`, testResult.rows);
-    }
     
     // SOLUCIÓN ACTUALIZADA PARA EL FILTRADO DE COMPAÑÍA QUE RESPETA PRIVILEGIOS DE superAdmin
     console.log(`[searchTrips-v2] Iniciando búsqueda con parámetros:`, params);
@@ -486,26 +466,8 @@ export class DatabaseStorage implements IStorage {
     if (params.date) {
       console.log(`[searchTrips-v2] Filtro de fecha: ${params.date}`);
       
-      // Sanitizar y estandarizar el formato de fecha
-      let fechaFormateada = params.date;
-      
-      // Asegurarse de que la fecha esté en formato YYYY-MM-DD
-      if (fechaFormateada.includes('T')) {
-        fechaFormateada = fechaFormateada.split('T')[0];
-      }
-      
-      console.log(`[searchTrips-v2] Fecha sanitizada: ${fechaFormateada}`);
-      
       // Filtrado directo por SQL para máxima seguridad en el formato de fecha
-      // Usar TO_CHAR para asegurar que se compara correctamente con el formato de fecha en la BD
-      condiciones.push(sql`TO_CHAR(departure_date, 'YYYY-MM-DD') = ${fechaFormateada}`);
-    }
-    
-    // Aplicar filtro de conductor (driverId)
-    if (params.driverId) {
-      console.log(`[searchTrips-v2] Filtro por conductor (driverId): ${params.driverId}`);
-      // Filtrar los viajes asignados a este conductor
-      condiciones.push(sql`driver_id = ${params.driverId}`);
+      condiciones.push(sql`DATE(departure_date) = ${params.date}`);
     }
     
     // CONSULTA FINAL: Construir y ejecutar la consulta SQL con todas las condiciones
@@ -547,21 +509,6 @@ export class DatabaseStorage implements IStorage {
       trips = viajesFiltrados;
     } else if (!params.companyId || params.companyId === 'ALL') {
       console.log(`[searchTrips-v2] ACCESO TOTAL: Mostrando todos los viajes sin filtro adicional de compañía`);
-    }
-
-    // Verificación extra para filtro de conductor (driverId)
-    if (params.driverId) {
-      console.log(`[searchTrips-v2] VERIFICACIÓN ADICIONAL por conductor ID: ${params.driverId}`);
-      // Aplicar un segundo filtro de conductor después de la consulta SQL
-      const viajesConductor = trips.filter(trip => trip.driverId === params.driverId);
-      
-      // Verificar si hubo diferencia
-      if (viajesConductor.length !== trips.length) {
-        console.log(`[searchTrips-v2] ALERTA DE SEGURIDAD: La consulta SQL devolvió ${trips.length} viajes pero solo ${viajesConductor.length} están asignados al conductor ${params.driverId}`);
-      }
-      
-      // Actualizar la lista de viajes con el filtro aplicado
-      trips = viajesConductor;
     }
     console.log(`Encontrados ${trips.length} viajes que coinciden con los filtros básicos`);
     

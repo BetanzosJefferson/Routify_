@@ -2,8 +2,6 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { sql } from "drizzle-orm";
-import { db } from "./db";
 import { 
   insertRouteSchema, 
   insertTripSchema, 
@@ -38,6 +36,7 @@ function isSameCity(location1: string, location2: string): boolean {
   return city1 === city2;
 }
 import { populateLocationData } from "./populate-locations";
+import { db } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // prefix all routes with /api
@@ -286,42 +285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         searchParams.seats = parseInt(seats as string, 10);
       }
       
-      // TRATAMIENTO ESPECIAL PARA ROL CHOFER
-      // El chofer solo debe ver los viajes donde él está asignado como conductor
-      if (user && user.role === 'chofer') {
-        console.log(`[GET /trips] Usuario con rol CHOFER: ${user.firstName} ${user.lastName} (ID: ${user.id})`);
-        console.log(`[GET /trips] Filtrando viajes asignados al conductor con ID: ${user.id}`);
-        
-        // Filtrar viajes donde el chofer está asignado como conductor
-        searchParams.driverId = user.id;
-        
-        // Si no se especificó una fecha en la consulta, usar la fecha actual por defecto
-        if (!searchParams.date) {
-          const today = new Date();
-          const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-          searchParams.date = formattedDate;
-          console.log(`[GET /trips] No se proporcionó fecha. Usando fecha actual: ${formattedDate}`);
-        }
-        
-        // DEPURACIÓN ADICIONAL: consultar directamente la BD para comparar resultados
-        console.log(`[GET /trips] DEPURACIÓN: Verificando viajes con SQL directo para driverId=${user.id} y fecha=${searchParams.date}`);
-        const directQuery = await db.execute(
-          sql`SELECT id, company_id, driver_id, departure_date, departure_time 
-              FROM trips 
-              WHERE driver_id = ${user.id} 
-              AND DATE(departure_date) = ${searchParams.date}`
-        );
-        console.log(`[GET /trips] DEPURACIÓN: Resultado SQL directo:`, directQuery.rows);
-        
-        // Ejecutar búsqueda con filtro de conductor y fecha
-        console.log(`[GET /trips] Parámetros de búsqueda para chofer:`, searchParams);
-        const trips = await storage.searchTrips(searchParams);
-        console.log(`[GET /trips] Encontrados ${trips.length} viajes asignados al chofer para la fecha ${searchParams.date}`);
-        
-        return res.json(trips);
-      }
-      
-      // APLICAR FILTRO DE COMPAÑÍA - PARTE CRÍTICA (para otros roles)
+      // APLICAR FILTRO DE COMPAÑÍA - PARTE CRÍTICA
       // Solo superAdmin y taquilla pueden ver viajes de todas las compañías
       if (user) {
         if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
@@ -415,21 +379,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // SEGURIDAD: Verificar permisos según el rol y compañía del usuario
       if (user) {
-        // CASO ESPECIAL: Si el usuario es un CHOFER
-        if (user.role === 'chofer') {
-          // Verificar si este viaje está asignado a este conductor específico
-          if (trip.driverId === user.id) {
-            console.log(`[GET /trips/${id}] Acceso permitido: El viaje está asignado al conductor ${user.firstName} ${user.lastName} (ID: ${user.id})`);
-          } else {
-            console.log(`[GET /trips/${id}] ACCESO DENEGADO: El viaje no está asignado al conductor ${user.firstName} ${user.lastName} (ID: ${user.id})`);
-            return res.status(403).json({
-              error: "No tiene permiso para ver este viaje",
-              details: "Este viaje no está asignado a usted como conductor"
-            });
-          }
-        }
         // Los usuarios con rol superAdmin y taquilla (ticket_office) pueden ver todos los viajes
-        else if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
+        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
           // Para todos los demás roles, verificar que el viaje pertenezca a su compañía
           const userCompanyId = user.companyId || user.company || null;
           
