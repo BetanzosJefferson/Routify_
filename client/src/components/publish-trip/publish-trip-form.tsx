@@ -1173,8 +1173,8 @@ export function PublishTripForm() {
                                 <FormItem>
                                   <FormLabel>Vehículo</FormLabel>
                                   <Select 
-                                    onValueChange={(value) => field.onChange(parseInt(value) || null)}
-                                    value={field.value?.toString() || ""}
+                                    onValueChange={(value) => value === "none" ? field.onChange(null) : field.onChange(parseInt(value) || null)}
+                                    value={field.value?.toString() || "none"}
                                   >
                                     <FormControl>
                                       <SelectTrigger>
@@ -1182,7 +1182,7 @@ export function PublishTripForm() {
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      <SelectItem value="">Sin asignar</SelectItem>
+                                      <SelectItem value="none">Sin asignar</SelectItem>
                                       {vehiclesQuery.data?.map((vehicle: any) => (
                                         <SelectItem key={vehicle.id} value={vehicle.id.toString()}>
                                           {vehicle.brand} {vehicle.model} ({vehicle.plates}) - {vehicle.capacity} asientos
@@ -1203,8 +1203,8 @@ export function PublishTripForm() {
                                 <FormItem>
                                   <FormLabel>Conductor</FormLabel>
                                   <Select 
-                                    onValueChange={(value) => field.onChange(parseInt(value) || null)}
-                                    value={field.value?.toString() || ""}
+                                    onValueChange={(value) => value === "none" ? field.onChange(null) : field.onChange(parseInt(value) || null)}
+                                    value={field.value?.toString() || "none"}
                                   >
                                     <FormControl>
                                       <SelectTrigger>
@@ -1212,7 +1212,7 @@ export function PublishTripForm() {
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      <SelectItem value="">Sin asignar</SelectItem>
+                                      <SelectItem value="none">Sin asignar</SelectItem>
                                       {driversQuery.data?.map((driver: any) => (
                                         <SelectItem key={driver.id} value={driver.id.toString()}>
                                           {driver.firstName} {driver.lastName}
