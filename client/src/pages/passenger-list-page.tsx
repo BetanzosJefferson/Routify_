@@ -14,7 +14,8 @@ import {
   Bus,
   Printer,
   Download,
-  ChevronLeft
+  ChevronLeft,
+  User
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -149,8 +150,27 @@ export default function PassengerListPage() {
     }
   });
 
-  // Calcular pasajeros del viaje seleccionado - MEJORADO CON SOPORTE PARA VIAJES RELACIONADOS
-  const passengersList = (() => {
+  // Interfaz para las reservaciones agrupadas con lista de pasajeros
+  interface GroupedReservation {
+    id: number;
+    code: string;
+    tripId: number;
+    email: string;
+    phone: string;
+    paymentMethod: string;
+    paymentStatus: string;
+    amount: number;
+    tripSegment: string;
+    passengers: {
+      id: number;
+      firstName: string;
+      lastName: string;
+      initials: string;
+    }[];
+  }
+
+  // Nueva implementación: agrupar pasajeros por reservación
+  const groupedReservations = (() => {
     if (!tripId || !reservations || !trips) return [];
     
     try {
@@ -186,55 +206,83 @@ export default function PassengerListPage() {
         return [];
       }
       
-      // Transformar a lista de pasajeros con información adicional
-      const passengerList = [];
+      // Crear reservaciones agrupadas por ID de reservación
+      const groupedResult: GroupedReservation[] = [];
       
       for (const reservation of relevantReservations) {
         if (!reservation.passengers || !Array.isArray(reservation.passengers)) {
           continue;
         }
         
+        // Encontrar el viaje asociado a esta reservación
+        const reservationTrip = trips.find(t => t.id === reservation.tripId);
+        if (!reservationTrip) continue;
+        
+        // Crear el objeto de reservación agrupada
+        const groupedReservation: GroupedReservation = {
+          id: reservation.id,
+          code: `R-${reservation.id.toString().padStart(6, '0')}`,
+          tripId: reservation.tripId,
+          email: reservation.email || '',
+          phone: reservation.phone || '',
+          paymentMethod: reservation.paymentMethod || 'unknown',
+          paymentStatus: reservation.status === 'confirmed' ? 'paid' : 'pending',
+          amount: reservation.totalAmount || 0,
+          tripSegment: `${
+            reservationTrip.segmentOrigin || 
+            reservationTrip.route.origin || 'Origen'
+          } → ${
+            reservationTrip.segmentDestination || 
+            reservationTrip.route.destination || 'Destino'
+          }`,
+          passengers: []
+        };
+        
+        // Añadir todos los pasajeros de esta reservación
         for (const passenger of reservation.passengers) {
           if (!passenger || !passenger.firstName || !passenger.lastName) {
             continue;
           }
           
-          // Obtener datos del viaje asociado a esta reservación
-          const reservationTrip = trips.find(t => t.id === reservation.tripId);
-          
-          if (!reservationTrip) {
-            continue;
-          }
-          
-          // Añadir pasajero con datos enriquecidos
-          passengerList.push({
+          groupedReservation.passengers.push({
             id: passenger.id,
             firstName: passenger.firstName,
             lastName: passenger.lastName,
-            reservationId: passenger.reservationId,
-            reservationCode: `R-${reservation.id.toString().padStart(6, '0')}`,
-            paymentMethod: reservation.paymentMethod || 'unknown',
-            paymentStatus: reservation.status === 'confirmed' ? 'paid' : 'pending',
-            email: reservation.email || '',
-            phone: reservation.phone || '',
-            amount: reservation.totalAmount || 0,
-            tripSegment: `${
-              reservationTrip.segmentOrigin || 
-              reservationTrip.route.origin || 'Origen'
-            } → ${
-              reservationTrip.segmentDestination || 
-              reservationTrip.route.destination || 'Destino'
-            }`
+            initials: `${passenger.firstName.charAt(0)}${passenger.lastName.charAt(0)}`
           });
+        }
+        
+        // Solo agregar la reservación si tiene pasajeros
+        if (groupedReservation.passengers.length > 0) {
+          groupedResult.push(groupedReservation);
         }
       }
       
-      return passengerList;
+      console.log(`Resultados agrupados: ${groupedResult.length} reservaciones con un total de ${
+        groupedResult.reduce((total, r) => total + r.passengers.length, 0)
+      } pasajeros`);
+      
+      return groupedResult;
     } catch (error) {
-      console.error("Error al procesar pasajeros:", error);
+      console.error("Error al procesar reservaciones:", error);
       return [];
     }
   })();
+  
+  // Para compatibilidad con el código existente (usamos agrupados)
+  const passengersList = groupedReservations.flatMap(res => 
+    res.passengers.map(p => ({
+      ...p,
+      reservationId: res.id,
+      reservationCode: res.code,
+      paymentMethod: res.paymentMethod,
+      paymentStatus: res.paymentStatus,
+      email: res.email,
+      phone: res.phone,
+      amount: res.amount,
+      tripSegment: res.tripSegment
+    }))
+  );
 
   // Función para formatear fecha para su visualización
   const formatDisplayDate = (dateString: string | Date) => {
@@ -428,78 +476,82 @@ export default function PassengerListPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {passengersList.length > 0 ? (
+            {groupedReservations.length > 0 ? (
               <div className="space-y-4">
-                {passengersList.map((passenger, index) => (
+                {groupedReservations.map((reservation, index) => (
                   <div 
-                    key={`passenger-${passenger.id}-${index}`} 
+                    key={`reservation-${reservation.id}`} 
                     className={`p-4 border rounded-md ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
                   >
                     <div className="md:flex items-start">
-                      <div className="flex items-center space-x-3 md:w-1/3 mb-3 md:mb-0">
-                        <Avatar className="h-10 w-10 border border-gray-200">
-                          <AvatarFallback className="bg-primary/10 text-primary">
-                            {passenger.firstName.charAt(0)}{passenger.lastName.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
+                      <div className="flex-1 mb-3 md:mb-0">
+                        <div className="flex items-center mb-2">
+                          <div className="flex -space-x-2 mr-3">
+                            {reservation.passengers.slice(0, 3).map((passenger) => (
+                              <Avatar key={passenger.id} className="border-2 border-background">
+                                <AvatarFallback className="bg-primary/10 text-primary">
+                                  {passenger.initials}
+                                </AvatarFallback>
+                              </Avatar>
+                            ))}
+                            {reservation.passengers.length > 3 && (
+                              <Avatar className="border-2 border-background">
+                                <AvatarFallback className="bg-muted text-muted-foreground">
+                                  +{reservation.passengers.length - 3}
+                                </AvatarFallback>
+                              </Avatar>
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-medium">Reservación {reservation.code}</div>
+                            <div className="text-xs text-gray-500">
+                              {reservation.passengers.length} {reservation.passengers.length === 1 ? 'pasajero' : 'pasajeros'}
+                            </div>
+                          </div>
+                        </div>
                         
-                        <div className="min-w-0">
-                          <p className="font-medium truncate">
-                            {passenger.firstName} {passenger.lastName}
-                          </p>
-                          <p className="text-sm text-gray-500 truncate">
-                            {passenger.reservationCode}
-                          </p>
+                        <div className="mt-3 border-l-2 border-gray-200 pl-3">
+                          <div className="text-xs text-gray-500 mb-1">Pasajeros:</div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {reservation.passengers.map((passenger) => (
+                              <div key={passenger.id} className="text-sm flex items-center">
+                                <div className="h-2 w-2 rounded-full bg-primary/80 mr-2"></div>
+                                {passenger.firstName} {passenger.lastName}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
                       
-                      <div className="md:w-1/3 mb-3 md:mb-0">
-                        <div className="space-y-1">
-                          <p className="text-sm text-gray-500">
-                            <span className="font-medium">Segmento:</span> {passenger.tripSegment}
-                          </p>
-                          {passenger.email && (
-                            <p className="text-sm text-gray-500 truncate">
-                              <span className="font-medium">Email:</span> {passenger.email}
-                            </p>
-                          )}
-                          {passenger.phone && (
-                            <p className="text-sm text-gray-500">
-                              <span className="font-medium">Teléfono:</span> {passenger.phone}
-                            </p>
-                          )}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3 md:mt-0 md:ml-4 md:w-2/5">
+                        <div>
+                          <div className="text-xs text-gray-500">Segmento</div>
+                          <div className="text-sm">{reservation.tripSegment}</div>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center space-x-3 md:w-1/3 justify-end">
-                        <div className="text-right">
-                          <p className="text-sm font-medium">
-                            ${passenger.amount}
-                          </p>
-                          <span className={`text-xs ${
-                            passenger.paymentStatus === 'paid' 
-                              ? 'text-green-600' 
-                              : 'text-orange-600'
-                          }`}>
-                            {passenger.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
-                          </span>
+                        <div>
+                          <div className="text-xs text-gray-500">Contacto</div>
+                          <div className="text-sm">{reservation.email || 'N/A'}</div>
                         </div>
-                        
-                        <Badge 
-                          variant={passenger.paymentStatus === 'paid' ? 'default' : 'outline'}
-                        >
-                          {passenger.paymentStatus === 'paid' ? 'Pagado' : 'Pendiente'}
-                        </Badge>
+                        <div>
+                          <div className="text-xs text-gray-500">Teléfono</div>
+                          <div className="text-sm">{reservation.phone || 'N/A'}</div>
+                        </div>
+                        <div className="col-span-2 md:col-span-3 text-right">
+                          <div className="font-semibold">${reservation.amount}</div>
+                          <Badge variant={reservation.paymentStatus === 'paid' ? 'default' : 'outline'}>
+                            {reservation.paymentStatus === 'paid' ? 'Pagado' : 'Pendiente'}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-10 text-gray-500">
-                <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <h3 className="text-lg font-medium mb-2">Sin pasajeros</h3>
-                <p>No hay pasajeros registrados para este viaje.</p>
+              <div className="flex flex-col items-center justify-center py-12">
+                <User className="h-12 w-12 text-gray-300 mb-4" />
+                <h3 className="text-lg font-medium">Sin pasajeros</h3>
+                <p className="text-gray-500">No hay pasajeros registrados para este viaje.</p>
               </div>
             )}
           </CardContent>
