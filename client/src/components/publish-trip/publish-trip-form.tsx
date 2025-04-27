@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { useAuth } from "@/hooks/use-auth";
 import { InfoIcon, Loader2Icon, CalendarPlusIcon, XIcon, HelpCircleIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -444,12 +445,15 @@ export function PublishTripForm() {
       ...data,
       routeId: selectedRouteId,
       capacity,
-      price: 0, // Ya no se usa precio base
+      price: data.price || 0,
       segmentPrices,
       stopTimes: formattedStopTimes,
       departureTime, // Añadido explícitamente
       arrivalTime,   // Añadido explícitamente
-      availableSeats: capacity // Inicializa availableSeats con la capacidad
+      availableSeats: capacity, // Inicializa availableSeats con la capacidad
+      // Incluir explícitamente los campos de asignación
+      vehicleId: data.vehicleId || null,
+      driverId: data.driverId || null
     };
     
     console.log("Datos del viaje a enviar:", tripData);
@@ -512,11 +516,14 @@ export function PublishTripForm() {
       price: 450,
       vehicleType: "standard",
       segmentPrices: [],
+      vehicleId: null,
+      driverId: null,
     });
     setSelectedRouteId(null);
     setSegmentPrices([]);
     setStopTimes([]);
     setEditingTripId(null);
+    setShowAssignmentFields(false); // Ocultar la pestaña de asignación para nuevo viaje
     setShowForm(true);
   };
   
@@ -787,7 +794,9 @@ export function PublishTripForm() {
               price: trip.price,
               vehicleType: trip.vehicleType,
               segmentPrices: segmentPricesFromTrip,
-              stopTimes: allStopTimes
+              stopTimes: allStopTimes,
+              vehicleId: trip.vehicleId,
+              driverId: trip.driverId
             });
             
             // Forzar actualización de valores individuales
@@ -799,9 +808,17 @@ export function PublishTripForm() {
             form.setValue("vehicleType", trip.vehicleType || "standard", { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("segmentPrices", segmentPricesFromTrip, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("stopTimes", ensureValidStopTimes(allStopTimes), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+            
             // Actualizar valores de vehículo y conductor si existen
-            form.setValue("vehicleId", trip.vehicleId || null, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-            form.setValue("driverId", trip.driverId || null, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+            if (trip.vehicleId) {
+              console.log(`Asignando vehículo ID: ${trip.vehicleId}`);
+              form.setValue("vehicleId", trip.vehicleId, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+            }
+            
+            if (trip.driverId) {
+              console.log(`Asignando conductor ID: ${trip.driverId}`);
+              form.setValue("driverId", trip.driverId, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+            }
             
             // Forzar revalidación completa
             form.trigger();
