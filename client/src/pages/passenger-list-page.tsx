@@ -259,8 +259,8 @@ export default function PassengerListPage() {
     return format(date, "d 'de' MMMM, yyyy", { locale: es });
   };
 
-  // Obtener información del viaje
-  const tripInfo = trips?.find(trip => trip.id === tripId);
+  // Usar directamente los detalles del viaje obtenidos
+  const tripInfo = tripDetails;
 
   // Función para imprimir la lista de pasajeros
   const handlePrint = () => {
@@ -272,7 +272,7 @@ export default function PassengerListPage() {
     setLocation("/");
   };
 
-  if (isLoadingTrips || isLoadingReservations) {
+  if (isLoadingTripDetails || isLoadingTrips || isLoadingReservations) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -280,7 +280,29 @@ export default function PassengerListPage() {
     );
   }
 
-  if (!tripInfo) {
+  if (tripError) {
+    return (
+      <div className="container mx-auto p-6 max-w-7xl">
+        <Button variant="outline" className="mb-6" onClick={handleGoBack}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Volver
+        </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle>Error al cargar el viaje</CardTitle>
+            <CardDescription>
+              {tripError instanceof Error 
+                ? tripError.message 
+                : "Ocurrió un error al cargar los detalles del viaje"}
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  // Use tripDetails as the source of truth
+  if (!tripDetails) {
     return (
       <div className="container mx-auto p-6 max-w-7xl">
         <Button variant="outline" className="mb-6" onClick={handleGoBack}>
@@ -290,7 +312,9 @@ export default function PassengerListPage() {
         <Card>
           <CardHeader>
             <CardTitle>Viaje no encontrado</CardTitle>
-            <CardDescription>El viaje solicitado no existe o ha sido eliminado.</CardDescription>
+            <CardDescription>
+              El viaje solicitado no existe o no tienes permisos para visualizarlo.
+            </CardDescription>
           </CardHeader>
         </Card>
       </div>
