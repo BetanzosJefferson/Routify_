@@ -246,7 +246,8 @@ export function ReservationList() {
       </Card>
       
       <Card>
-        <div className="overflow-x-auto">
+        {/* Vista para Desktop: Tabla tradicional */}
+        <div className="hidden md:block overflow-x-auto">
           {isLoading && showLoadingDelay ? (
             <div className="flex justify-center items-center p-8">
               <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
@@ -325,6 +326,102 @@ export function ReservationList() {
                 ))}
               </tbody>
             </table>
+          ) : (
+            <div className="text-center p-8 text-gray-500">
+              No reservations found.
+            </div>
+          )}
+        </div>
+        
+        {/* Vista para Móvil: Tarjetas */}
+        <div className="md:hidden">
+          {isLoading && showLoadingDelay ? (
+            <div className="flex justify-center items-center p-8">
+              <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2">Cargando reservaciones...</span>
+            </div>
+          ) : hasError && !isInitialLoad ? (
+            <div className="text-center p-8 text-red-500">
+              Error al cargar las reservaciones. Por favor intenta de nuevo.
+            </div>
+          ) : filteredReservations && filteredReservations.length > 0 ? (
+            <div className="divide-y divide-gray-200">
+              {filteredReservations.map((reservation) => (
+                <div key={reservation.id} className="p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">
+                        #{generateReservationId()}
+                      </div>
+                      <Badge 
+                        variant="outline" 
+                        className="bg-green-100 text-green-800 border-green-200 mt-1"
+                      >
+                        {reservation.status.charAt(0).toUpperCase() + reservation.status.slice(1)}
+                      </Badge>
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      <Button 
+                        size="sm"
+                        variant="link" 
+                        className="text-blue-600 hover:text-blue-800 p-0"
+                        onClick={() => openEditModal(reservation)}
+                      >
+                        Edit
+                      </Button>
+                      <Button 
+                        size="sm"
+                        variant="link" 
+                        className="text-red-600 hover:text-red-800 p-0"
+                        onClick={() => openDeleteConfirm(reservation.id)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-y-2 text-sm">
+                    <div className="col-span-2">
+                      <div className="font-medium text-gray-900">
+                        {reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}
+                        {reservation.passengers.length > 1 && ` +${reservation.passengers.length - 1}`}
+                      </div>
+                      <div className="text-gray-500 truncate" title={reservation.email}>
+                        {reservation.email}
+                      </div>
+                    </div>
+                    
+                    <div className="col-span-2 mt-1">
+                      <div className="font-medium">{reservation.trip.route.name}</div>
+                      <div className="text-gray-500 text-xs">
+                        {reservation.trip.segmentOrigin || reservation.trip.route.origin} → {reservation.trip.segmentDestination || reservation.trip.route.destination}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="text-xs text-gray-500">Fecha</div>
+                      <div>{formatDate(reservation.trip.departureDate)}</div>
+                    </div>
+                    
+                    <div>
+                      <div className="text-xs text-gray-500">Hora</div>
+                      <div>{reservation.trip.departureTime}</div>
+                    </div>
+                    
+                    <div>
+                      <div className="text-xs text-gray-500">Pasajeros</div>
+                      <div>{reservation.passengers.length}</div>
+                    </div>
+                    
+                    <div className="text-right">
+                      <div className="text-xs text-gray-500">Total</div>
+                      <div className="font-medium">${reservation.totalAmount}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="text-center p-8 text-gray-500">
               No reservations found.

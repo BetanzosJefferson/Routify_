@@ -155,10 +155,25 @@ export function BoardingList() {
       relevantTripIds = [...relevantTripIds, ...subTripIds];
     }
     
-    // Contar pasajeros en todos los viajes relevantes
-    return reservations
-      .filter(r => relevantTripIds.includes(r.tripId))
-      .reduce((count, reservation) => count + (reservation.passengers?.length || 0), 0);
+    // Contar todos los pasajeros en todos los viajes relevantes
+    let totalPassengers = 0;
+    
+    // Filtrar reservaciones para los viajes relevantes
+    const relevantReservations = reservations.filter(r => relevantTripIds.includes(r.tripId));
+    
+    console.log(`[BoardingList] Contando pasajeros para viaje ${tripId} (incluye ${relevantTripIds.length} viajes relacionados)`);
+    console.log(`[BoardingList] Encontradas ${relevantReservations.length} reservaciones relevantes`);
+    
+    // Contar el número total de pasajeros en todas las reservaciones relevantes
+    for (const reservation of relevantReservations) {
+      if (reservation.passengers && Array.isArray(reservation.passengers)) {
+        totalPassengers += reservation.passengers.length;
+        console.log(`[BoardingList] Reserva ${reservation.id}: ${reservation.passengers.length} pasajeros`);
+      }
+    }
+    
+    console.log(`[BoardingList] Total de pasajeros para viaje ${tripId}: ${totalPassengers}`);
+    return totalPassengers;
   };
 
   return (
