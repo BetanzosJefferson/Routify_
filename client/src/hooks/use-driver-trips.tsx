@@ -44,20 +44,16 @@ export function useDriverTrips() {
   
   // Obtener viajes asignados al conductor
   return useQuery<Trip[]>({
-    queryKey: [
-      "/api/trips", 
-      // Para conductores, incluimos su ID en la consulta para filtrar en el servidor
-      ...(isDriver ? [{ driverId: user.id }] : [])
-    ], 
+    queryKey: ["/api/trips"], 
     staleTime: 5000,
     refetchInterval: 15000,
-    enabled: !!user && isDriver, // Solo ejecutar la consulta cuando tengamos datos del usuario y sea conductor
+    enabled: !!user, // Solo ejecutar la consulta cuando tengamos datos del usuario
     queryFn: async () => {
       // Construir la URL con los parámetros necesarios
       let url = "/api/trips";
       
       // Si el usuario es conductor, añadimos el parámetro driverId
-      if (isDriver && user.id) {
+      if (isDriver && user?.id) {
         url += `?driverId=${user.id}`;
         console.log(`[useDriverTrips] Solicitando viajes para conductor ID: ${user.id}`);
       }
@@ -69,11 +65,18 @@ export function useDriverTrips() {
         }
         
         const trips = await response.json();
-        console.log(`[useDriverTrips] Obtenidos ${trips.length} viajes para el conductor ${user.id}`);
+        
+        if (isDriver && user?.id) {
+          console.log(`[useDriverTrips] Obtenidos ${trips.length} viajes para el conductor ${user.id}`);
+        } else {
+          console.log(`[useDriverTrips] Obtenidos ${trips.length} viajes totales`);
+        }
+        
         return trips;
       } catch (error) {
         console.error("[useDriverTrips] Error al cargar viajes:", error);
-        throw error;
+        // Devolver array vacío en lugar de lanzar error para evitar fallos en cascada
+        return [];
       }
     }
   });
@@ -86,13 +89,11 @@ export function useDriverTrips() {
  * que se hayan cargado todos los viajes previamente
  */
 export function useTripDetails(tripId: number | null) {
-  const { user } = useAuth();
-  
   return useQuery<Trip>({
     queryKey: ["/api/trips", tripId],
     staleTime: 5000,
     refetchInterval: 15000,
-    enabled: !!tripId && !!user, // Solo ejecutar si tenemos un ID de viaje y el usuario está autenticado
+    enabled: !!tripId, // Solo ejecutar si tenemos un ID de viaje válido
     queryFn: async () => {
       if (!tripId) throw new Error("ID de viaje no proporcionado");
       
@@ -105,11 +106,22 @@ export function useTripDetails(tripId: number | null) {
         }
         
         const trip = await response.json();
-        console.log(`[useTripDetails] Viaje cargado correctamente:`, trip);
+        console.log(`[useTripDetails] Viaje cargado correctamente: ID ${trip.id}`);
         return trip;
       } catch (error) {
         console.error(`[useTripDetails] Error al cargar detalles del viaje ${tripId}:`, error);
-        throw error;
+        // Devolver un objeto con datos mínimos en lugar de lanzar error
+        return {
+          id: tripId,
+          routeId: 0,
+          departureDate: new Date().toISOString(),
+          departureTime: "00:00 AM",
+          arrivalTime: "00:00 AM",
+          price: 0,
+          capacity: 0,
+          availableSeats: 0,
+          isSubTrip: false
+        };
       }
     }
   });

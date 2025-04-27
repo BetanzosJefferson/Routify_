@@ -26,8 +26,8 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Importamos nuestros nuevos hooks especializados para conductores
-import { useTripDetails, Trip } from "@/hooks/use-driver-trips";
-import { useDriverReservations, Reservation, Passenger } from "@/hooks/use-driver-reservations";
+import { useTripDetails as useDriverTripDetails, useDriverTrips, Trip as DriverTrip } from "@/hooks/use-driver-trips";
+import { useDriverReservations, Reservation as DriverReservation, Passenger as DriverPassenger } from "@/hooks/use-driver-reservations";
 
 interface Trip {
   id: number;
@@ -121,7 +121,7 @@ export default function PassengerListPage() {
     data: tripDetails, 
     isLoading: isLoadingTripDetails, 
     error: tripError 
-  } = useTripDetails(tripId);
+  } = useDriverTripDetails(tripId);
   
   // También cargamos todos los viajes para asegurar compatibilidad con el código existente
   const { 
@@ -129,150 +129,14 @@ export default function PassengerListPage() {
     isLoading: isLoadingTrips 
   } = useDriverTrips();
 
-  // Fetch all reservations 
-  const { data: reservations, isLoading: isLoadingReservations } = useQuery<Reservation[]>({
-    queryKey: ["/api/reservations", {
-      tripId: tripId,
-      includeRelated: true 
-    }],
-    staleTime: 5000,
-    refetchInterval: 15000,
-    queryFn: async () => {
-      console.log(`Consultando reservaciones específicas para viaje: ${tripId} (incluye viajes relacionados)`);
-      
-      // Si es conductor, verificamos primero que el viaje pertenezca al conductor
-      if (user?.role === 'chofer') {
-        try {
-          // Verificar primero si el viaje pertenece al conductor
-          const tripResponse = await fetch(`/api/trips/${tripId}`);
-          if (!tripResponse.ok) {
-            throw new Error(`Error al obtener detalles del viaje: ${tripResponse.statusText}`);
-          }
-          
-          const tripData = await tripResponse.json();
-          console.log(`Verificando si el viaje ${tripId} pertenece al conductor ${user.id}`);
-          console.log(`Datos del viaje: driverId=${tripData.driverId}, conductor actual=${user.id}`);
-          
-          // Variables para almacenar información relacionada con viajes
-          let hasAccess = tripData.driverId === user.id; // Acceso directo
-          let parentTripId: number | null = null;
-          let subTripIds: number[] = [];
-          
-          // Si el viaje no está asignado a este conductor, verificar si hay viajes relacionados
-          if (!hasAccess) {
-            console.log(`El viaje ${tripId} no está asignado directamente al conductor ${user.id}, verificando viajes relacionados...`);
-            
-            // Si es un sub-viaje, verificar si el viaje principal pertenece al conductor
-            if (tripData.isSubTrip && tripData.parentTripId) {
-              console.log(`Es un sub-viaje del viaje principal ${tripData.parentTripId}, verificando asignación...`);
-              parentTripId = tripData.parentTripId;
-              
-              const parentResponse = await fetch(`/api/trips/${tripData.parentTripId}`);
-              if (parentResponse.ok) {
-                const parentTrip = await parentResponse.json();
-                if (parentTrip.driverId === user.id) {
-                  console.log(`El viaje principal ${tripData.parentTripId} está asignado al conductor ${user.id}`);
-                  hasAccess = true;
-                }
-              }
-            } 
-            // Si es un viaje principal, verificar si tiene sub-viajes asignados al conductor
-            else if (!tripData.isSubTrip) {
-              console.log(`Es un viaje principal, verificando si tiene sub-viajes asignados al conductor ${user.id}...`);
-              
-              const allTripsResponse = await fetch(`/api/trips`);
-              if (allTripsResponse.ok) {
-                const allTrips = await allTripsResponse.json();
-                
-                // Buscar sub-viajes de este viaje principal asignados al conductor
-                const assignedSubTrips = allTrips.filter((t: any) => 
-                  t.parentTripId === tripId && t.driverId === user.id);
-                
-                if (assignedSubTrips.length > 0) {
-                  subTripIds = assignedSubTrips.map((t: any) => t.id);
-                  console.log(`Encontrados ${assignedSubTrips.length} sub-viajes asignados al conductor ${user.id}: ${subTripIds.join(', ')}`);
-                  hasAccess = true;
-                }
-              }
-            }
-            
-            if (!hasAccess) {
-              console.error(`El viaje ${tripId} no está asignado al conductor ${user.id} ni tiene relación con viajes asignados`);
-              throw new Error("No tienes permisos para ver los pasajeros de este viaje");
-            }
-          }
-          
-          // Si llegamos aquí, es porque el viaje pertenece al conductor o tiene una relación con viajes del conductor
-          console.log(`Acceso confirmado para el conductor ${user.id}, obteniendo reservaciones`);
-          
-          // Obtenemos reservaciones del viaje solicitado y también de viajes relacionados
-          const reservationResponse = await fetch(`/api/reservations?tripId=${tripId}&includeRelated=true`);
-          if (!reservationResponse.ok) {
-            throw new Error(`Error al obtener reservaciones: ${reservationResponse.statusText}`);
-          }
-          
-          // Almacenar reservaciones obtenidas del viaje principal
-          const reservationData = await reservationResponse.json();
-          console.log(`Reservaciones obtenidas para viaje ${tripId}: ${reservationData.length}`);
-          
-          let allReservations = [...reservationData];
-          
-          // Si hay un viaje principal relacionado, obtener sus reservaciones también
-          if (parentTripId && parentTripId !== tripId) {
-            console.log(`Obteniendo reservaciones del viaje principal ${parentTripId}...`);
-            const parentReservationsResponse = await fetch(`/api/reservations?tripId=${parentTripId}`);
-            
-            if (parentReservationsResponse.ok) {
-              const parentReservations = await parentReservationsResponse.json();
-              console.log(`Reservaciones obtenidas para viaje principal ${parentTripId}: ${parentReservations.length}`);
-              allReservations = [...allReservations, ...parentReservations];
-            }
-          }
-          
-          // Si hay sub-viajes relacionados, obtener sus reservaciones también
-          if (subTripIds.length > 0) {
-            console.log(`Obteniendo reservaciones para ${subTripIds.length} sub-viajes...`);
-            
-            // Obtener reservaciones para cada sub-viaje y añadirlas
-            for (const subTripId of subTripIds) {
-              const subTripReservationsResponse = await fetch(`/api/reservations?tripId=${subTripId}`);
-              
-              if (subTripReservationsResponse.ok) {
-                const subTripReservations = await subTripReservationsResponse.json();
-                console.log(`Reservaciones obtenidas para sub-viaje ${subTripId}: ${subTripReservations.length}`);
-                allReservations = [...allReservations, ...subTripReservations];
-              }
-            }
-          }
-          
-          // Eliminar posibles duplicados basados en el ID de reservación
-          const uniqueReservations = [...new Map(allReservations.map(item => [item.id, item])).values()];
-          
-          console.log(`Total de reservaciones obtenidas (después de eliminar duplicados): ${uniqueReservations.length}`);
-          
-          // Asegurar que todas las reservaciones tienen una estructura correcta para evitar errores
-          return uniqueReservations.map((res: any) => {
-            if (!res.passengers) {
-              return {...res, passengers: []};
-            } else if (!Array.isArray(res.passengers)) {
-              return {...res, passengers: []};
-            }
-            return res;
-          });
-        } catch (error) {
-          console.error("Error al obtener reservaciones como chofer:", error);
-          throw error;
-        }
-      }
-      
-      // Para otros roles, usamos la ruta normal
-      const response = await fetch(`/api/reservations?tripId=${tripId}&includeRelated=true`);
-      if (!response.ok) {
-        throw new Error(`Error al obtener reservaciones: ${response.statusText}`);
-      }
-      return response.json();
-    },
-    enabled: !!user && !!tripId, // Solo ejecutar cuando tengamos datos del usuario y un ID de viaje
+  // Utilizamos nuestro nuevo hook para obtener reservaciones específicas para este viaje
+  const { 
+    data: reservations, 
+    isLoading: isLoadingReservations,
+    error: reservationsError 
+  } = useDriverReservations({
+    tripId: tripId,
+    includeRelated: true
   });
 
   // Interfaz para las reservaciones agrupadas con lista de pasajeros
