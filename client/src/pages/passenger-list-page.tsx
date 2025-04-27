@@ -267,6 +267,21 @@ export default function PassengerListPage() {
       console.log(`Procesando reservaciones para viaje ${tripId} (incluyendo relacionados)...`);
       console.log(`Total de reservaciones recibidas: ${reservations.length}`);
       
+      // DEPURACIÓN DETALLADA: Verificar estructura de cada reservación
+      console.log("ESTRUCTURA COMPLETA DE RESERVACIONES:");
+      reservations.forEach((res, index) => {
+        console.log(`Reserva #${index+1} (ID: ${res.id}, tripId: ${res.tripId}):`);
+        console.log(`- Tiene pasajeros: ${res.passengers ? 'Sí' : 'No'}`);
+        if (res.passengers) {
+          console.log(`- Cantidad pasajeros: ${Array.isArray(res.passengers) ? res.passengers.length : 'No es un array'}`);
+          if (Array.isArray(res.passengers)) {
+            console.log(`- Pasajeros: ${JSON.stringify(res.passengers.map(p => 
+              p ? `${p.firstName || 'Sin nombre'} ${p.lastName || 'Sin apellido'}` : 'Inválido'
+            ))}`);
+          }
+        }
+      });
+      
       // Agrupar reservaciones por viaje para depuración
       const reservationsByTrip: Record<number, Reservation[]> = {};
       for (const res of reservations) {
@@ -282,14 +297,19 @@ export default function PassengerListPage() {
         console.log(`Viaje ${tripId}: ${resList.length} reservaciones`);
       });
       
-      // Filtrar solo las reservaciones que tienen pasajeros
-      const relevantReservations = reservations.filter(r => 
-        r.passengers && 
-        Array.isArray(r.passengers) && 
-        r.passengers.length > 0
-      );
+      // Solución definitiva para el problema: asegurarnos de que los pasajeros estén correctamente procesados
+      // CORRECCIÓN: Aunque una reservación tenga un array pasajeros vacío, la seguimos mostrando
+      // para que el conductor pueda ver todas las reservaciones
+      const relevantReservations = reservations.map(res => {
+        // Si passengers no existe o no es un array, lo inicializamos como array vacío
+        if (!res.passengers || !Array.isArray(res.passengers)) {
+          console.log(`Corrigiendo estructura de pasajeros para reserva ${res.id}`);
+          return {...res, passengers: []};
+        }
+        return res;
+      });
       
-      console.log("Reservaciones con pasajeros:", relevantReservations.length);
+      console.log("Reservaciones procesadas para mostrar:", relevantReservations.length);
       
       // Si no hay reservaciones relevantes, terminar aquí
       if (relevantReservations.length === 0) {
@@ -300,13 +320,19 @@ export default function PassengerListPage() {
       const groupedResult: GroupedReservation[] = [];
       
       for (const reservation of relevantReservations) {
-        if (!reservation.passengers || !Array.isArray(reservation.passengers)) {
-          continue;
+        // Asegurarse que passengers sea un array
+        if (!reservation.passengers) {
+          reservation.passengers = [];
+        } else if (!Array.isArray(reservation.passengers)) {
+          reservation.passengers = [];
         }
         
         // Encontrar el viaje asociado a esta reservación
         const reservationTrip = trips.find(t => t.id === reservation.tripId);
-        if (!reservationTrip) continue;
+        if (!reservationTrip) {
+          console.log(`⚠️ No se encontró información del viaje ${reservation.tripId} para reserva ${reservation.id}`);
+          continue;
+        }
         
         // Crear el objeto de reservación agrupada
         const groupedReservation: GroupedReservation = {
@@ -320,32 +346,33 @@ export default function PassengerListPage() {
           amount: reservation.totalAmount || 0,
           tripSegment: `${
             reservationTrip.segmentOrigin || 
-            reservationTrip.route.origin || 'Origen'
+            (reservationTrip.route ? reservationTrip.route.origin : 'Origen') || 'Origen'
           } → ${
             reservationTrip.segmentDestination || 
-            reservationTrip.route.destination || 'Destino'
+            (reservationTrip.route ? reservationTrip.route.destination : 'Destino') || 'Destino'
           }`,
           passengers: []
         };
         
         // Añadir todos los pasajeros de esta reservación
-        for (const passenger of reservation.passengers) {
-          if (!passenger || !passenger.firstName || !passenger.lastName) {
-            continue;
+        if (Array.isArray(reservation.passengers)) {
+          for (const passenger of reservation.passengers) {
+            if (!passenger) continue;
+            
+            // Si faltan datos de pasajero, añadir valores por defecto (para asegurar que siempre se muestre algo)
+            groupedReservation.passengers.push({
+              id: passenger.id || 0,
+              firstName: passenger.firstName || 'Sin nombre',
+              lastName: passenger.lastName || 'Sin apellido',
+              initials: passenger.firstName && passenger.lastName ? 
+                `${passenger.firstName.charAt(0)}${passenger.lastName.charAt(0)}` : 'XX'
+            });
           }
-          
-          groupedReservation.passengers.push({
-            id: passenger.id,
-            firstName: passenger.firstName,
-            lastName: passenger.lastName,
-            initials: `${passenger.firstName.charAt(0)}${passenger.lastName.charAt(0)}`
-          });
         }
         
-        // Solo agregar la reservación si tiene pasajeros
-        if (groupedReservation.passengers.length > 0) {
-          groupedResult.push(groupedReservation);
-        }
+        // Con el nuevo enfoque, SIEMPRE agregamos la reservación incluso si no tiene pasajeros
+        // Esto asegura que se muestren todas las reservaciones para el conductor
+        groupedResult.push(groupedReservation);
       }
       
       console.log(`Resultados agrupados: ${groupedResult.length} reservaciones con un total de ${
