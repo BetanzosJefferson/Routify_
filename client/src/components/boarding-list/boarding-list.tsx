@@ -68,6 +68,7 @@ interface Reservation {
 
 export function BoardingList() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [showAllTrips, setShowAllTrips] = useState<boolean>(true);
   const [, navigate] = useLocation();
   const { user } = useAuth();
   
@@ -125,25 +126,36 @@ export function BoardingList() {
       console.log(`Encontrados ${filteredList.length} viajes asignados al conductor actual`);
     }
     
-    // Filtrar viajes por fecha y excluir sub-viajes
-    const dateFilteredTrips = filteredList.filter(trip => {
-      // Excluir sub-viajes
-      if (trip.isSubTrip) return false;
-      
-      // Convertir cadena de fecha a objeto Date y obtener solo la parte de la fecha (sin hora)
-      const tripDate = typeof trip.departureDate === 'string' 
-        ? trip.departureDate.split('T')[0] 
-        : format(new Date(trip.departureDate), 'yyyy-MM-dd');
-        
-      const currentDateStr = format(currentDate, 'yyyy-MM-dd');
-      
-      // Comparar las cadenas de fecha directamente
-      return tripDate === currentDateStr;
-    });
+    // Filtrar viajes excluyendo sub-viajes primero
+    const noSubTripsFiltered = filteredList.filter(trip => !trip.isSubTrip);
     
-    console.log(`Viajes filtrados por fecha (${format(currentDate, 'yyyy-MM-dd')}): ${dateFilteredTrips.length}`);
+    // Determinar si filtrar por fecha
+    let dateFilteredTrips;
+    
+    if (showAllTrips && user?.role === 'chofer') {
+      // Si showAllTrips es true y el usuario es chofer, mostrar todos los viajes asignados
+      dateFilteredTrips = noSubTripsFiltered;
+      console.log(`Mostrando todos los viajes asignados al chofer (${noSubTripsFiltered.length}) sin filtro de fecha`);
+    } else {
+      // Filtrar por fecha seleccionada
+      dateFilteredTrips = noSubTripsFiltered.filter(trip => {
+        // Convertir cadena de fecha a objeto Date y obtener solo la parte de la fecha
+        const tripDate = typeof trip.departureDate === 'string' 
+          ? trip.departureDate.split('T')[0] 
+          : format(new Date(trip.departureDate), 'yyyy-MM-dd');
+          
+        const currentDateStr = format(currentDate, 'yyyy-MM-dd');
+        
+        // Comparar las cadenas de fecha directamente
+        return tripDate === currentDateStr;
+      });
+      
+      console.log(`Filtrando viajes por fecha: ${format(currentDate, 'yyyy-MM-dd')}`);
+    }
+    
+    console.log(`Viajes filtrados${showAllTrips ? " (mostrando todos)" : ` por fecha (${format(currentDate, 'yyyy-MM-dd')}`}: ${dateFilteredTrips.length}`);
     return dateFilteredTrips;
-  }, [trips, user, currentDate]);
+  }, [trips, user, currentDate, showAllTrips]);
 
   // La lógica de procesamiento de pasajeros ya no es necesaria aquí
   // ya que ahora se maneja en la página dedicada de PassengerListPage
@@ -212,7 +224,29 @@ export function BoardingList() {
         <div className="rounded-full bg-primary bg-opacity-10 p-2 mr-3">
           <ClipboardListIcon className="h-6 w-6 text-primary" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-800">Lista de Abordaje</h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-800">Lista de Abordaje</h2>
+          {user?.role === 'chofer' && (
+            <div>
+              <p className="text-sm text-gray-500 mb-1">
+                {showAllTrips 
+                  ? "Mostrando todos tus viajes asignados. Usa el calendario para filtrar por fecha." 
+                  : `Mostrando sólo viajes para el ${formatDisplayDate(currentDate)}.`}
+              </p>
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowAllTrips(!showAllTrips);
+                }}
+                className="text-xs text-primary hover:text-primary-dark underline"
+              >
+                {showAllTrips 
+                  ? "Ver solo viajes de la fecha seleccionada" 
+                  : "Ver todos mis viajes asignados"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Selector de fecha */}
