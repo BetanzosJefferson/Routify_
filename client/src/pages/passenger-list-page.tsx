@@ -25,6 +25,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+// Importamos nuestros nuevos hooks especializados para conductores
+import { useTripDetails, Trip } from "@/hooks/use-driver-trips";
+import { useDriverReservations, Reservation, Passenger } from "@/hooks/use-driver-reservations";
+
 interface Trip {
   id: number;
   routeId: number;
@@ -109,31 +113,21 @@ export default function PassengerListPage() {
 
   const tripId = Number(params.tripId);
 
-  // Fetch specific trip by ID
-  const { data: tripDetails, isLoading: isLoadingTripDetails, error: tripError } = useQuery<Trip>({
-    queryKey: ["/api/trips", tripId],
-    queryFn: async () => {
-      console.log(`Fetching specific trip with ID: ${tripId}`);
-      const res = await fetch(`/api/trips/${tripId}`);
-      if (!res.ok) {
-        throw new Error(`Error fetching trip details: ${res.status} ${res.statusText}`);
-      }
-      return res.json();
-    },
-    staleTime: 5000,
-    refetchInterval: 15000,
-  });
-  
-  // Also fetch all trips for compatibility with existing code
-  const { data: trips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
-    queryKey: ["/api/trips"],
-    staleTime: 5000,
-    refetchInterval: 15000,
-    enabled: !!tripDetails, // Only fetch all trips after we have the specific trip
-  });
-
   // Obtener información del usuario actual
   const { user } = useAuth();
+
+  // Utilizamos useTripDetails para obtener detalles del viaje directamente
+  const { 
+    data: tripDetails, 
+    isLoading: isLoadingTripDetails, 
+    error: tripError 
+  } = useTripDetails(tripId);
+  
+  // También cargamos todos los viajes para asegurar compatibilidad con el código existente
+  const { 
+    data: trips, 
+    isLoading: isLoadingTrips 
+  } = useDriverTrips();
 
   // Fetch all reservations 
   const { data: reservations, isLoading: isLoadingReservations } = useQuery<Reservation[]>({
