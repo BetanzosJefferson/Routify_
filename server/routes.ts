@@ -184,28 +184,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let companyId = null;
       
       if (user) {
+        // CRÍTICO: Obtener correctamente la compañía del usuario
         companyId = user.companyId || user.company;
         console.log(`[POST /routes] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}, CompanyId: ${user.companyId}, Company: ${user.company}`);
-        console.log(`[POST /routes] Creando ruta para la compañía: ${companyId} del usuario ${user.firstName} ${user.lastName}`);
+        
+        // Verificar explícitamente si tenemos un valor de companyId
+        if (!companyId) {
+          console.log("[POST /routes] ¡ALERTA! Usuario sin companyId/company");
+          
+          // Para superAdmin, dueño y developer, asignar una compañía predeterminada
+          if (user.role === UserRole.SUPER_ADMIN) {
+            companyId = "viaja-facil-123";
+            console.log(`[POST /routes] Asignando compañía predeterminada ${companyId} para superAdmin`);
+          } else if (user.role === UserRole.OWNER || user.role === UserRole.DEVELOPER) {
+            companyId = "bamo-456";
+            console.log(`[POST /routes] Asignando compañía predeterminada ${companyId} para ${user.role}`);
+          } else {
+            // Para otros roles, rechazar la solicitud
+            console.log("[POST /routes] ADVERTENCIA: Usuario sin compañía intenta crear una ruta");
+            return res.status(400).json({
+              error: "No se puede crear la ruta",
+              details: "El usuario no tiene una compañía asignada"
+            });
+          }
+        }
+        
+        console.log(`[POST /routes] COMPAÑÍA FINAL ASIGNADA: ${companyId} para usuario ${user.firstName} ${user.lastName}`);
       }
       
       // Asegurarse de que stops sea un array
       const stops = Array.isArray(req.body.stops) ? req.body.stops : [];
-      
-      // Verificar si el usuario tiene una compañía asignada
-      if (!companyId) {
-        if (user.role === UserRole.SUPER_ADMIN) {
-          // Para superadmin, usamos una compañía predeterminada si no tiene ninguna
-          companyId = "viaja-facil-123"; // Compañía predeterminada para superadmin
-          console.log(`[POST /routes] Asignando compañía predeterminada ${companyId} a ruta creada por superadmin`);
-        } else {
-          console.log("[POST /routes] ADVERTENCIA: Usuario sin compañía intenta crear una ruta");
-          return res.status(400).json({
-            error: "No se puede crear la ruta",
-            details: "El usuario no tiene una compañía asignada"
-          });
-        }
-      }
       
       // Crear un objeto con los datos seguros
       const safeRouteData = {
