@@ -755,6 +755,7 @@ export function PublishTripForm() {
             form.setValue("startDate", startDate, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("endDate", endDate, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("capacity", trip.capacity, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+            form.setValue("price", trip.price || 0, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("vehicleType", trip.vehicleType || "standard", { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("segmentPrices", segmentPricesFromTrip, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("stopTimes", ensureValidStopTimes(allStopTimes), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
@@ -941,8 +942,24 @@ export function PublishTripForm() {
                       )}
                     />
                     
-                    {/* Campo oculto para el precio (ya no se muestra en la interfaz) */}
-                    <input type="hidden" {...form.register("price")} value="0" />
+                    {/* Precio por pasajero */}
+                    <FormField
+                      control={form.control}
+                      name="price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Precio Base</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              {...field}
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </div>
                 
