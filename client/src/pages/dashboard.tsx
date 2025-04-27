@@ -20,8 +20,12 @@ import { AlertCircle } from "lucide-react";
 
 export default function Dashboard() {
   const [location] = useLocation();
-  const [activeTab, setActiveTab] = useState<TabType>("create-route");
+  // Establecemos tab por defecto basado en el rol del usuario
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<TabType>(
+    // Para choferes, la sección por defecto es boarding-list
+    user?.role === 'chofer' ? "boarding-list" : "create-route"
+  );
   
   // Update active tab when URL changes
   useEffect(() => {

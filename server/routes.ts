@@ -1280,13 +1280,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // SEGURIDAD: Filtrado de datos por compañía
       let companyId: string | null = null;
+      let tripId: number | null = null;
+      
+      // Verificar si se solicita filtrar por viaje específico (para conductores)
+      if (req.query.tripId) {
+        tripId = parseInt(req.query.tripId as string, 10);
+        console.log(`[GET /reservations] Solicitando específicamente reservaciones del viaje ID: ${tripId}`);
+      }
       
       // REGLAS DE ACCESO:
       // 1. superAdmin y admin pueden ver TODAS las reservaciones
-      // 2. El resto de roles solo pueden ver reservaciones de SU COMPAÑÍA
+      // 2. Conductores pueden ver reservaciones de los viajes asignados a ellos
+      // 3. El resto de roles solo pueden ver reservaciones de SU COMPAÑÍA
       if (user) {
+        // CASO ESPECIAL: Si el usuario es CONDUCTOR y se solicita un viaje específico
+        // y ese viaje está asignado al conductor, permitir ver las reservaciones
+        if (user.role === UserRole.DRIVER && tripId) {
+          console.log(`[GET /reservations] CONDUCTOR solicitando reservaciones para viaje ${tripId}`);
+          
+          // Obtener el viaje específico para verificar si está asignado al conductor
+          const trip = await storage.getTrip(tripId);
+          
+          if (trip && trip.driverId === user.id) {
+            console.log(`[GET /reservations] Permitiendo a conductor ver reservaciones del viaje ${tripId} asignado a él`);
+            // No aplicamos filtro de compañía para permitir ver las reservaciones de este viaje específico
+            // El storage filtrará solo por tripId
+            const tripReservations = await storage.getReservations(undefined, tripId);
+            return res.json(tripReservations);
+          } else {
+            console.log(`[GET /reservations] ACCESO DENEGADO: El viaje ${tripId} no está asignado al conductor ${user.id}`);
+            return res.status(403).json({ error: "Acceso denegado a este viaje" });
+          }
+        }
         // Los roles que NO son superAdmin o admin tienen acceso restringido
-        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+        else if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
           // Obtener la compañía del usuario
           companyId = user.companyId || user.company;
           
@@ -1307,7 +1334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Ejecutar la consulta con el filtro de compañía si aplica
-      const reservations = await storage.getReservations(companyId || undefined);
+      const reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
       console.log(`[GET /reservations] Encontradas ${reservations.length} reservaciones`);
       
       // CAPA ADICIONAL DE SEGURIDAD - FILTRO POST-CONSULTA
