@@ -177,7 +177,10 @@ export const publishTripValidationSchema = z.object({
     })
   ),
   // Campo opcional para tiempos de parada personalizados
-  stopTimes: z.array(stopTimeSchema).optional()
+  stopTimes: z.array(stopTimeSchema).optional(),
+  // Campos para asignación de vehículos y conductores
+  vehicleId: z.number().optional().nullable(), // ID del vehículo asignado
+  driverId: z.number().optional().nullable()   // ID del conductor asignado
 });
 
 export const createReservationValidationSchema = z.object({
