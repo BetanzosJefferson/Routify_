@@ -70,35 +70,66 @@ export function BoardingList() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   
-  // Fetch all trips
+  // Fetch trips with proper filtering based on user role
   const { data: trips, isLoading: isLoadingTrips } = useQuery<Trip[]>({
-    queryKey: ["/api/trips"],
+    queryKey: ["/api/trips", { 
+      companyId: user?.companyId || undefined,
+      // No aplicamos filtro de fecha aquí para obtener todos los viajes
+      // Luego los filtraremos por fecha en el componente
+    }],
     staleTime: 5000,
     refetchInterval: 15000,
+    enabled: !!user, // Solo ejecutar la consulta cuando tengamos datos del usuario
   });
 
-  // Fetch all reservations
+  // Fetch reservations
   const { data: reservations, isLoading: isLoadingReservations } = useQuery<Reservation[]>({
-    queryKey: ["/api/reservations"],
+    queryKey: ["/api/reservations", { 
+      companyId: user?.companyId || undefined,
+    }],
     staleTime: 5000,
     refetchInterval: 15000,
+    enabled: !!user, // Solo ejecutar cuando tengamos datos del usuario
   });
 
   // Filtrar viajes según el rol del usuario y la fecha seleccionada
   const filteredTrips = useMemo(() => {
-    if (!trips) return [];
+    if (!trips) {
+      console.log("No hay datos de viajes disponibles");
+      return [];
+    }
+    
+    console.log(`Total de viajes obtenidos: ${trips.length}`);
+    
+    // Mostrar algunos ejemplos de viajes para depuración
+    if (trips.length > 0) {
+      const sampleTrips = trips.slice(0, 3);
+      console.log("Ejemplos de viajes:", sampleTrips.map(t => ({
+        id: t.id,
+        routeId: t.routeId,
+        driverId: t.driverId,
+        companyId: t.companyId,
+        date: t.departureDate
+      })));
+    }
     
     let filteredList = trips;
     
     // Si el usuario es un chofer, solo mostrar viajes asignados a él
     if (user && user.role === 'chofer' && user.id) {
       console.log(`Filtrando viajes para conductor ID: ${user.id}`);
+      
+      // Verificar viajes que tienen driverId (asignados a algún conductor)
+      const assignedTrips = trips.filter(trip => trip.driverId !== undefined && trip.driverId !== null);
+      console.log(`Viajes con conductor asignado: ${assignedTrips.length}`);
+      
+      // Filtrar los viajes asignados específicamente a este conductor
       filteredList = trips.filter(trip => trip.driverId === user.id);
-      console.log(`Encontrados ${filteredList.length} viajes asignados al conductor`);
+      console.log(`Encontrados ${filteredList.length} viajes asignados al conductor actual`);
     }
     
     // Filtrar viajes por fecha y excluir sub-viajes
-    return filteredList.filter(trip => {
+    const dateFilteredTrips = filteredList.filter(trip => {
       // Excluir sub-viajes
       if (trip.isSubTrip) return false;
       
@@ -112,6 +143,9 @@ export function BoardingList() {
       // Comparar las cadenas de fecha directamente
       return tripDate === currentDateStr;
     });
+    
+    console.log(`Viajes filtrados por fecha (${format(currentDate, 'yyyy-MM-dd')}): ${dateFilteredTrips.length}`);
+    return dateFilteredTrips;
   }, [trips, user, currentDate]);
 
   // La lógica de procesamiento de pasajeros ya no es necesaria aquí
