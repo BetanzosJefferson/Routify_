@@ -241,12 +241,11 @@ export function BoardingList() {
                   <div className="p-4">
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <h3 className="font-semibold text-lg">{trip.route.name}</h3>
+                        <h3 className="font-semibold text-lg">{trip.route?.name}</h3>
                         <p className="text-sm text-gray-500">
-                          {trip.segmentOrigin || trip.route.origin} → {trip.segmentDestination || trip.route.destination}
+                          {trip.segmentOrigin || (trip.route?.origin || 'Origen')} → {trip.segmentDestination || (trip.route?.destination || 'Destino')}
                         </p>
                       </div>
-                      <Badge variant="outline">Programado</Badge>
                     </div>
                     
                     <div className="space-y-2 text-sm">

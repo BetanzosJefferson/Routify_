@@ -43,19 +43,18 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
   [UserRole.CHECKER]: [
     "boarding-list" 
   ],
-  // Permisos para rol DRIVER y sus alias en español
+  // Permisos para rol DRIVER (conductor)
   [UserRole.DRIVER]: [
     "dashboard",
-    "boarding-list",
-    "trips",    // Permiso para ver viajes
-    "reservations"  // Añadimos permiso explícito para ver reservaciones
+    "boarding-list"
+    // Quitamos acceso a "trips" y "reservations" para conductor
   ],
-  // Alias español - SOLUCIÓN TEMPORAL
-  "chofer": [
+  // Alias español - SOLUCIÓN TEMPORAL (definición alternativa para 'chofer')
+  // Comentamos temporalmente esta definición duplicada y usamos variables
+  ["chofer"]: [
     "dashboard",
-    "boarding-list",
-    "trips",    // Permiso para ver viajes
-    "reservations"  // Añadimos permiso explícito para ver reservaciones
+    "boarding-list"
+    // Quitamos acceso a "trips" y "reservations" para conductor
   ],
   [UserRole.TICKET_OFFICE]: [
     "trips",
