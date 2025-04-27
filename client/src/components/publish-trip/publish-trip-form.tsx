@@ -745,6 +745,9 @@ export function PublishTripForm() {
           setSegmentPrices(segmentPricesFromTrip);
           setStopTimes(ensureValidStopTimes(allStopTimes));
           
+          // Habilitar los campos de asignación para edición
+          setShowAssignmentFields(true);
+          
           // Actualizar el formulario con todos los datos disponibles
           const startDate = trip.departureDate?.split("T")[0] || format(new Date(), "yyyy-MM-dd");
           const endDate = startDate; // Mismo día para edición
@@ -759,6 +762,9 @@ export function PublishTripForm() {
             vehicleType: trip.vehicleType || "standard",
             segmentPrices: segmentPricesFromTrip,
             stopTimes: ensureValidStopTimes(allStopTimes),
+            // Incluir IDs de vehículo y conductor si existen
+            vehicleId: trip.vehicleId || null,
+            driverId: trip.driverId || null,
           }, { 
             // Esta opción es clave para que los campos controlados se actualicen
             keepDirtyValues: false, 
@@ -793,6 +799,9 @@ export function PublishTripForm() {
             form.setValue("vehicleType", trip.vehicleType || "standard", { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("segmentPrices", segmentPricesFromTrip, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("stopTimes", ensureValidStopTimes(allStopTimes), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+            // Actualizar valores de vehículo y conductor si existen
+            form.setValue("vehicleId", trip.vehicleId || null, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+            form.setValue("driverId", trip.driverId || null, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             
             // Forzar revalidación completa
             form.trigger();
@@ -1002,6 +1011,10 @@ export function PublishTripForm() {
                     <TabsList className="mb-2">
                       <TabsTrigger value="segments">Precios por Segmento</TabsTrigger>
                       <TabsTrigger value="stop-times">Tiempos de Parada</TabsTrigger>
+                      {/* Mostrar la pestaña de asignación solo en modo edición */}
+                      {showAssignmentFields && (
+                        <TabsTrigger value="assignment">Asignación</TabsTrigger>
+                      )}
                     </TabsList>
                     
                     <TabsContent value="segments">
@@ -1112,6 +1125,92 @@ export function PublishTripForm() {
                         </table>
                       </div>
                     </TabsContent>
+                    
+                    {/* Pestaña de asignación de vehículo y conductor */}
+                    {showAssignmentFields && (
+                      <TabsContent value="assignment">
+                        <div className="space-y-6">
+                          <div className="flex items-center mb-4">
+                            <p className="text-sm text-gray-500 mr-1">
+                              Asigne un vehículo y un conductor a este viaje.
+                            </p>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <HelpCircleIcon className="h-4 w-4 text-primary/70 cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent className="w-80 p-4">
+                                  <p>La asignación de vehículo y conductor permite controlar quién realizará este viaje.</p>
+                                  <p className="mt-2">El conductor podrá ver este viaje en su panel y gestionar el abordaje de pasajeros.</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Selección de vehículo */}
+                            <FormField
+                              control={form.control}
+                              name="vehicleId"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Vehículo</FormLabel>
+                                  <Select 
+                                    onValueChange={(value) => field.onChange(parseInt(value) || null)}
+                                    value={field.value?.toString() || ""}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Seleccionar vehículo" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="">Sin asignar</SelectItem>
+                                      {vehiclesQuery.data?.map((vehicle: any) => (
+                                        <SelectItem key={vehicle.id} value={vehicle.id.toString()}>
+                                          {vehicle.brand} {vehicle.model} ({vehicle.plates}) - {vehicle.capacity} asientos
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            {/* Selección de conductor */}
+                            <FormField
+                              control={form.control}
+                              name="driverId"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Conductor</FormLabel>
+                                  <Select 
+                                    onValueChange={(value) => field.onChange(parseInt(value) || null)}
+                                    value={field.value?.toString() || ""}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Seleccionar conductor" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="">Sin asignar</SelectItem>
+                                      {driversQuery.data?.map((driver: any) => (
+                                        <SelectItem key={driver.id} value={driver.id.toString()}>
+                                          {driver.firstName} {driver.lastName}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+                      </TabsContent>
+                    )}
                   </Tabs>
                 )}
                 
