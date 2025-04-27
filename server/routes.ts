@@ -1137,9 +1137,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`Actualizando ${subTrips.length} sub-viajes asociados al viaje principal ${id}`);
           
           for (const subTrip of subTrips) {
-            // Para cada sub-viaje, actualizamos fecha, capacidad y tipo de vehículo
-            // pero preservamos su precio específico por segmento
-            const subTripUpdate = {
+            // Para cada sub-viaje, necesitamos actualizar la información relevante
+            // Primero preparamos la actualización básica
+            const subTripUpdate: any = {
               departureDate: tripData.departureDate || updatedTrip.departureDate,
               departureTime: tripData.departureTime || updatedTrip.departureTime,
               arrivalTime: tripData.arrivalTime || updatedTrip.arrivalTime,
@@ -1147,6 +1147,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
               vehicleType: tripData.vehicleType || updatedTrip.vehicleType,
             };
             
+            // Si hay precios de segmentos actualizados, buscamos el que corresponde a este sub-viaje
+            if (tripData.segmentPrices && Array.isArray(tripData.segmentPrices) && tripData.segmentPrices.length > 0) {
+              // Encontrar el precio de segmento específico para este sub-viaje basado en origen y destino
+              const relevantSegment = tripData.segmentPrices.find(
+                segment => segment.origin === subTrip.segmentOrigin && segment.destination === subTrip.segmentDestination
+              );
+              
+              // Si encontramos un segmento relevante, actualizamos precio y tiempos
+              if (relevantSegment) {
+                console.log(`Actualizando precio de segmento para sub-viaje ${subTrip.id}:`, relevantSegment);
+                subTripUpdate.price = relevantSegment.price;
+                subTripUpdate.segmentPrices = [relevantSegment];
+                
+                // También actualizar tiempos específicos si están presentes
+                if (relevantSegment.departureTime) {
+                  subTripUpdate.departureTime = relevantSegment.departureTime;
+                }
+                if (relevantSegment.arrivalTime) {
+                  subTripUpdate.arrivalTime = relevantSegment.arrivalTime;
+                }
+              }
+            }
+            
+            // Actualizar el sub-viaje con la información recopilada
             await storage.updateTrip(subTrip.id, subTripUpdate);
           }
           
