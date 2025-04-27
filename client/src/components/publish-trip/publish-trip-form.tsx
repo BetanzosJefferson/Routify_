@@ -1025,17 +1025,25 @@ export function PublishTripForm() {
                 
                 {selectedRouteId && routeSegmentsQuery.data && (
                   <Tabs defaultValue="stop-times">
-                    <TabsList className="mb-2">
-                      <TabsTrigger value="segments">Precios por Segmento</TabsTrigger>
-                      <TabsTrigger value="stop-times">Tiempos de Parada</TabsTrigger>
+                    <TabsList className="mb-2 w-full flex flex-wrap justify-start">
+                      <TabsTrigger value="segments" className="flex-grow text-xs sm:text-sm">
+                        <span className="hidden xs:inline">Precios por </span>
+                        <span>Segmento</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="stop-times" className="flex-grow text-xs sm:text-sm">
+                        <span className="hidden xs:inline">Tiempos de </span>
+                        <span>Parada</span>
+                      </TabsTrigger>
                       {/* Mostrar la pestaña de asignación solo en modo edición */}
                       {showAssignmentFields && (
-                        <TabsTrigger value="assignment">Asignación</TabsTrigger>
+                        <TabsTrigger value="assignment" className="flex-grow text-xs sm:text-sm">
+                          <span>Asignación</span>
+                        </TabsTrigger>
                       )}
                     </TabsList>
                     
                     <TabsContent value="segments">
-                      <div className="overflow-x-auto">
+                      <div className="space-y-4">
                         <div className="flex items-center mb-4">
                           <p className="text-sm text-gray-500 mr-1">
                             Configure el precio de cada segmento del viaje.
@@ -1053,39 +1061,74 @@ export function PublishTripForm() {
                           </TooltipProvider>
                         </div>
 
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origen</th>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destino</th>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario de Salida</th>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario de Llegada</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {segmentPrices.map((segment, index) => (
-                              <tr key={`segment-${index}`} className="hover:bg-gray-50">
-                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{segment.origin}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{segment.destination}</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                        {/* Versión móvil - tarjetas */}
+                        <div className="md:hidden space-y-4">
+                          {segmentPrices.map((segment, index) => (
+                            <div key={`segment-card-${index}`} className="border rounded-md p-3 bg-white shadow-sm">
+                              <div className="font-medium text-sm text-primary mb-1">
+                                {segment.origin} → {segment.destination}
+                              </div>
+                              <div className="grid grid-cols-1 gap-2">
+                                <div>
+                                  <div className="text-xs text-gray-500 mb-1">Precio</div>
                                   <Input
                                     type="number"
                                     value={segment.price}
                                     onChange={(e) => updateSegmentPrice(index, parseInt(e.target.value) || 0)}
-                                    className="w-24"
+                                    className="w-full"
                                   />
-                                </td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                  {segment.departureTime || "Pendiente"}
-                                </td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                  {segment.arrivalTime || "Pendiente"}
-                                </td>
+                                </div>
+                                <div className="flex justify-between">
+                                  <div>
+                                    <div className="text-xs text-gray-500">Salida</div>
+                                    <div className="text-sm">{segment.departureTime || "Pendiente"}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs text-gray-500">Llegada</div>
+                                    <div className="text-sm">{segment.arrivalTime || "Pendiente"}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Versión escritorio - tabla */}
+                        <div className="overflow-x-auto hidden md:block">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origen</th>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destino</th>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario de Salida</th>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario de Llegada</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {segmentPrices.map((segment, index) => (
+                                <tr key={`segment-${index}`} className="hover:bg-gray-50">
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{segment.origin}</td>
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{segment.destination}</td>
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                    <Input
+                                      type="number"
+                                      value={segment.price}
+                                      onChange={(e) => updateSegmentPrice(index, parseInt(e.target.value) || 0)}
+                                      className="w-24"
+                                    />
+                                  </td>
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                    {segment.departureTime || "Pendiente"}
+                                  </td>
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                    {segment.arrivalTime || "Pendiente"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </TabsContent>
                     
@@ -1099,7 +1142,43 @@ export function PublishTripForm() {
                         los tiempos de salida y llegada para cada segmento de viaje.
                       </p>
                       
-                      <div className="overflow-x-auto">
+                      {/* Vista móvil */}
+                      <div className="md:hidden space-y-4">
+                        {routeSegmentsQuery.data && [
+                          routeSegmentsQuery.data.origin,
+                          ...(routeSegmentsQuery.data.stops || []),
+                          routeSegmentsQuery.data.destination
+                        ].map((location, index) => (
+                          <div key={`stop-card-${index}`} className="border rounded-md p-3 bg-white shadow-sm">
+                            <div className="font-medium text-sm mb-2">
+                              {index === 0 ? (
+                                <span className="text-primary">Origen: {location}</span>
+                              ) : routeSegmentsQuery.data?.origin && index === [
+                                  routeSegmentsQuery.data.origin, 
+                                  ...(routeSegmentsQuery.data.stops || []), 
+                                  routeSegmentsQuery.data.destination
+                                ].length - 1 ? (
+                                <span className="text-primary">Destino: {location}</span>
+                              ) : (
+                                <span>Parada {index}: {location}</span>
+                              )}
+                            </div>
+                            <div className="mt-2">
+                              <div className="text-xs text-gray-500 mb-1">Horario</div>
+                              <TimeInput
+                                key={`time-input-mobile-${index}-${stopTimes[index]?.hour || '08'}-${stopTimes[index]?.minute || '00'}-${stopTimes[index]?.ampm || 'AM'}`}
+                                value={stopTimes[index] ? `${stopTimes[index]?.hour}:${stopTimes[index]?.minute} ${stopTimes[index]?.ampm}` : "08:00 AM"}
+                                onChange={(timeString) => {
+                                  updateStopTime(index, timeString);
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Vista escritorio */}
+                      <div className="overflow-x-auto hidden md:block">
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-gray-50">
                             <tr>
@@ -1129,7 +1208,7 @@ export function PublishTripForm() {
                                 </td>
                                 <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                                   <TimeInput
-                                    key={`time-input-${index}-${stopTimes[index]?.hour || '08'}-${stopTimes[index]?.minute || '00'}-${stopTimes[index]?.ampm || 'AM'}`}
+                                    key={`time-input-desktop-${index}-${stopTimes[index]?.hour || '08'}-${stopTimes[index]?.minute || '00'}-${stopTimes[index]?.ampm || 'AM'}`}
                                     value={stopTimes[index] ? `${stopTimes[index]?.hour}:${stopTimes[index]?.minute} ${stopTimes[index]?.ampm}` : "08:00 AM"}
                                     onChange={(timeString) => {
                                       updateStopTime(index, timeString);
