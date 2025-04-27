@@ -55,7 +55,7 @@ export function useDriverReservations(options: UseDriverReservationsOptions = {}
     ],
     staleTime: 5000,
     refetchInterval: 15000,
-    enabled: !!user && isDriver, // Solo ejecutar si el usuario está autenticado y es conductor
+    enabled: !!user, // Ejecutar para cualquier usuario autenticado
     queryFn: async () => {
       // Construir la URL base
       let url = "/api/reservations";
@@ -63,14 +63,17 @@ export function useDriverReservations(options: UseDriverReservationsOptions = {}
       // Añadir parámetros según sea necesario
       const params = new URLSearchParams();
       
+      // Para conductores, filtramos por su ID
       if (isDriver && user?.id) {
         params.append("driverId", user.id.toString());
       }
       
+      // Si se solicita un viaje específico
       if (tripId) {
         params.append("tripId", tripId.toString());
       }
       
+      // Incluir viajes relacionados si se especifica
       if (includeRelated) {
         params.append("includeRelated", "true");
       }
@@ -89,17 +92,31 @@ export function useDriverReservations(options: UseDriverReservationsOptions = {}
         }
         
         const reservations = await response.json();
-        console.log(`[useDriverReservations] Obtenidas ${reservations.length} reservaciones para conductor ${user?.id}`);
+        
+        if (isDriver && user?.id) {
+          console.log(`[useDriverReservations] Obtenidas ${reservations.length} reservaciones para conductor ${user.id}`);
+        } else {
+          console.log(`[useDriverReservations] Obtenidas ${reservations.length} reservaciones en total`);
+        }
         
         // Si se solicitó un viaje específico, mostrar desglose
         if (tripId) {
           console.log(`[useDriverReservations] Reservaciones para viaje ${tripId}: ${reservations.length}`);
         }
         
-        return reservations;
+        // Validar que todas las reservaciones tienen la estructura correcta de pasajeros
+        return reservations.map(res => {
+          if (!res.passengers) {
+            return { ...res, passengers: [] };
+          } else if (!Array.isArray(res.passengers)) {
+            return { ...res, passengers: [] };
+          }
+          return res;
+        });
       } catch (error) {
         console.error("[useDriverReservations] Error al obtener reservaciones:", error);
-        throw error;
+        // Devolvemos un array vacío para evitar errores en cascada
+        return [];
       }
     }
   });
@@ -121,27 +138,43 @@ export function useAllDriverReservations() {
     queryKey: ["/api/reservations", { driverId: isDriver ? user?.id : undefined }],
     staleTime: 5000,
     refetchInterval: 15000,
-    enabled: !!user && isDriver, // Solo ejecutar si el usuario está autenticado y es conductor
+    enabled: !!user, // Ejecutar para cualquier usuario autenticado
     queryFn: async () => {
-      if (!isDriver || !user?.id) {
-        throw new Error("Usuario no es conductor o no está autenticado");
-      }
-      
       try {
-        console.log(`[useAllDriverReservations] Obteniendo todas las reservaciones para conductor ${user.id}`);
-        const response = await fetch(`/api/reservations?driverId=${user.id}`);
+        let url = "/api/reservations";
         
+        // Para conductores, filtramos por su ID
+        if (isDriver && user?.id) {
+          url += `?driverId=${user.id}`;
+          console.log(`[useAllDriverReservations] Obteniendo reservaciones para conductor ${user.id}`);
+        }
+        
+        const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`Error al obtener reservaciones: ${response.statusText}`);
         }
         
         const reservations = await response.json();
-        console.log(`[useAllDriverReservations] Obtenidas ${reservations.length} reservaciones totales`);
         
-        return reservations;
+        if (isDriver && user?.id) {
+          console.log(`[useAllDriverReservations] Obtenidas ${reservations.length} reservaciones para conductor ${user.id}`);
+        } else {
+          console.log(`[useAllDriverReservations] Obtenidas ${reservations.length} reservaciones totales`);
+        }
+        
+        // Validar estructura
+        return reservations.map(res => {
+          if (!res.passengers) {
+            return { ...res, passengers: [] };
+          } else if (!Array.isArray(res.passengers)) {
+            return { ...res, passengers: [] };
+          }
+          return res;
+        });
       } catch (error) {
         console.error("[useAllDriverReservations] Error al obtener reservaciones:", error);
-        throw error;
+        // Devolvemos un array vacío para evitar errores en cascada
+        return [];
       }
     }
   });
