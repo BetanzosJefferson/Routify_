@@ -562,7 +562,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
                                 </div>
                               </div>
                             </div>
-                            <Badge className="ml-auto" variant="outline">Programado</Badge>
+
                           </div>
                           
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
@@ -623,33 +623,22 @@ export default function TripList({ onEditTrip }: TripListProps) {
                             </div>
                           </div>
                           
+                          {/* Query para obtener las reservaciones */}
                           <div className="flex items-center mt-4">
                             <UsersIcon className="h-4 w-4 mr-1 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground">0 reservas</span>
+                            <span className="text-xs text-muted-foreground">
+                              {trips.filter((t: Trip) => 
+                                (t.id === trip.id || t.parentTripId === trip.id) && 
+                                t.reservationCount && 
+                                t.reservationCount > 0
+                              ).reduce((sum, t: any) => sum + (t.reservationCount || 0), 0)} reservas
+                            </span>
                           </div>
                         </div>
                         
                         <div className="p-4 lg:p-6 flex flex-row lg:flex-col items-center justify-between border-t lg:border-t-0 lg:border-l bg-muted/20">
-                          <div className="flex lg:flex-col gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="whitespace-nowrap"
-                              onClick={() => setAssignVehicleDialogOpen(trip.id)}
-                            >
-                              <CarIcon className="h-3 w-3 mr-1" />
-                              Asignar Vehículo
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="whitespace-nowrap"
-                              onClick={() => setAssignDriverDialogOpen(trip.id)}
-                            >
-                              <UserIcon className="h-3 w-3 mr-1" />
-                              Asignar Conductor
-                            </Button>
-                          </div>
+                          {/* Botones para asignar vehículo/conductor han sido eliminados ya que esa funcionalidad 
+                          está disponible en la sección de editar viaje */}
                           
                           <div className="flex gap-2 mt-0 lg:mt-4">
                             <Button
