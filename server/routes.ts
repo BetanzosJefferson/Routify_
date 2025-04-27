@@ -193,12 +193,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stops = Array.isArray(req.body.stops) ? req.body.stops : [];
       
       // Verificar si el usuario tiene una compañía asignada
-      if (!companyId && user.role !== UserRole.SUPER_ADMIN) {
-        console.log("[POST /routes] ADVERTENCIA: Usuario sin compañía intenta crear una ruta");
-        return res.status(400).json({
-          error: "No se puede crear la ruta",
-          details: "El usuario no tiene una compañía asignada"
-        });
+      if (!companyId) {
+        if (user.role === UserRole.SUPER_ADMIN) {
+          // Para superadmin, usamos una compañía predeterminada si no tiene ninguna
+          companyId = "viaja-facil-123"; // Compañía predeterminada para superadmin
+          console.log(`[POST /routes] Asignando compañía predeterminada ${companyId} a ruta creada por superadmin`);
+        } else {
+          console.log("[POST /routes] ADVERTENCIA: Usuario sin compañía intenta crear una ruta");
+          return res.status(400).json({
+            error: "No se puede crear la ruta",
+            details: "El usuario no tiene una compañía asignada"
+          });
+        }
       }
       
       // Crear un objeto con los datos seguros
