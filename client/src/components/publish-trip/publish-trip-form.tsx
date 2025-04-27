@@ -53,6 +53,9 @@ type FormValues = {
   vehicleType: string;
   segmentPrices: SegmentTimePrice[];
   stopTimes?: StopTime[];
+  // Nuevos campos para vehículo y conductor
+  vehicleId?: number | null;
+  driverId?: number | null;
 };
 
 export function PublishTripForm() {
@@ -60,6 +63,9 @@ export function PublishTripForm() {
   const queryClient = useQueryClient();
   const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
   const [segmentPrices, setSegmentPrices] = useState<SegmentTimePrice[]>([]);
+  
+  // Estado para controlar si mostrar campos de vehículo/conductor solo en modo edición
+  const [showAssignmentFields, setShowAssignmentFields] = useState(false);
   // Helper para validar y asegurar formato correcto de stopTimes
   const ensureValidStopTimes = (times: any[]): StopTime[] => {
     return times.map(time => {
@@ -113,6 +119,32 @@ export function PublishTripForm() {
     },
     enabled: !!selectedRouteId,
   });
+  
+  // Consulta para obtener vehículos disponibles
+  const vehiclesQuery = useQuery({
+    queryKey: ["/api/vehicles"],
+    queryFn: async () => {
+      const response = await fetch("/api/vehicles");
+      if (!response.ok) {
+        throw new Error("Error al cargar vehículos");
+      }
+      return await response.json();
+    },
+    enabled: showAssignmentFields, // Solo se ejecuta cuando showAssignmentFields es true
+  });
+  
+  // Consulta para obtener conductores disponibles (usuarios con rol "chofer")
+  const driversQuery = useQuery({
+    queryKey: ["/api/users", "chofer"],
+    queryFn: async () => {
+      const response = await fetch("/api/users?role=chofer");
+      if (!response.ok) {
+        throw new Error("Error al cargar conductores");
+      }
+      return await response.json();
+    },
+    enabled: showAssignmentFields, // Solo se ejecuta cuando showAssignmentFields es true
+  });
 
   // Form validation and handling
   const form = useForm<FormValues>({
@@ -126,6 +158,8 @@ export function PublishTripForm() {
       vehicleType: "standard",
       segmentPrices: [],
       stopTimes: [], // Añadimos stopTimes para que no sea undefined
+      vehicleId: null, // Valores iniciales para vehículo
+      driverId: null, // y conductor
     },
     // Este modo nos ayuda a que el formulario muestre los valores actualizados
     mode: "onChange",
