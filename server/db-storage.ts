@@ -692,16 +692,31 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getReservations(companyId?: string): Promise<ReservationWithDetails[]> {
+  async getReservations(companyId?: string, tripId?: number): Promise<ReservationWithDetails[]> {
     console.time('getReservations-optimized');
     
-    // NUEVA IMPLEMENTACIÓN CON FILTRADO DE COMPAÑÍA
-    console.log(`[getReservations] Iniciando búsqueda${companyId ? ` para compañía ${companyId}` : ''}`);
+    // NUEVA IMPLEMENTACIÓN CON FILTRADO DE COMPAÑÍA Y VIAJE
+    console.log(`[getReservations] Iniciando búsqueda${companyId ? ` para compañía ${companyId}` : ''}${tripId ? ` para viaje ${tripId}` : ''}`);
     
     // Construir condiciones de filtrado como array
     const condiciones = [];
     
-    // FILTRO CRÍTICO: Compañía
+    // FILTRO POR VIAJE ESPECÍFICO (Prioridad 1)
+    // Esto es útil para conductores que necesitan ver reservas de sus viajes asignados
+    if (tripId) {
+      console.log(`[getReservations] FILTRO POR VIAJE: ID ${tripId}`);
+      condiciones.push(sql`trip_id = ${tripId}`);
+      
+      // Verificar cuántas reservas existen para este viaje
+      const testTripQuery = await db.execute(
+        sql`SELECT COUNT(*) FROM reservations WHERE trip_id = ${tripId}`
+      );
+      
+      const reservasPorViaje = Number(testTripQuery.rows?.[0]?.count || 0);
+      console.log(`[getReservations] Verificación: Existen ${reservasPorViaje} reservas para el viaje ${tripId}`);
+    }
+    
+    // FILTRO CRÍTICO: Compañía (Prioridad 2)
     if (companyId) {
       console.log(`[getReservations] FILTRO CRÍTICO: Compañía ${companyId}`);
       
@@ -715,8 +730,9 @@ export class DatabaseStorage implements IStorage {
       
       // Aplicar filtro directo como SQL
       condiciones.push(sql`company_id = ${companyId}`);
-    } else {
-      console.log(`[getReservations] ADVERTENCIA: Obteniendo TODAS las reservas sin filtro de compañía`);
+    } else if (!tripId) {
+      // Solo mostramos la advertencia si tampoco hay filtro por viaje
+      console.log(`[getReservations] ADVERTENCIA: Obteniendo TODAS las reservas sin filtro de compañía ni viaje`);
     }
     
     // Ejecutar consulta
