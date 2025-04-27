@@ -227,9 +227,35 @@ export default function PassengerListPage() {
         }
         
         // Encontrar el viaje asociado a esta reservación
+        // Si es un viaje relacionado, puede ser que esté en un subviaje o viaje principal diferente al actual
         const reservationTrip = trips.find(t => t.id === reservation.tripId);
+        
+        // Si no encontramos el viaje, intentamos crear información básica para mostrar
         if (!reservationTrip) {
           console.log(`⚠️ No se encontró información del viaje ${reservation.tripId} para reserva ${reservation.id}`);
+          
+          // Crear un objeto de reservación con información mínima
+          const groupedReservation: GroupedReservation = {
+            id: reservation.id,
+            code: `R-${reservation.id.toString().padStart(6, '0')}`,
+            tripId: reservation.tripId,
+            email: reservation.email || '',
+            phone: reservation.phone || '',
+            paymentMethod: reservation.paymentMethod || 'unknown',
+            paymentStatus: reservation.status === 'confirmed' ? 'paid' : 'pending',
+            amount: reservation.totalAmount || 0,
+            tripSegment: `Viaje Relacionado #${reservation.tripId}`,
+            passengers: (reservation.passengers || []).map(p => ({
+              id: p.id || 0,
+              firstName: p.firstName || 'Sin nombre',
+              lastName: p.lastName || 'Sin apellido',
+              initials: p.firstName && p.lastName ? 
+                `${p.firstName.charAt(0)}${p.lastName.charAt(0)}` : 'XX'
+            }))
+          };
+          
+          // Añadir la reservación al resultado incluso sin información completa del viaje
+          groupedResult.push(groupedReservation);
           continue;
         }
         

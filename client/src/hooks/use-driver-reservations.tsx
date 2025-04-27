@@ -68,13 +68,15 @@ export function useDriverReservations(options: UseDriverReservationsOptions = {}
         params.append("driverId", user.id.toString());
       }
       
-      // Si se solicita un viaje específico
+      // Si se solicita un viaje específico, siempre incluimos viajes relacionados
+  // para asegurar que captamos todas las reservaciones relevantes
       if (tripId) {
         params.append("tripId", tripId.toString());
+        // Forzar includeRelated a true cuando se especifica un tripId
+        params.append("includeRelated", "true");
       }
-      
-      // Incluir viajes relacionados si se especifica
-      if (includeRelated) {
+      // Para otros casos, usar el valor de includeRelated proporcionado
+      else if (includeRelated) {
         params.append("includeRelated", "true");
       }
       
@@ -105,7 +107,7 @@ export function useDriverReservations(options: UseDriverReservationsOptions = {}
         }
         
         // Validar que todas las reservaciones tienen la estructura correcta de pasajeros
-        return reservations.map(res => {
+        return reservations.map((res: any) => {
           if (!res.passengers) {
             return { ...res, passengers: [] };
           } else if (!Array.isArray(res.passengers)) {
@@ -163,7 +165,7 @@ export function useAllDriverReservations() {
         }
         
         // Validar estructura
-        return reservations.map(res => {
+        return reservations.map((res: any) => {
           if (!res.passengers) {
             return { ...res, passengers: [] };
           } else if (!Array.isArray(res.passengers)) {
