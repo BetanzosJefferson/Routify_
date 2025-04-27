@@ -120,21 +120,53 @@ export function BoardingList() {
         const tripIds = trips.map(trip => trip.id);
         
         // Consultar reservaciones para cada viaje del conductor
+        // Este enfoque es más robusto para manejar viajes principales y sub-viajes
         const allReservations = [];
+        
+        // Primero obtenemos todas las reservaciones de una sola vez y luego filtramos
+        // Este enfoque es más robusto porque permite que el backend aplique los permisos correctos
+        try {
+          // Pasar el driverId directamente al servidor para que verifique permisos
+          const response = await fetch(`/api/reservations?driverId=${user.id}`);
+          if (response.ok) {
+            const driverReservations = await response.json();
+            console.log(`Obtenidas ${driverReservations.length} reservaciones totales para conductor ${user.id}`);
+            
+            // Filtrar solo las que pertenecen a los viajes cargados
+            const filteredReservations = driverReservations.filter(r => tripIds.includes(r.tripId));
+            allReservations.push(...filteredReservations);
+            
+            // Agrupar por viaje para depuración
+            const resCountByTrip = tripIds.map(tid => ({
+              tripId: tid,
+              count: filteredReservations.filter(r => r.tripId === tid).length
+            }));
+            
+            console.log(`Desglose por viaje:`, resCountByTrip);
+            console.log(`Total de reservaciones relevantes: ${allReservations.length}`);
+            
+            return allReservations;
+          }
+        } catch (err) {
+          console.error(`Error al obtener reservaciones para el conductor: ${err}`);
+        }
+        
+        // Si hay un error o no hay resultados con el enfoque principal, caer al enfoque de respaldo
+        // consultando cada viaje individualmente
         for (const tripId of tripIds) {
           try {
             const response = await fetch(`/api/reservations?tripId=${tripId}`);
             if (response.ok) {
               const tripReservations = await response.json();
               allReservations.push(...tripReservations);
-              console.log(`Encontradas ${tripReservations.length} reservaciones para viaje ${tripId}`);
+              console.log(`Encontradas ${tripReservations.length} reservaciones para viaje ${tripId} (respaldo)`);
             }
           } catch (err) {
             console.error(`Error al obtener reservaciones para viaje ${tripId}:`, err);
           }
         }
         
-        console.log(`Total de reservaciones obtenidas: ${allReservations.length}`);
+        console.log(`Total de reservaciones obtenidas (respaldo): ${allReservations.length}`);
         return allReservations;
       }
       
