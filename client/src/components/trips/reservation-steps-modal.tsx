@@ -250,7 +250,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
     try {
       // Usamos setTimeout para desacoplar la apertura de la ventana del evento principal
       setTimeout(() => {
-        const printWindow = window.open('', '_blank');
+        const printWindow = openPrintWindow(content.innerHTML);
         if (!printWindow) {
           toast({
             title: "Error",
@@ -259,52 +259,6 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
           });
           return;
         }
-        
-        // Agregamos el contenido del ticket a la nueva ventana con estilos mejorados
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>Ticket de Reservación</title>
-              <style>
-                @media print {
-                  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                }
-                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-                .ticket { border: 1px solid #ccc; padding: 20px; max-width: 400px; margin: 0 auto; background-color: white; }
-                .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
-                .logo { font-size: 24px; font-weight: bold; margin-bottom: 5px; color: #333; }
-                .qr-code { text-align: center; margin: 20px 0; }
-                .qr-code img { max-width: 150px; }
-                .details { margin-bottom: 20px; }
-                .detail-row { display: flex; margin-bottom: 10px; }
-                .detail-label { font-weight: bold; width: 120px; color: #555; }
-                .passengers { margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
-                .passenger-item { padding: 5px 0; }
-                .footer { text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 12px; color: #666; }
-              </style>
-            </head>
-            <body>
-              <div class="ticket">
-                ${content.innerHTML}
-              </div>
-              <script>
-                // Esperar un poco para que se carguen los estilos y el contenido
-                setTimeout(() => {
-                  try {
-                    window.print();
-                    window.onfocus = function() { 
-                      setTimeout(function() { window.close(); }, 500);
-                    };
-                  } catch (e) {
-                    console.error("Error al imprimir:", e);
-                  }
-                }, 500);
-              </script>
-            </body>
-          </html>
-        `);
-        
-        printWindow.document.close();
       }, 100);
     } catch (error) {
       console.error("Error al imprimir:", error);
@@ -329,10 +283,10 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
     }
     
     try {
-      // Abrimos una nueva ventana con estilos controlados para evitar problemas de formato
-      // Usamos setTimeout para desacoplar la apertura de la ventana del evento principal
+      // Utilizamos la misma función que para imprimir, ya que el navegador
+      // permite guardar como PDF al imprimir
       setTimeout(() => {
-        const printWindow = window.open('', '_blank');
+        const printWindow = openPrintWindow(content.innerHTML);
         if (!printWindow) {
           toast({
             title: "Error",
@@ -341,52 +295,6 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
           });
           return;
         }
-        
-        // Agregamos el contenido del ticket a la nueva ventana con estilos mejorados
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>Ticket de Reservación</title>
-              <style>
-                @media print {
-                  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                }
-                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-                .ticket { border: 1px solid #ccc; padding: 20px; max-width: 400px; margin: 0 auto; background-color: white; }
-                .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
-                .logo { font-size: 24px; font-weight: bold; margin-bottom: 5px; color: #333; }
-                .qr-code { text-align: center; margin: 20px 0; }
-                .qr-code img { max-width: 150px; }
-                .details { margin-bottom: 20px; }
-                .detail-row { display: flex; margin-bottom: 10px; }
-                .detail-label { font-weight: bold; width: 120px; color: #555; }
-                .passengers { margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
-                .passenger-item { padding: 5px 0; }
-                .footer { text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 12px; color: #666; }
-              </style>
-            </head>
-            <body>
-              <div class="ticket">
-                ${content.innerHTML}
-              </div>
-              <script>
-                // Esperar un poco para que se carguen los estilos y el contenido
-                setTimeout(() => {
-                  try {
-                    window.print();
-                    window.onfocus = function() { 
-                      setTimeout(function() { window.close(); }, 500);
-                    };
-                  } catch (e) {
-                    console.error("Error al imprimir:", e);
-                  }
-                }, 500);
-              </script>
-            </body>
-          </html>
-        `);
-        
-        printWindow.document.close();
       }, 100);
     } catch (error) {
       console.error("Error al generar PDF:", error);
