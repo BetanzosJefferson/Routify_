@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   User
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -131,23 +132,46 @@ export default function PassengerListPage() {
     enabled: !!tripDetails, // Only fetch all trips after we have the specific trip
   });
 
+  // Obtener información del usuario actual
+  const { user } = useAuth();
+
   // Fetch all reservations - AHORA CON SOPORTE COMPLETO PARA TODOS LOS ROLES
   const { data: reservations, isLoading: isLoadingReservations } = useQuery<Reservation[]>({
     queryKey: ["/api/reservations", {
       tripId: tripId,
-      includeRelated: true // Añadimos el flag para obtener también reservas de viajes relacionados (sub-viajes)
+      includeRelated: true, // Añadimos el flag para obtener también reservas de viajes relacionados (sub-viajes)
+      driverId: user?.role === 'chofer' ? user.id : undefined, // Añadimos el ID del conductor si es chofer
     }],
     staleTime: 5000,
     refetchInterval: 15000,
     queryFn: async ({ queryKey }) => {
       console.log(`Consultando reservaciones específicas para viaje: ${tripId} (incluye viajes relacionados)`);
-      // Añadimos el parámetro includeRelated=true para que el backend incluya reservas de sub-viajes
+      
+      // Si es conductor, usamos una lógica especial como en el componente boarding-list
+      if (user?.role === 'chofer') {
+        try {
+          // Añadimos el parámetro includeRelated=true para que el backend incluya reservas de sub-viajes
+          const response = await fetch(`/api/reservations?tripId=${tripId}&includeRelated=true`);
+          if (!response.ok) {
+            throw new Error(`Error al obtener reservaciones: ${response.statusText}`);
+          }
+          const data = await response.json();
+          console.log(`Reservaciones obtenidas como chofer para viaje ${tripId}: ${data.length}`);
+          return data;
+        } catch (error) {
+          console.error("Error al obtener reservaciones como chofer:", error);
+          throw error;
+        }
+      }
+      
+      // Para otros roles, usamos la ruta normal
       const response = await fetch(`/api/reservations?tripId=${tripId}&includeRelated=true`);
       if (!response.ok) {
         throw new Error(`Error al obtener reservaciones: ${response.statusText}`);
       }
       return response.json();
-    }
+    },
+    enabled: !!user, // Solo ejecutar cuando tengamos datos del usuario
   });
 
   // Interfaz para las reservaciones agrupadas con lista de pasajeros
