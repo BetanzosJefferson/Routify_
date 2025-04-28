@@ -2,7 +2,7 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { UserRole } from "@shared/schema";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, Copy, Check, UserPlus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/hooks/use-auth";
 
 // Schema de validación
 const invitationFormSchema = z.object({
@@ -30,11 +31,15 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
   const queryClient = useQueryClient();
   const [invitation, setInvitation] = useState<{ token: string; url: string } | null>(null);
   const [copied, setCopied] = useState(false);
-
+  const { user } = useAuth(); // Obtener el usuario autenticado
+  
+  // Determinar los roles que puede invitar según su rol
+  const allowedRoles = getFilteredRoles(user?.role);
+  
   const form = useForm<InvitationFormValues>({
     resolver: zodResolver(invitationFormSchema),
     defaultValues: {
-      role: UserRole.ADMIN,
+      role: getDefaultRole(user?.role),
     },
   });
 
