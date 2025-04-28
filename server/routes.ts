@@ -2010,6 +2010,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Nuevo endpoint público para acceder a los detalles de una reservación (para escaneo de QR)
+  app.get(apiRouter("/public/reservations/:id"), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      
+      console.log(`[GET /public/reservations/${id}] Acceso público solicitado`);
+      
+      // Obtener la reservación sin filtrado por compañía (es acceso público)
+      const reservation = await storage.getReservationWithDetails(id, undefined);
+      
+      if (!reservation) {
+        console.log(`[GET /public/reservations/${id}] Reservación no encontrada`);
+        return res.status(404).json({ error: "Reservación no encontrada" });
+      }
+      
+      console.log(`[GET /public/reservations/${id}] Acceso público concedido`);
+      res.json(reservation);
+    } catch (error) {
+      console.error(`[GET /public/reservations/:id] Error: ${error}`);
+      res.status(500).json({ error: "Error al obtener la reservación" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
