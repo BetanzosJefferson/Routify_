@@ -1528,12 +1528,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create the reservation
-      const totalAmount = trip.price * passengerCount;
+      const totalAmount = (trip.price || 0) * passengerCount;
       
       // Obtener el companyId del viaje para asignarlo a la reservación (aislamiento de datos)
       const companyId = trip.companyId;
       console.log(`Asignando companyId: ${companyId || 'null'} a la nueva reservación (heredado del viaje ${trip.id})`);
       
+      // Determinar estado de pago basado en anticipo
+      let paymentStatus = "pendiente";
+      if (reservationData.advanceAmount && reservationData.advanceAmount >= totalAmount) {
+        paymentStatus = "pagado";
+      }
+
       const reservation = await storage.createReservation({
         tripId: reservationData.tripId,
         totalAmount,
@@ -1543,7 +1549,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes: reservationData.notes || null, // Incluir notas desde el formulario
         status: "confirmed",
         createdAt: new Date(),
-        companyId: companyId || null  // Heredar el companyId del viaje
+        companyId: companyId || null,  // Heredar el companyId del viaje
+        advanceAmount: reservationData.advanceAmount || 0, // Añadir campo de anticipo
+        advancePaymentMethod: reservationData.advancePaymentMethod || "efectivo", // Añadir método de pago del anticipo
+        paymentStatus: paymentStatus // Estado del pago basado en el anticipo
       });
       
       // Create the passengers
