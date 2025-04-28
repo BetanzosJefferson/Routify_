@@ -50,12 +50,38 @@ export function CreateRouteForm({ initialRoute, onSuccess }: CreateRouteFormProp
   
   // Initialize stops from initialRoute if provided
   useEffect(() => {
-    if (initialRoute && initialRoute.stops && initialRoute.stops.length > 0) {
-      const initialStops = initialRoute.stops.map((stop: string, index: number) => ({
-        id: `stop-${index}`,
-        location: stop,
-      }));
-      setStops(initialStops);
+    if (initialRoute) {
+      let allStops = [];
+      
+      // Primero agregamos el origen como primera parada
+      if (initialRoute.origin) {
+        allStops.push({
+          id: `stop-origin`,
+          location: initialRoute.origin,
+        });
+      }
+      
+      // Luego agregamos las paradas intermedias
+      if (initialRoute.stops && initialRoute.stops.length > 0) {
+        const middleStops = initialRoute.stops.map((stop: string, index: number) => ({
+          id: `stop-${index}`,
+          location: stop,
+        }));
+        allStops = [...allStops, ...middleStops];
+      }
+      
+      // Finalmente agregamos el destino como última parada
+      if (initialRoute.destination) {
+        allStops.push({
+          id: `stop-destination`,
+          location: initialRoute.destination,
+        });
+      }
+      
+      if (allStops.length > 0) {
+        console.log("Inicializando todas las paradas de la ruta:", allStops);
+        setStops(allStops);
+      }
     }
   }, [initialRoute]);
 
@@ -190,7 +216,7 @@ export function CreateRouteForm({ initialRoute, onSuccess }: CreateRouteFormProp
     if (stops.length < 2) {
       toast({
         title: "Error de validación",
-        description: "Una ruta debe tener al menos 2 paradas.",
+        description: "Una ruta debe tener al menos origen y destino.",
         variant: "destructive",
       });
       return;
@@ -208,6 +234,13 @@ export function CreateRouteForm({ initialRoute, onSuccess }: CreateRouteFormProp
     const middleStops = stopLocations.length > 2 
       ? stopLocations.slice(1, stopLocations.length - 1) 
       : [];
+    
+    console.log("Procesando paradas:", { 
+      origin, 
+      middleStops, 
+      destination, 
+      totalStops: stops.length 
+    });
     
     // Combinar los datos del formulario con las paradas
     const routeData: InsertRoute = {
@@ -335,7 +368,7 @@ export function CreateRouteForm({ initialRoute, onSuccess }: CreateRouteFormProp
                     if (stops.length < 2) {
                       toast({
                         title: "Error de validación",
-                        description: "Una ruta debe tener al menos 2 paradas.",
+                        description: "Una ruta debe tener al menos origen y destino.",
                         variant: "destructive",
                       });
                       return;
@@ -346,6 +379,17 @@ export function CreateRouteForm({ initialRoute, onSuccess }: CreateRouteFormProp
                     
                     // Extraer paradas
                     const stopLocations = stops.map(stop => stop.location);
+                    
+                    // Verificamos que haya al menos 2 paradas para origen y destino
+                    if (stopLocations.length < 2) {
+                      toast({
+                        title: "Error de validación",
+                        description: "Una ruta debe tener al menos origen y destino",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    
                     const origin = stopLocations[0];
                     const destination = stopLocations[stopLocations.length - 1];
                     const middleStops = stopLocations.length > 2 
