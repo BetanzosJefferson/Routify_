@@ -48,14 +48,21 @@ interface Passenger {
   lastName: string;
 }
 
+import { PaymentMethod, PaymentStatus } from "@shared/schema";
+
 interface ReservationFormData {
   tripId: number;
   numPassengers: number;
   passengers: Passenger[];
   email: string;
   phone: string;
-  paymentMethod: "cash" | "transfer";
+  totalAmount: number;
+  paymentMethod: typeof PaymentMethod.CASH | typeof PaymentMethod.TRANSFER;
+  paymentStatus: typeof PaymentStatus.PENDING | typeof PaymentStatus.PAID;
+  advanceAmount: number;
+  advancePaymentMethod: typeof PaymentMethod.CASH | typeof PaymentMethod.TRANSFER;
   notes: string;
+  createdBy?: number;
 }
 
 export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStepsModalProps) {
@@ -68,8 +75,14 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
   const [passengers, setPassengers] = useState<Passenger[]>([{ firstName: "", lastName: "" }]);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "transfer">("cash");
+  const [paymentMethod, setPaymentMethod] = useState<typeof PaymentMethod.CASH | typeof PaymentMethod.TRANSFER>(PaymentMethod.CASH);
   const [notes, setNotes] = useState("");
+  
+  // Nuevos campos para pago
+  const [advanceAmount, setAdvanceAmount] = useState(0);
+  const [advancePaymentMethod, setAdvancePaymentMethod] = useState<typeof PaymentMethod.CASH | typeof PaymentMethod.TRANSFER>(PaymentMethod.CASH);
+  const [paymentStatus, setPaymentStatus] = useState<typeof PaymentStatus.PENDING | typeof PaymentStatus.PAID>(PaymentStatus.PENDING);
+  const [showAdvancePayment, setShowAdvancePayment] = useState(false);
   
   // Steps state
   const [currentStep, setCurrentStep] = useState(0);
@@ -202,8 +215,8 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
     // Validate all passengers have names
     if (!passengers.every(p => p.firstName && p.lastName)) {
       toast({
-        title: "Missing information",
-        description: "Please enter names for all passengers",
+        title: "Información incompleta",
+        description: "Por favor ingrese nombre y apellido para todos los pasajeros",
         variant: "destructive",
       });
       setCurrentStep(1); // Go back to passenger step
@@ -214,12 +227,41 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       toast({
-        title: "Invalid email",
-        description: "Please enter a valid email address",
+        title: "Email inválido",
+        description: "Por favor ingrese un correo electrónico válido",
         variant: "destructive",
       });
       setCurrentStep(2); // Go back to contact step
       return;
+    }
+    
+    // Validate advance payment if enabled
+    if (showAdvancePayment && advanceAmount > totalPrice) {
+      toast({
+        title: "Monto de anticipo inválido",
+        description: "El anticipo no puede ser mayor que el precio total",
+        variant: "destructive",
+      });
+      setCurrentStep(2); // Go back to payment step
+      return;
+    }
+    
+    // Determine payment status based on advance amount
+    let currentPaymentStatus = PaymentStatus.PENDING;
+    if (showAdvancePayment && advanceAmount === totalPrice) {
+      currentPaymentStatus = PaymentStatus.PAID;
+    }
+    
+    // Get the currently logged in user's ID if available
+    const userDataStr = sessionStorage.getItem('user');
+    let createdById = undefined;
+    if (userDataStr) {
+      try {
+        const userData = JSON.parse(userDataStr);
+        createdById = userData.id;
+      } catch (e) {
+        console.error("Error parsing user data", e);
+      }
     }
     
     const reservationData: ReservationFormData = {
@@ -228,8 +270,13 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       passengers,
       email,
       phone,
+      totalAmount: totalPrice,
       paymentMethod,
-      notes
+      paymentStatus: currentPaymentStatus,
+      advanceAmount: showAdvancePayment ? advanceAmount : 0,
+      advancePaymentMethod: showAdvancePayment ? advancePaymentMethod : PaymentMethod.CASH,
+      notes,
+      createdBy: createdById
     };
     
     createReservationMutation.mutate(reservationData);
