@@ -1612,14 +1612,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete(apiRouter("/reservations/:id"), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
+      
+      // Primero obtenemos los datos de la reservación básica
+      const reservation = await storage.getReservation(id);
+      
+      if (!reservation) {
+        return res.status(404).json({ error: "Reservation not found" });
+      }
+      
+      // Obtener el viaje asociado a la reservación
+      const trip = await storage.getTrip(reservation.tripId);
+      
+      if (!trip) {
+        console.error(`Error al eliminar reservación: No se encontró el viaje ${reservation.tripId}`);
+        return res.status(500).json({ error: "Failed to find associated trip" });
+      }
+      
+      // Obtener los pasajeros para contar cuántos son
+      const passengers = await storage.getPassengers(id);
+      const passengerCount = passengers.length;
+      console.log(`Liberando ${passengerCount} asientos del viaje ${trip.id}`);
+      
+      // Eliminar la reservación
       const success = await storage.deleteReservation(id);
       
       if (!success) {
-        return res.status(404).json({ error: "Reservation not found" });
+        return res.status(404).json({ error: "Failed to delete reservation" });
+      }
+      
+      // Actualizar asientos disponibles en el viaje
+      if (passengerCount > 0) {
+        await storage.updateTrip(trip.id, {
+          availableSeats: trip.availableSeats + passengerCount
+        });
+        
+        console.log(`Asientos actualizados para el viaje ${trip.id}. Nuevos asientos disponibles: ${trip.availableSeats + passengerCount}`);
+        
+        try {
+          // Actualizar disponibilidad en viajes relacionados si existen
+          await storage.updateRelatedTripsAvailability(trip.id, passengerCount);
+        } catch (e) {
+          console.error("Error al actualizar viajes relacionados:", e);
+          // No fallamos si esto falla, ya que lo principal ya se actualizó
+        }
       }
       
       res.status(204).end();
     } catch (error) {
+      console.error("Error al eliminar reservación:", error);
       res.status(500).json({ error: "Failed to delete reservation" });
     }
   });
