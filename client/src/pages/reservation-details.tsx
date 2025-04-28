@@ -121,10 +121,14 @@ export default function ReservationDetails() {
       </Button>
       
       <Card className="p-6 mb-4">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
             Reservación #{generateReservationId(reservation.id)}
           </h1>
+          <div className="text-xl font-semibold mb-2">
+            {reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}
+            {reservation.passengers.length > 1 && ` +${reservation.passengers.length - 1}`}
+          </div>
           <Badge 
             variant={reservation.paymentStatus === 'pagado' ? "outline" : "secondary"}
             className={reservation.paymentStatus === 'pagado' 
@@ -139,18 +143,15 @@ export default function ReservationDetails() {
         <div className="mb-6">
           <h2 className="text-lg font-medium mb-3 text-gray-800">Información del Pasajero</h2>
           <div className="bg-gray-50 p-4 rounded-md">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-sm text-gray-500">Nombre:</div>
-                <div className="font-medium">
-                  {reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}
-                  {reservation.passengers.length > 1 && ` +${reservation.passengers.length - 1}`}
-                </div>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <div className="text-sm text-gray-500">Contacto:</div>
-                <div>{reservation.email || '-'}</div>
+                <div className="break-words">{reservation.email || '-'}</div>
                 <div>{reservation.phone || '-'}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-500">Pasajeros:</div>
+                <div>{reservation.passengers.length}</div>
               </div>
             </div>
           </div>
@@ -159,13 +160,8 @@ export default function ReservationDetails() {
         {/* Detalles del viaje */}
         <div className="mb-6">
           <h2 className="text-lg font-medium mb-3 text-gray-800">Detalles del Viaje</h2>
-          <div className="bg-gray-50 p-4 rounded-md">
-            <div className="mb-3">
-              <div className="text-sm text-gray-500">Ruta:</div>
-              <div className="font-medium">{reservation.trip.route.name}</div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 mb-3">
+          <div className="bg-gray-50 p-4 rounded-md">            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
               <div>
                 <div className="text-sm text-gray-500">Origen:</div>
                 <div>{reservation.trip.segmentOrigin || reservation.trip.route.origin}</div>
@@ -176,7 +172,7 @@ export default function ReservationDetails() {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <div className="text-sm text-gray-500">Fecha:</div>
                 <div>{formatDate(reservation.trip.departureDate)}</div>
@@ -186,43 +182,27 @@ export default function ReservationDetails() {
                 <div>{reservation.trip.departureTime}</div>
               </div>
             </div>
-            
-            <div className="mt-3">
-              <div className="text-sm text-gray-500">Pasajeros:</div>
-              <div>{reservation.passengers.length}</div>
-            </div>
           </div>
         </div>
 
         {/* Información de pago */}
-        <div>
+        <div className="mb-6">
           <h2 className="text-lg font-medium mb-3 text-gray-800">Información de Pago</h2>
           <div className="bg-gray-50 p-4 rounded-md">
-            <div className="grid grid-cols-2 gap-4 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
               <div>
                 <div className="text-sm text-gray-500">Total:</div>
                 <div className="text-lg font-bold">{formatPrice(reservation.totalAmount)}</div>
               </div>
               <div>
-                <div className="text-sm text-gray-500">Estado:</div>
-                <div className={`font-semibold ${
-                  reservation.paymentStatus === 'pagado' 
-                    ? 'text-green-600' 
-                    : 'text-amber-600'
-                }`}>
-                  {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
-                </div>
-              </div>
-            </div>
-            
-            {(!reservation.advanceAmount || reservation.advanceAmount <= 0) ? (
-              <div>
                 <div className="text-sm text-gray-500">Método de pago:</div>
                 <div>{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
               </div>
-            ) : (
+            </div>
+            
+            {(reservation.advanceAmount && reservation.advanceAmount > 0) && (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <div className="text-sm text-gray-500">Anticipo:</div>
                     <div className="font-medium">{formatPrice(reservation.advanceAmount)}</div>
@@ -234,7 +214,7 @@ export default function ReservationDetails() {
                 </div>
                 
                 {reservation.advanceAmount < reservation.totalAmount && (
-                  <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
                     <div>
                       <div className="text-sm text-gray-500">Pendiente:</div>
                       <div className="font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</div>
@@ -250,9 +230,21 @@ export default function ReservationDetails() {
           </div>
         </div>
 
+        {/* Estado grande */}
+        <div className="my-6 text-center">
+          <div className="text-sm text-gray-500 mb-1">Estado:</div>
+          <div className={`text-2xl font-bold ${
+            reservation.paymentStatus === 'pagado' 
+              ? 'text-green-600' 
+              : 'text-amber-600'
+          }`}>
+            {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+          </div>
+        </div>
+
         {/* Botón para marcar como pagado */}
         {reservation.paymentStatus !== 'pagado' && (
-          <div className="mt-6">
+          <div className="mt-4">
             <Button 
               onClick={markAsPaid} 
               disabled={isMarkingAsPaid}
