@@ -44,7 +44,7 @@ export interface IStorage {
   updateRelatedTripsAvailability(tripId: number, seatChange: number): Promise<void>;
   
   // Reservation methods
-  getReservations(companyId?: string): Promise<ReservationWithDetails[]>;
+  getReservations(companyId?: string, tripId?: number): Promise<ReservationWithDetails[]>;
   getReservation(id: number): Promise<Reservation | undefined>;
   getReservationWithDetails(id: number, companyId?: string): Promise<ReservationWithDetails | undefined>;
   createReservation(reservation: InsertReservation): Promise<Reservation>;
@@ -443,8 +443,13 @@ export class MemStorage implements IStorage {
   }
   
   // Reservation methods
-  async getReservations(companyId?: string): Promise<ReservationWithDetails[]> {
+  async getReservations(companyId?: string, tripId?: number): Promise<ReservationWithDetails[]> {
     let reservations = Array.from(this.reservations.values());
+    
+    // Si hay un ID de viaje específico, filtrar por él
+    if (tripId) {
+      reservations = reservations.filter(res => res.tripId === tripId);
+    }
     
     // Filtrar por companyId si se proporciona
     if (companyId) {
