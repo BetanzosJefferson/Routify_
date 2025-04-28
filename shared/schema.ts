@@ -432,3 +432,22 @@ export const commissionRelations = relations(commissions, ({ one }) => ({
     references: [routes.id]
   })
 }));
+
+// COUPON SCHEMA
+export const coupons = pgTable("coupons", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  discountPercentage: doublePrecision("discount_percentage").notNull(),
+  maxUses: integer("max_uses").notNull().default(1),
+  usedCount: integer("used_count").notNull().default(0),
+  expirationDate: timestamp("expiration_date").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  description: text("description"),
+  companyId: text("company_id").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertCouponSchema = createInsertSchema(coupons).omit({ id: true, usedCount: true, createdAt: true, updatedAt: true });
+export type InsertCoupon = z.infer<typeof insertCouponSchema>;
+export type Coupon = typeof coupons.$inferSelect;
