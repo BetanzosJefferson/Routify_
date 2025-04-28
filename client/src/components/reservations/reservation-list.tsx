@@ -50,6 +50,10 @@ export function ReservationList() {
   const [notes, setNotes] = useState<string>("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
+  // Nuevos estados para los campos adicionales
+  const [checkStatus, setCheckStatus] = useState<string>("no_check");
+  const [chargeStatus, setChargeStatus] = useState<string>("pendiente_cobro");
+  
   // Estados adicionales para mejorar la UX
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showLoadingDelay, setShowLoadingDelay] = useState(false);
