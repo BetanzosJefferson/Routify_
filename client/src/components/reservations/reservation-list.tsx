@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
-import { UserIcon, SearchIcon, Loader2Icon, XIcon, PhoneIcon, MailIcon, ShieldCheckIcon, CreditCardIcon } from "lucide-react";
+import { UserIcon, SearchIcon, Loader2Icon, XIcon, PhoneIcon, MailIcon, ShieldCheckIcon, CreditCardIcon, QrCodeIcon, EyeIcon } from "lucide-react";
 import { useReservations } from "@/hooks/use-reservations";
 import { PaymentStatus, PaymentMethod, ChargeStatus, CheckStatus } from "@shared/schema";
 
@@ -50,6 +50,7 @@ export function ReservationList() {
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [notes, setNotes] = useState<string>("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   
   // Nuevos estados para los campos adicionales
   const [checkStatus, setCheckStatus] = useState<string>(CheckStatus.NOT_CHECKED);
@@ -194,6 +195,17 @@ export function ReservationList() {
     setCheckStatus(reservation.checkStatus || CheckStatus.NOT_CHECKED);
     setChargeStatus(reservation.chargeStatus || ChargeStatus.PENDING_CHARGE);
     setIsEditModalOpen(true);
+  };
+  
+  // Ticket view handlers
+  const openTicketModal = (reservation: ReservationWithDetails) => {
+    setEditingReservation(reservation);
+    setIsTicketModalOpen(true);
+  };
+  
+  const closeTicketModal = () => {
+    setIsTicketModalOpen(false);
+    setEditingReservation(null);
   };
   
   const closeEditModal = () => {
@@ -378,6 +390,14 @@ export function ReservationList() {
                         </Button>
                         <Button 
                           variant="link" 
+                          className="text-green-600 hover:text-green-800 p-0"
+                          onClick={() => openTicketModal(reservation)}
+                        >
+                          <QrCodeIcon className="h-4 w-4 mr-1" />
+                          Ticket
+                        </Button>
+                        <Button 
+                          variant="link" 
                           className="text-red-600 hover:text-red-800 p-0"
                           onClick={() => openDeleteConfirm(reservation.id)}
                         >
@@ -432,6 +452,15 @@ export function ReservationList() {
                         onClick={() => openEditModal(reservation)}
                       >
                         Edit
+                      </Button>
+                      <Button 
+                        size="sm"
+                        variant="link" 
+                        className="text-green-600 hover:text-green-800 p-0"
+                        onClick={() => openTicketModal(reservation)}
+                      >
+                        <QrCodeIcon className="h-4 w-4 mr-1" />
+                        Ticket
                       </Button>
                       <Button 
                         size="sm"
@@ -760,6 +789,141 @@ export function ReservationList() {
                   Guardando...
                 </>
               ) : "Guardar cambios"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Ticket View Dialog */}
+      <Dialog open={isTicketModalOpen} onOpenChange={setIsTicketModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Boleto de Viaje</DialogTitle>
+            <DialogDescription>
+              Escanea el código QR para verificar el boleto.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingReservation && (
+            <div className="grid gap-4 py-4">
+              <div className="text-center">
+                <div className="mx-auto bg-blue-50 p-6 rounded-lg w-[200px] h-[200px] flex items-center justify-center mb-4">
+                  {/* Aquí iría el código QR real generado con la biblioteca QRCode */}
+                  <QrCodeIcon className="h-32 w-32 text-primary" />
+                </div>
+              </div>
+              
+              <div className="space-y-3 border-t pt-3">
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="text-xs text-gray-500">CÓDIGO DE RESERVACIÓN</div>
+                  <div className="text-xl font-bold">#{generateReservationId()}</div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 mt-2">
+                  <div>
+                    <div className="text-xs text-gray-500">PASAJERO</div>
+                    <div className="font-medium">
+                      {editingReservation.passengers[0]?.firstName} {editingReservation.passengers[0]?.lastName}
+                    </div>
+                    <div className="text-sm">
+                      {editingReservation.passengers.length > 1 && `+ ${editingReservation.passengers.length - 1} pasajeros`}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-xs text-gray-500">RUTA</div>
+                    <div className="font-medium">{editingReservation.trip.route.name}</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-xs text-gray-500">ORIGEN</div>
+                    <div>{editingReservation.trip.segmentOrigin || editingReservation.trip.route.origin}</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-xs text-gray-500">DESTINO</div>
+                    <div>{editingReservation.trip.segmentDestination || editingReservation.trip.route.destination}</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-xs text-gray-500">FECHA</div>
+                    <div>{formatDate(editingReservation.trip.departureDate)}</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-xs text-gray-500">HORA DE SALIDA</div>
+                    <div>{editingReservation.trip.departureTime}</div>
+                  </div>
+                </div>
+                
+                <div className="mt-4 grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs text-gray-500">ESTADO DEL BOLETO</div>
+                    <Badge 
+                      className={editingReservation.checkStatus === CheckStatus.CHECKED ? 
+                        "bg-blue-100 text-blue-800 border-blue-200 mt-1" : 
+                        "bg-amber-50 text-amber-700 border-amber-200 mt-1"}
+                    >
+                      {editingReservation.checkStatus === CheckStatus.CHECKED ? "Verificado" : "No verificado"}
+                    </Badge>
+                  </div>
+                  
+                  <div>
+                    <div className="text-xs text-gray-500">ESTADO DE PAGO</div>
+                    <Badge 
+                      className={
+                        editingReservation.chargeStatus === ChargeStatus.CHARGED ? 
+                          "bg-green-100 text-green-800 border-green-200 mt-1" : 
+                        editingReservation.chargeStatus === ChargeStatus.CANCELLED ? 
+                          "bg-red-100 text-red-800 border-red-200 mt-1" : 
+                          "bg-amber-100 text-amber-800 border-amber-200 mt-1"
+                      }
+                    >
+                      {editingReservation.chargeStatus === ChargeStatus.CHARGED ? "Cobrado" : 
+                       editingReservation.chargeStatus === ChargeStatus.CANCELLED ? "Cancelado" : "Pendiente"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={closeTicketModal}>Cerrar</Button>
+            <Button 
+              onClick={() => {
+                if (!editingReservation) return;
+                
+                // Función que simularía el escaneo de QR - en una implementación real 
+                // esto usaría la cámara del dispositivo para escanear
+                const newCheckStatus = CheckStatus.CHECKED;
+                
+                // Actualizar la reservación
+                editReservationMutation.mutate({
+                  id: editingReservation.id,
+                  updates: {
+                    checkStatus: newCheckStatus,
+                    // Si el estado de verificación cambia a verificado, registramos la fecha actual
+                    checkedAt: new Date().toISOString(),
+                    // Si está siendo verificada, registramos el usuario que lo hace
+                    checkedBy: 1, // ID del usuario actual (placeholder)
+                  }
+                });
+                
+                setCheckStatus(newCheckStatus);
+                toast({
+                  title: "Boleto verificado",
+                  description: "El boleto ha sido marcado como verificado.",
+                });
+                
+                // Cerrar el modal después de verificar
+                setTimeout(() => {
+                  closeTicketModal();
+                }, 1500);
+              }}
+            >
+              <QrCodeIcon className="mr-2 h-4 w-4" />
+              Escanear QR
             </Button>
           </DialogFooter>
         </DialogContent>
