@@ -2078,7 +2078,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[GET /trips/${tripId}/boarding-list/excel] Obteniendo datos para lista de abordaje`);
       
       // Obtener los datos de la lista de abordaje
-      const boardingData = await getBoardingListData(tripId);
+      let boardingData = await getBoardingListData(tripId);
+      
+      // Verificar si hay datos
       if (!boardingData || boardingData.length === 0) {
         return res.status(404).json({ error: "No hay reservaciones para este viaje" });
       }
