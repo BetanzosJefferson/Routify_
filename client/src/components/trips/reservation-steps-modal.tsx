@@ -48,8 +48,6 @@ interface Passenger {
   lastName: string;
 }
 
-
-
 interface ReservationFormData {
   tripId: number;
   numPassengers: number;
