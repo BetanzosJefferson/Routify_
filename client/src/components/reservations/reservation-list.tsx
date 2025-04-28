@@ -855,15 +855,19 @@ export function ReservationList() {
       {detailModalOpen !== null && reservations && (
         <Dialog open={detailModalOpen !== null} onOpenChange={closeDetailModal}>
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center">
-                <TicketIcon className="mr-2 h-5 w-5" />
-                Detalles de la Reservación #{detailModalOpen && generateReservationId(detailModalOpen)}
-              </DialogTitle>
-              <DialogDescription>
-                Información completa de la reservación
-              </DialogDescription>
-            </DialogHeader>
+            <div className="absolute right-4 top-4">
+              <button 
+                className="rounded-full w-6 h-6 inline-flex items-center justify-center border border-gray-200 text-gray-400 hover:text-gray-500"
+                onClick={closeDetailModal}
+              >
+                <XIcon className="h-3 w-3" />
+              </button>
+            </div>
+            <div className="flex items-center mb-1 pt-2">
+              <TicketIcon className="h-5 w-5 mr-2" />
+              <h2 className="font-medium text-lg">Detalles de la Reservación #{detailModalOpen && generateReservationId(detailModalOpen)}</h2>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">Información completa de la reservación</p>
             
             {(() => {
               const reservation = reservations.find(r => r.id === detailModalOpen);
@@ -872,13 +876,27 @@ export function ReservationList() {
               // Lógica para determinar si está pagado
               const isPaid = reservation.paymentStatus === 'pagado';
               
+              // Generar código QR para esta reservación si no está en cache
+              useEffect(() => {
+                if (detailModalOpen && !qrCodeUrl) {
+                  const reservationUrl = `${window.location.origin}/reservations/${detailModalOpen}`;
+                  QRCode.toDataURL(reservationUrl)
+                    .then(url => {
+                      setQrCodeUrl(url);
+                    })
+                    .catch(err => {
+                      console.error("Error generando QR:", err);
+                    });
+                }
+              }, [detailModalOpen, qrCodeUrl]);
+              
               return (
-                <div ref={ticketRef} className="mt-4">
-                  <div className="grid grid-cols-2 gap-6">
-                    {/* Columna 1: Información del pasajero */}
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-500 uppercase mb-2">Información del pasajero</h3>
+                <div ref={ticketRef}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Columna 1: Información del pasajero y viaje */}
+                    <div>
+                      <div className="mb-6 bg-gray-50 bg-opacity-50 rounded-md p-4">
+                        <h3 className="text-sm font-medium text-gray-500 uppercase mb-3">Información del pasajero</h3>
                         <div className="space-y-3">
                           <div>
                             <div className="text-xs text-gray-500 uppercase">NOMBRE</div>
@@ -894,16 +912,16 @@ export function ReservationList() {
                           </div>
                           <div>
                             <div className="text-xs text-gray-500 uppercase">PASAJEROS</div>
-                            <div className="flex items-center space-x-1">
-                              <UserIcon className="h-4 w-4 text-gray-400" />
+                            <div className="flex items-center">
+                              <UserIcon className="h-4 w-4 text-gray-400 mr-1" />
                               <span className="font-medium">{reservation.passengers.length}</span>
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-500 uppercase mb-2">Detalles del viaje</h3>
+                      <div className="bg-gray-50 bg-opacity-50 rounded-md p-4">
+                        <h3 className="text-sm font-medium text-gray-500 uppercase mb-3">Detalles del viaje</h3>
                         <div className="space-y-3">
                           <div>
                             <div className="text-xs text-gray-500 uppercase">RUTA</div>
@@ -912,57 +930,75 @@ export function ReservationList() {
                           <div>
                             <div className="text-xs text-gray-500 uppercase">ORIGEN</div>
                             <div className="font-medium flex items-start">
-                              <div className="mt-1 mr-1.5 h-2.5 w-2.5 rounded-full border-2 border-gray-300"></div>
+                              <div className="flex-shrink-0 mt-1 mr-2">
+                                <div className="h-2.5 w-2.5 rounded-full border-2 border-gray-300"></div>
+                              </div>
                               <span>{reservation.trip.segmentOrigin || reservation.trip.route.origin}</span>
                             </div>
                           </div>
                           <div>
                             <div className="text-xs text-gray-500 uppercase">DESTINO</div>
                             <div className="font-medium flex items-start">
-                              <div className="mt-1 mr-1.5 h-2.5 w-2.5 rounded-full bg-primary"></div>
+                              <div className="flex-shrink-0 mt-1 mr-2">
+                                <div className="h-2.5 w-2.5 rounded-full bg-blue-500"></div>
+                              </div>
                               <span>{reservation.trip.segmentDestination || reservation.trip.route.destination}</span>
                             </div>
                           </div>
                           <div>
                             <div className="text-xs text-gray-500 uppercase">FECHA</div>
-                            <div className="font-medium">{formatDate(reservation.trip.departureDate)}</div>
+                            <div className="font-medium flex items-center">
+                              <span className="flex-shrink-0 mr-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                              </span>
+                              {formatDate(reservation.trip.departureDate)}
+                            </div>
                           </div>
                           <div>
                             <div className="text-xs text-gray-500 uppercase">HORA DE SALIDA</div>
-                            <div className="font-medium">{reservation.trip.departureTime}</div>
+                            <div className="font-medium flex items-center">
+                              <span className="flex-shrink-0 mr-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </span>
+                              {reservation.trip.departureTime}
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
 
                     {/* Columna 2: Información de pago y QR */}
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-500 uppercase mb-2">Información de pago</h3>
-                        <div className="rounded-md border border-gray-100 overflow-hidden">
-                          <div className="bg-gray-50 p-2 flex justify-between">
+                    <div>
+                      <div className="mb-6">
+                        <h3 className="text-sm font-medium text-gray-500 uppercase mb-3">Información de pago</h3>
+                        <div className="rounded-md border border-gray-200">
+                          <div className="bg-gray-50 px-4 py-2 flex justify-between items-center">
                             <div className="text-xs text-gray-500 uppercase">ESTADO DE PAGO</div>
                             <Badge 
                               variant={isPaid ? "outline" : "secondary"}
                               className={isPaid
                                 ? "bg-green-100 text-green-800 border-green-200" 
-                                : "bg-amber-100 text-amber-800 border-amber-200"}
+                                : "bg-amber-100 text-amber-800 border-amber-200 whitespace-nowrap"}
                             >
                               {isPaid ? 'PAGADO' : 'PENDIENTE'}
                             </Badge>
                           </div>
                           
-                          <div className="p-3 space-y-2">
+                          <div className="p-4 space-y-2">
                             <div className="flex justify-between">
                               <div className="text-xs text-gray-500 uppercase">MONTO TOTAL</div>
-                              <div className="font-semibold">${reservation.totalAmount.toFixed(2)}</div>
+                              <div className="font-semibold">${reservation.totalAmount.toFixed(0)}</div>
                             </div>
                             
                             {reservation.advanceAmount && reservation.advanceAmount > 0 && (
                               <>
                                 <div className="flex justify-between">
                                   <div className="text-xs text-gray-500 uppercase">ANTICIPO</div>
-                                  <div className="font-medium">${reservation.advanceAmount.toFixed(2)}</div>
+                                  <div className="font-medium">${reservation.advanceAmount.toFixed(0)}</div>
                                 </div>
                                 
                                 <div className="flex justify-between">
@@ -974,7 +1010,7 @@ export function ReservationList() {
                                   <>
                                     <div className="flex justify-between">
                                       <div className="text-xs text-gray-500 uppercase">PENDIENTE DE PAGO</div>
-                                      <div className="font-semibold">${(reservation.totalAmount - (reservation.advanceAmount || 0)).toFixed(2)}</div>
+                                      <div className="font-semibold">${(reservation.totalAmount - (reservation.advanceAmount || 0)).toFixed(0)}</div>
                                     </div>
                                     
                                     <div className="flex justify-between">
@@ -995,41 +1031,38 @@ export function ReservationList() {
                             
                             {!isPaid && (
                               <Button 
-                                className="w-full mt-2 bg-green-600 hover:bg-green-700"
-                                size="sm"
+                                className="w-full mt-3 bg-green-600 hover:bg-green-700 text-white"
                                 onClick={() => handleMarkAsPaid(reservation.id)}
                               >
-                                <span className="mr-1">✓</span> Marcar como pagado
+                                <CheckIcon className="h-4 w-4 mr-2" /> Marcar como pagado
                               </Button>
                             )}
                           </div>
                         </div>
                       </div>
                       
-                      <div className="space-y-2">
-                        <h3 className="text-sm font-medium text-gray-500 uppercase mb-2">Código QR</h3>
-                        <div className="flex flex-col items-center bg-white border border-gray-100 rounded-md p-4">
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500 uppercase mb-3">Código QR</h3>
+                        <div className="rounded-md border border-gray-200 p-4 flex flex-col items-center">
                           {qrCodeUrl ? (
-                            <>
-                              <img 
-                                src={qrCodeUrl} 
-                                alt="Código QR de la reservación" 
-                                className="w-32 h-32 mb-2"
-                              />
-                              <p className="text-xs text-gray-500 text-center">
-                                Este código QR contiene los detalles de la reservación.<br />
-                                Escanea el código para ver o compartir el boleto completo.
-                              </p>
-                            </>
+                            <img 
+                              src={qrCodeUrl} 
+                              alt="Código QR de la reservación" 
+                              className="w-44 h-44 mb-3"
+                            />
                           ) : (
-                            <div className="flex items-center justify-center w-32 h-32 bg-gray-50">
+                            <div className="flex items-center justify-center w-44 h-44 bg-gray-50">
                               <Loader2Icon className="h-8 w-8 animate-spin text-gray-300" />
                             </div>
                           )}
+                          <p className="text-xs text-gray-500 text-center mb-3">
+                            Este código QR contiene los detalles de la reservación.<br />
+                            Escanea el código para ver o compartir el boleto completo.
+                          </p>
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="mt-3"
+                            className="w-full"
                             onClick={() => handleViewCompleteTicket(reservation.id)}
                           >
                             Ver boleto completo
@@ -1042,10 +1075,10 @@ export function ReservationList() {
               );
             })()}
             
-            <DialogFooter className="mt-4 flex flex-col sm:flex-row gap-2">
-              <Button 
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
                 variant="outline"
-                className="flex-1"
+                className="flex-1 max-w-xs"
                 onClick={handlePrintTicket}
               >
                 <PrinterIcon className="w-4 h-4 mr-2" />
@@ -1053,7 +1086,8 @@ export function ReservationList() {
               </Button>
               
               <Button
-                className="flex-1"
+                variant="primary"
+                className="flex-1 max-w-xs bg-blue-500 hover:bg-blue-600 text-white"
                 onClick={() => {
                   const reservation = reservations.find(r => r.id === detailModalOpen);
                   if (reservation) {
@@ -1064,7 +1098,16 @@ export function ReservationList() {
                 <QrCodeIcon className="w-4 h-4 mr-2" />
                 Ver Detalles Completos
               </Button>
-            </DialogFooter>
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 w-full"
+              onClick={closeDetailModal}
+            >
+              Cerrar
+            </Button>
           </DialogContent>
         </Dialog>
       )}
