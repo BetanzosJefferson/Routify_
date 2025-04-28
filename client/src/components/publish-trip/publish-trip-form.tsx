@@ -155,7 +155,7 @@ export function PublishTripForm() {
       startDate: format(new Date(), "yyyy-MM-dd"),
       endDate: format(new Date(), "yyyy-MM-dd"),
       capacity: 18,
-      price: 450,
+      // Eliminado el precio base, ahora se calcula automáticamente de los segmentos
       vehicleType: "standard",
       segmentPrices: [],
       stopTimes: [], // Añadimos stopTimes para que no sea undefined
@@ -440,12 +440,35 @@ export function PublishTripForm() {
     const arrivalTime = formattedStopTimes.length > 0 ? 
       `${formattedStopTimes[formattedStopTimes.length - 1].hour}:${formattedStopTimes[formattedStopTimes.length - 1].minute} ${formattedStopTimes[formattedStopTimes.length - 1].ampm}` : "";
     
+    // Calcular el precio base basado en el segmento más caro de origen a destino final
+    // Esto es para compatibilidad con la estructura de la base de datos
+    const calculateBasePrice = () => {
+      // Obtener el precio más alto entre todos los segmentos que tienen como destino 
+      // el destino final de la ruta
+      const routeInfo = routeSegmentsQuery.data;
+      if (!routeInfo || !segmentPrices.length) return 0;
+
+      // Buscar segmentos que tienen como destino el destino final de la ruta
+      const segmentsToFinalDestination = segmentPrices.filter(
+        segment => segment.destination === routeInfo.destination
+      );
+
+      if (segmentsToFinalDestination.length > 0) {
+        // Tomar el más caro
+        return Math.max(...segmentsToFinalDestination.map(s => s.price));
+      }
+
+      // Si no hay segmentos a destino final, tomar el precio más alto general
+      return Math.max(...segmentPrices.map(s => s.price));
+    };
+
     // Preparar datos comunes para crear o actualizar
     const tripData = {
       ...data,
       routeId: selectedRouteId,
       capacity,
-      price: data.price || 0,
+      // Calcular el precio base automáticamente - ya no depende del input eliminado
+      price: calculateBasePrice(),
       segmentPrices,
       stopTimes: formattedStopTimes,
       departureTime, // Añadido explícitamente
@@ -513,7 +536,6 @@ export function PublishTripForm() {
       startDate: format(new Date(), "yyyy-MM-dd"),
       endDate: format(new Date(), "yyyy-MM-dd"),
       capacity: 18,
-      price: 450,
       vehicleType: "standard",
       segmentPrices: [],
       vehicleId: null,
@@ -765,7 +787,7 @@ export function PublishTripForm() {
             startDate: startDate,
             endDate: endDate,
             capacity: trip.capacity,
-            price: trip.price || 0,
+            // price ya no es necesario, se calcula automáticamente en onSubmit
             vehicleType: trip.vehicleType || "standard",
             segmentPrices: segmentPricesFromTrip,
             stopTimes: ensureValidStopTimes(allStopTimes),
@@ -804,7 +826,7 @@ export function PublishTripForm() {
             form.setValue("startDate", startDate, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("endDate", endDate, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("capacity", trip.capacity, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-            form.setValue("price", trip.price || 0, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+            // Ya no se establecer precio manualmente, se calcula automáticamente
             form.setValue("vehicleType", trip.vehicleType || "standard", { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("segmentPrices", segmentPricesFromTrip, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("stopTimes", ensureValidStopTimes(allStopTimes), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
@@ -1002,24 +1024,8 @@ export function PublishTripForm() {
                       )}
                     />
                     
-                    {/* Precio por pasajero */}
-                    <FormField
-                      control={form.control}
-                      name="price"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Precio Base</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {/* Eliminamos el campo Precio Base ya que se determina automáticamente
+                        por los precios de segmentos */}
                   </div>
                 </div>
                 
