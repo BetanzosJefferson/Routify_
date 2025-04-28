@@ -413,7 +413,7 @@ export default function ReservationViewPage() {
                 onClick={markAsCharged}
               >
                 <CreditCardIcon className="w-4 h-4 mr-2" />
-                "Marcar como Cobrado"
+                Marcar como Cobrado
               </Button>
             )}
           </div>

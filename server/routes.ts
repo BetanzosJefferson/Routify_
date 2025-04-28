@@ -1639,18 +1639,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Si está verificando, guardar el ID del usuario que verifica
       const reservationData = validationResult.data;
-      console.log("En el backend, checkStatus recibido es:", reservationData.checkStatus);
+      console.log("En el backend, datos recibidos:", JSON.stringify(reservationData));
       console.log("En el backend, CheckStatus.CHECKED es:", CheckStatus.CHECKED);
       
       // Corregir el estado de verificación si es necesario
-      if (reservationData.checkStatus === "check" || reservationData.checkStatus === CheckStatus.CHECKED) {
+      if (reservationData.checkStatus) {
         console.log("Procesando verificación de boleto...");
-        reservationData.checkStatus = CheckStatus.CHECKED; // Asegurarnos que sea el valor correcto del enum
+        // Asegurarnos que se use el valor correcto del enum: "check"
+        reservationData.checkStatus = CheckStatus.CHECKED;
         reservationData.checkedBy = user.id;
         // Asegurarse de que se guarde la fecha si no viene en la petición
         if (!reservationData.checkedAt) {
           reservationData.checkedAt = new Date();
         }
+        console.log("Estado de verificación actualizado a:", reservationData.checkStatus);
+      }
+      
+      // Corregir el estado de cobro si es necesario
+      if (reservationData.chargeStatus) {
+        console.log("Procesando cobro de boleto...");
+        // Asegurarnos que se use el valor correcto del enum: "cobrado"
+        reservationData.chargeStatus = ChargeStatus.CHARGED;
+        console.log("Estado de cobro actualizado a:", reservationData.chargeStatus);
       }
       
       const updatedReservation = await storage.updateReservation(id, reservationData);
