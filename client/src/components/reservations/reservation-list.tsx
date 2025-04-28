@@ -1,9 +1,10 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
-import { UserIcon, SearchIcon, Loader2Icon, XIcon } from "lucide-react";
+import { UserIcon, SearchIcon, Loader2Icon, XIcon, PhoneIcon, MailIcon } from "lucide-react";
+import { useReservations } from "@/hooks/use-reservations";
 
 import {
   AlertDialog,
@@ -31,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,38 +54,23 @@ export function ReservationList() {
   const [showLoadingDelay, setShowLoadingDelay] = useState(false);
   const [hasError, setHasError] = useState(false);
 
-  // Fetch reservations con mejor manejo de estados y errores
-  const { data: reservations, isLoading } = useQuery({
-    queryKey: ["/api/reservations"],
-    queryFn: async () => {
-      try {
-        // Mostrar el spinner solo después de 500ms para evitar parpadeos
-        const loadingTimeout = setTimeout(() => setShowLoadingDelay(true), 500);
-        
-        const response = await fetch("/api/reservations");
-        clearTimeout(loadingTimeout);
-        
-        if (!response.ok) {
-          setHasError(true);
-          throw new Error("Failed to fetch reservations");
-        }
-        
-        // Marcamos que ya pasó la carga inicial y reseteamos error si hubo éxito
-        setIsInitialLoad(false);
-        setHasError(false);
-        return await response.json() as ReservationWithDetails[];
-      } catch (error) {
-        console.error("Error fetching reservations:", error);
-        setHasError(true);
-        throw error;
-      }
-    },
-    // Evitamos que se muestre un error durante la primera carga
-    retry: 3,
-    retryDelay: 1000,
-    // No recargamos automáticamente si hay un error para evitar ciclos de error
-    refetchOnWindowFocus: !hasError,
-  });
+  // Utilizar el nuevo hook especializado para cargar reservaciones de forma independiente
+  const { 
+    data: reservations, 
+    isLoading,
+    error: reservationsError
+  } = useReservations();
+
+  // Actualizar estados de UI basados en el estado de carga
+  useEffect(() => {
+    if (isLoading) {
+      const loadingTimeout = setTimeout(() => setShowLoadingDelay(true), 500);
+      return () => clearTimeout(loadingTimeout);
+    } else {
+      setIsInitialLoad(false);
+      setHasError(!!reservationsError);
+    }
+  }, [isLoading, reservationsError]);
   
   // Filter reservations based on search term
   const filteredReservations = reservations?.filter((reservation) => {
