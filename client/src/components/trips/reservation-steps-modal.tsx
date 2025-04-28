@@ -886,7 +886,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                 
                 <div className="border-t pt-4 text-xs text-center text-gray-500">
                   <p>Presente este boleto al abordar el vehículo</p>
-                  {showAdvancePayment && advanceAmount < totalPrice && (
+                  {advanceAmount > 0 && advanceAmount < totalPrice && (
                     <p className="mt-1 text-amber-600 font-semibold">
                       IMPORTANTE: Complete el pago antes de abordar
                     </p>
