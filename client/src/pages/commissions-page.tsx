@@ -97,7 +97,7 @@ export default function CommissionsPage() {
     resolver: zodResolver(commissionFormSchema),
     defaultValues: {
       name: "",
-      percentage: "",
+      percentage: 0,
       description: "",
       isActive: true,
     },
@@ -108,7 +108,7 @@ export default function CommissionsPage() {
     resolver: zodResolver(commissionFormSchema),
     defaultValues: {
       name: "",
-      percentage: "",
+      percentage: 0,
       description: "",
       isActive: true,
     },
@@ -227,7 +227,7 @@ export default function CommissionsPage() {
     setSelectedCommission(commission);
     editForm.reset({
       name: commission.name,
-      percentage: commission.percentage.toString(),
+      percentage: commission.percentage, // Usar directamente el número
       description: commission.description || "",
       isActive: commission.isActive,
     });
