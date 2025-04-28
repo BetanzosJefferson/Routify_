@@ -873,20 +873,9 @@ export function ReservationList() {
       {/* Modal de detalles y QR */}
       {detailModalOpen !== null && reservations && (
         <Dialog open={detailModalOpen !== null} onOpenChange={closeDetailModal}>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="absolute right-4 top-4">
-              <button 
-                className="rounded-full w-6 h-6 inline-flex items-center justify-center border border-gray-200 text-gray-400 hover:text-gray-500"
-                onClick={closeDetailModal}
-              >
-                <XIcon className="h-3 w-3" />
-              </button>
-            </div>
-            <div className="flex items-center mb-1 pt-2">
-              <TicketIcon className="h-5 w-5 mr-2" />
-              <h2 className="font-medium text-lg">Detalles de la Reservación #{detailModalOpen && generateReservationId(detailModalOpen)}</h2>
-            </div>
-            <p className="text-sm text-gray-500 mb-4">Información completa de la reservación</p>
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-0 gap-0">
+            <DialogTitle className="sr-only">Detalles de Reservación</DialogTitle>
+            <DialogDescription className="sr-only">Información completa de la reservación</DialogDescription>
             
             {(() => {
               const reservation = reservations.find(r => r.id === detailModalOpen);
@@ -896,12 +885,26 @@ export function ReservationList() {
               const isPaid = reservation.paymentStatus === 'pagado';
               
               return (
-                <div ref={ticketRef}>
+                <div ref={ticketRef} className="px-6 pt-6 pb-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center">
+                      <TicketIcon className="h-5 w-5 mr-2 text-gray-700" />
+                      <h2 className="font-medium text-lg">Detalles de la Reservación #{generateReservationId(reservation.id)}</h2>
+                    </div>
+                    <button 
+                      className="rounded-full w-6 h-6 inline-flex items-center justify-center border border-gray-200 text-gray-400 hover:text-gray-500"
+                      onClick={closeDetailModal}
+                    >
+                      <XIcon className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-500 mb-5">Información completa de la reservación</p>
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Columna 1: Información del pasajero y viaje */}
                     <div>
-                      <div className="mb-6 bg-gray-50 bg-opacity-50 rounded-md p-4">
-                        <h3 className="text-sm font-medium text-gray-500 uppercase mb-3">Información del pasajero</h3>
+                      <div className="mb-5">
+                        <h3 className="text-sm font-medium text-gray-700 uppercase mb-3">Información del pasajero</h3>
                         <div className="space-y-3">
                           <div>
                             <div className="text-xs text-gray-500 uppercase">NOMBRE</div>
@@ -925,8 +928,8 @@ export function ReservationList() {
                         </div>
                       </div>
 
-                      <div className="bg-gray-50 bg-opacity-50 rounded-md p-4">
-                        <h3 className="text-sm font-medium text-gray-500 uppercase mb-3">Detalles del viaje</h3>
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-700 uppercase mb-3">Detalles del viaje</h3>
                         <div className="space-y-3">
                           <div>
                             <div className="text-xs text-gray-500 uppercase">RUTA</div>
@@ -978,10 +981,10 @@ export function ReservationList() {
 
                     {/* Columna 2: Información de pago y QR */}
                     <div>
-                      <div className="mb-6">
-                        <h3 className="text-sm font-medium text-gray-500 uppercase mb-3">Información de pago</h3>
-                        <div className="rounded-md border border-gray-200">
-                          <div className="bg-gray-50 px-4 py-2 flex justify-between items-center">
+                      <div className="mb-5">
+                        <h3 className="text-sm font-medium text-gray-700 uppercase mb-3">Información de pago</h3>
+                        <div>
+                          <div className="flex justify-between items-center mb-3">
                             <div className="text-xs text-gray-500 uppercase">ESTADO DE PAGO</div>
                             <Badge 
                               variant={isPaid ? "outline" : "secondary"}
@@ -993,7 +996,7 @@ export function ReservationList() {
                             </Badge>
                           </div>
                           
-                          <div className="p-4 space-y-2">
+                          <div className="space-y-2 border-t border-gray-100 pt-3">
                             <div className="flex justify-between">
                               <div className="text-xs text-gray-500 uppercase">MONTO TOTAL</div>
                               <div className="font-semibold">${reservation.totalAmount.toFixed(0)}</div>
@@ -1047,8 +1050,8 @@ export function ReservationList() {
                       </div>
                       
                       <div>
-                        <h3 className="text-sm font-medium text-gray-500 uppercase mb-3">Código QR</h3>
-                        <div className="rounded-md border border-gray-200 p-4 flex flex-col items-center">
+                        <h3 className="text-sm font-medium text-gray-700 uppercase mb-3">Código QR</h3>
+                        <div className="flex flex-col items-center">
                           {qrCodeUrl ? (
                             <img 
                               src={qrCodeUrl} 
@@ -1076,43 +1079,31 @@ export function ReservationList() {
                       </div>
                     </div>
                   </div>
+                  
+                  <div className="mt-6 space-y-2">
+                    <div className="flex justify-between gap-3">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={handlePrintTicket}
+                      >
+                        <PrinterIcon className="w-4 h-4 mr-2" />
+                        Imprimir Boleto
+                      </Button>
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={closeDetailModal}
+                    >
+                      Cerrar
+                    </Button>
+                  </div>
                 </div>
               );
             })()}
-            
-            <div className="flex justify-center gap-2 mt-4">
-              <Button
-                variant="outline"
-                className="flex-1 max-w-xs"
-                onClick={handlePrintTicket}
-              >
-                <PrinterIcon className="w-4 h-4 mr-2" />
-                Imprimir Boleto
-              </Button>
-              
-              <Button
-                variant="default"
-                className="flex-1 max-w-xs bg-blue-500 hover:bg-blue-600 text-white"
-                onClick={() => {
-                  const reservation = reservations.find(r => r.id === detailModalOpen);
-                  if (reservation) {
-                    goToDetailPage(reservation.id);
-                  }
-                }}
-              >
-                <QrCodeIcon className="w-4 h-4 mr-2" />
-                Ver Detalles Completos
-              </Button>
-            </div>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2 w-full"
-              onClick={closeDetailModal}
-            >
-              Cerrar
-            </Button>
           </DialogContent>
         </Dialog>
       )}
