@@ -873,10 +873,7 @@ export function ReservationList() {
       {/* Modal de detalles y QR */}
       {detailModalOpen !== null && reservations && (
         <Dialog open={detailModalOpen !== null} onOpenChange={closeDetailModal}>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-6 gap-0">
-            <DialogTitle className="sr-only">Detalles de Reservación</DialogTitle>
-            <DialogDescription className="sr-only">Información completa de la reservación</DialogDescription>
-            
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-0">
             <div className="absolute right-4 top-4">
               <button 
                 className="rounded-sm w-6 h-6 inline-flex items-center justify-center text-gray-400 hover:text-gray-500"
@@ -894,53 +891,53 @@ export function ReservationList() {
               const isPaid = reservation.paymentStatus === 'pagado';
               
               return (
-                <div ref={ticketRef}>
+                <div ref={ticketRef} className="p-6">
                   <div className="flex items-center mb-1">
                     <TicketIcon className="h-5 w-5 mr-2 text-gray-700" />
                     <h2 className="font-medium text-lg">Detalles de la Reservación #{generateReservationId(reservation.id)}</h2>
                   </div>
-                  <p className="text-sm text-gray-500 mb-6">Información completa de la reservación</p>
+                  <p className="text-sm text-gray-500 mb-4">Información completa de la reservación</p>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Columna izquierda */}
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                       {/* Card de información del pasajero */}
-                      <div className="bg-gray-50 bg-opacity-50 rounded-md p-4">
-                        <h3 className="text-base text-gray-700 uppercase mb-4">INFORMACIÓN DEL PASAJERO</h3>
-                        <div className="space-y-4">
+                      <div className="border border-gray-100 bg-white rounded-md p-4">
+                        <h3 className="text-sm font-medium text-gray-700 mb-3">Información del pasajero</h3>
+                        <div className="space-y-3">
                           <div>
-                            <div className="text-xs text-gray-500 uppercase mb-1">NOMBRE</div>
-                            <div className="font-medium">{reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}</div>
+                            <div className="text-xs text-gray-500 uppercase">NOMBRE</div>
+                            <div>{reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 uppercase mb-1">EMAIL</div>
-                            <div className="font-medium">{reservation.email}</div>
+                            <div className="text-xs text-gray-500 uppercase">EMAIL</div>
+                            <div>{reservation.email}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 uppercase mb-1">TELÉFONO</div>
-                            <div className="font-medium">{reservation.phone}</div>
+                            <div className="text-xs text-gray-500 uppercase">TELÉFONO</div>
+                            <div>{reservation.phone}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 uppercase mb-1">PASAJEROS</div>
+                            <div className="text-xs text-gray-500 uppercase">PASAJEROS</div>
                             <div className="flex items-center">
                               <UserIcon className="h-4 w-4 text-gray-400 mr-1" />
-                              <span className="font-medium">{reservation.passengers.length}</span>
+                              <span>{reservation.passengers.length}</span>
                             </div>
                           </div>
                         </div>
                       </div>
 
                       {/* Card de detalles del viaje */}
-                      <div className="bg-gray-50 bg-opacity-50 rounded-md p-4">
-                        <h3 className="text-base text-gray-700 uppercase mb-4">DETALLES DEL VIAJE</h3>
-                        <div className="space-y-4">
+                      <div className="border border-gray-100 bg-white rounded-md p-4">
+                        <h3 className="text-sm font-medium text-gray-700 mb-3">Detalles del viaje</h3>
+                        <div className="space-y-3">
                           <div>
-                            <div className="text-xs text-gray-500 uppercase mb-1">RUTA</div>
-                            <div className="font-medium">{reservation.trip.route.name}</div>
+                            <div className="text-xs text-gray-500 uppercase">RUTA</div>
+                            <div>{reservation.trip.route.name}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 uppercase mb-1">ORIGEN</div>
-                            <div className="font-medium flex items-start">
+                            <div className="text-xs text-gray-500 uppercase">ORIGEN</div>
+                            <div className="flex items-start">
                               <div className="flex-shrink-0 mt-1 mr-2">
                                 <div className="h-2.5 w-2.5 rounded-full border-2 border-gray-300"></div>
                               </div>
@@ -948,8 +945,8 @@ export function ReservationList() {
                             </div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 uppercase mb-1">DESTINO</div>
-                            <div className="font-medium flex items-start">
+                            <div className="text-xs text-gray-500 uppercase">DESTINO</div>
+                            <div className="flex items-start">
                               <div className="flex-shrink-0 mt-1 mr-2">
                                 <div className="h-2.5 w-2.5 rounded-full bg-blue-500"></div>
                               </div>
@@ -957,24 +954,20 @@ export function ReservationList() {
                             </div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 uppercase mb-1">FECHA</div>
-                            <div className="font-medium flex items-center">
-                              <span className="flex-shrink-0 mr-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                              </span>
+                            <div className="text-xs text-gray-500 uppercase">FECHA</div>
+                            <div className="flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
                               {formatDate(reservation.trip.departureDate)}
                             </div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 uppercase mb-1">HORA DE SALIDA</div>
-                            <div className="font-medium flex items-center">
-                              <span className="flex-shrink-0 mr-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                              </span>
+                            <div className="text-xs text-gray-500 uppercase">HORA DE SALIDA</div>
+                            <div className="flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
                               {reservation.trip.departureTime}
                             </div>
                           </div>
@@ -983,34 +976,32 @@ export function ReservationList() {
                     </div>
 
                     {/* Columna derecha */}
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                       {/* Card de información de pago */}
-                      <div className="bg-gray-50 bg-opacity-50 rounded-md p-4">
-                        <h3 className="text-base text-gray-700 uppercase mb-4">INFORMACIÓN DE PAGO</h3>
+                      <div className="border border-gray-100 bg-white rounded-md p-4">
+                        <h3 className="text-sm font-medium text-gray-700 mb-3">Información de pago</h3>
                         <div>
-                          <div className="flex justify-between items-center mb-3">
+                          <div className="flex justify-between items-center mb-2">
                             <div className="text-xs text-gray-500 uppercase">ESTADO DE PAGO</div>
-                            <Badge 
-                              variant={isPaid ? "outline" : "secondary"}
-                              className={isPaid
-                                ? "bg-green-100 text-green-800 border-green-200" 
-                                : "bg-amber-100 text-amber-800 border-amber-200 whitespace-nowrap px-3 py-1 rounded-full"}
+                            <div className={`text-xs px-3 py-0.5 rounded-full ${isPaid 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-amber-100 text-amber-800'}`}
                             >
                               {isPaid ? 'PAGADO' : 'PENDIENTE'}
-                            </Badge>
+                            </div>
                           </div>
                           
-                          <div className="space-y-2 pt-3">
+                          <div className="space-y-2 mt-2">
                             <div className="flex justify-between">
                               <div className="text-xs text-gray-500 uppercase">MONTO TOTAL</div>
-                              <div className="font-semibold">${reservation.totalAmount.toFixed(0)}</div>
+                              <div className="font-medium">${reservation.totalAmount.toFixed(0)}</div>
                             </div>
                             
                             {reservation.advanceAmount && reservation.advanceAmount > 0 && (
                               <>
                                 <div className="flex justify-between">
                                   <div className="text-xs text-gray-500 uppercase">ANTICIPO</div>
-                                  <div className="font-medium">${reservation.advanceAmount.toFixed(0)}</div>
+                                  <div>${reservation.advanceAmount.toFixed(0)}</div>
                                 </div>
                                 
                                 <div className="flex justify-between">
@@ -1022,7 +1013,7 @@ export function ReservationList() {
                                   <>
                                     <div className="flex justify-between">
                                       <div className="text-xs text-gray-500 uppercase">PENDIENTE DE PAGO</div>
-                                      <div className="font-semibold">${(reservation.totalAmount - (reservation.advanceAmount || 0)).toFixed(0)}</div>
+                                      <div className="font-medium">${(reservation.totalAmount - (reservation.advanceAmount || 0)).toFixed(0)}</div>
                                     </div>
                                     
                                     <div className="flex justify-between">
@@ -1042,67 +1033,54 @@ export function ReservationList() {
                             )}
                             
                             {!isPaid && (
-                              <Button 
-                                className="w-full mt-3 bg-green-600 hover:bg-green-700 text-white border border-green-500 py-2 rounded-md"
+                              <button 
+                                className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white py-2 rounded-md flex items-center justify-center"
                                 onClick={() => handleMarkAsPaid(reservation.id)}
                               >
                                 <CheckIcon className="h-4 w-4 mr-2" /> Marcar como pagado
-                              </Button>
+                              </button>
                             )}
                           </div>
                         </div>
                       </div>
                       
                       {/* Card del código QR */}
-                      <div className="bg-gray-50 bg-opacity-50 rounded-md p-4">
-                        <h3 className="text-base text-gray-700 uppercase mb-4">CÓDIGO QR</h3>
+                      <div className="border border-gray-100 bg-white rounded-md p-4">
+                        <h3 className="text-sm font-medium text-gray-700 mb-3">Código QR</h3>
                         <div className="flex flex-col items-center">
                           {qrCodeUrl ? (
                             <img 
                               src={qrCodeUrl} 
                               alt="Código QR de la reservación" 
-                              className="w-44 h-44 mb-3"
+                              className="w-44 h-44" 
                             />
                           ) : (
                             <div className="flex items-center justify-center w-44 h-44 bg-gray-50">
                               <Loader2Icon className="h-8 w-8 animate-spin text-gray-300" />
                             </div>
                           )}
-                          <p className="text-xs text-gray-500 text-center mb-3">
+                          <p className="text-xs text-gray-500 text-center mt-3 mb-3">
                             Este código QR contiene los detalles de la reservación.<br />
                             Escanea el código para ver o compartir el boleto completo.
                           </p>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="w-full"
+                          <button 
+                            className="w-full py-1.5 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50"
                             onClick={() => handleViewCompleteTicket(reservation.id)}
                           >
                             Ver boleto completo
-                          </Button>
+                          </button>
                         </div>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="flex flex-col mt-6 space-y-2">
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={handlePrintTicket}
-                    >
-                      <PrinterIcon className="w-4 h-4 mr-2" />
-                      Imprimir Boleto
-                    </Button>
-                    
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="w-full bg-blue-500 hover:bg-blue-600 text-white self-end"
+                  <div className="mt-6">
+                    <button
+                      className="w-full py-2 px-4 border border-gray-300 rounded-md text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white"
                       onClick={closeDetailModal}
                     >
                       Cerrar
-                    </Button>
+                    </button>
                   </div>
                 </div>
               );
