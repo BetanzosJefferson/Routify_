@@ -37,6 +37,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Reservation, ReservationWithDetails } from "@shared/schema";
 
 export function ReservationList() {
@@ -72,7 +73,7 @@ export function ReservationList() {
     }
   }, [isLoading, reservationsError]);
   
-  // Filter reservations based on search term
+  // Filter reservations based on search term (mejorado para incluir teléfono y correo)
   const filteredReservations = reservations?.filter((reservation) => {
     if (!searchTerm) return true;
     
@@ -81,10 +82,14 @@ export function ReservationList() {
     const passengerNames = reservation.passengers.map(
       p => `${p.firstName} ${p.lastName}`.toLowerCase()
     ).join(" ");
+    const email = reservation.email.toLowerCase();
+    const phone = reservation.phone.toLowerCase();
     
     return (
       routeName.includes(searchLower) ||
       passengerNames.includes(searchLower) ||
+      email.includes(searchLower) ||
+      phone.includes(searchLower) ||
       formatDate(reservation.trip.departureDate).toLowerCase().includes(searchLower)
     );
   });
@@ -131,6 +136,11 @@ export function ReservationList() {
     },
   });
   
+  // Estados adicionales para el formulario de edición
+  const [email, setEmail] = useState<string>("");
+  const [phone, setPhone] = useState<string>("");
+  const [status, setStatus] = useState<string>("confirmed");
+
   // Edit reservation mutation
   const editReservationMutation = useMutation({
     mutationFn: async (data: { id: number, updates: Partial<Reservation> }) => {
@@ -146,12 +156,13 @@ export function ReservationList() {
     },
     onSuccess: () => {
       toast({
-        title: "Reservation updated",
-        description: "The reservation has been successfully updated.",
+        title: "Reservación actualizada",
+        description: "La reservación ha sido actualizada exitosamente.",
       });
       
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
       
       // Close edit modal
       setIsEditModalOpen(false);
@@ -159,7 +170,7 @@ export function ReservationList() {
     },
     onError: (error) => {
       toast({
-        title: "Error updating reservation",
+        title: "Error al actualizar la reservación",
         description: error.message,
         variant: "destructive",
       });
@@ -169,8 +180,12 @@ export function ReservationList() {
   // Edit handlers
   const openEditModal = (reservation: ReservationWithDetails) => {
     setEditingReservation(reservation);
+    // Inicializar todos los campos del formulario con los valores actuales
     setPaymentMethod(reservation.paymentMethod || "cash");
     setNotes(reservation.notes || "");
+    setEmail(reservation.email || "");
+    setPhone(reservation.phone || "");
+    setStatus(reservation.status || "confirmed");
     setIsEditModalOpen(true);
   };
   
@@ -186,7 +201,10 @@ export function ReservationList() {
       id: editingReservation.id,
       updates: {
         paymentMethod,
-        notes
+        notes,
+        email,
+        phone,
+        status
       }
     });
   };
@@ -453,69 +471,140 @@ export function ReservationList() {
       
       {/* Edit Reservation Dialog */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Edit Reservation</DialogTitle>
+            <DialogTitle>Editar Reservación</DialogTitle>
             <DialogDescription>
-              Make changes to the reservation details below.
+              Actualiza los detalles de esta reservación.
             </DialogDescription>
           </DialogHeader>
           
           {editingReservation && (
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-1 gap-2">
-                <Label htmlFor="reservation-id">Reservation ID</Label>
-                <div id="reservation-id" className="text-sm text-gray-500">#{generateReservationId()}</div>
+                <Label htmlFor="reservation-id" className="text-gray-500 text-xs">CÓDIGO DE RESERVACIÓN</Label>
+                <div id="reservation-id" className="text-sm font-medium">#{generateReservationId()}</div>
               </div>
               
-              <div className="grid grid-cols-1 gap-2">
-                <Label htmlFor="passenger-name">Passenger</Label>
-                <div id="passenger-name" className="text-sm text-gray-500">
-                  {editingReservation.passengers[0]?.firstName} {editingReservation.passengers[0]?.lastName}
-                  {editingReservation.passengers.length > 1 && ` +${editingReservation.passengers.length - 1}`}
+              {/* Información de contacto */}
+              <div className="space-y-3 mt-2">
+                <h3 className="text-sm font-medium border-b pb-1">Información de contacto</h3>
+                
+                <div className="grid grid-cols-1 gap-2">
+                  <Label htmlFor="passenger-name" className="text-gray-500 text-xs">PASAJEROS</Label>
+                  <div id="passenger-name" className="text-sm">
+                    {editingReservation.passengers[0]?.firstName} {editingReservation.passengers[0]?.lastName}
+                    {editingReservation.passengers.length > 1 && ` +${editingReservation.passengers.length - 1}`}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-2">
+                  <Label htmlFor="email" className="text-gray-500 text-xs">EMAIL</Label>
+                  <div className="relative">
+                    <MailIcon className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-8"
+                      placeholder="ejemplo@correo.com"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-2">
+                  <Label htmlFor="phone" className="text-gray-500 text-xs">TELÉFONO</Label>
+                  <div className="relative">
+                    <PhoneIcon className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="phone"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="pl-8"
+                      placeholder="(999) 123-4567"
+                    />
+                  </div>
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 gap-2">
-                <Label htmlFor="route-info">Route</Label>
-                <div id="route-info" className="text-sm text-gray-500">
-                  {editingReservation.trip.route.name}
-                </div>
-                <div className="text-sm text-gray-500">
-                  {editingReservation.trip.segmentOrigin || editingReservation.trip.route.origin} → {editingReservation.trip.segmentDestination || editingReservation.trip.route.destination}
+              {/* Información del viaje */}
+              <div className="space-y-3 mt-2">
+                <h3 className="text-sm font-medium border-b pb-1">Información del viaje</h3>
+                
+                <div className="grid grid-cols-1 gap-2">
+                  <Label htmlFor="route-info" className="text-gray-500 text-xs">RUTA</Label>
+                  <div id="route-info" className="text-sm">
+                    {editingReservation.trip.route.name}
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-gray-500">Origen:</span> {editingReservation.trip.segmentOrigin || editingReservation.trip.route.origin}
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-gray-500">Destino:</span> {editingReservation.trip.segmentDestination || editingReservation.trip.route.destination}
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-gray-500">Fecha:</span> {formatDate(editingReservation.trip.departureDate)}
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-gray-500">Hora de salida:</span> {editingReservation.trip.departureTime}
+                  </div>
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 gap-2">
-                <Label htmlFor="payment-method">Payment Method</Label>
-                <Select
-                  value={paymentMethod}
-                  onValueChange={setPaymentMethod}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select payment method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="transfer">Bank Transfer</SelectItem>
-                  </SelectContent>
-                </Select>
+              {/* Información de pago */}
+              <div className="space-y-3 mt-2">
+                <h3 className="text-sm font-medium border-b pb-1">Información de pago</h3>
+                
+                <div className="grid grid-cols-1 gap-2">
+                  <Label htmlFor="payment-method" className="text-gray-500 text-xs">MÉTODO DE PAGO</Label>
+                  <Select
+                    value={paymentMethod}
+                    onValueChange={setPaymentMethod}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar método de pago" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Efectivo</SelectItem>
+                      <SelectItem value="transfer">Transferencia bancaria</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-2">
+                  <Label htmlFor="status" className="text-gray-500 text-xs">ESTADO</Label>
+                  <Select
+                    value={status}
+                    onValueChange={setStatus}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="confirmed">Confirmado</SelectItem>
+                      <SelectItem value="pending">Pendiente</SelectItem>
+                      <SelectItem value="cancelled">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               
-              <div className="grid grid-cols-1 gap-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Input
+              {/* Notas adicionales */}
+              <div className="grid grid-cols-1 gap-2 mt-2">
+                <Label htmlFor="notes" className="text-gray-500 text-xs">NOTAS ADICIONALES</Label>
+                <Textarea
                   id="notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Additional notes"
+                  placeholder="Instrucciones especiales o detalles adicionales"
+                  className="min-h-[80px]"
                 />
               </div>
             </div>
           )}
           
           <DialogFooter>
-            <Button variant="outline" onClick={closeEditModal}>Cancel</Button>
+            <Button variant="outline" onClick={closeEditModal}>Cancelar</Button>
             <Button 
               onClick={handleSaveEdit}
               disabled={editReservationMutation.isPending}
@@ -523,9 +612,9 @@ export function ReservationList() {
               {editReservationMutation.isPending ? (
                 <>
                   <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  Guardando...
                 </>
-              ) : "Save Changes"}
+              ) : "Guardar cambios"}
             </Button>
           </DialogFooter>
         </DialogContent>

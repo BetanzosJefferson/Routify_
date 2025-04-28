@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { ClipboardListIcon, UserIcon, DollarSignIcon, PackageIcon, ChevronLeftIcon, ChevronRightIcon, CalendarIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -10,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { format, addDays, subDays, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { Trip, TripWithRouteInfo, Reservation, Passenger } from "@shared/schema";
+import { useTrips } from "@/hooks/use-trips";
+import { useReservations } from "@/hooks/use-reservations";
 
 type TripSummaryProps = {
   className?: string;
