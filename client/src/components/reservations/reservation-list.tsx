@@ -367,7 +367,11 @@ export function ReservationList() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredReservations.map((reservation) => (
-                  <tr key={reservation.id}>
+                  <tr 
+                    key={reservation.id}
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => setDetailModalOpen(reservation.id)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       #{generateReservationId(reservation.id)}
                     </td>
@@ -437,18 +441,24 @@ export function ReservationList() {
                       </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                         <Button 
                           variant="link" 
                           className="text-blue-600 hover:text-blue-800 p-0"
-                          onClick={() => openEditModal(reservation)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditModal(reservation);
+                          }}
                         >
                           Edit
                         </Button>
                         <Button 
                           variant="link" 
                           className="text-red-600 hover:text-red-800 p-0"
-                          onClick={() => openDeleteConfirm(reservation.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDeleteConfirm(reservation.id);
+                          }}
                         >
                           Cancel
                         </Button>
@@ -479,7 +489,11 @@ export function ReservationList() {
           ) : filteredReservations && filteredReservations.length > 0 ? (
             <div className="divide-y divide-gray-200">
               {filteredReservations.map((reservation) => (
-                <div key={reservation.id} className="p-4">
+                <div 
+                  key={reservation.id} 
+                  className="p-4 cursor-pointer hover:bg-gray-50"
+                  onClick={() => setDetailModalOpen(reservation.id)}
+                >
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <div className="text-sm font-medium text-gray-900">
@@ -495,12 +509,15 @@ export function ReservationList() {
                       </Badge>
                     </div>
                     
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                       <Button 
                         size="sm"
                         variant="link" 
                         className="text-blue-600 hover:text-blue-800 p-0"
-                        onClick={() => openEditModal(reservation)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditModal(reservation);
+                        }}
                       >
                         Edit
                       </Button>
@@ -508,7 +525,10 @@ export function ReservationList() {
                         size="sm"
                         variant="link" 
                         className="text-red-600 hover:text-red-800 p-0"
-                        onClick={() => openDeleteConfirm(reservation.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDeleteConfirm(reservation.id);
+                        }}
                       >
                         Cancel
                       </Button>
