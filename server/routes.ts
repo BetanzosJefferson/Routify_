@@ -1588,6 +1588,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put(apiRouter("/reservations/:id"), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
+      
+      // Verificar autenticación del usuario
+      const { user } = req as any;
+      
+      if (!user) {
+        console.log(`[PUT /reservations/${id}] Acceso denegado: Usuario no autenticado`);
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      console.log(`[PUT /reservations/${id}] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
+      
+      // Verificar que el usuario tenga permiso para esta reservación (misma compañía)
+      const reservation = await storage.getReservationWithDetails(id);
+      
+      if (!reservation) {
+        console.log(`[PUT /reservations/${id}] Reservación no encontrada`);
+        return res.status(404).json({ error: "Reservación no encontrada" });
+      }
+      
+      // Control de acceso por compañía excepto para superAdmin y admin
+      if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+        const userCompany = user.companyId || user.company;
+        
+        if (!userCompany) {
+          console.log(`[PUT /reservations/${id}] Usuario sin compañía asignada`);
+          return res.status(403).json({ error: "Acceso denegado" });
+        }
+        
+        if (reservation.companyId !== userCompany) {
+          console.log(`[PUT /reservations/${id}] ACCESO DENEGADO: Usuario de compañía ${userCompany} intentando modificar reservación de compañía ${reservation.companyId}`);
+          return res.status(403).json({ error: "Acceso denegado" });
+        }
+      }
+      
+      // Validar los datos de la reservación
       const validationResult = insertReservationSchema.partial().safeParse(req.body);
       
       if (!validationResult.success) {
@@ -1597,15 +1632,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Si está verificando, guardar el ID del usuario que verifica
       const reservationData = validationResult.data;
+      if (reservationData.checkStatus === CheckStatus.CHECKED) {
+        reservationData.checkedBy = user.id;
+        // Asegurarse de que se guarde la fecha si no viene en la petición
+        if (!reservationData.checkedAt) {
+          reservationData.checkedAt = new Date();
+        }
+      }
+      
       const updatedReservation = await storage.updateReservation(id, reservationData);
       
       if (!updatedReservation) {
         return res.status(404).json({ error: "Reservation not found" });
       }
       
+      console.log(`[PUT /reservations/${id}] Actualización exitosa`);
       res.json(updatedReservation);
     } catch (error) {
+      console.error(`[PUT /reservations/:id] Error: ${error}`);
       res.status(500).json({ error: "Failed to update reservation" });
     }
   });

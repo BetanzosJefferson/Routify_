@@ -9,14 +9,33 @@ import { Badge } from "@/components/ui/badge";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
 import { CheckIcon, QrCodeIcon, UserIcon, CalendarIcon, MapPinIcon, TruckIcon, UsersIcon, CreditCardIcon } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function ReservationViewPage() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [reservation, setReservation] = useState<ReservationWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  
+  // Verificar si el usuario tiene permisos para gestionar esta reservación
+  const canManageReservation = () => {
+    if (!user || !reservation) return false;
+    
+    // Verificar que el usuario pertenezca a la misma compañía que la reservación
+    const userCompany = user.companyId || user.company;
+    const reservationCompany = reservation.companyId;
+    
+    // superAdmin o admin pueden gestionar cualquier reservación
+    if (user.role === 'superAdmin' || user.role === 'admin') return true;
+    
+    // Para otros roles, solo si pertenecen a la misma compañía
+    return userCompany === reservationCompany;
+  };
   
   // Mutación para marcar como verificado
   const markAsCheckedMutation = useMutation({
@@ -41,10 +60,8 @@ export default function ReservationViewPage() {
     },
     onSuccess: (data) => {
       setReservation((prev) => prev ? { ...prev, ...data } : null);
-      toast({
-        title: "Boleto verificado",
-        description: "El boleto ha sido marcado como verificado exitosamente.",
-      });
+      // Mostrar el diálogo de éxito en lugar de un toast
+      setShowSuccessDialog(true);
       queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
     },
     onError: (error: Error) => {
@@ -91,6 +108,25 @@ export default function ReservationViewPage() {
       });
     },
   });
+  
+  // Efecto para verificación automática cuando se carga la reservación
+  useEffect(() => {
+    // Solo verificar automáticamente si:
+    // 1. La reservación existe
+    // 2. No está ya verificada
+    // 3. El usuario tiene permisos (autenticado y de la misma compañía)
+    // 4. Ya se finalizó la carga de autenticación
+    if (
+      reservation && 
+      reservation.checkStatus !== CheckStatus.CHECKED && 
+      canManageReservation() && 
+      !isAuthLoading && 
+      user
+    ) {
+      console.log("Verificando automáticamente al escanear");
+      markAsCheckedMutation.mutate();
+    }
+  }, [reservation, user, isAuthLoading]);
   
   // Cargar los datos de la reservación
   useEffect(() => {
@@ -310,35 +346,64 @@ export default function ReservationViewPage() {
           </CardContent>
         </Card>
         
-        <div className="flex space-x-3">
-          {reservation.checkStatus !== CheckStatus.CHECKED && (
-            <Button 
-              className="flex-1"
-              onClick={() => markAsCheckedMutation.mutate()}
-              disabled={markAsCheckedMutation.isPending}
-            >
-              <CheckIcon className="w-4 h-4 mr-2" />
-              {markAsCheckedMutation.isPending ? "Verificando..." : "Verificar Boleto"}
-            </Button>
-          )}
-          
-          {reservation.chargeStatus !== ChargeStatus.CHARGED && (
-            <Button 
-              variant="outline"
-              className="flex-1"
-              onClick={() => markAsChargedMutation.mutate()}
-              disabled={markAsChargedMutation.isPending}
-            >
-              <CreditCardIcon className="w-4 h-4 mr-2" />
-              {markAsChargedMutation.isPending ? "Procesando..." : "Marcar como Cobrado"}
-            </Button>
-          )}
-        </div>
+        {/* Solo mostrar los botones si el usuario tiene permisos */}
+        {canManageReservation() && (
+          <div className="flex space-x-3">
+            {reservation.checkStatus !== CheckStatus.CHECKED && (
+              <Button 
+                className="flex-1"
+                onClick={() => markAsCheckedMutation.mutate()}
+                disabled={markAsCheckedMutation.isPending}
+              >
+                <CheckIcon className="w-4 h-4 mr-2" />
+                {markAsCheckedMutation.isPending ? "Verificando..." : "Verificar Boleto"}
+              </Button>
+            )}
+            
+            {reservation.chargeStatus !== ChargeStatus.CHARGED && (
+              <Button 
+                variant="outline"
+                className="flex-1"
+                onClick={() => markAsChargedMutation.mutate()}
+                disabled={markAsChargedMutation.isPending}
+              >
+                <CreditCardIcon className="w-4 h-4 mr-2" />
+                {markAsChargedMutation.isPending ? "Procesando..." : "Marcar como Cobrado"}
+              </Button>
+            )}
+          </div>
+        )}
         
         <div className="mt-6 text-center text-sm text-gray-500">
           <p>Código de Reservación: #{generateReservationId()}</p>
         </div>
       </div>
+      
+      {/* Diálogo de confirmación para verificación exitosa */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckIcon className="h-6 w-6 text-green-600" />
+              ¡Boleto verificado correctamente!
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-6 flex flex-col items-center text-center">
+            <div className="bg-green-100 text-green-800 rounded-full p-4 mb-4">
+              <CheckIcon className="h-10 w-10" />
+            </div>
+            <p className="text-lg font-medium mb-2">Verificación exitosa</p>
+            <p className="text-gray-500">
+              El boleto ha sido marcado como verificado para el pasajero {reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}
+            </p>
+          </div>
+          <div className="flex justify-center">
+            <Button onClick={() => setShowSuccessDialog(false)}>
+              Entendido
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
