@@ -43,6 +43,7 @@ export function ReservationDetailsModal({ reservation, isOpen, onClose }: Reserv
     try {
       // Creamos un objeto con la información relevante para el QR
       const qrData = {
+        id: reservation.id,
         reservationId: generateReservationId(reservation.id),
         passengerName: `${reservation.passengers[0]?.firstName} ${reservation.passengers[0]?.lastName}`,
         route: reservation.trip.route.name,
@@ -53,10 +54,18 @@ export function ReservationDetailsModal({ reservation, isOpen, onClose }: Reserv
         totalAmount: reservation.totalAmount,
         paymentStatus: reservation.paymentStatus,
         advanceAmount: reservation.advanceAmount || 0,
-        remainingAmount: reservation.advanceAmount ? (reservation.totalAmount - reservation.advanceAmount) : reservation.totalAmount
+        remainingAmount: reservation.advanceAmount ? (reservation.totalAmount - reservation.advanceAmount) : reservation.totalAmount,
+        paymentMethod: reservation.paymentMethod,
+        advancePaymentMethod: reservation.advancePaymentMethod,
+        passengers: reservation.passengers.length
       };
       
-      const qrCodeData = await QRCode.toDataURL(JSON.stringify(qrData));
+      // Codificamos los datos para incluirlos como parámetro en la URL
+      const encodedData = encodeURIComponent(JSON.stringify(qrData));
+      const reservationUrl = `${window.location.origin}/reservation-view?data=${encodedData}`;
+      
+      // Generamos el código QR con la URL completa
+      const qrCodeData = await QRCode.toDataURL(reservationUrl);
       setQrCodeUrl(qrCodeData);
     } catch (error) {
       console.error("Error al generar QR:", error);
@@ -279,9 +288,38 @@ export function ReservationDetailsModal({ reservation, isOpen, onClose }: Reserv
                       alt="Código QR de la reservación" 
                       className="w-48 h-48 object-contain mb-2"
                     />
-                    <p className="text-xs text-gray-500 text-center">
-                      Este código QR contiene los detalles de la reservación.
-                    </p>
+                    <div className="text-xs text-gray-500 text-center mb-3 space-y-1">
+                      <p>Este código QR contiene los detalles de la reservación.</p>
+                      <p>Escanea el código para ver o compartir el boleto completo.</p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        // Abrir la URL del QR en una nueva pestaña
+                        const encodedData = encodeURIComponent(JSON.stringify({
+                          id: reservation.id,
+                          reservationId: generateReservationId(reservation.id),
+                          passengerName: `${reservation.passengers[0]?.firstName} ${reservation.passengers[0]?.lastName}`,
+                          route: reservation.trip.route.name,
+                          origin: reservation.trip.segmentOrigin || reservation.trip.route.origin,
+                          destination: reservation.trip.segmentDestination || reservation.trip.route.destination,
+                          date: formatDate(reservation.trip.departureDate),
+                          time: reservation.trip.departureTime,
+                          totalAmount: reservation.totalAmount,
+                          paymentStatus: reservation.paymentStatus,
+                          advanceAmount: reservation.advanceAmount || 0,
+                          remainingAmount: reservation.advanceAmount ? (reservation.totalAmount - reservation.advanceAmount) : reservation.totalAmount,
+                          paymentMethod: reservation.paymentMethod,
+                          advancePaymentMethod: reservation.advancePaymentMethod,
+                          passengers: reservation.passengers.length
+                        }));
+                        const reservationUrl = `${window.location.origin}/reservation-view?data=${encodedData}`;
+                        window.open(reservationUrl, '_blank');
+                      }}
+                    >
+                      Ver boleto completo
+                    </Button>
                   </>
                 ) : (
                   <div className="w-48 h-48 flex items-center justify-center">
