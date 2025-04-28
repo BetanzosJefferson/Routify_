@@ -1634,7 +1634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Si está verificando, guardar el ID del usuario que verifica
       const reservationData = validationResult.data;
-      if (reservationData.checkStatus === CheckStatus.CHECKED) {
+      if (reservationData.checkStatus === "checked") {
         reservationData.checkedBy = user.id;
         // Asegurarse de que se guarde la fecha si no viene en la petición
         if (!reservationData.checkedAt) {
