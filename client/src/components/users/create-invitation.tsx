@@ -22,6 +22,60 @@ const invitationFormSchema = z.object({
 
 type InvitationFormValues = z.infer<typeof invitationFormSchema>;
 
+// Función para obtener los roles permitidos según el rol del usuario autenticado
+function getFilteredRoles(userRole?: string): string[] {
+  // Si el usuario es dueño, solo puede invitar a ciertos roles específicos
+  if (userRole === UserRole.OWNER) {
+    return [
+      UserRole.OWNER,
+      UserRole.CALL_CENTER,
+      UserRole.CHECKER,
+      UserRole.DRIVER
+    ];
+  }
+  
+  // Si el usuario es admin, puede invitar a todos excepto superadmin
+  if (userRole === UserRole.ADMIN) {
+    return [
+      UserRole.ADMIN,
+      UserRole.OWNER, 
+      UserRole.CALL_CENTER,
+      UserRole.CHECKER,
+      UserRole.DRIVER,
+      UserRole.TICKET_OFFICE,
+      UserRole.DEVELOPER
+    ];
+  }
+  
+  // Si es superadmin, puede invitar a todos los roles
+  return [
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.OWNER,
+    UserRole.CALL_CENTER,
+    UserRole.CHECKER,
+    UserRole.DRIVER,
+    UserRole.TICKET_OFFICE,
+    UserRole.DEVELOPER
+  ];
+}
+
+// Función para obtener el rol por defecto según el rol del usuario
+function getDefaultRole(userRole?: string): string {
+  // Para dueño, el rol por defecto sería call center
+  if (userRole === UserRole.OWNER) {
+    return UserRole.CALL_CENTER;
+  }
+  
+  // Para admin, el rol por defecto sería admin
+  if (userRole === UserRole.ADMIN) {
+    return UserRole.ADMIN;
+  }
+  
+  // Para otros roles (superadmin), el rol por defecto es admin
+  return UserRole.ADMIN;
+}
+
 interface CreateInvitationFormProps {
   onComplete?: () => void;
 }
@@ -179,96 +233,133 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
                       defaultValue={field.value}
                       className="grid grid-cols-2 gap-4"
                     >
-                      <div>
-                        <RadioGroupItem value={UserRole.ADMIN} id="admin" className="peer sr-only" />
-                        <Label
-                          htmlFor="admin"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                        >
-                          <span className="font-semibold">Administrador</span>
-                          <span className="text-xs text-muted-foreground">
-                            Acceso completo al sistema
-                          </span>
-                        </Label>
-                      </div>
+                      {/* SuperAdmin */}
+                      {allowedRoles.includes(UserRole.SUPER_ADMIN) && (
+                        <div>
+                          <RadioGroupItem value={UserRole.SUPER_ADMIN} id="super-admin" className="peer sr-only" />
+                          <Label
+                            htmlFor="super-admin"
+                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                          >
+                            <span className="font-semibold">Super Administrador</span>
+                            <span className="text-xs text-muted-foreground">
+                              Acceso completo al sistema
+                            </span>
+                          </Label>
+                        </div>
+                      )}
+                      
+                      {/* Admin */}
+                      {allowedRoles.includes(UserRole.ADMIN) && (
+                        <div>
+                          <RadioGroupItem value={UserRole.ADMIN} id="admin" className="peer sr-only" />
+                          <Label
+                            htmlFor="admin"
+                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                          >
+                            <span className="font-semibold">Administrador</span>
+                            <span className="text-xs text-muted-foreground">
+                              Acceso completo al sistema
+                            </span>
+                          </Label>
+                        </div>
+                      )}
 
-                      <div>
-                        <RadioGroupItem value={UserRole.OWNER} id="owner" className="peer sr-only" />
-                        <Label
-                          htmlFor="owner"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                        >
-                          <span className="font-semibold">Dueño</span>
-                          <span className="text-xs text-muted-foreground">
-                            Propietario de la empresa de transporte
-                          </span>
-                        </Label>
-                      </div>
+                      {/* Dueño */}
+                      {allowedRoles.includes(UserRole.OWNER) && (
+                        <div>
+                          <RadioGroupItem value={UserRole.OWNER} id="owner" className="peer sr-only" />
+                          <Label
+                            htmlFor="owner"
+                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                          >
+                            <span className="font-semibold">Dueño</span>
+                            <span className="text-xs text-muted-foreground">
+                              Propietario de la empresa de transporte
+                            </span>
+                          </Label>
+                        </div>
+                      )}
 
-                      <div>
-                        <RadioGroupItem value={UserRole.CALL_CENTER} id="call-center" className="peer sr-only" />
-                        <Label
-                          htmlFor="call-center"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                        >
-                          <span className="font-semibold">Call Center</span>
-                          <span className="text-xs text-muted-foreground">
-                            Crear reservaciones y gestionar pasajeros
-                          </span>
-                        </Label>
-                      </div>
+                      {/* Call Center */}
+                      {allowedRoles.includes(UserRole.CALL_CENTER) && (
+                        <div>
+                          <RadioGroupItem value={UserRole.CALL_CENTER} id="call-center" className="peer sr-only" />
+                          <Label
+                            htmlFor="call-center"
+                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                          >
+                            <span className="font-semibold">Call Center</span>
+                            <span className="text-xs text-muted-foreground">
+                              Crear reservaciones y gestionar pasajeros
+                            </span>
+                          </Label>
+                        </div>
+                      )}
 
-                      <div>
-                        <RadioGroupItem value={UserRole.CHECKER} id="checker" className="peer sr-only" />
-                        <Label
-                          htmlFor="checker"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                        >
-                          <span className="font-semibold">Checador</span>
-                          <span className="text-xs text-muted-foreground">
-                            Verificar y confirmar pasajeros
-                          </span>
-                        </Label>
-                      </div>
+                      {/* Checador */}
+                      {allowedRoles.includes(UserRole.CHECKER) && (
+                        <div>
+                          <RadioGroupItem value={UserRole.CHECKER} id="checker" className="peer sr-only" />
+                          <Label
+                            htmlFor="checker"
+                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                          >
+                            <span className="font-semibold">Checador</span>
+                            <span className="text-xs text-muted-foreground">
+                              Verificar y confirmar pasajeros
+                            </span>
+                          </Label>
+                        </div>
+                      )}
 
-                      <div>
-                        <RadioGroupItem value={UserRole.DRIVER} id="driver" className="peer sr-only" />
-                        <Label
-                          htmlFor="driver"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                        >
-                          <span className="font-semibold">Chófer</span>
-                          <span className="text-xs text-muted-foreground">
-                            Ver viajes asignados
-                          </span>
-                        </Label>
-                      </div>
+                      {/* Chofer */}
+                      {allowedRoles.includes(UserRole.DRIVER) && (
+                        <div>
+                          <RadioGroupItem value={UserRole.DRIVER} id="driver" className="peer sr-only" />
+                          <Label
+                            htmlFor="driver"
+                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                          >
+                            <span className="font-semibold">Chófer</span>
+                            <span className="text-xs text-muted-foreground">
+                              Ver viajes asignados
+                            </span>
+                          </Label>
+                        </div>
+                      )}
 
-                      <div>
-                        <RadioGroupItem value={UserRole.TICKET_OFFICE} id="ticket-office" className="peer sr-only" />
-                        <Label
-                          htmlFor="ticket-office"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                        >
-                          <span className="font-semibold">Taquilla</span>
-                          <span className="text-xs text-muted-foreground">
-                            Vender boletos y gestionar reservas
-                          </span>
-                        </Label>
-                      </div>
+                      {/* Taquilla */}
+                      {allowedRoles.includes(UserRole.TICKET_OFFICE) && (
+                        <div>
+                          <RadioGroupItem value={UserRole.TICKET_OFFICE} id="ticket-office" className="peer sr-only" />
+                          <Label
+                            htmlFor="ticket-office"
+                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                          >
+                            <span className="font-semibold">Taquilla</span>
+                            <span className="text-xs text-muted-foreground">
+                              Vender boletos y gestionar reservas
+                            </span>
+                          </Label>
+                        </div>
+                      )}
 
-                      <div>
-                        <RadioGroupItem value={UserRole.DEVELOPER} id="developer" className="peer sr-only" />
-                        <Label
-                          htmlFor="developer"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                        >
-                          <span className="font-semibold">Desarrollador</span>
-                          <span className="text-xs text-muted-foreground">
-                            Acceso técnico al sistema
-                          </span>
-                        </Label>
-                      </div>
+                      {/* Desarrollador */}
+                      {allowedRoles.includes(UserRole.DEVELOPER) && (
+                        <div>
+                          <RadioGroupItem value={UserRole.DEVELOPER} id="developer" className="peer sr-only" />
+                          <Label
+                            htmlFor="developer"
+                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                          >
+                            <span className="font-semibold">Desarrollador</span>
+                            <span className="text-xs text-muted-foreground">
+                              Acceso técnico al sistema
+                            </span>
+                          </Label>
+                        </div>
+                      )}
                     </RadioGroup>
                   </FormControl>
                   <FormMessage />
