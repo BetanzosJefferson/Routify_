@@ -19,7 +19,9 @@ import {
   Coupon,
   InsertCoupon,
   Company,
-  InsertCompany
+  InsertCompany,
+  TransferRequest,
+  InsertTransferRequest
 } from "@shared/schema";
 
 export interface IStorage {

@@ -2412,6 +2412,214 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para transferencia por lotes (múltiples reservaciones)
+  app.post("/api/passenger-transfer/batch", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as Express.User;
+      const { reservationIds, targetCompanyId, transferReason, sourceCompanyId, status } = req.body;
+
+      if (!Array.isArray(reservationIds) || reservationIds.length === 0) {
+        return res.status(400).json({ error: "Se requieren IDs de reservaciones válidos" });
+      }
+
+      if (!targetCompanyId) {
+        return res.status(400).json({ error: "Se requiere una empresa destino" });
+      }
+
+      // Verificar que la empresa destino exista
+      const targetCompany = await storage.getCompany(targetCompanyId);
+      if (!targetCompany) {
+        return res.status(404).json({ error: "Empresa destino no encontrada" });
+      }
+
+      // Verificar que el usuario tenga acceso a las reservaciones (misma compañía)
+      const userCompanyId = user.companyId || user.company;
+      
+      // Comprobar que todas las reservaciones pertenecen a la empresa del usuario
+      const reservations = await Promise.all(
+        reservationIds.map(id => storage.getReservation(id))
+      );
+      
+      const invalidReservations = reservations.filter(
+        (r, i) => !r || (r.companyId !== userCompanyId && 
+                          user.role !== UserRole.SUPER_ADMIN && 
+                          user.role !== UserRole.ADMIN &&
+                          user.role !== UserRole.DEVELOPER)
+      );
+      
+      if (invalidReservations.length > 0) {
+        return res.status(403).json({ 
+          error: "No tiene permiso para transferir alguna(s) de las reservaciones",
+          invalidCount: invalidReservations.length
+        });
+      }
+
+      // Si todo está bien, crear una solicitud de transferencia
+      const transferRequest = await storage.createTransferRequest({
+        reservationIds,
+        sourceCompanyId: userCompanyId as string,
+        targetCompanyId,
+        transferReason,
+        status: status || "pendiente",
+        createdBy: user.id
+      });
+      
+      // Notificar a los usuarios de la empresa destino con roles apropiados
+      // (Dueño, Administrador, Call Center)
+      const approverRoles = ["dueño", "administrador", "call center"];
+      const approvers = await storage.getUsersByCompanyAndRoles(targetCompanyId, approverRoles);
+      
+      if (approvers && approvers.length > 0) {
+        // Aquí podríamos enviar notificaciones por correo, SMS, etc.
+        console.log(`Notificando a ${approvers.length} usuarios para aprobar transferencia ${transferRequest.id}`);
+      }
+
+      res.json({
+        success: true,
+        message: "Solicitud de transferencia creada con éxito",
+        transferRequest
+      });
+    } catch (error) {
+      console.error("Error creating batch transfer request:", error);
+      res.status(500).json({ error: "Error al crear solicitud de transferencia" });
+    }
+  });
+
+  // Endpoint para obtener transferencias pendientes
+  app.get("/api/passenger-transfer/pending", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as Express.User;
+      const userCompanyId = user.companyId || user.company;
+      
+      let transferRequests;
+      
+      // Superadmin ve todas las transferencias
+      if (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.DEVELOPER) {
+        transferRequests = await storage.getTransferRequests();
+      } else {
+        // Otros usuarios solo ven las transferencias relacionadas con su empresa
+        transferRequests = await storage.getTransferRequestsByCompany(userCompanyId as string);
+      }
+      
+      res.json(transferRequests);
+    } catch (error) {
+      console.error("Error fetching transfer requests:", error);
+      res.status(500).json({ error: "Error al obtener solicitudes de transferencia" });
+    }
+  });
+
+  // Endpoint para aprobar una transferencia
+  app.post("/api/passenger-transfer/:id/approve", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as Express.User;
+      const userCompanyId = user.companyId || user.company;
+      const transferId = parseInt(req.params.id);
+      
+      if (isNaN(transferId)) {
+        return res.status(400).json({ error: "ID de transferencia inválido" });
+      }
+      
+      // Obtener la solicitud de transferencia
+      const transferRequest = await storage.getTransferRequest(transferId);
+      
+      if (!transferRequest) {
+        return res.status(404).json({ error: "Solicitud de transferencia no encontrada" });
+      }
+      
+      // Verificar que el usuario tenga permisos para aprobar (es de la empresa destino)
+      if (transferRequest.targetCompanyId !== userCompanyId && 
+          user.role !== UserRole.SUPER_ADMIN &&
+          user.role !== UserRole.DEVELOPER) {
+        return res.status(403).json({ error: "No tiene permiso para aprobar esta transferencia" });
+      }
+      
+      // Verificar que el usuario tenga un rol que pueda aprobar
+      const approverRoles = ["dueño", "administrador", "call center"];
+      if (!approverRoles.includes(user.role.toLowerCase()) && 
+          user.role !== UserRole.SUPER_ADMIN &&
+          user.role !== UserRole.DEVELOPER) {
+        return res.status(403).json({ error: "Su rol no le permite aprobar transferencias" });
+      }
+      
+      // Actualizar la solicitud a aprobada
+      const updatedTransfer = await storage.updateTransferRequest(transferId, {
+        status: "aprobada",
+        approvedBy: user.id,
+        approvedAt: new Date()
+      });
+      
+      // Transferir las reservaciones
+      for (const reservationId of transferRequest.reservationIds) {
+        await storage.updateReservation(reservationId, {
+          companyId: transferRequest.targetCompanyId,
+          transferDate: new Date(),
+          transferredFrom: transferRequest.sourceCompanyId,
+          transferNotes: transferRequest.transferReason || "Transferencia aprobada"
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: "Transferencia aprobada con éxito",
+        transferRequest: updatedTransfer
+      });
+    } catch (error) {
+      console.error("Error approving transfer:", error);
+      res.status(500).json({ error: "Error al aprobar la transferencia" });
+    }
+  });
+
+  // Endpoint para rechazar una transferencia
+  app.post("/api/passenger-transfer/:id/reject", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as Express.User;
+      const userCompanyId = user.companyId || user.company;
+      const transferId = parseInt(req.params.id);
+      
+      if (isNaN(transferId)) {
+        return res.status(400).json({ error: "ID de transferencia inválido" });
+      }
+      
+      // Obtener la solicitud de transferencia
+      const transferRequest = await storage.getTransferRequest(transferId);
+      
+      if (!transferRequest) {
+        return res.status(404).json({ error: "Solicitud de transferencia no encontrada" });
+      }
+      
+      // Verificar que el usuario tenga permisos para rechazar (es de la empresa destino)
+      if (transferRequest.targetCompanyId !== userCompanyId && 
+          user.role !== UserRole.SUPER_ADMIN &&
+          user.role !== UserRole.DEVELOPER) {
+        return res.status(403).json({ error: "No tiene permiso para rechazar esta transferencia" });
+      }
+      
+      // Verificar que el usuario tenga un rol que pueda rechazar
+      const approverRoles = ["dueño", "administrador", "call center"];
+      if (!approverRoles.includes(user.role.toLowerCase()) && 
+          user.role !== UserRole.SUPER_ADMIN &&
+          user.role !== UserRole.DEVELOPER) {
+        return res.status(403).json({ error: "Su rol no le permite rechazar transferencias" });
+      }
+      
+      // Actualizar la solicitud a rechazada
+      const updatedTransfer = await storage.updateTransferRequest(transferId, {
+        status: "rechazada",
+        rejectedBy: user.id,
+        rejectedAt: new Date()
+      });
+      
+      res.json({
+        success: true,
+        message: "Transferencia rechazada",
+        transferRequest: updatedTransfer
+      });
+    } catch (error) {
+      console.error("Error rejecting transfer:", error);
+      res.status(500).json({ error: "Error al rechazar la transferencia" });
+    }
+  });
+
   // COMPANY ENDPOINTS
   app.get(apiRouter("/company"), isAuthenticated, async (req: Request, res: Response) => {
     try {
