@@ -107,9 +107,19 @@ export class DatabaseStorage implements IStorage {
     // Crear un array con todos los puntos: origen, paradas y destino
     const allPoints = [route.origin, ...route.stops, route.destination];
     
-    // Generar todos los segmentos posibles (todas las combinaciones)
+    // Siempre agregar primero el segmento principal (origen a destino)
+    segments.push({
+      origin: route.origin,
+      destination: route.destination,
+      price: 0
+    });
+    
+    // Generar todos los demás segmentos posibles (todas las combinaciones)
     for (let i = 0; i < allPoints.length - 1; i++) {
       for (let j = i + 1; j < allPoints.length; j++) {
+        // Evitar duplicar el segmento principal que ya agregamos
+        if (i === 0 && j === allPoints.length - 1) continue;
+        
         // Agregar este segmento
         segments.push({
           origin: allPoints[i],
