@@ -69,6 +69,25 @@ interface TripWithReservations {
 // Tipos para el formulario
 type TransferFormValues = z.infer<typeof passengerTransferFormSchema>;
 
+// Estados de transferencia
+enum TransferStatus {
+  PENDING = "pendiente",
+  APPROVED = "aprobada",
+  REJECTED = "rechazada"
+}
+
+// Tipo para una solicitud de transferencia
+interface TransferRequest {
+  id: number;
+  reservationIds: number[];
+  sourceCompanyId: string;
+  targetCompanyId: string;
+  transferReason?: string;
+  status: TransferStatus;
+  createdAt: Date;
+  createdBy: number;
+}
+
 // Actualizar el esquema de transferencia para soportar múltiples reservaciones
 const batchTransferFormSchema = passengerTransferFormSchema.extend({
   reservationIds: z.array(z.number()),
@@ -176,9 +195,46 @@ export default function PassengerTransferPage() {
   }, [allReservations, allTrips]);
 
   // Mutación para transferir pasajeros
+  // Obtener datos del usuario actual
+  const { data: currentUser } = useQuery({
+    queryKey: ["/api/auth/user"],
+    queryFn: async () => {
+      const response = await fetch("/api/auth/user");
+      if (!response.ok) {
+        throw new Error("No se pudo obtener la información del usuario");
+      }
+      return await response.json();
+    },
+  });
+
+  // Consulta para obtener transferencias pendientes
+  const { data: pendingTransfers, isLoading: isLoadingTransfers, refetch: refetchTransfers } = useQuery({
+    queryKey: ["/api/passenger-transfer/pending"],
+    queryFn: async () => {
+      const response = await fetch("/api/passenger-transfer/pending");
+      if (!response.ok) {
+        throw new Error("Error al cargar las transferencias pendientes");
+      }
+      return await response.json() as TransferRequest[];
+    },
+  });
+
   const transferMutation = useMutation({
     mutationFn: async (data: BatchTransferFormValues) => {
-      const response = await apiRequest("POST", "/api/passenger-transfer/batch", data);
+      // Obtener la compañía de origen del usuario actual
+      const sourceCompanyId = currentUser?.companyId;
+      if (!sourceCompanyId) {
+        throw new Error("No se pudo determinar la empresa de origen");
+      }
+
+      // Añadir detalles a la solicitud de transferencia
+      const transferRequest = {
+        ...data,
+        sourceCompanyId,
+        status: TransferStatus.PENDING
+      };
+
+      const response = await apiRequest("POST", "/api/passenger-transfer/batch", transferRequest);
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Error al transferir las reservaciones");
@@ -187,13 +243,14 @@ export default function PassengerTransferPage() {
     },
     onSuccess: () => {
       toast({
-        title: "Transferencia exitosa",
-        description: `${selectedReservations.length} reservación(es) ha(n) sido transferida(s) correctamente.`,
+        title: "Solicitud de transferencia enviada",
+        description: `Se ha enviado una solicitud para transferir ${selectedReservations.length} reservación(es). La empresa destino debe aprobarla.`,
         variant: "default",
       });
       setSelectedReservations([]);
       form.reset();
       refetch();
+      refetchTransfers();
     },
     onError: (error: Error) => {
       toast({
@@ -271,9 +328,142 @@ export default function PassengerTransferPage() {
         return null;
       }).filter(Boolean) as TripWithReservations[];
 
+  // Mutación para aprobar transferencia
+  const approveTransferMutation = useMutation({
+    mutationFn: async (transferId: number) => {
+      const response = await apiRequest("POST", `/api/passenger-transfer/${transferId}/approve`, {});
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Error al aprobar la transferencia");
+      }
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Transferencia aprobada",
+        description: "La transferencia de pasajeros ha sido aprobada correctamente.",
+        variant: "default",
+      });
+      refetchTransfers();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error al aprobar",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutación para rechazar transferencia
+  const rejectTransferMutation = useMutation({
+    mutationFn: async (transferId: number) => {
+      const response = await apiRequest("POST", `/api/passenger-transfer/${transferId}/reject`, {});
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Error al rechazar la transferencia");
+      }
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Transferencia rechazada",
+        description: "La transferencia de pasajeros ha sido rechazada.",
+        variant: "default",
+      });
+      refetchTransfers();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error al rechazar",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Verificar si el usuario tiene permisos para aprobar transferencias
+  // (Dueño, Administrador, Call Center)
+  const canApproveTransfers = () => {
+    if (!currentUser) return false;
+    return ["dueño", "administrador", "call center"].includes(currentUser.role.toLowerCase());
+  };
+
+  // Obtener solo transferencias dirigidas a la empresa del usuario
+  const pendingTransfersForApproval = pendingTransfers?.filter(
+    transfer => transfer.targetCompanyId === currentUser?.companyId && 
+    transfer.status === TransferStatus.PENDING
+  ) || [];
+
   return (
     <PageLayout title="Transferencia de Pasajeros" activeTab="passenger-transfer">
       <div className="space-y-6">
+        {/* Sección de transferencias pendientes para aprobación */}
+        {canApproveTransfers() && pendingTransfersForApproval.length > 0 && (
+          <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BellIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
+                Transferencias Pendientes de Aprobación
+              </CardTitle>
+              <CardDescription>
+                Las siguientes transferencias requieren tu aprobación.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {pendingTransfersForApproval.map((transfer) => (
+                  <div key={transfer.id} className="border rounded-lg p-4 bg-white dark:bg-gray-950">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-medium">Solicitud #{transfer.id}</h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {transfer.reservationIds.length} reservación(es) para transferir
+                        </p>
+                        {transfer.transferReason && (
+                          <div className="mt-2">
+                            <h5 className="text-sm font-medium">Motivo:</h5>
+                            <p className="text-sm text-muted-foreground bg-muted/50 p-2 rounded mt-1">
+                              {transfer.transferReason}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => rejectTransferMutation.mutate(transfer.id)}
+                          disabled={rejectTransferMutation.isPending}
+                        >
+                          {rejectTransferMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                          ) : (
+                            <XIcon className="h-4 w-4 mr-1" />
+                          )}
+                          Rechazar
+                        </Button>
+                        <Button 
+                          size="sm"
+                          onClick={() => approveTransferMutation.mutate(transfer.id)}
+                          disabled={approveTransferMutation.isPending}
+                        >
+                          {approveTransferMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                          ) : (
+                            <CheckIcon className="h-4 w-4 mr-1" />
+                          )}
+                          Aprobar
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Lista de viajes y reservaciones */}
           <Card className="md:col-span-2">

@@ -451,3 +451,56 @@ export const coupons = pgTable("coupons", {
 export const insertCouponSchema = createInsertSchema(coupons).omit({ id: true, usedCount: true, createdAt: true, updatedAt: true });
 export type InsertCoupon = z.infer<typeof insertCouponSchema>;
 export type Coupon = typeof coupons.$inferSelect;
+
+// TRANSFER REQUEST SCHEMA
+export const transferRequests = pgTable("transfer_requests", {
+  id: serial("id").primaryKey(),
+  sourceCompanyId: text("source_company_id").notNull(),
+  targetCompanyId: text("target_company_id").notNull(),
+  reservationIds: jsonb("reservation_ids").$type<number[]>().notNull(),
+  transferReason: text("transfer_reason"),
+  status: text("status").notNull().default("pendiente"),
+  createdBy: integer("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  approvedBy: integer("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectedBy: integer("rejected_by").references(() => users.id),
+  rejectedAt: timestamp("rejected_at"),
+});
+
+export const insertTransferRequestSchema = createInsertSchema(transferRequests).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true, 
+  approvedBy: true, 
+  approvedAt: true, 
+  rejectedBy: true, 
+  rejectedAt: true 
+});
+export type InsertTransferRequest = z.infer<typeof insertTransferRequestSchema>;
+export type TransferRequest = typeof transferRequests.$inferSelect;
+
+// TRANSFER REQUEST RELATIONS
+export const transferRequestRelations = relations(transferRequests, ({ one }) => ({
+  sourceCompany: one(companies, {
+    fields: [transferRequests.sourceCompanyId],
+    references: [companies.companyId]
+  }),
+  targetCompany: one(companies, {
+    fields: [transferRequests.targetCompanyId],
+    references: [companies.companyId]
+  }),
+  creator: one(users, {
+    fields: [transferRequests.createdBy],
+    references: [users.id]
+  }),
+  approver: one(users, {
+    fields: [transferRequests.approvedBy],
+    references: [users.id]
+  }),
+  rejector: one(users, {
+    fields: [transferRequests.rejectedBy],
+    references: [users.id]
+  })
+}));
