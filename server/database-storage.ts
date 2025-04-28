@@ -546,31 +546,26 @@ export class DatabaseStorage implements IStorage {
     
     try {
       // Construir la consulta base para obtener reservaciones
-      const query = db
-        .select({
-          reservation: schema.reservations,
-        })
+      let query = db
+        .select()
         .from(schema.reservations)
         .where(eq(schema.reservations.tripId, tripId));
       
       // Aplicar filtro por compañía si se especifica
       if (companyId) {
-        query.where(eq(schema.reservations.companyId, companyId));
+        query = query.where(eq(schema.reservations.companyId, companyId));
         console.log(`[getReservationsForTrip] Filtrado por compañía: ${companyId}`);
       }
       
       // Ejecutar la consulta
-      const reservationResults = await query;
+      const basicReservations = await query;
       
-      if (reservationResults.length === 0) {
+      if (basicReservations.length === 0) {
         console.log(`[getReservationsForTrip] No se encontraron reservaciones para el viaje ${tripId}`);
         return [];
       }
       
-      console.log(`[getReservationsForTrip] Encontradas ${reservationResults.length} reservaciones para viaje ${tripId}`);
-      
-      // Transformamos los resultados básicos en un array de reservaciones
-      const basicReservations = reservationResults.map(result => result.reservation);
+      console.log(`[getReservationsForTrip] Encontradas ${basicReservations.length} reservaciones para viaje ${tripId}`);
       
       // Enriquecemos las reservaciones con datos adicionales
       const enrichedReservations: ReservationWithDetails[] = [];
@@ -594,14 +589,17 @@ export class DatabaseStorage implements IStorage {
         }
         
         // Agregamos la información a la lista
-        enrichedReservations.push({
+        const reservationWithDetails: ReservationWithDetails = {
           ...reservation,
           passengers,
           trip: {
             ...trip,
-            route
+            route,
+            numStops: route.stops.length,
           }
-        });
+        };
+        
+        enrichedReservations.push(reservationWithDetails);
       }
       
       console.log(`[getReservationsForTrip] Procesadas ${enrichedReservations.length} reservaciones con detalles`);
