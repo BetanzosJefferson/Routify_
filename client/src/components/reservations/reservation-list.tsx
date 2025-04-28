@@ -230,6 +230,76 @@ export function ReservationList() {
     setSearchTerm(e.target.value);
   };
   
+  // Handlers para el modal de detalles y QR
+  const openDetailModal = (reservation: ReservationWithDetails) => {
+    // Generar código QR para la reservación
+    const reservationUrl = `${window.location.origin}/reservations/${reservation.id}`;
+    QRCode.toDataURL(reservationUrl)
+      .then((url: string) => {
+        setQrCodeUrl(url);
+        setDetailModalOpen(reservation.id);
+      })
+      .catch((err: Error) => {
+        console.error("Error generando QR:", err);
+        setDetailModalOpen(reservation.id);
+      });
+  };
+  
+  const closeDetailModal = () => {
+    setDetailModalOpen(null);
+    setQrCodeUrl("");
+  };
+  
+  const goToDetailPage = (id: number) => {
+    navigate(`/reservations/${id}`);
+  };
+  
+  const handlePrintTicket = () => {
+    if (!ticketRef.current) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast({
+        title: "Error",
+        description: "No se pudo abrir la ventana de impresión. Desactive el bloqueador de ventanas emergentes.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Boleto de Viaje</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+            .ticket { max-width: 800px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; }
+            .header { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+            .title { font-size: 24px; font-weight: bold; color: #444; }
+            .subtitle { font-size: 14px; color: #666; }
+            .qr { text-align: center; margin: 20px 0; }
+            .info-row { display: flex; margin-bottom: 5px; }
+            .label { font-weight: bold; width: 140px; color: #555; }
+            .value { flex: 1; }
+            .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #999; }
+            @media print {
+              body { padding: 0; }
+              .ticket { border: none; }
+            }
+          </style>
+        </head>
+        <body>
+          ${ticketRef.current.innerHTML}
+          <script>
+            setTimeout(() => { window.print(); window.close(); }, 500);
+          </script>
+        </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+  };
+  
   return (
     <div className="py-6">
       <div className="flex items-center mb-4">
@@ -721,6 +791,216 @@ export function ReservationList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Modal de detalles y QR */}
+      {detailModalOpen !== null && reservations && (
+        <Dialog open={detailModalOpen !== null} onOpenChange={closeDetailModal}>
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Detalles de Reservación</DialogTitle>
+              <DialogDescription>
+                Información completa y código QR
+              </DialogDescription>
+            </DialogHeader>
+            
+            {(() => {
+              const reservation = reservations.find(r => r.id === detailModalOpen);
+              if (!reservation) return null;
+              
+              // Lógica para determinar si está pagado
+              const isPaid = reservation.paymentStatus === 'pagado';
+              
+              return (
+                <div ref={ticketRef}>
+                  <div className="ticket">
+                    <div className="header">
+                      <div>
+                        <div className="title">TransRoute</div>
+                        <div className="subtitle">Boleto de Viaje Oficial</div>
+                      </div>
+                      <Badge 
+                        variant={isPaid ? "outline" : "secondary"}
+                        className={isPaid
+                          ? "bg-green-100 text-green-800 border-green-200" 
+                          : "bg-amber-100 text-amber-800 border-amber-200"}
+                      >
+                        {isPaid ? 'PAGADO' : 'PENDIENTE'}
+                      </Badge>
+                    </div>
+                    
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <p className="text-lg font-bold">#{generateReservationId(reservation.id)}</p>
+                        <p className="text-sm text-gray-500">Creado: {new Date(reservation.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      {qrCodeUrl && (
+                        <div className="text-center">
+                          <img 
+                            src={qrCodeUrl} 
+                            alt="Código QR de la reservación" 
+                            className="w-24 h-24 mb-1"
+                          />
+                          <p className="text-xs text-gray-500">Escanea para verificar</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-4 mb-4">
+                      <div>
+                        <h3 className="text-sm font-medium border-b pb-1 mb-2">Información del Viaje</h3>
+                        <div className="space-y-1">
+                          <div className="info-row">
+                            <div className="label">Ruta:</div>
+                            <div className="value">{reservation.trip.route.name}</div>
+                          </div>
+                          <div className="info-row">
+                            <div className="label">Origen:</div>
+                            <div className="value">{reservation.trip.segmentOrigin || reservation.trip.route.origin}</div>
+                          </div>
+                          <div className="info-row">
+                            <div className="label">Destino:</div>
+                            <div className="value">{reservation.trip.segmentDestination || reservation.trip.route.destination}</div>
+                          </div>
+                          <div className="info-row">
+                            <div className="label">Fecha:</div>
+                            <div className="value">{formatDate(reservation.trip.departureDate)}</div>
+                          </div>
+                          <div className="info-row">
+                            <div className="label">Hora de salida:</div>
+                            <div className="value">{reservation.trip.departureTime}</div>
+                          </div>
+                          <div className="info-row">
+                            <div className="label">Hora de llegada:</div>
+                            <div className="value">{reservation.trip.arrivalTime}</div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h3 className="text-sm font-medium border-b pb-1 mb-2">Pasajeros</h3>
+                        <div className="space-y-1">
+                          {reservation.passengers.map((passenger, index) => (
+                            <div key={index} className="text-sm">
+                              {index + 1}. {passenger.firstName} {passenger.lastName}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h3 className="text-sm font-medium border-b pb-1 mb-2">Información de Contacto</h3>
+                        <div className="space-y-1">
+                          <div className="info-row">
+                            <div className="label">Email:</div>
+                            <div className="value">{reservation.email}</div>
+                          </div>
+                          <div className="info-row">
+                            <div className="label">Teléfono:</div>
+                            <div className="value">{reservation.phone}</div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h3 className="text-sm font-medium border-b pb-1 mb-2">Información de Pago</h3>
+                        <div className="bg-gray-50 p-3 rounded-md">
+                          <div className="info-row">
+                            <div className="label">Total:</div>
+                            <div className="value font-medium">{formatPrice(reservation.totalAmount)}</div>
+                          </div>
+                          
+                          {(!reservation.advanceAmount || reservation.advanceAmount <= 0) ? (
+                            <div className="info-row">
+                              <div className="label">Método de pago:</div>
+                              <div className="value">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="info-row">
+                                <div className="label">Anticipo:</div>
+                                <div className="value">{formatPrice(reservation.advanceAmount)}</div>
+                              </div>
+                              <div className="info-row">
+                                <div className="label">Método anticipo:</div>
+                                <div className="value">{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                              </div>
+                              
+                              {reservation.advanceAmount < reservation.totalAmount && (
+                                <>
+                                  <div className="info-row">
+                                    <div className="label">Resta:</div>
+                                    <div className="value font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</div>
+                                  </div>
+                                  <div className="info-row">
+                                    <div className="label">Método restante:</div>
+                                    <div className="value">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                                  </div>
+                                </>
+                              )}
+                            </>
+                          )}
+                          
+                          <div className="info-row mt-2">
+                            <div className="label">Estado:</div>
+                            <div className={`value font-medium ${isPaid ? 'text-green-600' : 'text-amber-600'}`}>
+                              {isPaid ? 'PAGADO' : 'PENDIENTE'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {(reservation.paymentMethod === 'transferencia' || 
+                        (reservation.advanceAmount > 0 && reservation.advancePaymentMethod === 'transferencia')) && (
+                        <div className="mt-4 p-3 border border-blue-200 rounded bg-blue-50 text-sm text-blue-800">
+                          <p className="font-semibold mb-1">Información Bancaria:</p>
+                          <p>Banco: BBVA</p>
+                          <p>Titular: TransRoute S.A. de C.V.</p>
+                          <p>CLABE: 0123 4567 8901 2345 67</p>
+                          <p className="mt-1">Verifica tu pago: 555-123-4567</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="footer">
+                      <p>Presente este boleto al abordar el vehículo</p>
+                      {!isPaid && (
+                        <p className="text-amber-600 font-medium mt-1">
+                          IMPORTANTE: Complete el pago antes de abordar
+                        </p>
+                      )}
+                      <p className="mt-1">TransRoute © {new Date().getFullYear()}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+            
+            <DialogFooter className="mt-4 flex flex-col sm:flex-row gap-2">
+              <Button 
+                variant="outline"
+                className="flex-1"
+                onClick={handlePrintTicket}
+              >
+                <PrinterIcon className="w-4 h-4 mr-2" />
+                Imprimir Boleto
+              </Button>
+              
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  const reservation = reservations.find(r => r.id === detailModalOpen);
+                  if (reservation) {
+                    goToDetailPage(reservation.id);
+                  }
+                }}
+              >
+                <QrCodeIcon className="w-4 h-4 mr-2" />
+                Ver Detalles Completos
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
