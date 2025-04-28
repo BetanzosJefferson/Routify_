@@ -154,7 +154,7 @@ export function PublishTripForm() {
       routeId: 0,
       startDate: format(new Date(), "yyyy-MM-dd"),
       endDate: format(new Date(), "yyyy-MM-dd"),
-      capacity: 18,
+      capacity: 0, // Cambiado a 0 para que el usuario ingrese manualmente
       price: 450,
       vehicleType: "standard",
       segmentPrices: [],
@@ -461,12 +461,16 @@ export function PublishTripForm() {
     const arrivalTime = formattedStopTimes.length > 0 ? 
       `${formattedStopTimes[formattedStopTimes.length - 1].hour}:${formattedStopTimes[formattedStopTimes.length - 1].minute} ${formattedStopTimes[formattedStopTimes.length - 1].ampm}` : "";
     
+    // Calcular el precio base a partir de los segmentos (promedio o el precio más alto)
+    // o simplemente establecerlo a 0 ya que ahora los precios se manejan por segmento
+    const calculatedPrice = 0; // Eliminamos el precio base, ahora solo usamos precios de segmentos
+    
     // Preparar datos comunes para crear o actualizar
     const tripData = {
       ...data,
       routeId: selectedRouteId,
       capacity,
-      price: data.price || 0,
+      price: calculatedPrice, // Usar precio calculado (0) en lugar del campo eliminado
       segmentPrices,
       stopTimes: formattedStopTimes,
       departureTime, // Añadido explícitamente
@@ -1023,24 +1027,13 @@ export function PublishTripForm() {
                       )}
                     />
                     
-                    {/* Precio por pasajero */}
-                    <FormField
-                      control={form.control}
-                      name="price"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Precio Base</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {/* Mensaje informativo de precios */}
+                    <div className="mt-4">
+                      <div className="text-sm text-muted-foreground">
+                        <InfoIcon className="h-4 w-4 inline mr-1" />
+                        Configure los precios de cada segmento en la tabla siguiente
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
