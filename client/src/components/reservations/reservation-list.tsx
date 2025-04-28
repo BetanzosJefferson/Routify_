@@ -203,8 +203,8 @@ export function ReservationList() {
   const openTicketModal = (reservation: ReservationWithDetails) => {
     setEditingReservation(reservation);
     
-    // Generar el código QR para esta reservación
-    const reservationUrl = `${window.location.origin}/reservations/${reservation.id}`;
+    // Generar el código QR para esta reservación (con parámetro qr=true)
+    const reservationUrl = `${window.location.origin}/reservations/${reservation.id}?qr=true`;
     QRCode.toDataURL(reservationUrl)
       .then((url: string) => {
         setQrCodeUrl(url);

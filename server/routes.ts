@@ -1442,7 +1442,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Obtener el usuario autenticado
       const { user } = req as any;
       
-      console.log(`[GET /reservations/${id}] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
+      // Modo QR: Determinar si esta petición es para verificación de ticket via QR
+      const isQrView = req.query.qr === 'true';
+      
+      console.log(`[GET /reservations/${id}] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'} (Modo QR: ${isQrView})`);
       if (user) {
         console.log(`[GET /reservations/${id}] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
       }
@@ -1451,9 +1454,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let companyId: string | null = null;
       
       // REGLAS DE ACCESO:
+      // 0. Para visualización de QR, permitir acceso sin autenticación
       // 1. superAdmin y admin pueden ver TODAS las reservaciones
       // 2. El resto de roles solo pueden ver reservaciones de SU COMPAÑÍA
-      if (user) {
+      if (isQrView) {
+        // Para modo QR, permitimos el acceso sin restringir por compañía
+        console.log(`[GET /reservations/${id}] Modo QR: Acceso sin restricción por compañía`);
+      } else if (user) {
         if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
           // Obtener la compañía del usuario
           companyId = user.companyId || user.company;
@@ -1470,13 +1477,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           console.log(`[GET /reservations/${id}] Usuario con rol ${user.role} puede ver todas las reservaciones`);
         }
-      } else {
+      } else if (!isQrView) {
+        // Solo rechazamos si NO es modo QR y no hay usuario
         console.log(`[GET /reservations/${id}] Acceso no autenticado denegado`);
         return res.status(401).json({ error: "No autenticado" });
       }
       
-      // Obtener la reservación con filtrado por compañía
-      const reservation = await storage.getReservationWithDetails(id, companyId || undefined);
+      // Obtener la reservación - en modo QR no filtramos por compañía
+      const reservation = isQrView 
+        ? await storage.getReservationWithDetails(id)
+        : await storage.getReservationWithDetails(id, companyId || undefined);
       
       if (!reservation) {
         console.log(`[GET /reservations/${id}] No encontrada o acceso denegado`);
