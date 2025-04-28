@@ -29,19 +29,17 @@ export default function TripSummary({ className }: TripSummaryProps) {
   const [totalTransferSales, setTotalTransferSales] = useState(0);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
 
-  // Fetch all trips
-  const { data: trips, isLoading: isLoadingTrips } = useQuery<TripWithRouteInfo[]>({
-    queryKey: ["/api/trips"],
-    staleTime: 5000, // Reducir a 5 segundos para actualizaciones más frecuentes
-    refetchInterval: 15000, // Recargar datos cada 15 segundos
-  });
+  // Usando nuestros nuevos hooks especializados
+  const { 
+    data: trips, 
+    isLoading: isLoadingTrips 
+  } = useTrips();
 
-  // Fetch all reservations
-  const { data: reservations, isLoading: isLoadingReservations } = useQuery<ReservationWithPassengers[]>({
-    queryKey: ["/api/reservations"],
-    staleTime: 5000, // Reducir a 5 segundos para actualizaciones más frecuentes
-    refetchInterval: 15000, // Recargar datos cada 15 segundos
-  });
+  // Usando el hook especializado para reservaciones
+  const { 
+    data: reservations, 
+    isLoading: isLoadingReservations 
+  } = useReservations();
   
   // Función helper para procesar fecha de viaje en formato consistente
   const getTripDateStr = (tripDate: any): string => {
