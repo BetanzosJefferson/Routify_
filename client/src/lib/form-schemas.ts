@@ -37,3 +37,11 @@ export const passengerTransferFormSchema = z.object({
   targetCompanyId: z.string().min(1, "La empresa destino es requerida"),
   transferReason: z.string().optional(),
 });
+
+// Esquema para el formulario de empresas colaboradoras
+export const partnerCompanyFormSchema = z.object({
+  name: z.string().min(1, "El nombre de la empresa es requerido"),
+  email: z.string().email("Correo electrónico inválido"),
+  contactName: z.string().min(1, "El nombre de contacto es requerido"),
+  contactPhone: z.string().min(10, "El teléfono debe tener al menos 10 dígitos").optional(),
+});

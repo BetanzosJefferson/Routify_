@@ -206,6 +206,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   icon={<Building2Icon className="h-5 w-5" />} 
                   active={activeTab === "company"}
                   onClick={() => {
+                    handleTabClick("company");
                     setLocation("/company");
                   }}
                 >
@@ -217,6 +218,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   icon={<PercentIcon className="h-5 w-5" />} 
                   active={activeTab === "commissions"}
                   onClick={() => {
+                    handleTabClick("commissions");
                     setLocation("/commissions");
                   }}
                 >
@@ -228,6 +230,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   icon={<TagIcon className="h-5 w-5" />} 
                   active={activeTab === "coupons"}
                   onClick={() => {
+                    handleTabClick("coupons");
                     setLocation("/coupons");
                   }}
                 >
@@ -239,6 +242,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   icon={<ArrowLeftRightIcon className="h-5 w-5" />} 
                   active={activeTab === "passenger-transfer"}
                   onClick={() => {
+                    handleTabClick("passenger-transfer");
                     setLocation("/passenger-transfer");
                   }}
                 >
