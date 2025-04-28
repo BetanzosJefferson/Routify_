@@ -184,21 +184,50 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
     },
     onSuccess: (data) => {
       // Generate QR code for the reservation
-      const reservationUrl = `${window.location.origin}/reservations/${data.id}`;
-      QRCode.toDataURL(reservationUrl)
-        .then((url: string) => {
-          setQrCodeUrl(url);
-          setSubmittedReservation(data);
-          setCurrentStep(4); // Move to ticket screen
-          
-          queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
-        })
-        .catch((err: Error) => {
-          console.error("Error generating QR code", err);
-          setSubmittedReservation(data);
-          setCurrentStep(4); // Move to ticket screen even without QR
-        });
+      try {
+        // Creamos un objeto con la información relevante para el QR
+        const qrData = {
+          id: data.id,
+          reservationId: formatReservationId(data.id),
+          passengerName: `${data.passengers[0]?.firstName} ${data.passengers[0]?.lastName}`,
+          route: trip.route.name,
+          origin: trip.segmentOrigin || trip.route.origin,
+          destination: trip.segmentDestination || trip.route.destination,
+          date: formatDate(trip.departureDate),
+          time: trip.departureTime,
+          totalAmount: data.totalAmount,
+          paymentStatus: data.paymentStatus,
+          advanceAmount: data.advanceAmount || 0,
+          remainingAmount: data.advanceAmount ? (data.totalAmount - data.advanceAmount) : data.totalAmount,
+          paymentMethod: data.paymentMethod,
+          advancePaymentMethod: data.advancePaymentMethod,
+          passengers: data.passengers.length
+        };
+        
+        // Codificamos los datos para incluirlos como parámetro en la URL
+        const encodedData = encodeURIComponent(JSON.stringify(qrData));
+        const reservationUrl = `${window.location.origin}/reservation-view?data=${encodedData}`;
+        
+        // Generamos el código QR con la URL completa
+        QRCode.toDataURL(reservationUrl)
+          .then((url: string) => {
+            setQrCodeUrl(url);
+            setSubmittedReservation(data);
+            setCurrentStep(4); // Move to ticket screen
+            
+            queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
+          })
+          .catch((err: Error) => {
+            console.error("Error generating QR code", err);
+            setSubmittedReservation(data);
+            setCurrentStep(4); // Move to ticket screen even without QR
+          });
+      } catch (error) {
+        console.error("Error preparing QR data", error);
+        setSubmittedReservation(data);
+        setCurrentStep(4); // Move to ticket screen even without QR
+      }
     },
     onError: (error: Error) => {
       toast({
