@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { PageLayout } from "@/components/layout/page-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -248,27 +249,206 @@ export default function CommissionsPage() {
   }
 
   return (
-    <div className="container py-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Gestión de Comisiones</h1>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nueva Comisión
-            </Button>
-          </DialogTrigger>
+    <PageLayout title="Gestión de Comisiones" activeTab="commissions">
+      <div className="space-y-6">
+        <div className="flex justify-end">
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Nueva Comisión
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Crear Nueva Comisión</DialogTitle>
+                <DialogDescription>
+                  Define los detalles para una nueva estructura de comisión.
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...createForm}>
+                <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
+                  <FormField
+                    control={createForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nombre de la Comisión</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Comisión Estándar" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createForm.control}
+                    name="percentage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Porcentaje</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              placeholder="10"
+                              {...field}
+                              className="pl-7"
+                            />
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
+                              <Percent className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          </div>
+                        </FormControl>
+                        <FormDescription>
+                          Valor entre 0 y 100 (sin el símbolo %).
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descripción (Opcional)</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Describe el propósito o condiciones de esta comisión"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createForm.control}
+                    name="isActive"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                          <FormLabel>Activo</FormLabel>
+                          <FormDescription>
+                            Esta comisión estará disponible para los comisionistas.
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <DialogFooter>
+                    <Button type="submit" disabled={createMutation.isPending}>
+                      {createMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creando...
+                        </>
+                      ) : (
+                        "Crear Comisión"
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Comisiones Disponibles</CardTitle>
+            <CardDescription>
+              Administra las estructuras de comisión para tus colaboradores.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : !commissions || commissions.length === 0 ? (
+              <div className="text-center py-10 border rounded-lg">
+                <p className="text-muted-foreground mb-4">No hay comisiones configuradas</p>
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar Primera Comisión
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nombre</TableHead>
+                      <TableHead>Porcentaje</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Descripción</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {commissions.map((commission) => (
+                      <TableRow key={commission.id}>
+                        <TableCell className="font-medium">{commission.name}</TableCell>
+                        <TableCell>{commission.percentage}%</TableCell>
+                        <TableCell>
+                          <Badge variant={commission.isActive ? "default" : "secondary"}>
+                            {commission.isActive ? "Activo" : "Inactivo"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate">
+                          {commission.description || "—"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(commission)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(commission)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Diálogo de edición */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Crear Nueva Comisión</DialogTitle>
+              <DialogTitle>Editar Comisión</DialogTitle>
               <DialogDescription>
-                Define los detalles para una nueva estructura de comisión.
+                Actualiza los detalles de la comisión.
               </DialogDescription>
             </DialogHeader>
-            <Form {...createForm}>
-              <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
                 <FormField
-                  control={createForm.control}
+                  control={editForm.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
@@ -282,7 +462,7 @@ export default function CommissionsPage() {
                 />
 
                 <FormField
-                  control={createForm.control}
+                  control={editForm.control}
                   name="percentage"
                   render={({ field }) => (
                     <FormItem>
@@ -308,7 +488,7 @@ export default function CommissionsPage() {
                 />
 
                 <FormField
-                  control={createForm.control}
+                  control={editForm.control}
                   name="description"
                   render={({ field }) => (
                     <FormItem>
@@ -325,7 +505,7 @@ export default function CommissionsPage() {
                 />
 
                 <FormField
-                  control={createForm.control}
+                  control={editForm.control}
                   name="isActive"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
@@ -346,14 +526,14 @@ export default function CommissionsPage() {
                 />
 
                 <DialogFooter>
-                  <Button type="submit" disabled={createMutation.isPending}>
-                    {createMutation.isPending ? (
+                  <Button type="submit" disabled={updateMutation.isPending}>
+                    {updateMutation.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creando...
+                        Actualizando...
                       </>
                     ) : (
-                      "Crear Comisión"
+                      "Guardar Cambios"
                     )}
                   </Button>
                 </DialogFooter>
@@ -361,216 +541,36 @@ export default function CommissionsPage() {
             </Form>
           </DialogContent>
         </Dialog>
+
+        {/* Diálogo de confirmación de eliminación */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta acción no se puede deshacer. Se eliminará permanentemente la comisión
+                {selectedCommission && <strong> "{selectedCommission.name}"</strong>} del sistema.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Eliminando...
+                  </>
+                ) : (
+                  "Eliminar"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Comisiones Disponibles</CardTitle>
-          <CardDescription>
-            Administra las estructuras de comisión para tus colaboradores.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-10">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : !commissions || commissions.length === 0 ? (
-            <div className="text-center py-10 border rounded-lg">
-              <p className="text-muted-foreground mb-4">No hay comisiones configuradas</p>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Agregar Primera Comisión
-              </Button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Porcentaje</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Descripción</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {commissions.map((commission) => (
-                    <TableRow key={commission.id}>
-                      <TableCell className="font-medium">{commission.name}</TableCell>
-                      <TableCell>{commission.percentage}%</TableCell>
-                      <TableCell>
-                        <Badge variant={commission.isActive ? "default" : "secondary"}>
-                          {commission.isActive ? "Activo" : "Inactivo"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {commission.description || "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(commission)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(commission)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Diálogo de edición */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Editar Comisión</DialogTitle>
-            <DialogDescription>
-              Actualiza los detalles de la comisión.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
-              <FormField
-                control={editForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nombre de la Comisión</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Comisión Estándar" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={editForm.control}
-                name="percentage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Porcentaje</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          placeholder="10"
-                          {...field}
-                          className="pl-7"
-                        />
-                        <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
-                          <Percent className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      </div>
-                    </FormControl>
-                    <FormDescription>
-                      Valor entre 0 y 100 (sin el símbolo %).
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={editForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descripción (Opcional)</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Describe el propósito o condiciones de esta comisión"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={editForm.control}
-                name="isActive"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                    <div className="space-y-0.5">
-                      <FormLabel>Activo</FormLabel>
-                      <FormDescription>
-                        Esta comisión estará disponible para los comisionistas.
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter>
-                <Button type="submit" disabled={updateMutation.isPending}>
-                  {updateMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Actualizando...
-                    </>
-                  ) : (
-                    "Guardar Cambios"
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Diálogo de confirmación de eliminación */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción eliminará permanentemente la comisión 
-              <span className="font-semibold"> {selectedCommission?.name}</span>.
-              Esta acción no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete}
-              disabled={deleteMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Eliminando...
-                </>
-              ) : (
-                "Eliminar"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+    </PageLayout>
   );
 }
