@@ -817,9 +817,12 @@ export function ReservationList() {
         <Dialog open={detailModalOpen !== null} onOpenChange={closeDetailModal}>
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Detalles de Reservación</DialogTitle>
+              <DialogTitle className="flex items-center">
+                <TicketIcon className="mr-2 h-5 w-5" />
+                Detalles de la Reservación #{detailModalOpen && generateReservationId(detailModalOpen)}
+              </DialogTitle>
               <DialogDescription>
-                Información completa y código QR
+                Información completa de la reservación
               </DialogDescription>
             </DialogHeader>
             
@@ -831,164 +834,169 @@ export function ReservationList() {
               const isPaid = reservation.paymentStatus === 'pagado';
               
               return (
-                <div ref={ticketRef}>
-                  <div className="ticket">
-                    <div className="header">
+                <div ref={ticketRef} className="mt-4">
+                  <div className="grid grid-cols-2 gap-6">
+                    {/* Columna 1: Información del pasajero */}
+                    <div className="space-y-6">
                       <div>
-                        <div className="title">TransRoute</div>
-                        <div className="subtitle">Boleto de Viaje Oficial</div>
-                      </div>
-                      <Badge 
-                        variant={isPaid ? "outline" : "secondary"}
-                        className={isPaid
-                          ? "bg-green-100 text-green-800 border-green-200" 
-                          : "bg-amber-100 text-amber-800 border-amber-200"}
-                      >
-                        {isPaid ? 'PAGADO' : 'PENDIENTE'}
-                      </Badge>
-                    </div>
-                    
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <p className="text-lg font-bold">#{generateReservationId(reservation.id)}</p>
-                        <p className="text-sm text-gray-500">Creado: {new Date(reservation.createdAt).toLocaleDateString()}</p>
-                      </div>
-                      {qrCodeUrl && (
-                        <div className="text-center">
-                          <img 
-                            src={qrCodeUrl} 
-                            alt="Código QR de la reservación" 
-                            className="w-24 h-24 mb-1"
-                          />
-                          <p className="text-xs text-gray-500">Escanea para verificar</p>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-4 mb-4">
-                      <div>
-                        <h3 className="text-sm font-medium border-b pb-1 mb-2">Información del Viaje</h3>
-                        <div className="space-y-1">
-                          <div className="info-row">
-                            <div className="label">Ruta:</div>
-                            <div className="value">{reservation.trip.route.name}</div>
+                        <h3 className="text-sm font-medium text-gray-500 uppercase mb-2">Información del pasajero</h3>
+                        <div className="space-y-3">
+                          <div>
+                            <div className="text-xs text-gray-500 uppercase">NOMBRE</div>
+                            <div className="font-medium">{reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}</div>
                           </div>
-                          <div className="info-row">
-                            <div className="label">Origen:</div>
-                            <div className="value">{reservation.trip.segmentOrigin || reservation.trip.route.origin}</div>
+                          <div>
+                            <div className="text-xs text-gray-500 uppercase">EMAIL</div>
+                            <div className="font-medium">{reservation.email}</div>
                           </div>
-                          <div className="info-row">
-                            <div className="label">Destino:</div>
-                            <div className="value">{reservation.trip.segmentDestination || reservation.trip.route.destination}</div>
+                          <div>
+                            <div className="text-xs text-gray-500 uppercase">TELÉFONO</div>
+                            <div className="font-medium">{reservation.phone}</div>
                           </div>
-                          <div className="info-row">
-                            <div className="label">Fecha:</div>
-                            <div className="value">{formatDate(reservation.trip.departureDate)}</div>
-                          </div>
-                          <div className="info-row">
-                            <div className="label">Hora de salida:</div>
-                            <div className="value">{reservation.trip.departureTime}</div>
-                          </div>
-                          <div className="info-row">
-                            <div className="label">Hora de llegada:</div>
-                            <div className="value">{reservation.trip.arrivalTime}</div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h3 className="text-sm font-medium border-b pb-1 mb-2">Pasajeros</h3>
-                        <div className="space-y-1">
-                          {reservation.passengers.map((passenger, index) => (
-                            <div key={index} className="text-sm">
-                              {index + 1}. {passenger.firstName} {passenger.lastName}
+                          <div>
+                            <div className="text-xs text-gray-500 uppercase">PASAJEROS</div>
+                            <div className="flex items-center space-x-1">
+                              <UserIcon className="h-4 w-4 text-gray-400" />
+                              <span className="font-medium">{reservation.passengers.length}</span>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h3 className="text-sm font-medium border-b pb-1 mb-2">Información de Contacto</h3>
-                        <div className="space-y-1">
-                          <div className="info-row">
-                            <div className="label">Email:</div>
-                            <div className="value">{reservation.email}</div>
-                          </div>
-                          <div className="info-row">
-                            <div className="label">Teléfono:</div>
-                            <div className="value">{reservation.phone}</div>
                           </div>
                         </div>
                       </div>
-                      
+
                       <div>
-                        <h3 className="text-sm font-medium border-b pb-1 mb-2">Información de Pago</h3>
-                        <div className="bg-gray-50 p-3 rounded-md">
-                          <div className="info-row">
-                            <div className="label">Total:</div>
-                            <div className="value font-medium">{formatPrice(reservation.totalAmount)}</div>
+                        <h3 className="text-sm font-medium text-gray-500 uppercase mb-2">Detalles del viaje</h3>
+                        <div className="space-y-3">
+                          <div>
+                            <div className="text-xs text-gray-500 uppercase">RUTA</div>
+                            <div className="font-medium">{reservation.trip.route.name}</div>
                           </div>
-                          
-                          {(!reservation.advanceAmount || reservation.advanceAmount <= 0) ? (
-                            <div className="info-row">
-                              <div className="label">Método de pago:</div>
-                              <div className="value">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                          <div>
+                            <div className="text-xs text-gray-500 uppercase">ORIGEN</div>
+                            <div className="font-medium flex items-start">
+                              <div className="mt-1 mr-1.5 h-2.5 w-2.5 rounded-full border-2 border-gray-300"></div>
+                              <span>{reservation.trip.segmentOrigin || reservation.trip.route.origin}</span>
                             </div>
-                          ) : (
-                            <>
-                              <div className="info-row">
-                                <div className="label">Anticipo:</div>
-                                <div className="value">{formatPrice(reservation.advanceAmount)}</div>
-                              </div>
-                              <div className="info-row">
-                                <div className="label">Método anticipo:</div>
-                                <div className="value">{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-                              </div>
-                              
-                              {reservation.advanceAmount < reservation.totalAmount && (
-                                <>
-                                  <div className="info-row">
-                                    <div className="label">Resta:</div>
-                                    <div className="value font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</div>
-                                  </div>
-                                  <div className="info-row">
-                                    <div className="label">Método restante:</div>
-                                    <div className="value">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-                                  </div>
-                                </>
-                              )}
-                            </>
-                          )}
-                          
-                          <div className="info-row mt-2">
-                            <div className="label">Estado:</div>
-                            <div className={`value font-medium ${isPaid ? 'text-green-600' : 'text-amber-600'}`}>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 uppercase">DESTINO</div>
+                            <div className="font-medium flex items-start">
+                              <div className="mt-1 mr-1.5 h-2.5 w-2.5 rounded-full bg-primary"></div>
+                              <span>{reservation.trip.segmentDestination || reservation.trip.route.destination}</span>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 uppercase">FECHA</div>
+                            <div className="font-medium">{formatDate(reservation.trip.departureDate)}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 uppercase">HORA DE SALIDA</div>
+                            <div className="font-medium">{reservation.trip.departureTime}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Columna 2: Información de pago y QR */}
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500 uppercase mb-2">Información de pago</h3>
+                        <div className="rounded-md border border-gray-100 overflow-hidden">
+                          <div className="bg-gray-50 p-2 flex justify-between">
+                            <div className="text-xs text-gray-500 uppercase">ESTADO DE PAGO</div>
+                            <Badge 
+                              variant={isPaid ? "outline" : "secondary"}
+                              className={isPaid
+                                ? "bg-green-100 text-green-800 border-green-200" 
+                                : "bg-amber-100 text-amber-800 border-amber-200"}
+                            >
                               {isPaid ? 'PAGADO' : 'PENDIENTE'}
+                            </Badge>
+                          </div>
+                          
+                          <div className="p-3 space-y-2">
+                            <div className="flex justify-between">
+                              <div className="text-xs text-gray-500 uppercase">MONTO TOTAL</div>
+                              <div className="font-semibold">${reservation.totalAmount.toFixed(2)}</div>
                             </div>
+                            
+                            {reservation.advanceAmount && reservation.advanceAmount > 0 && (
+                              <>
+                                <div className="flex justify-between">
+                                  <div className="text-xs text-gray-500 uppercase">ANTICIPO</div>
+                                  <div className="font-medium">${reservation.advanceAmount.toFixed(2)}</div>
+                                </div>
+                                
+                                <div className="flex justify-between">
+                                  <div className="text-xs text-gray-500 uppercase">MÉTODO ANTICIPO</div>
+                                  <div>{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                                </div>
+                                
+                                {reservation.advanceAmount < reservation.totalAmount && (
+                                  <>
+                                    <div className="flex justify-between">
+                                      <div className="text-xs text-gray-500 uppercase">PENDIENTE DE PAGO</div>
+                                      <div className="font-semibold">${(reservation.totalAmount - (reservation.advanceAmount || 0)).toFixed(2)}</div>
+                                    </div>
+                                    
+                                    <div className="flex justify-between">
+                                      <div className="text-xs text-gray-500 uppercase">MÉTODO PAGO FINAL</div>
+                                      <div>{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                                    </div>
+                                  </>
+                                )}
+                              </>
+                            )}
+                            
+                            {(!reservation.advanceAmount || reservation.advanceAmount <= 0) && (
+                              <div className="flex justify-between">
+                                <div className="text-xs text-gray-500 uppercase">MÉTODO PAGO</div>
+                                <div>{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                              </div>
+                            )}
+                            
+                            {!isPaid && (
+                              <Button 
+                                className="w-full mt-2 bg-green-600 hover:bg-green-700"
+                                size="sm"
+                                onClick={() => handleMarkAsPaid(reservation.id)}
+                              >
+                                <span className="mr-1">✓</span> Marcar como pagado
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
                       
-                      {(reservation.paymentMethod === 'transferencia' || 
-                        (reservation.advanceAmount > 0 && reservation.advancePaymentMethod === 'transferencia')) && (
-                        <div className="mt-4 p-3 border border-blue-200 rounded bg-blue-50 text-sm text-blue-800">
-                          <p className="font-semibold mb-1">Información Bancaria:</p>
-                          <p>Banco: BBVA</p>
-                          <p>Titular: TransRoute S.A. de C.V.</p>
-                          <p>CLABE: 0123 4567 8901 2345 67</p>
-                          <p className="mt-1">Verifica tu pago: 555-123-4567</p>
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-gray-500 uppercase mb-2">Código QR</h3>
+                        <div className="flex flex-col items-center bg-white border border-gray-100 rounded-md p-4">
+                          {qrCodeUrl ? (
+                            <>
+                              <img 
+                                src={qrCodeUrl} 
+                                alt="Código QR de la reservación" 
+                                className="w-32 h-32 mb-2"
+                              />
+                              <p className="text-xs text-gray-500 text-center">
+                                Este código QR contiene los detalles de la reservación.<br />
+                                Escanea el código para ver o compartir el boleto completo.
+                              </p>
+                            </>
+                          ) : (
+                            <div className="flex items-center justify-center w-32 h-32 bg-gray-50">
+                              <Loader2Icon className="h-8 w-8 animate-spin text-gray-300" />
+                            </div>
+                          )}
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-3"
+                            onClick={() => handleViewCompleteTicket(reservation.id)}
+                          >
+                            Ver boleto completo
+                          </Button>
                         </div>
-                      )}
-                    </div>
-                    
-                    <div className="footer">
-                      <p>Presente este boleto al abordar el vehículo</p>
-                      {!isPaid && (
-                        <p className="text-amber-600 font-medium mt-1">
-                          IMPORTANTE: Complete el pago antes de abordar
-                        </p>
-                      )}
-                      <p className="mt-1">TransRoute © {new Date().getFullYear()}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
