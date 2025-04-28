@@ -61,6 +61,7 @@ export function ReservationList() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showLoadingDelay, setShowLoadingDelay] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
 
   // Utilizar el nuevo hook especializado para cargar reservaciones de forma independiente
   const { 
@@ -201,12 +202,30 @@ export function ReservationList() {
   // Ticket view handlers
   const openTicketModal = (reservation: ReservationWithDetails) => {
     setEditingReservation(reservation);
-    setIsTicketModalOpen(true);
+    
+    // Generar el código QR para esta reservación
+    const reservationUrl = `${window.location.origin}/reservations/${reservation.id}`;
+    QRCode.toDataURL(reservationUrl)
+      .then((url: string) => {
+        setQrCodeUrl(url);
+        setIsTicketModalOpen(true);
+      })
+      .catch((err: Error) => {
+        console.error("Error al generar código QR:", err);
+        setQrCodeUrl("");
+        setIsTicketModalOpen(true);
+        toast({
+          title: "Error",
+          description: "No se pudo generar el código QR",
+          variant: "destructive",
+        });
+      });
   };
   
   const closeTicketModal = () => {
     setIsTicketModalOpen(false);
     setEditingReservation(null);
+    setQrCodeUrl("");
   };
   
   const closeEditModal = () => {
@@ -229,7 +248,7 @@ export function ReservationList() {
         chargeStatus,
         // Si el estado de verificación cambia a verificado, registramos la fecha actual
         checkedAt: checkStatus === CheckStatus.CHECKED && editingReservation.checkStatus !== CheckStatus.CHECKED 
-          ? new Date().toISOString() 
+          ? new Date() 
           : editingReservation.checkedAt,
         // Si está siendo verificada, registramos el usuario que lo hace
         // En una implementación real, esto usaría el ID del usuario actual
@@ -809,8 +828,11 @@ export function ReservationList() {
             <div className="grid gap-4 py-4">
               <div className="text-center">
                 <div className="mx-auto bg-blue-50 p-6 rounded-lg w-[200px] h-[200px] flex items-center justify-center mb-4">
-                  {/* Aquí iría el código QR real generado con la biblioteca QRCode */}
-                  <QrCodeIcon className="h-32 w-32 text-primary" />
+                  {qrCodeUrl ? (
+                    <img src={qrCodeUrl} alt="Código QR de reservación" className="w-full h-full" />
+                  ) : (
+                    <QrCodeIcon className="h-32 w-32 text-primary" />
+                  )}
                 </div>
               </div>
               
@@ -905,7 +927,7 @@ export function ReservationList() {
                   updates: {
                     checkStatus: newCheckStatus,
                     // Si el estado de verificación cambia a verificado, registramos la fecha actual
-                    checkedAt: new Date().toISOString(),
+                    checkedAt: new Date(),
                     // Si está siendo verificada, registramos el usuario que lo hace
                     checkedBy: 1, // ID del usuario actual (placeholder)
                   }
