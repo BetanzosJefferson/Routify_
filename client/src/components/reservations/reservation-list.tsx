@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
-import { UserIcon, SearchIcon, Loader2Icon, XIcon, PhoneIcon, MailIcon } from "lucide-react";
+import { UserIcon, SearchIcon, Loader2Icon, XIcon, PhoneIcon, MailIcon, QrCodeIcon, PrinterIcon } from "lucide-react";
 import { useReservations } from "@/hooks/use-reservations";
+import { useLocation } from "wouter";
+import QRCode from "qrcode";
 
 import {
   AlertDialog,
@@ -43,12 +45,16 @@ import { Reservation, ReservationWithDetails } from "@shared/schema";
 export function ReservationList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
   const [editingReservation, setEditingReservation] = useState<ReservationWithDetails | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [notes, setNotes] = useState<string>("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [detailModalOpen, setDetailModalOpen] = useState<number | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
+  const ticketRef = useRef<HTMLDivElement>(null);
   
   // Estados adicionales para mejorar la UX
   const [isInitialLoad, setIsInitialLoad] = useState(true);
