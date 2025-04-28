@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
-import { UserIcon, SearchIcon, Loader2Icon, XIcon, PhoneIcon, MailIcon, QrCodeIcon, PrinterIcon } from "lucide-react";
+import { UserIcon, SearchIcon, Loader2Icon, XIcon, PhoneIcon, MailIcon, QrCodeIcon, PrinterIcon, TicketIcon, CheckIcon } from "lucide-react";
 import { useReservations } from "@/hooks/use-reservations";
 import { useLocation } from "wouter";
 import QRCode from "qrcode";
@@ -230,6 +230,41 @@ export function ReservationList() {
     setSearchTerm(e.target.value);
   };
   
+  // Mutation para marcar reservación como pagada
+  const markAsPaidMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest('POST', `/api/reservations/${id}/mark-paid`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'No se pudo marcar como pagado');
+      }
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Reservación marcada como pagada",
+        description: "El estado de pago ha sido actualizado correctamente.",
+      });
+      
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
+      
+      // Close dialog (opcional - también podríamos dejar abierto el modal)
+      // setDetailModalOpen(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error al marcar como pagado",
+        description: error.message || "No se pudo actualizar el estado de pago.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleMarkAsPaid = (id: number) => {
+    markAsPaidMutation.mutate(id);
+  };
+
   // Handlers para el modal de detalles y QR
   const openDetailModal = (reservation: ReservationWithDetails) => {
     // Generar código QR para la reservación
@@ -252,6 +287,10 @@ export function ReservationList() {
   
   const goToDetailPage = (id: number) => {
     navigate(`/reservations/${id}`);
+  };
+  
+  const handleViewCompleteTicket = (id: number) => {
+    goToDetailPage(id);
   };
   
   const handlePrintTicket = () => {
