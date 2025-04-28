@@ -1453,10 +1453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // REGLAS DE ACCESO:
       // 1. superAdmin y admin pueden ver TODAS las reservaciones
       // 2. El resto de roles solo pueden ver reservaciones de SU COMPAÑÍA
-      // 3. Para el QR escaneado y público, permitimos el acceso sin autenticación
-      if (req.query.public === 'true') {
-        console.log(`[GET /reservations/${id}] Acceso público mediante QR`);
-      } else if (user) {
+      if (user) {
         if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
           // Obtener la compañía del usuario
           companyId = user.companyId || user.company;
@@ -1473,7 +1470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           console.log(`[GET /reservations/${id}] Usuario con rol ${user.role} puede ver todas las reservaciones`);
         }
-      } else if (req.query.public !== 'true') {
+      } else {
         console.log(`[GET /reservations/${id}] Acceso no autenticado denegado`);
         return res.status(401).json({ error: "No autenticado" });
       }
@@ -1491,42 +1488,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error(`[GET /reservations/:id] Error: ${error}`);
       res.status(500).json({ error: "Error al obtener la reservación" });
-    }
-  });
-  
-  // Endpoint para marcar una reservación como pagada (para escaneo QR)
-  app.post(apiRouter("/reservations/:id/mark-paid"), async (req: Request, res: Response) => {
-    try {
-      const reservationId = parseInt(req.params.id, 10);
-      
-      // Obtener el usuario autenticado
-      const { user } = req as any;
-      
-      console.log(`[POST /reservations/${reservationId}/mark-paid] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
-      
-      // Obtener la reservación actual
-      const reservation = await storage.getReservationWithDetails(reservationId);
-      
-      if (!reservation) {
-        console.log(`[POST /reservations/${reservationId}/mark-paid] Reservación no encontrada`);
-        return res.status(404).json({ error: "Reservación no encontrada" });
-      }
-      
-      // Actualizar el estado de pago
-      const updatedReservation = await storage.updateReservation(reservationId, {
-        paymentStatus: 'pagado',
-        updatedAt: new Date()
-      });
-      
-      if (!updatedReservation) {
-        return res.status(500).json({ error: "Error al actualizar la reservación" });
-      }
-      
-      console.log(`[POST /reservations/${reservationId}/mark-paid] Reservación marcada como pagada`);
-      res.json({ success: true, message: "Reservación marcada como pagada" });
-    } catch (error) {
-      console.error(`[POST /reservations/:id/mark-paid] Error: ${error}`);
-      res.status(500).json({ error: "Error al marcar la reservación como pagada" });
     }
   });
 
