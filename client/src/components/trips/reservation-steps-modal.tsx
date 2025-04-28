@@ -795,18 +795,13 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                   <h3 className="text-xl font-bold mb-2">
                     #{submittedReservation && formatReservationId(submittedReservation.id)}
                   </h3>
-                  <div className="text-lg font-semibold mb-2">
+                  <div className="text-lg font-semibold">
                     {passengers.map((passenger, index) => (
                       <span key={index}>
                         {passenger.firstName} {passenger.lastName}
                         {index < passengers.length - 1 && ", "}
                       </span>
                     ))}
-                  </div>
-                  <div className={`inline-block px-3 py-1 rounded ${
-                    advanceAmount === totalPrice ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-                  }`}>
-                    {advanceAmount === totalPrice ? 'PAGADO' : 'PENDIENTE'}
                   </div>
                 </div>
                 
@@ -899,10 +894,8 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                 
                 {/* Estado de pago grande */}
                 <div className="text-center mb-6">
-                  <h5 className="text-sm text-gray-500 mb-1">Estado:</h5>
-                  <div className={`text-2xl font-bold ${
-                    advanceAmount === totalPrice ? "text-green-600" : "text-amber-600"
-                  }`}>
+                  <h5 className="text-sm text-gray-500 mb-2">Estado:</h5>
+                  <div className="text-2xl font-bold text-amber-500">
                     {advanceAmount === totalPrice ? 'PAGADO' : 'PENDIENTE'}
                   </div>
                 </div>
