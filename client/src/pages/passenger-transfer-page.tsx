@@ -160,7 +160,7 @@ export default function PassengerTransferPage() {
       // Agrupar reservaciones por viaje
       allReservations.forEach(reservation => {
         const tripId = reservation.tripId;
-        const trip = allTrips.find(t => t.id === tripId);
+        const trip = allTrips.find((t: any) => t.id === tripId);
         
         if (trip) {
           if (!tripsMap.has(tripId)) {
@@ -473,13 +473,15 @@ export default function PassengerTransferPage() {
                 Selecciona las reservaciones que deseas transferir a otra empresa.
               </CardDescription>
               <div className="mt-2">
-                <Input
-                  placeholder="Buscar por ID, email o teléfono"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="max-w-sm"
-                  icon={<SearchIcon className="h-4 w-4" />}
-                />
+                <div className="relative max-w-sm">
+                  <Input
+                    placeholder="Buscar por ID, email o teléfono"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                  <SearchIcon className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                </div>
               </div>
             </CardHeader>
             <CardContent>
