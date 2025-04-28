@@ -183,8 +183,9 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       return response.json();
     },
     onSuccess: (data) => {
-      // Generate QR code for the reservation
+      // Generate QR code for the reservation with public endpoint
       const reservationUrl = `${window.location.origin}/reservation-details?id=${data.id}`;
+      console.log(`Generando código QR para URL: ${reservationUrl}`);
       QRCode.toDataURL(reservationUrl)
         .then((url: string) => {
           setQrCodeUrl(url);
