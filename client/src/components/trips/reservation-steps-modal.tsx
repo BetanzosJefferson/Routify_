@@ -562,9 +562,28 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                                 min="0"
                                 max={totalPrice}
                                 step="0.01"
-                                className="pl-8"
+                                className={`pl-8 ${advanceAmount > totalPrice ? 'border-red-500' : ''}`}
                                 value={advanceAmount}
-                                onChange={(e) => setAdvanceAmount(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => {
+                                  const value = parseFloat(e.target.value) || 0;
+                                  // No permitir que el anticipo sea mayor al precio total
+                                  if (value <= totalPrice) {
+                                    setAdvanceAmount(value);
+                                    // Actualizar el estado de pago automáticamente
+                                    if (value === totalPrice) {
+                                      setPaymentStatus(PaymentStatus.PAID);
+                                    } else {
+                                      setPaymentStatus(PaymentStatus.PENDING);
+                                    }
+                                  } else {
+                                    // Mostrar mensaje de error
+                                    toast({
+                                      title: "Error en el anticipo",
+                                      description: "El anticipo no puede ser mayor al precio total",
+                                      variant: "destructive"
+                                    });
+                                  }
+                                }}
                                 placeholder="0.00"
                               />
                             </div>
