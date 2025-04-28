@@ -52,8 +52,8 @@ export function ReservationList() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   // Nuevos estados para los campos adicionales
-  const [checkStatus, setCheckStatus] = useState<string>("no_check");
-  const [chargeStatus, setChargeStatus] = useState<string>("pendiente_cobro");
+  const [checkStatus, setCheckStatus] = useState<string>(CheckStatus.NOT_CHECKED);
+  const [chargeStatus, setChargeStatus] = useState<string>(ChargeStatus.PENDING_CHARGE);
   
   // Estados adicionales para mejorar la UX
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -191,8 +191,8 @@ export function ReservationList() {
     setEmail(reservation.email || "");
     setPhone(reservation.phone || "");
     setStatus(reservation.status || "confirmed");
-    setCheckStatus(reservation.checkStatus || CheckStatus.NO_CHECK);
-    setChargeStatus(reservation.chargeStatus || ChargeStatus.PENDING);
+    setCheckStatus(reservation.checkStatus || CheckStatus.NOT_CHECKED);
+    setChargeStatus(reservation.chargeStatus || ChargeStatus.PENDING_CHARGE);
     setIsEditModalOpen(true);
   };
   
@@ -690,7 +690,7 @@ export function ReservationList() {
                       <SelectValue placeholder="Seleccionar estado" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={CheckStatus.NO_CHECK}>
+                      <SelectItem value={CheckStatus.NOT_CHECKED}>
                         <div className="flex items-center">
                           <span className="mr-2">No verificado</span>
                         </div>
@@ -715,7 +715,7 @@ export function ReservationList() {
                       <SelectValue placeholder="Seleccionar estado" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={ChargeStatus.PENDING}>
+                      <SelectItem value={ChargeStatus.PENDING_CHARGE}>
                         <div className="flex items-center">
                           <span className="mr-2">Pendiente por cobrar</span>
                         </div>
