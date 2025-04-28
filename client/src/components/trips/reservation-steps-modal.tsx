@@ -48,7 +48,7 @@ interface Passenger {
   lastName: string;
 }
 
-import { PaymentMethod, PaymentStatus } from "@shared/schema";
+import { PaymentMethod, PaymentStatus, ChargeStatus, CheckStatus } from "@shared/schema";
 
 interface ReservationFormData {
   tripId: number;
@@ -58,11 +58,16 @@ interface ReservationFormData {
   phone: string;
   totalAmount: number;
   paymentMethod: typeof PaymentMethod.CASH | typeof PaymentMethod.TRANSFER;
-  paymentStatus: typeof PaymentStatus.PENDING | typeof PaymentStatus.PAID;
+  paymentStatus: typeof PaymentStatus.PENDING | typeof PaymentStatus.PAID | typeof PaymentStatus.CANCELLED;
   advanceAmount: number;
   advancePaymentMethod: typeof PaymentMethod.CASH | typeof PaymentMethod.TRANSFER;
   notes: string;
   createdBy?: number;
+  // Nuevos campos
+  checkStatus?: typeof CheckStatus.NOT_CHECKED | typeof CheckStatus.CHECKED;
+  chargeStatus?: typeof ChargeStatus.PENDING_CHARGE | typeof ChargeStatus.CHARGED | typeof ChargeStatus.CANCELLED;
+  checkedAt?: Date;
+  checkedBy?: number;
 }
 
 export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStepsModalProps) {
@@ -81,7 +86,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
   // Nuevos campos para pago
   const [advanceAmount, setAdvanceAmount] = useState(0);
   const [advancePaymentMethod, setAdvancePaymentMethod] = useState<typeof PaymentMethod.CASH | typeof PaymentMethod.TRANSFER>(PaymentMethod.CASH);
-  const [paymentStatus, setPaymentStatus] = useState<typeof PaymentStatus.PENDING | typeof PaymentStatus.PAID>(PaymentStatus.PENDING);
+  const [paymentStatus, setPaymentStatus] = useState<typeof PaymentStatus.PENDING | typeof PaymentStatus.PAID | typeof PaymentStatus.CANCELLED>(PaymentStatus.PENDING);
   const [showAdvancePayment, setShowAdvancePayment] = useState(false);
   
   // Steps state
@@ -247,7 +252,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
     }
     
     // Determine payment status based on advance amount
-    let currentPaymentStatus = PaymentStatus.PENDING;
+    let currentPaymentStatus = PaymentStatus.PENDING as typeof PaymentStatus.PENDING | typeof PaymentStatus.PAID | typeof PaymentStatus.CANCELLED;
     if (showAdvancePayment && advanceAmount === totalPrice) {
       currentPaymentStatus = PaymentStatus.PAID;
     }
@@ -887,8 +892,24 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                   )}
                 </div>
                 
+                {/* Información de estado de verificación y cobro */}
+                <div className="my-4 p-3 border border-gray-200 rounded bg-gray-50 text-sm">
+                  <div className="grid grid-cols-3 text-sm mb-2">
+                    <span className="font-semibold text-gray-500">Estado de Check:</span>
+                    <span className="col-span-2 font-semibold text-amber-600">
+                      NO ESCANEADO
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 text-sm">
+                    <span className="font-semibold text-gray-500">Estado de Cobro:</span>
+                    <span className="col-span-2 font-semibold text-amber-600">
+                      PENDIENTE POR COBRAR
+                    </span>
+                  </div>
+                </div>
+                
                 {(paymentMethod === PaymentMethod.TRANSFER || (showAdvancePayment && advancePaymentMethod === PaymentMethod.TRANSFER)) && (
-                  <div className="mt-4 mb-4 p-3 border border-blue-200 rounded bg-blue-50 text-xs text-blue-800">
+                  <div className="mb-4 p-3 border border-blue-200 rounded bg-blue-50 text-xs text-blue-800">
                     <p className="font-semibold mb-1">Información Bancaria:</p>
                     <p>Banco: BBVA</p>
                     <p>Titular: TransRoute S.A. de C.V.</p>
