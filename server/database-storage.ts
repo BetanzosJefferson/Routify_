@@ -508,20 +508,111 @@ export class DatabaseStorage implements IStorage {
   }
   
   async updateReservation(id: number, reservationUpdate: Partial<Reservation>): Promise<Reservation | undefined> {
-    const [updatedReservation] = await db
-      .update(schema.reservations)
-      .set(reservationUpdate)
-      .where(eq(schema.reservations.id, id))
-      .returning();
-    return updatedReservation;
+    try {
+      // Obtener la reservación actual
+      const currentReservation = await this.getReservation(id);
+      if (!currentReservation) {
+        console.log(`No se encontró la reservación ${id} para actualizar`);
+        return undefined;
+      }
+      
+      // Verificar si se está cancelando la reservación
+      const isCancelling = reservationUpdate.status === 'cancelled' && 
+                          currentReservation.status !== 'cancelled';
+      
+      // Actualizar la reservación
+      const [updatedReservation] = await db
+        .update(schema.reservations)
+        .set(reservationUpdate)
+        .where(eq(schema.reservations.id, id))
+        .returning();
+      
+      // Si se está cancelando, actualizar los asientos disponibles
+      if (isCancelling) {
+        const trip = await this.getTrip(currentReservation.tripId);
+        if (trip) {
+          // Obtener recuento de pasajeros
+          const passengers = await this.getPassengers(id);
+          const passengerCount = passengers.length;
+          
+          if (passengerCount > 0) {
+            console.log(`Cancelando reservación ${id}. Liberando ${passengerCount} asientos...`);
+            
+            // Actualizar asientos disponibles en el viaje principal
+            await db
+              .update(schema.trips)
+              .set({ 
+                availableSeats: sql`available_seats + ${passengerCount}` 
+              })
+              .where(eq(schema.trips.id, trip.id));
+            
+            // Actualizar viajes relacionados
+            await this.updateRelatedTripsAvailability(trip.id, passengerCount);
+            
+            console.log(`Liberados ${passengerCount} asientos al cancelar la reservación ${id}`);
+          }
+        }
+      }
+      
+      return updatedReservation;
+    } catch (error) {
+      console.error(`Error al actualizar la reservación ${id}:`, error);
+      throw error;
+    }
   }
   
   async deleteReservation(id: number): Promise<boolean> {
-    const result = await db
-      .delete(schema.reservations)
-      .where(eq(schema.reservations.id, id))
-      .returning({ id: schema.reservations.id });
-    return result.length > 0;
+    try {
+      // Primero obtener la reservación y sus pasajeros antes de eliminarla
+      const reservation = await this.getReservation(id);
+      if (!reservation) {
+        console.log(`No se encontró la reservación ${id} para eliminar`);
+        return false;
+      }
+      
+      // Obtener la información del viaje para actualizar asientos disponibles
+      const trip = await this.getTrip(reservation.tripId);
+      if (!trip) {
+        console.log(`No se encontró el viaje ${reservation.tripId} asociado a la reservación ${id}`);
+        return false;
+      }
+      
+      // Obtener el recuento de pasajeros
+      const passengers = await this.getPassengers(id);
+      const passengerCount = passengers.length;
+      console.log(`Reservación ${id} tiene ${passengerCount} pasajeros. Actualizando asientos disponibles...`);
+      
+      // Actualizar los asientos disponibles en el viaje principal
+      if (passengerCount > 0) {
+        await db
+          .update(schema.trips)
+          .set({ 
+            availableSeats: sql`available_seats + ${passengerCount}` 
+          })
+          .where(eq(schema.trips.id, trip.id));
+        
+        console.log(`Actualizados ${passengerCount} asientos en el viaje ${trip.id}`);
+        
+        // Actualizar viajes relacionados (si es subtrip o tiene subtrips)
+        await this.updateRelatedTripsAvailability(trip.id, passengerCount);
+      }
+      
+      // Eliminar los pasajeros asociados
+      await this.deletePassengersByReservation(id);
+      console.log(`Eliminados los pasajeros de la reservación ${id}`);
+      
+      // Finalmente eliminar la reservación
+      const result = await db
+        .delete(schema.reservations)
+        .where(eq(schema.reservations.id, id))
+        .returning({ id: schema.reservations.id });
+      
+      console.log(`Reservación ${id} eliminada con éxito`);
+      return result.length > 0;
+    } catch (error) {
+      console.error(`Error al eliminar la reservación ${id}:`, error);
+      throw error;
+    }
   }
   
 
