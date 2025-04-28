@@ -18,17 +18,28 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Loader2, Save } from "lucide-react";
-import { companyFormSchema } from "@/lib/form-schemas";
+import { Loader2, Save, PlusCircle, Building2 } from "lucide-react";
+import { companyFormSchema, partnerCompanyFormSchema } from "@/lib/form-schemas";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageLayout } from "@/components/layout/page-layout";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function CompanyPage() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("banking");
+  const [partnerDialogOpen, setPartnerDialogOpen] = useState(false);
 
   // Definir esquema para el formulario de datos bancarios
   type CompanyFormValues = z.infer<typeof companyFormSchema>;
+  type PartnerCompanyFormValues = z.infer<typeof partnerCompanyFormSchema>;
 
   // Consulta para obtener los datos actuales de la empresa
   const { data: companyData, isLoading } = useQuery({
