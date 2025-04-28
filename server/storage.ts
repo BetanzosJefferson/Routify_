@@ -684,10 +684,97 @@ export class MemStorage implements IStorage {
   async deleteCommission(id: number): Promise<boolean> {
     return this.commissions.delete(id);
   }
+  
+  // Métodos específicos para reservaciones por viaje
+  async getReservationsForTrip(tripId: number, companyId?: string): Promise<ReservationWithDetails[]> {
+    console.log(`[MemStorage] Buscando reservaciones para viaje ${tripId}`);
+    
+    try {
+      // Filtrar reservaciones por tripId
+      const reservationsList = Array.from(this.reservations.values())
+        .filter(res => res.tripId === tripId);
+      
+      // Aplicar filtro de compañía si se proporciona
+      const filteredReservations = companyId 
+        ? reservationsList.filter(res => res.companyId === companyId)
+        : reservationsList;
+      
+      if (filteredReservations.length === 0) {
+        console.log(`[MemStorage] No se encontraron reservaciones para el viaje ${tripId}`);
+        return [];
+      }
+      
+      console.log(`[MemStorage] Encontradas ${filteredReservations.length} reservaciones para viaje ${tripId}`);
+      
+      // Enriquecer las reservaciones con datos adicionales
+      const enrichedReservations: ReservationWithDetails[] = [];
+      
+      for (const reservation of filteredReservations) {
+        // Obtener pasajeros asociados
+        const passengers = Array.from(this.passengers.values())
+          .filter(passenger => passenger.reservationId === reservation.id);
+        
+        // Obtener viaje
+        const trip = await this.getTrip(reservation.tripId);
+        if (!trip) {
+          console.log(`[MemStorage] No se encontró el viaje ${reservation.tripId} asociado a la reserva ${reservation.id}`);
+          continue;
+        }
+        
+        // Obtener ruta
+        const route = await this.getRoute(trip.routeId);
+        if (!route) {
+          console.log(`[MemStorage] No se encontró la ruta para el viaje ${trip.id}`);
+          continue;
+        }
+        
+        // Agregar la información a la lista
+        enrichedReservations.push({
+          ...reservation,
+          passengers,
+          trip: {
+            ...trip,
+            route,
+            numStops: route.stops.length
+          }
+        });
+      }
+      
+      console.log(`[MemStorage] Procesadas ${enrichedReservations.length} reservaciones con detalles`);
+      return enrichedReservations;
+    } catch (error) {
+      console.error("[MemStorage] Error al obtener reservaciones:", error);
+      throw error;
+    }
+  }
+  
+  // Método para obtener un usuario
+  async getUser(id: number): Promise<schema.User | undefined> {
+    // Para MemStorage, no tenemos implementación completa de usuarios
+    // pero podemos devolver un usuario sencillo para pruebas
+    if (id === 1) {
+      return {
+        id: 1,
+        firstName: 'Admin',
+        lastName: 'Usuario',
+        email: 'admin@transporte.com',
+        password: '***',
+        role: 'superAdmin',
+        company: null,
+        profilePicture: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        invitedById: null,
+        companyId: null
+      };
+    }
+    console.warn(`[MemStorage] getUser: No se encontró el usuario con ID ${id}`);
+    return undefined;
+  }
 }
 
 // Importamos la clase DatabaseStorage desde el archivo separado
-import { DatabaseStorage } from "./db-storage";
+import { DatabaseStorage } from "./database-storage";
 
 // Usamos la versión de almacenamiento en base de datos para implementar la funcionalidad
 export const storage = new DatabaseStorage();
