@@ -13,6 +13,7 @@ export const UserRole = {
   TICKET_OFFICE: "taquilla",
   OWNER: "dueño",
   DEVELOPER: "desarrollador",
+  COMMISSIONIST: "comisionista",
 } as const;
 
 export type UserRoleType = typeof UserRole[keyof typeof UserRole];
@@ -92,6 +93,23 @@ export const insertPassengerSchema = createInsertSchema(passengers);
 export type InsertPassenger = z.infer<typeof insertPassengerSchema>;
 export type Passenger = typeof passengers.$inferSelect;
 
+// EMPRESA SCHEMA
+export const companies = pgTable("companies", {
+  id: serial("id").primaryKey(),
+  companyId: text("company_id").notNull().unique(),
+  name: text("name").notNull(),
+  bankName: text("bank_name"),
+  accountHolder: text("account_holder"),
+  clabe: text("clabe"),
+  contactPhone: text("contact_phone"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertCompanySchema = createInsertSchema(companies);
+export type InsertCompany = z.infer<typeof insertCompanySchema>;
+export type Company = typeof companies.$inferSelect;
+
 // RESERVATION SCHEMA
 export const reservations = pgTable("reservations", {
   id: serial("id").primaryKey(),
@@ -102,6 +120,13 @@ export const reservations = pgTable("reservations", {
   notes: text("notes"),
   paymentMethod: text("payment_method").notNull().default("cash"), // 'cash' o 'transfer'
   status: text("status").notNull().default("confirmed"),
+  // Nuevos campos para anticipos y pagos
+  deposit: doublePrecision("deposit").default(0), // Monto del anticipo
+  depositMethod: text("deposit_method").default("cash"), // 'cash' o 'transfer'
+  pendingAmount: doublePrecision("pending_amount"), // Monto pendiente por pagar
+  paymentStatus: text("payment_status").default("pending"), // 'pending', 'paid'
+  // Campo para saber quién creó la reservación
+  createdById: integer("created_by_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   // Campo para aislamiento de datos por compañía
   companyId: text("company_id"),
@@ -185,19 +210,25 @@ export const publishTripValidationSchema = z.object({
 
 export const createReservationValidationSchema = z.object({
   tripId: z.number(),
-  numPassengers: z.number().min(1, "At least 1 passenger is required"),
+  numPassengers: z.number().min(1, "Al menos 1 pasajero es requerido"),
   passengers: z.array(
     z.object({
-      firstName: z.string().min(1, "First name is required"),
-      lastName: z.string().min(1, "Last name is required")
+      firstName: z.string().min(1, "Nombre es requerido"),
+      lastName: z.string().min(1, "Apellido es requerido")
     })
   ),
-  email: z.string().email("Valid email is required"),
-  phone: z.string().min(1, "Phone number is required"),
+  email: z.string().email("Email válido es requerido"),
+  phone: z.string().min(1, "Número telefónico es requerido"),
   paymentMethod: z.enum(["cash", "transfer"], {
     required_error: "Método de pago es requerido",
     invalid_type_error: "Método de pago debe ser efectivo o transferencia"
   }),
+  // Nuevos campos para anticipos y pagos
+  deposit: z.number().min(0, "El anticipo no puede ser negativo").default(0),
+  depositMethod: z.enum(["cash", "transfer"], {
+    required_error: "Método de anticipo es requerido",
+    invalid_type_error: "Método de anticipo debe ser efectivo o transferencia"
+  }).default("cash"),
   notes: z.string().optional()
 });
 
@@ -293,7 +324,12 @@ export const reservationRelations = relations(reservations, ({ one, many }) => (
     fields: [reservations.tripId],
     references: [trips.id]
   }),
-  passengers: many(passengers)
+  passengers: many(passengers),
+  // Relación con el usuario que creó la reservación
+  createdBy: one(users, {
+    fields: [reservations.createdById],
+    references: [users.id]
+  })
 }));
 
 export const passengerRelations = relations(passengers, ({ one }) => ({
@@ -316,7 +352,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   // Campo para referenciar al usuario que invitó/creó este usuario
-  invitedById: integer("invited_by_id").references(() => users.id),
+  invitedById: integer("invited_by_id"),
   // Campo para referenciar la compañía a la que pertenece el usuario
   companyId: text("company_id").default(""),
 });
@@ -346,6 +382,11 @@ export const insertInvitationSchema = createInsertSchema(invitations);
 export type InsertInvitation = z.infer<typeof insertInvitationSchema>;
 export type Invitation = typeof invitations.$inferSelect;
 
+// COMPANY RELATIONS
+export const companyRelations = relations(companies, ({ many }) => ({
+  users: many(users)
+}));
+
 // USER RELATIONS
 export const userRelations = relations(users, ({ many, one }) => ({
   invitationsCreated: many(invitations),
@@ -356,6 +397,15 @@ export const userRelations = relations(users, ({ many, one }) => ({
     fields: [users.invitedById],
     references: [users.id],
     relationName: 'invitedBy'
+  }),
+  // Relación con la empresa
+  company: one(companies, {
+    fields: [users.companyId],
+    references: [companies.companyId]
+  }),
+  // Relación con las reservaciones creadas por este usuario
+  reservationsCreated: many(reservations, {
+    relationName: 'createdByUser'
   })
 }));
 

@@ -17,7 +17,10 @@ export const ALL_SECTIONS: Section[] = [
   { id: "boarding-list", name: "Lista de Abordaje", description: "Control de abordaje de pasajeros" },
   { id: "users", name: "Usuarios", description: "Gestión de usuarios del sistema" },
   { id: "vehicles", name: "Unidades", description: "Gestión de vehículos y flota" },
+  { id: "company", name: "Empresa", description: "Gestión de datos de la empresa" },
   { id: "commissions", name: "Comisiones", description: "Configuración de comisiones" },
+  { id: "coupons", name: "Cupones", description: "Gestión de cupones de descuento" },
+  { id: "passenger-transfer", name: "Transferencia de Pasajeros", description: "Transferencia de pasajeros entre empresas" },
   { id: "settings", name: "Configuración", description: "Ajustes generales del sistema" }
 ];
 
