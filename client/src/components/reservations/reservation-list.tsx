@@ -284,6 +284,7 @@ export function ReservationList() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Route</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seats</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pago</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -315,11 +316,42 @@ export function ReservationList() {
                       {reservation.passengers.length}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium">{formatPrice(reservation.totalAmount)}</div>
+                        {reservation.advanceAmount && reservation.advanceAmount > 0 && (
+                          <>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-gray-500">Anticipo:</span>
+                              <span className="font-medium">{formatPrice(reservation.advanceAmount)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-gray-500">Método:</span>
+                              <span>{reservation.advancePaymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}</span>
+                            </div>
+                            {reservation.advanceAmount < reservation.totalAmount && (
+                              <>
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-gray-500">Resta:</span>
+                                  <span className="font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-gray-500">Pago final:</span>
+                                  <span>{reservation.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}</span>
+                                </div>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <Badge 
-                        variant="outline" 
-                        className="bg-green-100 text-green-800 border-green-200"
+                        variant={reservation.paymentStatus === 'pagado' ? "outline" : "secondary"}
+                        className={reservation.paymentStatus === 'pagado' 
+                          ? "bg-green-100 text-green-800 border-green-200" 
+                          : "bg-amber-100 text-amber-800 border-amber-200"}
                       >
-                        {reservation.status.charAt(0).toUpperCase() + reservation.status.slice(1)}
+                        {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
                       </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -372,10 +404,12 @@ export function ReservationList() {
                         #{generateReservationId()}
                       </div>
                       <Badge 
-                        variant="outline" 
-                        className="bg-green-100 text-green-800 border-green-200 mt-1"
+                        variant={reservation.paymentStatus === 'pagado' ? "outline" : "secondary"}
+                        className={reservation.paymentStatus === 'pagado' 
+                          ? "bg-green-100 text-green-800 border-green-200 mt-1" 
+                          : "bg-amber-100 text-amber-800 border-amber-200 mt-1"}
                       >
-                        {reservation.status.charAt(0).toUpperCase() + reservation.status.slice(1)}
+                        {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
                       </Badge>
                     </div>
                     
@@ -434,8 +468,37 @@ export function ReservationList() {
                     
                     <div className="text-right">
                       <div className="text-xs text-gray-500">Total</div>
-                      <div className="font-medium">${reservation.totalAmount}</div>
+                      <div className="font-medium">{formatPrice(reservation.totalAmount)}</div>
                     </div>
+                    
+                    {/* Información de pago para móvil */}
+                    {reservation.advanceAmount && reservation.advanceAmount > 0 && (
+                      <div className="col-span-2 mt-2 bg-gray-50 p-2 rounded-md border border-gray-100 text-xs">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <div className="text-gray-500">Anticipo</div>
+                            <div className="font-medium">{formatPrice(reservation.advanceAmount)}</div>
+                          </div>
+                          <div>
+                            <div className="text-gray-500">Método</div>
+                            <div>{reservation.advancePaymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}</div>
+                          </div>
+                          
+                          {reservation.advanceAmount < reservation.totalAmount && (
+                            <>
+                              <div>
+                                <div className="text-gray-500">Pendiente</div>
+                                <div className="font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</div>
+                              </div>
+                              <div>
+                                <div className="text-gray-500">Pago final</div>
+                                <div>{reservation.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}</div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
