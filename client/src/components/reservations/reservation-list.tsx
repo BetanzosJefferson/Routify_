@@ -79,6 +79,25 @@ export function ReservationList() {
     }
   }, [isLoading, reservationsError]);
   
+  // Generar código QR para la reservación actual
+  useEffect(() => {
+    if (detailModalOpen && !qrCodeUrl) {
+      const reservationUrl = `${window.location.origin}/reservations/${detailModalOpen}`;
+      QRCode.toDataURL(reservationUrl)
+        .then(url => {
+          setQrCodeUrl(url);
+        })
+        .catch(err => {
+          console.error("Error generando QR:", err);
+        });
+    }
+    
+    if (!detailModalOpen) {
+      // Limpiar URL del QR al cerrar el modal
+      setQrCodeUrl("");
+    }
+  }, [detailModalOpen, qrCodeUrl]);
+  
   // Filter reservations based on search term (mejorado para incluir teléfono y correo)
   const filteredReservations = reservations?.filter((reservation) => {
     if (!searchTerm) return true;
@@ -876,20 +895,6 @@ export function ReservationList() {
               // Lógica para determinar si está pagado
               const isPaid = reservation.paymentStatus === 'pagado';
               
-              // Generar código QR para esta reservación si no está en cache
-              useEffect(() => {
-                if (detailModalOpen && !qrCodeUrl) {
-                  const reservationUrl = `${window.location.origin}/reservations/${detailModalOpen}`;
-                  QRCode.toDataURL(reservationUrl)
-                    .then(url => {
-                      setQrCodeUrl(url);
-                    })
-                    .catch(err => {
-                      console.error("Error generando QR:", err);
-                    });
-                }
-              }, [detailModalOpen, qrCodeUrl]);
-              
               return (
                 <div ref={ticketRef}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1086,7 +1091,7 @@ export function ReservationList() {
               </Button>
               
               <Button
-                variant="primary"
+                variant="default"
                 className="flex-1 max-w-xs bg-blue-500 hover:bg-blue-600 text-white"
                 onClick={() => {
                   const reservation = reservations.find(r => r.id === detailModalOpen);
