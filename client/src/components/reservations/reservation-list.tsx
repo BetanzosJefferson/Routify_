@@ -342,7 +342,7 @@ export function ReservationList() {
                                 </div>
                                 <div className="flex justify-between text-xs">
                                   <span className="text-gray-500">Método restante:</span>
-                                  <span>{reservation.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}</span>
+                                  <span>{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</span>
                                 </div>
                               </>
                             )}
@@ -499,7 +499,7 @@ export function ReservationList() {
                             </div>
                             <div>
                               <div className="text-gray-500">Método anticipo</div>
-                              <div>{reservation.advancePaymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}</div>
+                              <div>{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
                             </div>
                             
                             {reservation.advanceAmount < reservation.totalAmount && (
@@ -510,7 +510,7 @@ export function ReservationList() {
                                 </div>
                                 <div>
                                   <div className="text-gray-500">Método pago final</div>
-                                  <div>{reservation.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}</div>
+                                  <div>{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
                                 </div>
                               </>
                             )}
