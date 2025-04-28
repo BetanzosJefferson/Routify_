@@ -92,13 +92,6 @@ export function convertTo12Hour(time24: string): {
 export function generateSegmentsFromRoute(route: RouteWithSegments): SegmentPrice[] {
   const segments: SegmentPrice[] = [];
   
-  // Siempre agregar el segmento principal (origen a destino final)
-  segments.push({
-    origin: route.origin,
-    destination: route.destination,
-    price: 0
-  });
-  
   // Add origin to first stop
   if (route.stops.length > 0) {
     segments.push({
@@ -122,26 +115,20 @@ export function generateSegmentsFromRoute(route: RouteWithSegments): SegmentPric
       destination: route.destination,
       price: 0
     });
+  } else {
+    // Direct route with no stops
+    segments.push({
+      origin: route.origin,
+      destination: route.destination,
+      price: 0
+    });
   }
   
-  // Eliminar duplicados (por si acaso)
-  const uniqueSegments = segments.filter((segment, index, self) => 
-    index === self.findIndex(s => s.origin === segment.origin && s.destination === segment.destination)
-  );
-  
-  console.log("Segmentos generados (incluyendo origen-destino completo):", uniqueSegments);
-  
-  return uniqueSegments;
+  return segments;
 }
 
-export function generateReservationId(id?: number): string {
-  if (id) {
-    // Si se proporciona un ID real, úsalo
-    return `RES${id.toString().padStart(5, '0')}`;
-  } else {
-    // Fallback por si no hay ID (no debería ocurrir)
-    return `RES${Math.floor(10000 + Math.random() * 90000)}`;
-  }
+export function generateReservationId(): string {
+  return `RES${Math.floor(10000 + Math.random() * 90000)}`;
 }
 
 export function isSameCity(location1: string, location2: string): boolean {

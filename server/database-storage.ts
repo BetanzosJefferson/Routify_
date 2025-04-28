@@ -104,32 +104,16 @@ export class DatabaseStorage implements IStorage {
     
     const segments: Array<{origin: string; destination: string; price?: number}> = [];
     
-    // Crear un array con todos los puntos: origen, paradas y destino
-    const allPoints = [route.origin, ...route.stops, route.destination];
-    
-    // Siempre agregar primero el segmento principal (origen a destino)
-    segments.push({
-      origin: route.origin,
-      destination: route.destination,
-      price: 0
-    });
-    
-    // Generar todos los demás segmentos posibles (todas las combinaciones)
-    for (let i = 0; i < allPoints.length - 1; i++) {
-      for (let j = i + 1; j < allPoints.length; j++) {
-        // Evitar duplicar el segmento principal que ya agregamos
-        if (i === 0 && j === allPoints.length - 1) continue;
-        
-        // Agregar este segmento
+    // Generate all possible segments from the stops
+    const stops = route.stops;
+    for (let i = 0; i < stops.length; i++) {
+      for (let j = i + 1; j < stops.length; j++) {
         segments.push({
-          origin: allPoints[i],
-          destination: allPoints[j],
-          price: 0
+          origin: stops[i],
+          destination: stops[j],
         });
       }
     }
-    
-    console.log(`Generados ${segments.length} segmentos para la ruta ${id}`);
     
     return {
       ...route,
@@ -437,17 +421,11 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getReservations(companyId?: string, tripId?: number): Promise<ReservationWithDetails[]> {
+  async getReservations(companyId?: string): Promise<ReservationWithDetails[]> {
     console.log("DB Storage: Consultando reservaciones");
     
     // Primero, definimos la consulta base
     let query = db.select().from(schema.reservations);
-    
-    // Si hay un ID de viaje específico, filtrar por él
-    if (tripId) {
-      console.log(`DB Storage: Filtrando reservaciones por viaje: ${tripId}`);
-      query = db.select().from(schema.reservations).where(eq(schema.reservations.tripId, tripId));
-    }
     
     // Si hay un companyId, filtrar directamente por ese campo en la tabla de reservaciones
     if (companyId) {
@@ -524,114 +502,21 @@ export class DatabaseStorage implements IStorage {
   }
   
   async updateReservation(id: number, reservationUpdate: Partial<Reservation>): Promise<Reservation | undefined> {
-    try {
-      // Obtener la reservación actual
-      const currentReservation = await this.getReservation(id);
-      if (!currentReservation) {
-        console.log(`No se encontró la reservación ${id} para actualizar`);
-        return undefined;
-      }
-      
-      // Verificar si se está cancelando la reservación
-      const isCancelling = reservationUpdate.status === 'cancelled' && 
-                          currentReservation.status !== 'cancelled';
-      
-      // Actualizar la reservación
-      const [updatedReservation] = await db
-        .update(schema.reservations)
-        .set(reservationUpdate)
-        .where(eq(schema.reservations.id, id))
-        .returning();
-      
-      // Si se está cancelando, actualizar los asientos disponibles
-      if (isCancelling) {
-        const trip = await this.getTrip(currentReservation.tripId);
-        if (trip) {
-          // Obtener recuento de pasajeros
-          const passengers = await this.getPassengers(id);
-          const passengerCount = passengers.length;
-          
-          if (passengerCount > 0) {
-            console.log(`Cancelando reservación ${id}. Liberando ${passengerCount} asientos...`);
-            
-            // Actualizar asientos disponibles en el viaje principal
-            await db
-              .update(schema.trips)
-              .set({ 
-                availableSeats: sql`available_seats + ${passengerCount}` 
-              })
-              .where(eq(schema.trips.id, trip.id));
-            
-            // Actualizar viajes relacionados
-            await this.updateRelatedTripsAvailability(trip.id, passengerCount);
-            
-            console.log(`Liberados ${passengerCount} asientos al cancelar la reservación ${id}`);
-          }
-        }
-      }
-      
-      return updatedReservation;
-    } catch (error) {
-      console.error(`Error al actualizar la reservación ${id}:`, error);
-      throw error;
-    }
+    const [updatedReservation] = await db
+      .update(schema.reservations)
+      .set(reservationUpdate)
+      .where(eq(schema.reservations.id, id))
+      .returning();
+    return updatedReservation;
   }
   
   async deleteReservation(id: number): Promise<boolean> {
-    try {
-      // Primero obtener la reservación y sus pasajeros antes de eliminarla
-      const reservation = await this.getReservation(id);
-      if (!reservation) {
-        console.log(`No se encontró la reservación ${id} para eliminar`);
-        return false;
-      }
-      
-      // Obtener la información del viaje para actualizar asientos disponibles
-      const trip = await this.getTrip(reservation.tripId);
-      if (!trip) {
-        console.log(`No se encontró el viaje ${reservation.tripId} asociado a la reservación ${id}`);
-        return false;
-      }
-      
-      // Obtener el recuento de pasajeros
-      const passengers = await this.getPassengers(id);
-      const passengerCount = passengers.length;
-      console.log(`Reservación ${id} tiene ${passengerCount} pasajeros. Actualizando asientos disponibles...`);
-      
-      // Actualizar los asientos disponibles en el viaje principal
-      if (passengerCount > 0) {
-        await db
-          .update(schema.trips)
-          .set({ 
-            availableSeats: sql`available_seats + ${passengerCount}` 
-          })
-          .where(eq(schema.trips.id, trip.id));
-        
-        console.log(`Actualizados ${passengerCount} asientos en el viaje ${trip.id}`);
-        
-        // Actualizar viajes relacionados (si es subtrip o tiene subtrips)
-        await this.updateRelatedTripsAvailability(trip.id, passengerCount);
-      }
-      
-      // Eliminar los pasajeros asociados
-      await this.deletePassengersByReservation(id);
-      console.log(`Eliminados los pasajeros de la reservación ${id}`);
-      
-      // Finalmente eliminar la reservación
-      const result = await db
-        .delete(schema.reservations)
-        .where(eq(schema.reservations.id, id))
-        .returning({ id: schema.reservations.id });
-      
-      console.log(`Reservación ${id} eliminada con éxito`);
-      return result.length > 0;
-    } catch (error) {
-      console.error(`Error al eliminar la reservación ${id}:`, error);
-      throw error;
-    }
+    const result = await db
+      .delete(schema.reservations)
+      .where(eq(schema.reservations.id, id))
+      .returning({ id: schema.reservations.id });
+    return result.length > 0;
   }
-  
-
   
   async getPassengers(reservationId: number): Promise<Passenger[]> {
     return await db
@@ -651,76 +536,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(schema.passengers.reservationId, reservationId))
       .returning({ id: schema.passengers.id });
     return result.length > 0;
-  }
-
-  // Método específico para obtener reservaciones por ID de viaje
-  async getReservationsForTrip(tripId: number, companyId?: string): Promise<ReservationWithDetails[]> {
-    console.log(`[getReservationsForTrip] Buscando reservaciones para viaje ${tripId}`);
-    
-    try {
-      // Construir la consulta base para obtener reservaciones
-      let query = db
-        .select()
-        .from(schema.reservations)
-        .where(eq(schema.reservations.tripId, tripId));
-      
-      // Aplicar filtro por compañía si se especifica
-      if (companyId) {
-        query = query.where(eq(schema.reservations.companyId, companyId));
-        console.log(`[getReservationsForTrip] Filtrado por compañía: ${companyId}`);
-      }
-      
-      // Ejecutar la consulta
-      const basicReservations = await query;
-      
-      if (basicReservations.length === 0) {
-        console.log(`[getReservationsForTrip] No se encontraron reservaciones para el viaje ${tripId}`);
-        return [];
-      }
-      
-      console.log(`[getReservationsForTrip] Encontradas ${basicReservations.length} reservaciones para viaje ${tripId}`);
-      
-      // Enriquecemos las reservaciones con datos adicionales
-      const enrichedReservations: ReservationWithDetails[] = [];
-      
-      for (const reservation of basicReservations) {
-        // Obtenemos los pasajeros
-        const passengers = await this.getPassengers(reservation.id);
-        
-        // Obtenemos el viaje
-        const trip = await this.getTrip(reservation.tripId);
-        if (!trip) {
-          console.log(`[getReservationsForTrip] No se encontró el viaje ${reservation.tripId} asociado a la reserva ${reservation.id}`);
-          continue;
-        }
-        
-        // Obtenemos la ruta
-        const route = await this.getRoute(trip.routeId);
-        if (!route) {
-          console.log(`[getReservationsForTrip] No se encontró la ruta para el viaje ${trip.id}`);
-          continue;
-        }
-        
-        // Agregamos la información a la lista
-        const reservationWithDetails: ReservationWithDetails = {
-          ...reservation,
-          passengers,
-          trip: {
-            ...trip,
-            route,
-            numStops: route.stops.length,
-          }
-        };
-        
-        enrichedReservations.push(reservationWithDetails);
-      }
-      
-      console.log(`[getReservationsForTrip] Procesadas ${enrichedReservations.length} reservaciones con detalles`);
-      return enrichedReservations;
-    } catch (error) {
-      console.error("[getReservationsForTrip] Error al obtener reservaciones:", error);
-      throw error;
-    }
   }
   
   // Métodos para gestión de vehículos (unidades)
@@ -817,16 +632,5 @@ export class DatabaseStorage implements IStorage {
       .where(eq(schema.commissions.id, id))
       .returning({ id: schema.commissions.id });
     return result.length > 0;
-  }
-  
-  // Método para obtener un usuario por ID
-  async getUser(id: number): Promise<schema.User | undefined> {
-    try {
-      const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id));
-      return user;
-    } catch (error) {
-      console.error(`Error al buscar usuario con ID ${id}:`, error);
-      return undefined;
-    }
   }
 }

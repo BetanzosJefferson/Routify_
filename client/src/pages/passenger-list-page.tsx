@@ -495,18 +495,10 @@ export default function PassengerListPage() {
               </div>
             </div>
             
-            <div className="pt-4 print:hidden space-y-2">
+            <div className="pt-4 print:hidden">
               <Button onClick={handlePrint} variant="outline" className="w-full">
                 <Printer className="mr-2 h-4 w-4" />
                 Imprimir Lista
-              </Button>
-              <Button 
-                onClick={() => window.location.href = `/api/trips/${tripId}/boarding-list/excel`} 
-                variant="outline"
-                className="w-full"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Exportar a Excel
               </Button>
             </div>
           </CardContent>

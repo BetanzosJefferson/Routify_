@@ -13,11 +13,8 @@ import {
   RouteWithSegments,
   SegmentPrice,
   locationData,
-  UserRole,
-  CheckStatus,
-  ChargeStatus
+  UserRole
 } from "@shared/schema";
-import { generateBoardingListExcel, getBoardingListData } from './excel-service';
 
 import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
 import { setupAuthentication } from "./auth-session";
@@ -729,68 +726,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`Generando todos los segmentos para la ruta ${route.id}`);
     console.log(`Puntos en la ruta: ${allPoints.join(' -> ')}`);
     
-    // Implementación optimizada para evitar segmentos duplicados
-    // Enfoque: Generar solo segmentos significativos y evitar duplicaciones
-    
-    // Opción 1: Solo generar segmentos consecutivos (parada a parada)
-    // Esto crea una experiencia más sencilla pero con menos opciones para el usuario
+    // Approach 1: Generate all possible combinations (not just consecutive stops)
     for (let i = 0; i < allPoints.length - 1; i++) {
-      // Crear segmento del punto actual al siguiente
-      const j = i + 1;
-      
-      // Skip segments where origin and destination are in the same city
-      if (isSameCity(allPoints[i], allPoints[j])) {
-        console.log(`Saltando segmento en misma ciudad: ${allPoints[i]} -> ${allPoints[j]}`);
-        continue;
+      for (let j = i + 1; j < allPoints.length; j++) {
+        // Skip the main route (origin to destination) as it's already created separately
+        if (i === 0 && j === allPoints.length - 1) {
+          console.log(`Saltando ruta principal: ${allPoints[i]} -> ${allPoints[j]} (se crea por separado)`);
+          continue;
+        }
+        
+        // Skip segments where origin and destination are in the same city
+        if (isSameCity(allPoints[i], allPoints[j])) {
+          console.log(`Saltando segmento en misma ciudad: ${allPoints[i]} -> ${allPoints[j]}`);
+          continue;
+        }
+        
+        // Para evitar duplicados, omitiremos los segmentos con solo una parada de diferencia
+        // si no es un segmento significativo (como origen a primera parada o última parada a destino)
+        const isShortSegment = j === i + 1;
+        const isFirstToSecond = i === 0 && j === 1; // Origen a primera parada
+        const isSecondToLast = j === allPoints.length - 1 && i === allPoints.length - 2; // Última parada a destino
+        
+        // Solo incluir segmentos cortos si son significativos o si la ruta tiene pocas paradas
+        if (isShortSegment && !isFirstToSecond && !isSecondToLast && allPoints.length > 3) {
+          console.log(`Saltando segmento corto no significativo: ${allPoints[i]} -> ${allPoints[j]}`);
+          continue;
+        }
+        
+        allSegments.push({
+          origin: allPoints[i],
+          destination: allPoints[j],
+          price: 0
+        });
+        
+        console.log(`  + Segmento: ${allPoints[i]} -> ${allPoints[j]}`);
       }
-      
-      allSegments.push({
-        origin: allPoints[i],
-        destination: allPoints[j],
-        price: 0
-      });
-      
-      console.log(`  + Segmento consecutivo: ${allPoints[i]} -> ${allPoints[j]}`);
     }
     
-    // Opción 2: Añadir segmentos clave (no consecutivos) para rutas importantes
-    // Esto permite viajes directos entre puntos populares, como:
-    // - Origen a cualquier parada (saltar paradas intermedias)
-    // - Cualquier parada a destino (viajes directos al destino final)
-    
-    // Origen a cualquier parada (saltando intermedios)
-    for (let j = 2; j < allPoints.length - 1; j++) {
-      // Skip segments where origin and destination are in the same city
-      if (isSameCity(allPoints[0], allPoints[j])) {
-        continue;
-      }
-      
-      allSegments.push({
-        origin: allPoints[0],
-        destination: allPoints[j],
-        price: 0
-      });
-      
-      console.log(`  + Segmento desde origen: ${allPoints[0]} -> ${allPoints[j]}`);
-    }
-    
-    // Cualquier parada a destino final
-    for (let i = 1; i < allPoints.length - 2; i++) {
-      // Skip segments where origin and destination are in the same city
-      if (isSameCity(allPoints[i], allPoints[allPoints.length - 1])) {
-        continue;
-      }
-      
-      allSegments.push({
-        origin: allPoints[i],
-        destination: allPoints[allPoints.length - 1],
-        price: 0
-      });
-      
-      console.log(`  + Segmento a destino: ${allPoints[i]} -> ${allPoints[allPoints.length - 1]}`);
-    }
-    
-    console.log(`Generados ${allSegments.length} segmentos válidos optimizados para la ruta ${route.id}`);
+    console.log(`Generados ${allSegments.length} segmentos válidos (excluyendo misma ciudad y ruta principal) para la ruta ${route.id}`);
     
     return allSegments;
   }
@@ -1469,10 +1442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Obtener el usuario autenticado
       const { user } = req as any;
       
-      // Modo QR: Determinar si esta petición es para verificación de ticket via QR
-      const isQrView = req.query.qr === 'true';
-      
-      console.log(`[GET /reservations/${id}] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'} (Modo QR: ${isQrView})`);
+      console.log(`[GET /reservations/${id}] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
       if (user) {
         console.log(`[GET /reservations/${id}] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
       }
@@ -1481,13 +1451,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let companyId: string | null = null;
       
       // REGLAS DE ACCESO:
-      // 0. Para visualización de QR, permitir acceso sin autenticación
       // 1. superAdmin y admin pueden ver TODAS las reservaciones
       // 2. El resto de roles solo pueden ver reservaciones de SU COMPAÑÍA
-      if (isQrView) {
-        // Para modo QR, permitimos el acceso sin restringir por compañía
-        console.log(`[GET /reservations/${id}] Modo QR: Acceso sin restricción por compañía`);
-      } else if (user) {
+      if (user) {
         if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
           // Obtener la compañía del usuario
           companyId = user.companyId || user.company;
@@ -1504,16 +1470,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           console.log(`[GET /reservations/${id}] Usuario con rol ${user.role} puede ver todas las reservaciones`);
         }
-      } else if (!isQrView) {
-        // Solo rechazamos si NO es modo QR y no hay usuario
+      } else {
         console.log(`[GET /reservations/${id}] Acceso no autenticado denegado`);
         return res.status(401).json({ error: "No autenticado" });
       }
       
-      // Obtener la reservación - en modo QR no filtramos por compañía
-      const reservation = isQrView 
-        ? await storage.getReservationWithDetails(id)
-        : await storage.getReservationWithDetails(id, companyId || undefined);
+      // Obtener la reservación con filtrado por compañía
+      const reservation = await storage.getReservationWithDetails(id, companyId || undefined);
       
       if (!reservation) {
         console.log(`[GET /reservations/${id}] No encontrada o acceso denegado`);
@@ -1615,89 +1578,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put(apiRouter("/reservations/:id"), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
-      
-      // Verificar autenticación del usuario
-      const { user } = req as any;
-      
-      if (!user) {
-        console.log(`[PUT /reservations/${id}] Acceso denegado: Usuario no autenticado`);
-        return res.status(401).json({ error: "No autenticado" });
-      }
-      
-      console.log(`[PUT /reservations/${id}] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
-      
-      // Verificar que el usuario tenga permiso para esta reservación (misma compañía)
-      const reservation = await storage.getReservationWithDetails(id);
-      
-      if (!reservation) {
-        console.log(`[PUT /reservations/${id}] Reservación no encontrada`);
-        return res.status(404).json({ error: "Reservación no encontrada" });
-      }
-      
-      // Control de acceso por compañía excepto para superAdmin y admin
-      if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
-        const userCompany = user.companyId || user.company;
-        
-        if (!userCompany) {
-          console.log(`[PUT /reservations/${id}] Usuario sin compañía asignada`);
-          return res.status(403).json({ error: "Acceso denegado" });
-        }
-        
-        if (reservation.companyId !== userCompany) {
-          console.log(`[PUT /reservations/${id}] ACCESO DENEGADO: Usuario de compañía ${userCompany} intentando modificar reservación de compañía ${reservation.companyId}`);
-          return res.status(403).json({ error: "Acceso denegado" });
-        }
-      }
-      
-      // Validar los datos de la reservación
-      console.log("Datos recibidos para actualizar reserva:", JSON.stringify(req.body));
-      
       const validationResult = insertReservationSchema.partial().safeParse(req.body);
       
       if (!validationResult.success) {
-        console.log("Error de validación:", JSON.stringify(validationResult.error.format()));
         return res.status(400).json({ 
           error: "Invalid reservation data", 
           details: validationResult.error.format() 
         });
       }
       
-      // Si está verificando, guardar el ID del usuario que verifica
       const reservationData = validationResult.data;
-      console.log("En el backend, datos recibidos:", JSON.stringify(reservationData));
-      console.log("En el backend, CheckStatus.CHECKED es:", CheckStatus.CHECKED);
-      
-      // Corregir el estado de verificación si es necesario
-      if (reservationData.checkStatus) {
-        console.log("Procesando verificación de boleto...");
-        // Asegurarnos que se use el valor correcto del enum: "check"
-        reservationData.checkStatus = CheckStatus.CHECKED;
-        reservationData.checkedBy = user.id;
-        // Asegurarse de que se guarde la fecha si no viene en la petición
-        if (!reservationData.checkedAt) {
-          reservationData.checkedAt = new Date();
-        }
-        console.log("Estado de verificación actualizado a:", reservationData.checkStatus);
-      }
-      
-      // Corregir el estado de cobro si es necesario
-      if (reservationData.chargeStatus) {
-        console.log("Procesando cobro de boleto...");
-        // Asegurarnos que se use el valor correcto del enum: "cobrado"
-        reservationData.chargeStatus = ChargeStatus.CHARGED;
-        console.log("Estado de cobro actualizado a:", reservationData.chargeStatus);
-      }
-      
       const updatedReservation = await storage.updateReservation(id, reservationData);
       
       if (!updatedReservation) {
         return res.status(404).json({ error: "Reservation not found" });
       }
       
-      console.log(`[PUT /reservations/${id}] Actualización exitosa`);
       res.json(updatedReservation);
     } catch (error) {
-      console.error(`[PUT /reservations/:id] Error: ${error}`);
       res.status(500).json({ error: "Failed to update reservation" });
     }
   });
@@ -2060,79 +1958,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error(`[DELETE /vehicles/:id] Error: ${error}`);
       res.status(500).json({ error: "Error al eliminar el vehículo" });
-    }
-  });
-
-  // EXPORTACIÓN DE LISTA DE ABORDAJE A EXCEL
-  app.get(apiRouter("/trips/:id/boarding-list/excel"), isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const tripId = parseInt(req.params.id, 10);
-      if (isNaN(tripId)) {
-        return res.status(400).json({ error: "ID de viaje inválido" });
-      }
-
-      // Obtener el usuario autenticado
-      const { user } = req as any;
-      console.log(`[GET /trips/${tripId}/boarding-list/excel] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
-      
-      // Verificar que el viaje existe
-      const trip = await storage.getTrip(tripId);
-      if (!trip) {
-        return res.status(404).json({ error: "Viaje no encontrado" });
-      }
-      
-      // Verificar permisos: Solo roles específicos pueden exportar listas de abordaje
-      // superAdmin, admin, developer pueden exportar cualquier lista
-      // dueño (owner), oficina de boletos (ticket_office), checker solo de su compañía
-      if (user.role !== UserRole.SUPER_ADMIN && 
-          user.role !== UserRole.ADMIN && 
-          user.role !== UserRole.DEVELOPER) {
-        
-        const userCompanyId = user.companyId || user.company;
-        if (!userCompanyId) {
-          return res.status(403).json({ error: "No tiene permisos para exportar esta lista de abordaje" });
-        }
-        
-        // Verificar que el viaje pertenece a la misma compañía
-        if (trip.companyId !== userCompanyId) {
-          return res.status(403).json({ error: "No tiene permisos para exportar esta lista de abordaje de otra compañía" });
-        }
-      }
-      
-      console.log(`[GET /trips/${tripId}/boarding-list/excel] Obteniendo datos para lista de abordaje`);
-      
-      // Obtener los datos de la lista de abordaje
-      let boardingData = await getBoardingListData(tripId);
-      
-      // Verificar si hay datos
-      if (!boardingData || boardingData.length === 0) {
-        return res.status(404).json({ error: "No hay reservaciones para este viaje" });
-      }
-      
-      console.log(`[GET /trips/${tripId}/boarding-list/excel] Generando Excel con ${boardingData.length} reservaciones`);
-      
-      // Generar el Excel
-      const excelBuffer = await generateBoardingListExcel(tripId, boardingData);
-      
-      // Configurar encabezados para la descarga
-      const routeName = trip.segmentOrigin && trip.segmentDestination 
-        ? `${trip.segmentOrigin}-${trip.segmentDestination}` 
-        : trip.id.toString();
-      const date = new Date(trip.departureDate).toLocaleDateString('es-MX').replace(/\//g, '-');
-      const filename = `Lista_Abordaje_${routeName}_${date}.xlsx`;
-      
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-      res.setHeader('Content-Length', excelBuffer.length);
-      
-      // Enviar el archivo
-      res.send(excelBuffer);
-    } catch (error: any) {
-      console.error(`[GET /trips/${req.params.id}/boarding-list/excel] Error:`, error);
-      res.status(500).json({ 
-        error: "Error al generar la lista de abordaje", 
-        details: error.message || "Error desconocido" 
-      });
     }
   });
 
