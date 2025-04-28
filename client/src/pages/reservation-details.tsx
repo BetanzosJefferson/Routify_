@@ -25,12 +25,12 @@ export default function ReservationDetails() {
     }
   }, []);
 
-  // Cargar los detalles de la reservación
+  // Cargar los detalles de la reservación usando el endpoint público
   const { data: reservation, isLoading, error, refetch } = useQuery({
-    queryKey: ["/api/reservations/details", reservationId],
+    queryKey: ["/api/public/reservations", reservationId],
     queryFn: async () => {
       if (!reservationId) return null;
-      const response = await fetch(`/api/reservations/${reservationId}`);
+      const response = await fetch(`/api/public/reservations/${reservationId}`);
       if (!response.ok) {
         throw new Error("Error al cargar los detalles de la reservación");
       }
@@ -45,14 +45,24 @@ export default function ReservationDetails() {
     
     setIsMarkingAsPaid(true);
     try {
-      const response = await apiRequest(
+      // Primero intentamos hacer la solicitud (esto probablemente fallará si no está autenticado)
+      let response = await apiRequest(
         "PUT", 
         `/api/reservations/${reservationId}`, 
         { paymentStatus: "pagado" }
       );
       
+      // Si la solicitud falla, mostramos un mensaje indicando que se necesita autenticación
       if (!response.ok) {
-        throw new Error("Error al actualizar el estado de pago");
+        toast({
+          title: "Autenticación requerida",
+          description: "Para marcar como pagado necesita iniciar sesión con una cuenta autorizada.",
+          variant: "destructive",
+        });
+        
+        // Opcionalmente, podríamos redirigir a la página de inicio de sesión
+        // setLocation("/auth");
+        return;
       }
       
       toast({
