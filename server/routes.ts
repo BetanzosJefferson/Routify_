@@ -13,7 +13,9 @@ import {
   RouteWithSegments,
   SegmentPrice,
   locationData,
-  UserRole
+  UserRole,
+  insertCouponSchema, 
+  insertCommissionSchema
 } from "@shared/schema";
 
 import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
@@ -1958,6 +1960,595 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error(`[DELETE /vehicles/:id] Error: ${error}`);
       res.status(500).json({ error: "Error al eliminar el vehículo" });
+    }
+  });
+
+  // COUPONS ENDPOINTS
+  // Get all coupons
+  app.get(apiRouter("/coupons"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Obtener companyId del usuario
+      const companyId = user.companyId || user.company;
+      
+      // Solo roles superAdmin, Admin, Developer y Owner pueden ver cupones
+      if (user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN && 
+          user.role !== UserRole.DEVELOPER && 
+          user.role !== UserRole.OWNER) {
+        return res.status(403).json({ error: "No autorizado para ver cupones" });
+      }
+      
+      // Superadmin puede ver todos, el resto solo ve los de su compañía
+      const filterByCompany = user.role !== UserRole.SUPER_ADMIN && 
+                             user.role !== UserRole.ADMIN &&
+                             user.role !== UserRole.DEVELOPER;
+      
+      const coupons = await storage.getCoupons(filterByCompany ? companyId : undefined);
+      res.json(coupons);
+    } catch (error) {
+      console.error("Error fetching coupons:", error);
+      res.status(500).json({ error: "Failed to fetch coupons" });
+    }
+  });
+
+  // Create coupon
+  app.post(apiRouter("/coupons"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Solo superAdmin, Admin, Developer y Owner pueden crear cupones
+      if (user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN && 
+          user.role !== UserRole.DEVELOPER && 
+          user.role !== UserRole.OWNER) {
+        return res.status(403).json({ error: "No autorizado para crear cupones" });
+      }
+      
+      const companyId = user.companyId || user.company;
+      
+      if (!companyId) {
+        return res.status(400).json({ error: "No se puede crear el cupón sin una compañía asignada" });
+      }
+      
+      // Validar datos del cupón
+      const validationResult = insertCouponSchema.safeParse(req.body);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Datos de cupón inválidos", 
+          details: validationResult.error.format() 
+        });
+      }
+      
+      // Crear cupón con datos validados
+      const couponData = {
+        ...validationResult.data,
+        companyId,
+      };
+      
+      const coupon = await storage.createCoupon(couponData);
+      res.status(201).json(coupon);
+    } catch (error: any) {
+      console.error("Error creating coupon:", error);
+      res.status(500).json({ 
+        error: "Error al crear el cupón", 
+        details: error?.message || "Error desconocido" 
+      });
+    }
+  });
+
+  // Update coupon
+  app.patch(apiRouter("/coupons/:id"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Solo superAdmin, Admin, Developer y Owner pueden actualizar cupones
+      if (user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN && 
+          user.role !== UserRole.DEVELOPER && 
+          user.role !== UserRole.OWNER) {
+        return res.status(403).json({ error: "No autorizado para actualizar cupones" });
+      }
+      
+      const id = parseInt(req.params.id, 10);
+      
+      // Obtener el cupón actual
+      const existingCoupon = await storage.getCoupon(id);
+      
+      if (!existingCoupon) {
+        return res.status(404).json({ error: "Cupón no encontrado" });
+      }
+      
+      // Verificar que el usuario tenga acceso al cupón (misma compañía)
+      const userCompanyId = user.companyId || user.company;
+      
+      if (user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN &&
+          user.role !== UserRole.DEVELOPER &&
+          existingCoupon.companyId !== userCompanyId) {
+        return res.status(403).json({ error: "No tiene permiso para modificar este cupón" });
+      }
+      
+      // Validar datos parciales del cupón
+      const validationResult = insertCouponSchema.partial().safeParse(req.body);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Datos de cupón inválidos", 
+          details: validationResult.error.format() 
+        });
+      }
+      
+      // Actualizar cupón
+      const updatedCoupon = await storage.updateCoupon(id, validationResult.data);
+      res.json(updatedCoupon);
+    } catch (error) {
+      console.error("Error updating coupon:", error);
+      res.status(500).json({ error: "Failed to update coupon" });
+    }
+  });
+
+  // Delete coupon
+  app.delete(apiRouter("/coupons/:id"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Solo superAdmin, Admin, Developer y Owner pueden eliminar cupones
+      if (user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN && 
+          user.role !== UserRole.DEVELOPER && 
+          user.role !== UserRole.OWNER) {
+        return res.status(403).json({ error: "No autorizado para eliminar cupones" });
+      }
+      
+      const id = parseInt(req.params.id, 10);
+      
+      // Obtener el cupón actual
+      const existingCoupon = await storage.getCoupon(id);
+      
+      if (!existingCoupon) {
+        return res.status(404).json({ error: "Cupón no encontrado" });
+      }
+      
+      // Verificar que el usuario tenga acceso al cupón (misma compañía)
+      const userCompanyId = user.companyId || user.company;
+      
+      if (user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN &&
+          user.role !== UserRole.DEVELOPER &&
+          existingCoupon.companyId !== userCompanyId) {
+        return res.status(403).json({ error: "No tiene permiso para eliminar este cupón" });
+      }
+      
+      // Eliminar cupón
+      const success = await storage.deleteCoupon(id);
+      
+      if (!success) {
+        return res.status(500).json({ error: "Error al eliminar el cupón" });
+      }
+      
+      res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting coupon:", error);
+      res.status(500).json({ error: "Failed to delete coupon" });
+    }
+  });
+
+  // COMMISSIONS ENDPOINTS
+  // Get all commissions
+  app.get(apiRouter("/commissions"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Obtener companyId del usuario
+      const companyId = user.companyId || user.company;
+      
+      // Solo roles superAdmin, Admin, Developer y Owner pueden ver comisiones
+      if (user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN && 
+          user.role !== UserRole.DEVELOPER && 
+          user.role !== UserRole.OWNER) {
+        return res.status(403).json({ error: "No autorizado para ver comisiones" });
+      }
+      
+      // Superadmin puede ver todas, el resto solo ve las de su compañía
+      const filterByCompany = user.role !== UserRole.SUPER_ADMIN && 
+                             user.role !== UserRole.ADMIN &&
+                             user.role !== UserRole.DEVELOPER;
+      
+      const commissions = await storage.getCommissions(filterByCompany ? companyId : undefined);
+      res.json(commissions);
+    } catch (error) {
+      console.error("Error fetching commissions:", error);
+      res.status(500).json({ error: "Failed to fetch commissions" });
+    }
+  });
+
+  // Create commission
+  app.post(apiRouter("/commissions"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Solo superAdmin, Admin, Developer y Owner pueden crear comisiones
+      if (user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN && 
+          user.role !== UserRole.DEVELOPER && 
+          user.role !== UserRole.OWNER) {
+        return res.status(403).json({ error: "No autorizado para crear comisiones" });
+      }
+      
+      const companyId = user.companyId || user.company;
+      
+      if (!companyId) {
+        return res.status(400).json({ error: "No se puede crear la comisión sin una compañía asignada" });
+      }
+      
+      // Validar datos de la comisión
+      const validationResult = insertCommissionSchema.safeParse(req.body);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Datos de comisión inválidos", 
+          details: validationResult.error.format() 
+        });
+      }
+      
+      // Crear comisión con datos validados
+      const commissionData = {
+        ...validationResult.data,
+        companyId,
+      };
+      
+      const commission = await storage.createCommission(commissionData);
+      res.status(201).json(commission);
+    } catch (error: any) {
+      console.error("Error creating commission:", error);
+      res.status(500).json({ 
+        error: "Error al crear la comisión", 
+        details: error?.message || "Error desconocido" 
+      });
+    }
+  });
+
+  // Update commission
+  app.patch(apiRouter("/commissions/:id"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Solo superAdmin, Admin, Developer y Owner pueden actualizar comisiones
+      if (user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN && 
+          user.role !== UserRole.DEVELOPER && 
+          user.role !== UserRole.OWNER) {
+        return res.status(403).json({ error: "No autorizado para actualizar comisiones" });
+      }
+      
+      const id = parseInt(req.params.id, 10);
+      
+      // Obtener la comisión actual
+      const existingCommission = await storage.getCommission(id);
+      
+      if (!existingCommission) {
+        return res.status(404).json({ error: "Comisión no encontrada" });
+      }
+      
+      // Verificar que el usuario tenga acceso a la comisión (misma compañía)
+      const userCompanyId = user.companyId || user.company;
+      
+      if (user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN &&
+          user.role !== UserRole.DEVELOPER &&
+          existingCommission.companyId !== userCompanyId) {
+        return res.status(403).json({ error: "No tiene permiso para modificar esta comisión" });
+      }
+      
+      // Validar datos parciales de la comisión
+      const validationResult = insertCommissionSchema.partial().safeParse(req.body);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Datos de comisión inválidos", 
+          details: validationResult.error.format() 
+        });
+      }
+      
+      // Actualizar comisión
+      const updatedCommission = await storage.updateCommission(id, validationResult.data);
+      res.json(updatedCommission);
+    } catch (error) {
+      console.error("Error updating commission:", error);
+      res.status(500).json({ error: "Failed to update commission" });
+    }
+  });
+
+  // Delete commission
+  app.delete(apiRouter("/commissions/:id"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Solo superAdmin, Admin, Developer y Owner pueden eliminar comisiones
+      if (user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN && 
+          user.role !== UserRole.DEVELOPER && 
+          user.role !== UserRole.OWNER) {
+        return res.status(403).json({ error: "No autorizado para eliminar comisiones" });
+      }
+      
+      const id = parseInt(req.params.id, 10);
+      
+      // Obtener la comisión actual
+      const existingCommission = await storage.getCommission(id);
+      
+      if (!existingCommission) {
+        return res.status(404).json({ error: "Comisión no encontrada" });
+      }
+      
+      // Verificar que el usuario tenga acceso a la comisión (misma compañía)
+      const userCompanyId = user.companyId || user.company;
+      
+      if (user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN &&
+          user.role !== UserRole.DEVELOPER &&
+          existingCommission.companyId !== userCompanyId) {
+        return res.status(403).json({ error: "No tiene permiso para eliminar esta comisión" });
+      }
+      
+      // Eliminar comisión
+      const success = await storage.deleteCommission(id);
+      
+      if (!success) {
+        return res.status(500).json({ error: "Error al eliminar la comisión" });
+      }
+      
+      res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting commission:", error);
+      res.status(500).json({ error: "Failed to delete commission" });
+    }
+  });
+
+  // PASSENGER TRANSFER ENDPOINT
+  app.post(apiRouter("/passenger-transfer"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Solo superAdmin, Admin, Developer y Owner pueden transferir pasajeros
+      if (user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN && 
+          user.role !== UserRole.DEVELOPER && 
+          user.role !== UserRole.OWNER) {
+        return res.status(403).json({ error: "No autorizado para transferir pasajeros" });
+      }
+      
+      const { reservationId, targetCompanyId, transferReason } = req.body;
+      
+      if (!reservationId || !targetCompanyId) {
+        return res.status(400).json({ 
+          error: "Datos incompletos", 
+          details: "Se requieren los campos reservationId y targetCompanyId" 
+        });
+      }
+      
+      // Obtener la reservación actual
+      const reservation = await storage.getReservation(reservationId);
+      
+      if (!reservation) {
+        return res.status(404).json({ error: "Reservación no encontrada" });
+      }
+      
+      // Verificar que el usuario tenga acceso a la reservación (misma compañía)
+      const userCompanyId = user.companyId || user.company;
+      
+      if (user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN &&
+          user.role !== UserRole.DEVELOPER &&
+          reservation.companyId !== userCompanyId) {
+        return res.status(403).json({ error: "No tiene permiso para transferir esta reservación" });
+      }
+      
+      // Verificar que la empresa destino exista
+      const targetCompany = await storage.getCompany(targetCompanyId);
+      
+      if (!targetCompany) {
+        return res.status(404).json({ error: "Empresa destino no encontrada" });
+      }
+      
+      // Actualizar la compañía de la reservación
+      const updatedReservation = await storage.updateReservation(reservationId, {
+        companyId: targetCompanyId,
+        transferReason: transferReason || `Transferido por ${user.firstName} ${user.lastName}`,
+        transferDate: new Date(),
+        transferredFrom: userCompanyId,
+      });
+      
+      res.json({
+        success: true,
+        message: "Reservación transferida con éxito",
+        reservation: updatedReservation
+      });
+    } catch (error) {
+      console.error("Error transferring passenger:", error);
+      res.status(500).json({ error: "Failed to transfer passenger reservation" });
+    }
+  });
+
+  // COMPANY ENDPOINTS
+  app.get(apiRouter("/company"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Obtener companyId del usuario
+      const companyId = user.companyId || user.company;
+      
+      if (!companyId) {
+        return res.status(404).json({ error: "No tiene una compañía asignada" });
+      }
+      
+      // Obtener datos de la compañía
+      const company = await storage.getCompany(companyId);
+      
+      if (!company) {
+        return res.status(404).json({ error: "Compañía no encontrada" });
+      }
+      
+      res.json(company);
+    } catch (error) {
+      console.error("Error fetching company data:", error);
+      res.status(500).json({ error: "Failed to fetch company data" });
+    }
+  });
+
+  app.patch(apiRouter("/company"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Solo Owner, superAdmin, Admin y Developer pueden actualizar datos de la compañía
+      if (user.role !== UserRole.OWNER && 
+          user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN && 
+          user.role !== UserRole.DEVELOPER) {
+        return res.status(403).json({ error: "No autorizado para actualizar datos de la compañía" });
+      }
+      
+      // Obtener companyId del usuario
+      const companyId = user.companyId || user.company;
+      
+      if (!companyId) {
+        return res.status(404).json({ error: "No tiene una compañía asignada" });
+      }
+      
+      // Verificar que la compañía exista
+      const existingCompany = await storage.getCompany(companyId);
+      
+      if (!existingCompany) {
+        return res.status(404).json({ error: "Compañía no encontrada" });
+      }
+      
+      // Actualizar datos de la compañía
+      const updatedCompany = await storage.updateCompany(companyId, req.body);
+      
+      res.json(updatedCompany);
+    } catch (error) {
+      console.error("Error updating company data:", error);
+      res.status(500).json({ error: "Failed to update company data" });
+    }
+  });
+
+  // Get all companies for dropdown lists
+  app.get(apiRouter("/companies"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Obtener lista de compañías (básica para selectores)
+      const companies = await storage.getCompanies();
+      
+      // Filtrar solo campos necesarios para listas desplegables
+      const simplifiedCompanies = companies.map(company => ({
+        id: company.id,
+        name: company.name,
+        logoUrl: company.logoUrl
+      }));
+      
+      res.json(simplifiedCompanies);
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+      res.status(500).json({ error: "Failed to fetch companies" });
+    }
+  });
+
+  // Search reservations endpoint
+  app.get(apiRouter("/reservations/search"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Solo Owner, superAdmin, Admin y Developer pueden buscar reservaciones
+      if (user.role !== UserRole.OWNER && 
+          user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN && 
+          user.role !== UserRole.DEVELOPER) {
+        return res.status(403).json({ error: "No autorizado para buscar reservaciones" });
+      }
+      
+      const { query } = req.query;
+      
+      if (!query) {
+        return res.status(400).json({ error: "Se requiere un término de búsqueda" });
+      }
+      
+      // Obtener companyId del usuario
+      const companyId = user.companyId || user.company;
+      
+      // SuperAdmin, Admin y Developer pueden buscar en todas las compañías
+      const filterByCompany = user.role !== UserRole.SUPER_ADMIN && 
+                             user.role !== UserRole.ADMIN &&
+                             user.role !== UserRole.DEVELOPER;
+      
+      // Buscar reservaciones
+      const reservations = await storage.searchReservations(
+        query as string, 
+        filterByCompany ? companyId : undefined
+      );
+      
+      res.json(reservations);
+    } catch (error) {
+      console.error("Error searching reservations:", error);
+      res.status(500).json({ error: "Failed to search reservations" });
     }
   });
 
