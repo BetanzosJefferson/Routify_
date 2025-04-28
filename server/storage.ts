@@ -69,6 +69,12 @@ export interface IStorage {
   createCommission(commission: InsertCommission): Promise<Commission>;
   updateCommission(id: number, commission: Partial<Commission>): Promise<Commission | undefined>;
   deleteCommission(id: number): Promise<boolean>;
+  
+  // Reservation-Trip specific methods
+  getReservationsForTrip(tripId: number, companyId?: string): Promise<ReservationWithDetails[]>;
+  
+  // User methods
+  getUser(id: number): Promise<schema.User | undefined>;
 }
 
 export class MemStorage implements IStorage {
