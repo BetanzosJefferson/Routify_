@@ -276,7 +276,10 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       advanceAmount: showAdvancePayment ? advanceAmount : 0,
       advancePaymentMethod: showAdvancePayment ? advancePaymentMethod : PaymentMethod.CASH,
       notes,
-      createdBy: createdById
+      createdBy: createdById,
+      // Nuevos campos por defecto (serán actualizados posteriormente)
+      checkStatus: CheckStatus.NOT_CHECKED,
+      chargeStatus: ChargeStatus.PENDING_CHARGE
     };
     
     createReservationMutation.mutate(reservationData);
