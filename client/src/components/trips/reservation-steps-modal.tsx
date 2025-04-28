@@ -791,11 +791,19 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                   </div>
                 )}
                 
-                <div className="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200 text-center">
-                  <h3 className="text-xl font-bold mb-1">
+                <div className="text-center mb-6">
+                  <h3 className="text-xl font-bold mb-2">
                     #{submittedReservation && formatReservationId(submittedReservation.id)}
                   </h3>
-                  <div className={`text-sm font-semibold mb-2 py-1 px-2 rounded inline-block ${
+                  <div className="text-lg font-semibold mb-2">
+                    {passengers.map((passenger, index) => (
+                      <span key={index}>
+                        {passenger.firstName} {passenger.lastName}
+                        {index < passengers.length - 1 && ", "}
+                      </span>
+                    ))}
+                  </div>
+                  <div className={`inline-block px-3 py-1 rounded ${
                     advanceAmount === totalPrice ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
                   }`}>
                     {advanceAmount === totalPrice ? 'PAGADO' : 'PENDIENTE'}
@@ -806,22 +814,15 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                   {/* Información del pasajero */}
                   <div>
                     <h4 className="text-lg font-medium mb-2">Información del Pasajero</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <div className="text-sm text-gray-500">Nombre:</div>
-                        <div className="font-medium">
-                          {passengers.map((passenger, index) => (
-                            <div key={index}>
-                              {passenger.firstName} {passenger.lastName}
-                              {index < passengers.length - 1 && ", "}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <div className="text-sm text-gray-500">Contacto:</div>
-                        <div>{email}</div>
+                        <div className="break-words">{email}</div>
                         <div>{phone}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-500">Pasajeros:</div>
+                        <div>{numPassengers}</div>
                       </div>
                     </div>
                   </div>
@@ -829,13 +830,8 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                   {/* Detalles del viaje */}
                   <div>
                     <h4 className="text-lg font-medium mb-2">Detalles del Viaje</h4>
-                    <div className="space-y-2">
-                      <div>
-                        <div className="text-sm text-gray-500">Ruta:</div>
-                        <div className="font-medium">{trip.route.name}</div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <div className="text-sm text-gray-500">Origen:</div>
                           <div>{trip.segmentOrigin || trip.route.origin}</div>
@@ -846,7 +842,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <div className="text-sm text-gray-500">Fecha:</div>
                           <div>{formatDate(trip.departureDate)}</div>
@@ -856,29 +852,20 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                           <div>{trip.departureTime}</div>
                         </div>
                       </div>
-                      
-                      <div>
-                        <div className="text-sm text-gray-500">Pasajeros:</div>
-                        <div>{numPassengers}</div>
-                      </div>
                     </div>
                   </div>
                   
                   {/* Información de pago */}
                   <div>
                     <h4 className="text-lg font-medium mb-2">Información de Pago</h4>
-                    <div className="grid grid-cols-2 gap-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2">
                       <div>
                         <div className="text-sm text-gray-500">Total:</div>
                         <div className="text-lg font-bold">{formatPrice(totalPrice)}</div>
                       </div>
                       <div>
-                        <div className="text-sm text-gray-500">Estado:</div>
-                        <div className={`font-semibold ${
-                          advanceAmount === totalPrice ? "text-green-600" : "text-amber-600"
-                        }`}>
-                          {advanceAmount === totalPrice ? 'PAGADO' : 'PENDIENTE'}
-                        </div>
+                        <div className="text-sm text-gray-500">Método de pago:</div>
+                        <div>{paymentMethod === PaymentMethod.CASH ? "Efectivo" : "Transferencia"}</div>
                       </div>
                       
                       {advanceAmount > 0 && (
@@ -907,6 +894,16 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                         </>
                       )}
                     </div>
+                  </div>
+                </div>
+                
+                {/* Estado de pago grande */}
+                <div className="text-center mb-6">
+                  <h5 className="text-sm text-gray-500 mb-1">Estado:</h5>
+                  <div className={`text-2xl font-bold ${
+                    advanceAmount === totalPrice ? "text-green-600" : "text-amber-600"
+                  }`}>
+                    {advanceAmount === totalPrice ? 'PAGADO' : 'PENDIENTE'}
                   </div>
                 </div>
                 
