@@ -19,11 +19,13 @@ import {
   Coupon,
   InsertCoupon,
   Company,
-  InsertCompany
+  InsertCompany,
+  TransferRequest,
+  InsertTransferRequest
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db } from "./db";
-import { eq, and, gte, lt, like, or, sql } from "drizzle-orm";
+import { eq, and, gte, lt, like, or, sql, inArray } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   async getRoutes(companyId?: string): Promise<Route[]> {
