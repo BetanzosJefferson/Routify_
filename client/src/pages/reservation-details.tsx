@@ -125,18 +125,10 @@ export default function ReservationDetails() {
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
             Reservación #{generateReservationId(reservation.id)}
           </h1>
-          <div className="text-xl font-semibold mb-2">
+          <div className="text-xl font-semibold">
             {reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}
             {reservation.passengers.length > 1 && ` +${reservation.passengers.length - 1}`}
           </div>
-          <Badge 
-            variant={reservation.paymentStatus === 'pagado' ? "outline" : "secondary"}
-            className={reservation.paymentStatus === 'pagado' 
-              ? "bg-green-100 text-green-700 border-green-200 text-xs px-3 py-1" 
-              : "bg-amber-100 text-amber-700 border-amber-200 text-xs px-3 py-1"}
-          >
-            {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
-          </Badge>
         </div>
 
         {/* Información del pasajero */}
@@ -232,12 +224,8 @@ export default function ReservationDetails() {
 
         {/* Estado grande */}
         <div className="my-6 text-center">
-          <div className="text-sm text-gray-500 mb-1">Estado:</div>
-          <div className={`text-2xl font-bold ${
-            reservation.paymentStatus === 'pagado' 
-              ? 'text-green-600' 
-              : 'text-amber-600'
-          }`}>
+          <div className="text-sm text-gray-500 mb-2">Estado:</div>
+          <div className="text-2xl font-bold text-amber-500">
             {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
           </div>
         </div>
