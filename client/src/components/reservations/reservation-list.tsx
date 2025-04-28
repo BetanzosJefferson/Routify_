@@ -873,9 +873,18 @@ export function ReservationList() {
       {/* Modal de detalles y QR */}
       {detailModalOpen !== null && reservations && (
         <Dialog open={detailModalOpen !== null} onOpenChange={closeDetailModal}>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-0 gap-0">
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-6 gap-0">
             <DialogTitle className="sr-only">Detalles de Reservación</DialogTitle>
             <DialogDescription className="sr-only">Información completa de la reservación</DialogDescription>
+            
+            <div className="absolute right-4 top-4">
+              <button 
+                className="rounded-sm w-6 h-6 inline-flex items-center justify-center text-gray-400 hover:text-gray-500"
+                onClick={closeDetailModal}
+              >
+                <XIcon className="h-4 w-4" />
+              </button>
+            </div>
             
             {(() => {
               const reservation = reservations.find(r => r.id === detailModalOpen);
@@ -885,41 +894,34 @@ export function ReservationList() {
               const isPaid = reservation.paymentStatus === 'pagado';
               
               return (
-                <div ref={ticketRef} className="px-6 pt-6 pb-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center">
-                      <TicketIcon className="h-5 w-5 mr-2 text-gray-700" />
-                      <h2 className="font-medium text-lg">Detalles de la Reservación #{generateReservationId(reservation.id)}</h2>
-                    </div>
-                    <button 
-                      className="rounded-full w-6 h-6 inline-flex items-center justify-center border border-gray-200 text-gray-400 hover:text-gray-500"
-                      onClick={closeDetailModal}
-                    >
-                      <XIcon className="h-3 w-3" />
-                    </button>
+                <div ref={ticketRef}>
+                  <div className="flex items-center mb-1">
+                    <TicketIcon className="h-5 w-5 mr-2 text-gray-700" />
+                    <h2 className="font-medium text-lg">Detalles de la Reservación #{generateReservationId(reservation.id)}</h2>
                   </div>
-                  <p className="text-sm text-gray-500 mb-5">Información completa de la reservación</p>
+                  <p className="text-sm text-gray-500 mb-6">Información completa de la reservación</p>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Columna 1: Información del pasajero y viaje */}
-                    <div>
-                      <div className="mb-5">
-                        <h3 className="text-sm font-medium text-gray-700 uppercase mb-3">Información del pasajero</h3>
-                        <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Columna izquierda */}
+                    <div className="space-y-6">
+                      {/* Card de información del pasajero */}
+                      <div className="bg-gray-50 bg-opacity-50 rounded-md p-4">
+                        <h3 className="text-base text-gray-700 uppercase mb-4">INFORMACIÓN DEL PASAJERO</h3>
+                        <div className="space-y-4">
                           <div>
-                            <div className="text-xs text-gray-500 uppercase">NOMBRE</div>
+                            <div className="text-xs text-gray-500 uppercase mb-1">NOMBRE</div>
                             <div className="font-medium">{reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 uppercase">EMAIL</div>
+                            <div className="text-xs text-gray-500 uppercase mb-1">EMAIL</div>
                             <div className="font-medium">{reservation.email}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 uppercase">TELÉFONO</div>
+                            <div className="text-xs text-gray-500 uppercase mb-1">TELÉFONO</div>
                             <div className="font-medium">{reservation.phone}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 uppercase">PASAJEROS</div>
+                            <div className="text-xs text-gray-500 uppercase mb-1">PASAJEROS</div>
                             <div className="flex items-center">
                               <UserIcon className="h-4 w-4 text-gray-400 mr-1" />
                               <span className="font-medium">{reservation.passengers.length}</span>
@@ -928,15 +930,16 @@ export function ReservationList() {
                         </div>
                       </div>
 
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-700 uppercase mb-3">Detalles del viaje</h3>
-                        <div className="space-y-3">
+                      {/* Card de detalles del viaje */}
+                      <div className="bg-gray-50 bg-opacity-50 rounded-md p-4">
+                        <h3 className="text-base text-gray-700 uppercase mb-4">DETALLES DEL VIAJE</h3>
+                        <div className="space-y-4">
                           <div>
-                            <div className="text-xs text-gray-500 uppercase">RUTA</div>
+                            <div className="text-xs text-gray-500 uppercase mb-1">RUTA</div>
                             <div className="font-medium">{reservation.trip.route.name}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 uppercase">ORIGEN</div>
+                            <div className="text-xs text-gray-500 uppercase mb-1">ORIGEN</div>
                             <div className="font-medium flex items-start">
                               <div className="flex-shrink-0 mt-1 mr-2">
                                 <div className="h-2.5 w-2.5 rounded-full border-2 border-gray-300"></div>
@@ -945,7 +948,7 @@ export function ReservationList() {
                             </div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 uppercase">DESTINO</div>
+                            <div className="text-xs text-gray-500 uppercase mb-1">DESTINO</div>
                             <div className="font-medium flex items-start">
                               <div className="flex-shrink-0 mt-1 mr-2">
                                 <div className="h-2.5 w-2.5 rounded-full bg-blue-500"></div>
@@ -954,7 +957,7 @@ export function ReservationList() {
                             </div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 uppercase">FECHA</div>
+                            <div className="text-xs text-gray-500 uppercase mb-1">FECHA</div>
                             <div className="font-medium flex items-center">
                               <span className="flex-shrink-0 mr-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -965,7 +968,7 @@ export function ReservationList() {
                             </div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 uppercase">HORA DE SALIDA</div>
+                            <div className="text-xs text-gray-500 uppercase mb-1">HORA DE SALIDA</div>
                             <div className="font-medium flex items-center">
                               <span className="flex-shrink-0 mr-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -979,10 +982,11 @@ export function ReservationList() {
                       </div>
                     </div>
 
-                    {/* Columna 2: Información de pago y QR */}
-                    <div>
-                      <div className="mb-5">
-                        <h3 className="text-sm font-medium text-gray-700 uppercase mb-3">Información de pago</h3>
+                    {/* Columna derecha */}
+                    <div className="space-y-6">
+                      {/* Card de información de pago */}
+                      <div className="bg-gray-50 bg-opacity-50 rounded-md p-4">
+                        <h3 className="text-base text-gray-700 uppercase mb-4">INFORMACIÓN DE PAGO</h3>
                         <div>
                           <div className="flex justify-between items-center mb-3">
                             <div className="text-xs text-gray-500 uppercase">ESTADO DE PAGO</div>
@@ -990,13 +994,13 @@ export function ReservationList() {
                               variant={isPaid ? "outline" : "secondary"}
                               className={isPaid
                                 ? "bg-green-100 text-green-800 border-green-200" 
-                                : "bg-amber-100 text-amber-800 border-amber-200 whitespace-nowrap"}
+                                : "bg-amber-100 text-amber-800 border-amber-200 whitespace-nowrap px-3 py-1 rounded-full"}
                             >
                               {isPaid ? 'PAGADO' : 'PENDIENTE'}
                             </Badge>
                           </div>
                           
-                          <div className="space-y-2 border-t border-gray-100 pt-3">
+                          <div className="space-y-2 pt-3">
                             <div className="flex justify-between">
                               <div className="text-xs text-gray-500 uppercase">MONTO TOTAL</div>
                               <div className="font-semibold">${reservation.totalAmount.toFixed(0)}</div>
@@ -1039,7 +1043,7 @@ export function ReservationList() {
                             
                             {!isPaid && (
                               <Button 
-                                className="w-full mt-3 bg-green-600 hover:bg-green-700 text-white"
+                                className="w-full mt-3 bg-green-600 hover:bg-green-700 text-white border border-green-500 py-2 rounded-md"
                                 onClick={() => handleMarkAsPaid(reservation.id)}
                               >
                                 <CheckIcon className="h-4 w-4 mr-2" /> Marcar como pagado
@@ -1049,8 +1053,9 @@ export function ReservationList() {
                         </div>
                       </div>
                       
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-700 uppercase mb-3">Código QR</h3>
+                      {/* Card del código QR */}
+                      <div className="bg-gray-50 bg-opacity-50 rounded-md p-4">
+                        <h3 className="text-base text-gray-700 uppercase mb-4">CÓDIGO QR</h3>
                         <div className="flex flex-col items-center">
                           {qrCodeUrl ? (
                             <img 
@@ -1080,22 +1085,20 @@ export function ReservationList() {
                     </div>
                   </div>
                   
-                  <div className="mt-6 space-y-2">
-                    <div className="flex justify-between gap-3">
-                      <Button
-                        variant="outline"
-                        className="flex-1"
-                        onClick={handlePrintTicket}
-                      >
-                        <PrinterIcon className="w-4 h-4 mr-2" />
-                        Imprimir Boleto
-                      </Button>
-                    </div>
-                    
+                  <div className="flex flex-col mt-6 space-y-2">
                     <Button
                       variant="outline"
-                      size="sm"
                       className="w-full"
+                      onClick={handlePrintTicket}
+                    >
+                      <PrinterIcon className="w-4 h-4 mr-2" />
+                      Imprimir Boleto
+                    </Button>
+                    
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="w-full bg-blue-500 hover:bg-blue-600 text-white self-end"
                       onClick={closeDetailModal}
                     >
                       Cerrar
