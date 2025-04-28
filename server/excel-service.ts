@@ -1,7 +1,6 @@
 import ExcelJS from 'exceljs';
 import { Reservation, User } from '@shared/schema';
 import { storage } from './storage';
-import { Buffer } from 'buffer';
 
 // Interfaz para la información del pasajero con datos adicionales
 export interface PassengerBoardingInfo extends Reservation {
@@ -20,7 +19,7 @@ export interface PassengerBoardingInfo extends Reservation {
   };
 }
 
-export async function generateBoardingListExcel(tripId: number, reservations: PassengerBoardingInfo[]): Promise<Buffer> {
+export async function generateBoardingListExcel(tripId: number, reservations: PassengerBoardingInfo[]): Promise<any> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Lista de Abordaje');
 
@@ -188,10 +187,10 @@ export async function getBoardingListData(tripId: number): Promise<PassengerBoar
     }
     
     // Enriquecer las reservaciones con información adicional
-    const enhancedReservations: PassengerBoardingInfo[] = reservations.map(reservation => {
+    const enhancedReservations: PassengerBoardingInfo[] = reservations.map((reservation: any) => {
       // Obtener información de pasajeros
       const passengerNames = reservation.passengers
-        ? reservation.passengers.map(p => `${p.firstName} ${p.lastName}`).join(', ')
+        ? reservation.passengers.map((p: any) => `${p.firstName} ${p.lastName}`).join(', ')
         : 'No hay pasajeros';
         
       // Obtener origen y destino específico del viaje
