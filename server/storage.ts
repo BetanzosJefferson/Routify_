@@ -90,6 +90,16 @@ export interface IStorage {
   
   // Reservation search method
   searchReservations(query: string, companyId?: string): Promise<ReservationWithDetails[]>;
+  
+  // Transfer request methods
+  getTransferRequests(): Promise<TransferRequest[]>;
+  getTransferRequest(id: number): Promise<TransferRequest | undefined>;
+  getTransferRequestsByCompany(companyId: string): Promise<TransferRequest[]>;
+  createTransferRequest(transferRequest: InsertTransferRequest): Promise<TransferRequest>;
+  updateTransferRequest(id: number, transferRequest: Partial<TransferRequest>): Promise<TransferRequest | undefined>;
+  
+  // User methods
+  getUsersByCompanyAndRoles(companyId: string, roles: string[]): Promise<any[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -101,6 +111,7 @@ export class MemStorage implements IStorage {
   private commissions: Map<number, Commission>;
   private coupons: Map<number, Coupon>;
   private companies: Map<string, Company>;
+  private transferRequests: Map<number, TransferRequest>;
   
   private routeId: number;
   private tripId: number;
@@ -109,6 +120,7 @@ export class MemStorage implements IStorage {
   private vehicleId: number;
   private commissionId: number;
   private couponId: number;
+  private transferRequestId: number;
   
   constructor() {
     this.routes = new Map();
@@ -119,6 +131,7 @@ export class MemStorage implements IStorage {
     this.commissions = new Map();
     this.coupons = new Map();
     this.companies = new Map();
+    this.transferRequests = new Map();
     
     this.routeId = 1;
     this.tripId = 1;
@@ -127,6 +140,7 @@ export class MemStorage implements IStorage {
     this.vehicleId = 1;
     this.commissionId = 1;
     this.couponId = 1;
+    this.transferRequestId = 1;
 
     // Add some initial data
     this.createRoute({
@@ -803,6 +817,60 @@ export class MemStorage implements IStorage {
         reservation.id.toString().includes(queryLower)
       );
     });
+  }
+
+  // Transfer request methods
+  async getTransferRequests(): Promise<TransferRequest[]> {
+    return Array.from(this.transferRequests.values());
+  }
+  
+  async getTransferRequest(id: number): Promise<TransferRequest | undefined> {
+    return this.transferRequests.get(id);
+  }
+  
+  async getTransferRequestsByCompany(companyId: string): Promise<TransferRequest[]> {
+    return Array.from(this.transferRequests.values())
+      .filter(tr => tr.sourceCompanyId === companyId || tr.targetCompanyId === companyId);
+  }
+  
+  async createTransferRequest(transferRequest: InsertTransferRequest): Promise<TransferRequest> {
+    const id = this.transferRequestId++;
+    const now = new Date();
+    
+    const newTransferRequest: TransferRequest = {
+      ...transferRequest,
+      id,
+      createdAt: now,
+      updatedAt: now,
+      approvedBy: null,
+      approvedAt: null,
+      rejectedBy: null,
+      rejectedAt: null
+    };
+    
+    this.transferRequests.set(id, newTransferRequest);
+    return newTransferRequest;
+  }
+  
+  async updateTransferRequest(id: number, update: Partial<TransferRequest>): Promise<TransferRequest | undefined> {
+    const existingTransferRequest = this.transferRequests.get(id);
+    if (!existingTransferRequest) return undefined;
+    
+    const updatedTransferRequest = { 
+      ...existingTransferRequest,
+      ...update,
+      updatedAt: new Date()
+    };
+    
+    this.transferRequests.set(id, updatedTransferRequest);
+    return updatedTransferRequest;
+  }
+  
+  // User methods
+  async getUsersByCompanyAndRoles(companyId: string, roles: string[]): Promise<any[]> {
+    // Esta función sería implementada en DatabaseStorage para obtener usuarios reales
+    // En MemStorage simplemente devolvemos un array vacío
+    return [];
   }
 }
 

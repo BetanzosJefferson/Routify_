@@ -1288,4 +1288,85 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
   }
+
+  // Transfer request methods
+  async getTransferRequests(): Promise<TransferRequest[]> {
+    try {
+      const result = await db.select().from(schema.transferRequests);
+      return result;
+    } catch (error) {
+      console.error("Error fetching transfer requests:", error);
+      return [];
+    }
+  }
+  
+  async getTransferRequest(id: number): Promise<TransferRequest | undefined> {
+    try {
+      const [result] = await db.select().from(schema.transferRequests).where(eq(schema.transferRequests.id, id));
+      return result;
+    } catch (error) {
+      console.error(`Error fetching transfer request ${id}:`, error);
+      return undefined;
+    }
+  }
+  
+  async getTransferRequestsByCompany(companyId: string): Promise<TransferRequest[]> {
+    try {
+      const result = await db.select().from(schema.transferRequests)
+        .where(
+          or(
+            eq(schema.transferRequests.sourceCompanyId, companyId),
+            eq(schema.transferRequests.targetCompanyId, companyId)
+          )
+        );
+      return result;
+    } catch (error) {
+      console.error(`Error fetching transfer requests for company ${companyId}:`, error);
+      return [];
+    }
+  }
+  
+  async createTransferRequest(transferRequest: InsertTransferRequest): Promise<TransferRequest> {
+    try {
+      const [result] = await db.insert(schema.transferRequests).values(transferRequest).returning();
+      return result;
+    } catch (error) {
+      console.error("Error creating transfer request:", error);
+      throw error;
+    }
+  }
+  
+  async updateTransferRequest(id: number, update: Partial<TransferRequest>): Promise<TransferRequest | undefined> {
+    try {
+      const [result] = await db
+        .update(schema.transferRequests)
+        .set({
+          ...update,
+          updatedAt: new Date()
+        })
+        .where(eq(schema.transferRequests.id, id))
+        .returning();
+      return result;
+    } catch (error) {
+      console.error(`Error updating transfer request ${id}:`, error);
+      return undefined;
+    }
+  }
+  
+  // User methods
+  async getUsersByCompanyAndRoles(companyId: string, roles: string[]): Promise<any[]> {
+    try {
+      const users = await db.select().from(schema.users)
+        .where(
+          and(
+            eq(schema.users.companyId, companyId),
+            inArray(sql`LOWER(${schema.users.role})`, roles.map(r => r.toLowerCase()))
+          )
+        );
+      return users;
+    } catch (error) {
+      console.error(`Error fetching users for company ${companyId} with roles ${roles.join(', ')}:`, error);
+      return [];
+    }
+  }
 }
