@@ -537,6 +537,78 @@ export class DatabaseStorage implements IStorage {
       .returning({ id: schema.passengers.id });
     return result.length > 0;
   }
+
+  // Método específico para obtener reservaciones por ID de viaje
+  async getReservationsForTrip(tripId: number, companyId?: string): Promise<ReservationWithDetails[]> {
+    console.log(`[getReservationsForTrip] Buscando reservaciones para viaje ${tripId}`);
+    
+    try {
+      // Construir la consulta base para obtener reservaciones
+      const query = db
+        .select({
+          reservation: schema.reservations,
+        })
+        .from(schema.reservations)
+        .where(eq(schema.reservations.tripId, tripId));
+      
+      // Aplicar filtro por compañía si se especifica
+      if (companyId) {
+        query.where(eq(schema.reservations.companyId, companyId));
+        console.log(`[getReservationsForTrip] Filtrado por compañía: ${companyId}`);
+      }
+      
+      // Ejecutar la consulta
+      const reservationResults = await query;
+      
+      if (reservationResults.length === 0) {
+        console.log(`[getReservationsForTrip] No se encontraron reservaciones para el viaje ${tripId}`);
+        return [];
+      }
+      
+      console.log(`[getReservationsForTrip] Encontradas ${reservationResults.length} reservaciones para viaje ${tripId}`);
+      
+      // Transformamos los resultados básicos en un array de reservaciones
+      const basicReservations = reservationResults.map(result => result.reservation);
+      
+      // Enriquecemos las reservaciones con datos adicionales
+      const enrichedReservations: ReservationWithDetails[] = [];
+      
+      for (const reservation of basicReservations) {
+        // Obtenemos los pasajeros
+        const passengers = await this.getPassengers(reservation.id);
+        
+        // Obtenemos el viaje
+        const trip = await this.getTrip(reservation.tripId);
+        if (!trip) {
+          console.log(`[getReservationsForTrip] No se encontró el viaje ${reservation.tripId} asociado a la reserva ${reservation.id}`);
+          continue;
+        }
+        
+        // Obtenemos la ruta
+        const route = await this.getRoute(trip.routeId);
+        if (!route) {
+          console.log(`[getReservationsForTrip] No se encontró la ruta para el viaje ${trip.id}`);
+          continue;
+        }
+        
+        // Agregamos la información a la lista
+        enrichedReservations.push({
+          ...reservation,
+          passengers,
+          trip: {
+            ...trip,
+            route
+          }
+        });
+      }
+      
+      console.log(`[getReservationsForTrip] Procesadas ${enrichedReservations.length} reservaciones con detalles`);
+      return enrichedReservations;
+    } catch (error) {
+      console.error("[getReservationsForTrip] Error al obtener reservaciones:", error);
+      throw error;
+    }
+  }
   
   // Métodos para gestión de vehículos (unidades)
   async getVehicles(companyId?: string): Promise<Vehicle[]> {
@@ -632,5 +704,16 @@ export class DatabaseStorage implements IStorage {
       .where(eq(schema.commissions.id, id))
       .returning({ id: schema.commissions.id });
     return result.length > 0;
+  }
+  
+  // Método para obtener un usuario por ID
+  async getUser(id: number): Promise<schema.User | undefined> {
+    try {
+      const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id));
+      return user;
+    } catch (error) {
+      console.error(`Error al buscar usuario con ID ${id}:`, error);
+      return undefined;
+    }
   }
 }
