@@ -3,8 +3,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
-import { UserIcon, SearchIcon, Loader2Icon, XIcon, PhoneIcon, MailIcon } from "lucide-react";
+import { UserIcon, SearchIcon, Loader2Icon, XIcon, PhoneIcon, MailIcon, ShieldCheckIcon, CreditCardIcon } from "lucide-react";
 import { useReservations } from "@/hooks/use-reservations";
+import { PaymentStatus, PaymentMethod, ChargeStatus, CheckStatus } from "@shared/schema";
 
 import {
   AlertDialog,
@@ -190,6 +191,8 @@ export function ReservationList() {
     setEmail(reservation.email || "");
     setPhone(reservation.phone || "");
     setStatus(reservation.status || "confirmed");
+    setCheckStatus(reservation.checkStatus || CheckStatus.NO_CHECK);
+    setChargeStatus(reservation.chargeStatus || ChargeStatus.PENDING);
     setIsEditModalOpen(true);
   };
   
@@ -208,7 +211,18 @@ export function ReservationList() {
         notes,
         email,
         phone,
-        status
+        status,
+        checkStatus,
+        chargeStatus,
+        // Si el estado de verificación cambia a verificado, registramos la fecha actual
+        checkedAt: checkStatus === CheckStatus.CHECKED && editingReservation.checkStatus !== CheckStatus.CHECKED 
+          ? new Date().toISOString() 
+          : editingReservation.checkedAt,
+        // Si está siendo verificada, registramos el usuario que lo hace
+        // En una implementación real, esto usaría el ID del usuario actual
+        checkedBy: checkStatus === CheckStatus.CHECKED && editingReservation.checkStatus !== CheckStatus.CHECKED
+          ? 1 // ID del usuario actual (placeholder)
+          : editingReservation.checkedBy
       }
     });
   };
@@ -289,6 +303,8 @@ export function ReservationList() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seats</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cobro</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -324,6 +340,31 @@ export function ReservationList() {
                         className="bg-green-100 text-green-800 border-green-200"
                       >
                         {reservation.status.charAt(0).toUpperCase() + reservation.status.slice(1)}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge 
+                        variant={reservation.checkStatus === CheckStatus.CHECKED ? "default" : "outline"}
+                        className={reservation.checkStatus === CheckStatus.CHECKED ? 
+                          "bg-blue-100 text-blue-800 border-blue-200" : 
+                          "bg-amber-50 text-amber-700 border-amber-200"}
+                      >
+                        {reservation.checkStatus === CheckStatus.CHECKED ? "Verificado" : "No verificado"}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge 
+                        variant="outline" 
+                        className={
+                          reservation.chargeStatus === ChargeStatus.CHARGED ? 
+                            "bg-green-100 text-green-800 border-green-200" : 
+                          reservation.chargeStatus === ChargeStatus.CANCELLED ? 
+                            "bg-red-100 text-red-800 border-red-200" : 
+                            "bg-amber-100 text-amber-800 border-amber-200"
+                        }
+                      >
+                        {reservation.chargeStatus === ChargeStatus.CHARGED ? "Cobrado" : 
+                         reservation.chargeStatus === ChargeStatus.CANCELLED ? "Cancelado" : "Pendiente"}
                       </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -439,6 +480,39 @@ export function ReservationList() {
                     <div className="text-right">
                       <div className="text-xs text-gray-500">Total</div>
                       <div className="font-medium">${reservation.totalAmount}</div>
+                    </div>
+                    
+                    <div className="col-span-2 pt-2 mt-2 border-t border-gray-100">
+                      <div className="flex flex-wrap gap-2">
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Check</div>
+                          <Badge 
+                            variant={reservation.checkStatus === CheckStatus.CHECKED ? "default" : "outline"}
+                            className={reservation.checkStatus === CheckStatus.CHECKED ? 
+                              "bg-blue-100 text-blue-800 border-blue-200" : 
+                              "bg-amber-50 text-amber-700 border-amber-200"}
+                          >
+                            {reservation.checkStatus === CheckStatus.CHECKED ? "Verificado" : "No verificado"}
+                          </Badge>
+                        </div>
+                        
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Cobro</div>
+                          <Badge 
+                            variant="outline" 
+                            className={
+                              reservation.chargeStatus === ChargeStatus.CHARGED ? 
+                                "bg-green-100 text-green-800 border-green-200" : 
+                              reservation.chargeStatus === ChargeStatus.CANCELLED ? 
+                                "bg-red-100 text-red-800 border-red-200" : 
+                                "bg-amber-100 text-amber-800 border-amber-200"
+                            }
+                          >
+                            {reservation.chargeStatus === ChargeStatus.CHARGED ? "Cobrado" : 
+                             reservation.chargeStatus === ChargeStatus.CANCELLED ? "Cancelado" : "Pendiente"}
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -590,7 +664,7 @@ export function ReservationList() {
                 </div>
                 
                 <div className="grid grid-cols-1 gap-2">
-                  <Label htmlFor="status" className="text-gray-500 text-xs">ESTADO</Label>
+                  <Label htmlFor="status" className="text-gray-500 text-xs">ESTADO DE RESERVACIÓN</Label>
                   <Select
                     value={status}
                     onValueChange={setStatus}
@@ -602,6 +676,59 @@ export function ReservationList() {
                       <SelectItem value="confirmed">Confirmado</SelectItem>
                       <SelectItem value="pending">Pendiente</SelectItem>
                       <SelectItem value="cancelled">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-2">
+                  <Label htmlFor="check-status" className="text-gray-500 text-xs">ESTADO DE VERIFICACIÓN</Label>
+                  <Select
+                    value={checkStatus}
+                    onValueChange={setCheckStatus}
+                  >
+                    <SelectTrigger className="flex items-center">
+                      <SelectValue placeholder="Seleccionar estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={CheckStatus.NO_CHECK}>
+                        <div className="flex items-center">
+                          <span className="mr-2">No verificado</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value={CheckStatus.CHECKED}>
+                        <div className="flex items-center">
+                          <ShieldCheckIcon className="h-4 w-4 mr-2 text-green-600" />
+                          <span>Verificado</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-2">
+                  <Label htmlFor="charge-status" className="text-gray-500 text-xs">ESTADO DE COBRO</Label>
+                  <Select
+                    value={chargeStatus}
+                    onValueChange={setChargeStatus}
+                  >
+                    <SelectTrigger className="flex items-center">
+                      <SelectValue placeholder="Seleccionar estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ChargeStatus.PENDING}>
+                        <div className="flex items-center">
+                          <span className="mr-2">Pendiente por cobrar</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value={ChargeStatus.CHARGED}>
+                        <div className="flex items-center">
+                          <CreditCardIcon className="h-4 w-4 mr-2 text-green-600" />
+                          <span>Cobrado</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value={ChargeStatus.CANCELLED}>
+                        <span className="text-red-600">Cancelado</span>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
