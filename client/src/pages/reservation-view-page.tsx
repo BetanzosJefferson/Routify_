@@ -82,50 +82,56 @@ export default function ReservationViewPage() {
     },
   });
   
-  // Mutación para marcar como cobrado
-  const markAsChargedMutation = useMutation({
-    mutationFn: async () => {
-      if (!reservation) throw new Error("No reservation found");
-      
-      // Crear un objeto simple con solo los campos que necesitamos actualizar
+  // Función para marcar como cobrado 
+  const markAsCharged = async () => {
+    if (!reservation) {
+      toast({
+        title: "Error",
+        description: "No se encontró la reservación",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      // Usar ChargeStatus.CHARGED directamente
       const updateData = {
-        chargeStatus: "cobrado" as const // Valor del enum (ChargeStatus.CHARGED = "cobrado")
+        chargeStatus: ChargeStatus.CHARGED  // Valor del enum (ChargeStatus.CHARGED = "cobrado")
       };
-      
-      console.log("ChargeStatus en el esquema es:", ChargeStatus.CHARGED);
       
       console.log("Enviando datos de actualización para cobrado:", updateData);
       
-      const response = await apiRequest(
-        "PUT", 
-        `/api/reservations/${reservation.id}`, 
-        updateData
-      );
+      const response = await fetch(`/api/reservations/${reservation.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      });
       
       if (!response.ok) {
         const errorData = await response.json();
-        console.error("Error response:", errorData);
         throw new Error(`Failed to mark reservation as charged: ${JSON.stringify(errorData)}`);
       }
       
-      return await response.json();
-    },
-    onSuccess: (data) => {
-      setReservation((prev) => prev ? { ...prev, ...data } : null);
+      const data = await response.json();
+      setReservation(prev => prev ? { ...prev, ...data } : null);
+      
       toast({
         title: "Boleto cobrado",
         description: "El boleto ha sido marcado como cobrado exitosamente.",
       });
+      
       queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
-    },
-    onError: (error: Error) => {
+    } catch (error) {
+      console.error("Error:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Error desconocido",
         variant: "destructive",
       });
-    },
-  });
+    }
+  };
   
   // Efecto para verificación automática cuando se carga la reservación
   useEffect(() => {
@@ -142,7 +148,40 @@ export default function ReservationViewPage() {
       user
     ) {
       console.log("Verificando automáticamente al escanear");
-      markAsCheckedMutation.mutate();
+      console.log("CheckStatus actual:", reservation.checkStatus);
+      console.log("CheckStatus.CHECKED es:", CheckStatus.CHECKED);
+      
+      // Intentar una verificación más simple con solo una propiedad
+      const simpleUpdate = {
+        checkStatus: CheckStatus.CHECKED // Usar el valor del enum directamente
+      };
+      
+      console.log("Enviando actualización simplificada:", simpleUpdate);
+      
+      // Actualizar con fetch directo en lugar de usar la mutación
+      fetch(`/api/reservations/${reservation.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(simpleUpdate),
+      })
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        }
+        return response.json().then(err => {
+          throw new Error(JSON.stringify(err));
+        });
+      })
+      .then(data => {
+        console.log("Verificación exitosa:", data);
+        setReservation(prev => prev ? { ...prev, ...data } : null);
+        setShowSuccessDialog(true);
+      })
+      .catch(error => {
+        console.error("Error de verificación:", error);
+      });
     }
   }, [reservation, user, isAuthLoading]);
   
@@ -364,29 +403,17 @@ export default function ReservationViewPage() {
           </CardContent>
         </Card>
         
-        {/* Solo mostrar los botones si el usuario tiene permisos */}
+        {/* Solo mostrar el botón de cobro si el usuario tiene permisos */}
         {canManageReservation() && (
           <div className="flex space-x-3">
-            {reservation.checkStatus !== CheckStatus.CHECKED && (
-              <Button 
-                className="flex-1"
-                onClick={() => markAsCheckedMutation.mutate()}
-                disabled={markAsCheckedMutation.isPending}
-              >
-                <CheckIcon className="w-4 h-4 mr-2" />
-                {markAsCheckedMutation.isPending ? "Verificando..." : "Verificar Boleto"}
-              </Button>
-            )}
-            
             {reservation.chargeStatus !== ChargeStatus.CHARGED && (
               <Button 
                 variant="outline"
-                className="flex-1"
-                onClick={() => markAsChargedMutation.mutate()}
-                disabled={markAsChargedMutation.isPending}
+                className="w-full"
+                onClick={markAsCharged}
               >
                 <CreditCardIcon className="w-4 h-4 mr-2" />
-                {markAsChargedMutation.isPending ? "Procesando..." : "Marcar como Cobrado"}
+                "Marcar como Cobrado"
               </Button>
             )}
           </div>
