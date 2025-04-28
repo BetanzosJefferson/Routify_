@@ -154,7 +154,7 @@ export function PublishTripForm() {
       routeId: 0,
       startDate: format(new Date(), "yyyy-MM-dd"),
       endDate: format(new Date(), "yyyy-MM-dd"),
-      capacity: 0, // Cambiado a 0 para que el usuario ingrese manualmente
+      capacity: 18,
       price: 450,
       vehicleType: "standard",
       segmentPrices: [],
@@ -173,44 +173,23 @@ export function PublishTripForm() {
       
       // Verificar que route.segments existe antes de usar filter
       if (route.segments && Array.isArray(route.segments)) {
-        console.log("Segmentos recibidos de la API:", route.segments);
-        
-        // Filtrar segmentos válidos (eliminar segmentos en la misma ciudad)
         const segments = route.segments.filter(
           segment => segment && segment.origin && segment.destination && 
           !isSameCity(segment.origin, segment.destination)
         );
         
-        console.log("Segmentos válidos después de filtrar segmentos en la misma ciudad:", segments);
+        const segmentPricesWithDefaultValues = segments.map(segment => ({
+          origin: segment.origin,
+          destination: segment.destination,
+          price: 0
+        }));
         
-        if (segments.length > 0) {
-          const segmentPricesWithDefaultValues = segments.map(segment => ({
-            origin: segment.origin,
-            destination: segment.destination,
-            price: 0
-          }));
-          
-          console.log("Estableciendo segmentPrices:", segmentPricesWithDefaultValues);
-          setSegmentPrices(segmentPricesWithDefaultValues);
-          form.setValue("segmentPrices", segmentPricesWithDefaultValues);
-        } else {
-          // Si no hay segmentos válidos después del filtrado, generar algunos a partir de la ruta básica
-          console.log("No hay segmentos válidos después del filtrado, generando segmentos manualmente");
-          const generatedSegments = generateSegmentsFromRoute(route);
-          console.log("Segmentos generados manualmente:", generatedSegments);
-          
-          setSegmentPrices(generatedSegments);
-          form.setValue("segmentPrices", generatedSegments);
-        }
+        setSegmentPrices(segmentPricesWithDefaultValues);
+        form.setValue("segmentPrices", segmentPricesWithDefaultValues);
       } else {
         console.warn("No se encontraron segmentos en la ruta seleccionada o la estructura es incorrecta", route);
-        
-        // Intentar generar segmentos manualmente a partir de la ruta básica
-        const generatedSegments = generateSegmentsFromRoute(route);
-        console.log("Segmentos generados como fallback:", generatedSegments);
-        
-        setSegmentPrices(generatedSegments);
-        form.setValue("segmentPrices", generatedSegments);
+        setSegmentPrices([]);
+        form.setValue("segmentPrices", []);
       }
     }
   }, [routeSegmentsQuery.data, form]);
@@ -461,16 +440,12 @@ export function PublishTripForm() {
     const arrivalTime = formattedStopTimes.length > 0 ? 
       `${formattedStopTimes[formattedStopTimes.length - 1].hour}:${formattedStopTimes[formattedStopTimes.length - 1].minute} ${formattedStopTimes[formattedStopTimes.length - 1].ampm}` : "";
     
-    // Calcular el precio base a partir de los segmentos (promedio o el precio más alto)
-    // o simplemente establecerlo a 0 ya que ahora los precios se manejan por segmento
-    const calculatedPrice = 0; // Eliminamos el precio base, ahora solo usamos precios de segmentos
-    
     // Preparar datos comunes para crear o actualizar
     const tripData = {
       ...data,
       routeId: selectedRouteId,
       capacity,
-      price: calculatedPrice, // Usar precio calculado (0) en lugar del campo eliminado
+      price: data.price || 0,
       segmentPrices,
       stopTimes: formattedStopTimes,
       departureTime, // Añadido explícitamente
@@ -1027,13 +1002,24 @@ export function PublishTripForm() {
                       )}
                     />
                     
-                    {/* Mensaje informativo de precios */}
-                    <div className="mt-4">
-                      <div className="text-sm text-muted-foreground">
-                        <InfoIcon className="h-4 w-4 inline mr-1" />
-                        Configure los precios de cada segmento en la tabla siguiente
-                      </div>
-                    </div>
+                    {/* Precio por pasajero */}
+                    <FormField
+                      control={form.control}
+                      name="price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Precio Base</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              {...field}
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </div>
                 

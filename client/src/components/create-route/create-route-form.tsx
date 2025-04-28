@@ -399,12 +399,8 @@ export function CreateRouteForm({ initialRoute, onSuccess }: CreateRouteFormProp
                       form.reset();
                       setStops([]);
                       
-                      // Invalidar cache y forzar recarga completa
+                      // Invalidar cache
                       queryClient.invalidateQueries({ queryKey: ["/api/routes"] });
-                      // Esperar un momento y forzar actualización
-                      setTimeout(() => {
-                        queryClient.refetchQueries({ queryKey: ["/api/routes"] });
-                      }, 500);
                       
                       // Llamar al callback si existe
                       if (onSuccess) onSuccess();

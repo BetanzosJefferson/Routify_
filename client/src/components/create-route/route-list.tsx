@@ -69,10 +69,6 @@ export function RouteList() {
       console.log("Rutas cargadas:", data);
       return data;
     },
-    // Forzar la actualización al montar (staleTime: 0)
-    staleTime: 0,
-    // Siempre refrescar los datos al volver a montar (refetchOnMount: always)
-    refetchOnMount: "always",
     // Reintentamos la consulta automáticamente si falla
     retry: 3,
     retryDelay: 1000,
@@ -152,32 +148,13 @@ export function RouteList() {
           </div>
           <h2 className="text-xl font-semibold text-gray-800">Rutas</h2>
         </div>
-        <div className="flex gap-3">
-          <Button 
-            onClick={() => queryClient.refetchQueries({ queryKey: ["/api/routes"] })}
-            variant="outline"
-            disabled={routesQuery.isFetching}
-          >
-            {routesQuery.isFetching ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-            ) : (
-              <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                <path d="M21 3v5h-5" />
-                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                <path d="M8 16H3v5" />
-              </svg>
-            )}
-            Refrescar
-          </Button>
-          <Button 
-            onClick={handleCreateNewRoute}
-            className="bg-primary hover:bg-primary-dark text-white"
-          >
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Crear Nueva Ruta
-          </Button>
-        </div>
+        <Button 
+          onClick={handleCreateNewRoute}
+          className="bg-primary hover:bg-primary-dark text-white"
+        >
+          <PlusIcon className="h-4 w-4 mr-2" />
+          Crear Nueva Ruta
+        </Button>
       </div>
 
       {routesQuery.isLoading ? (
@@ -265,14 +242,7 @@ export function RouteList() {
       )}
 
       {/* Create/Edit Route Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
-        setIsCreateDialogOpen(open);
-        if (!open) {
-          // Refrescar explícitamente los datos cuando se cierra el dialog
-          console.log("Dialog cerrado, refrescando datos de rutas...");
-          queryClient.refetchQueries({ queryKey: ["/api/routes"] });
-        }
-      }}>
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>{selectedRoute ? "Editar Ruta" : "Crear Nueva Ruta"}</DialogTitle>
@@ -285,11 +255,7 @@ export function RouteList() {
           <div className="max-h-[70vh] overflow-y-auto">
             <CreateRouteForm 
               initialRoute={selectedRoute} 
-              onSuccess={() => {
-                setIsCreateDialogOpen(false);
-                // Forzar la actualización de datos después de guardar cambios
-                queryClient.refetchQueries({ queryKey: ["/api/routes"] });
-              }} 
+              onSuccess={() => setIsCreateDialogOpen(false)} 
             />
           </div>
         </DialogContent>

@@ -101,23 +101,6 @@ export const PaymentStatus = {
 
 export type PaymentStatusType = typeof PaymentStatus[keyof typeof PaymentStatus];
 
-// CHARGE STATUS ENUM
-export const ChargeStatus = {
-  PENDING_CHARGE: "pendiente_cobro",
-  CHARGED: "cobrado",
-  CANCELLED: "cancelado",
-} as const;
-
-export type ChargeStatusType = typeof ChargeStatus[keyof typeof ChargeStatus];
-
-// CHECK STATUS ENUM
-export const CheckStatus = {
-  NOT_CHECKED: "no_check",
-  CHECKED: "check",
-} as const;
-
-export type CheckStatusType = typeof CheckStatus[keyof typeof CheckStatus];
-
 // PAYMENT METHOD ENUM
 export const PaymentMethod = {
   CASH: "efectivo",
@@ -145,11 +128,6 @@ export const reservations = pgTable("reservations", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   // Campo para aislamiento de datos por compañía
   companyId: text("company_id"),
-  // Nuevos campos
-  checkStatus: text("check_status").notNull().default(CheckStatus.NOT_CHECKED), // Estado de verificación del boleto (escaneado o no)
-  chargeStatus: text("charge_status").notNull().default(ChargeStatus.PENDING_CHARGE), // Estado de cobro (pendiente, cobrado, cancelado)
-  checkedAt: timestamp("checked_at"), // Cuándo se verificó/escaneó el boleto
-  checkedBy: integer("checked_by"), // Quién verificó/escaneó el boleto
 });
 
 export const insertReservationSchema = createInsertSchema(reservations);
@@ -240,7 +218,7 @@ export const createReservationValidationSchema = z.object({
   email: z.string().email("Correo electrónico válido es requerido"),
   phone: z.string().min(1, "Número de teléfono es requerido"),
   totalAmount: z.number().min(0, "El monto total debe ser un número positivo"),
-  // Campos de pago
+  // Nuevos campos
   paymentMethod: z.enum([PaymentMethod.CASH, PaymentMethod.TRANSFER], {
     required_error: "Método de pago es requerido",
     invalid_type_error: "Método de pago debe ser efectivo o transferencia"
@@ -250,18 +228,9 @@ export const createReservationValidationSchema = z.object({
     required_error: "Método de pago del anticipo es requerido",
     invalid_type_error: "Método de pago del anticipo debe ser efectivo o transferencia"
   }).optional(),
-  paymentStatus: z.enum([PaymentStatus.PENDING, PaymentStatus.PAID, PaymentStatus.CANCELLED], {
+  paymentStatus: z.enum([PaymentStatus.PENDING, PaymentStatus.PAID], {
     required_error: "Estado de pago es requerido"
   }).optional(),
-  // Campos de check y cobro
-  checkStatus: z.enum([CheckStatus.NOT_CHECKED, CheckStatus.CHECKED], {
-    required_error: "Estado de verificación es requerido"
-  }).optional(),
-  chargeStatus: z.enum([ChargeStatus.PENDING_CHARGE, ChargeStatus.CHARGED, ChargeStatus.CANCELLED], {
-    required_error: "Estado de cobro es requerido"
-  }).optional(),
-  checkedAt: z.date().optional(),
-  checkedBy: z.number().optional(),
   notes: z.string().optional(),
   createdBy: z.number().optional()
 }).superRefine((data, ctx) => {

@@ -386,72 +386,30 @@ export class DatabaseStorage implements IStorage {
   
   async deleteTrip(id: number): Promise<boolean> {
     try {
-      console.log(`[deleteTrip] Iniciando proceso de eliminación para el viaje ${id}`);
-      
-      // Verificar directamente si el viaje existe en la base de datos
-      const tripExists = await db
-        .select({ id: schema.trips.id, isSubTrip: schema.trips.isSubTrip })
-        .from(schema.trips)
-        .where(eq(schema.trips.id, id))
-        .limit(1);
-      
-      // Si no existe, retornar temprano
-      if (!tripExists.length) {
-        console.log(`[deleteTrip] El viaje ${id} no existe en la base de datos`);
-        return false;
-      }
-      
-      const trip = tripExists[0];
-      console.log(`[deleteTrip] Viaje ${id} encontrado. isSubTrip: ${trip.isSubTrip}`);
-      
-      let deletedSubTrips = 0;
+      // Primero, obtener el viaje que queremos eliminar
+      const trip = await this.getTrip(id);
+      if (!trip) return false;
       
       // Si es un viaje principal (no es subTrip), eliminar también todos sus sub-viajes
       if (!trip.isSubTrip) {
-        console.log(`[deleteTrip] Eliminando sub-viajes para el viaje principal ${id}`);
-        
-        try {
-          // Primero contar cuántos sub-viajes tiene
-          const subTripCount = await db
-            .select({ count: sql`count(*)` })
-            .from(schema.trips)
-            .where(eq(schema.trips.parentTripId, id));
-          
-          console.log(`[deleteTrip] Encontrados ${subTripCount[0]?.count || 0} sub-viajes para eliminar`);
-          
-          // Eliminar todos los sub-viajes que tienen este viaje como parentTripId
-          const deletedSubTripsResult = await db
-            .delete(schema.trips)
-            .where(eq(schema.trips.parentTripId, id))
-            .returning({ id: schema.trips.id });
-          
-          deletedSubTrips = deletedSubTripsResult.length;
-          console.log(`[deleteTrip] Eliminados ${deletedSubTrips} sub-viajes para el viaje principal ${id}`);
-        } catch (subTripError) {
-          console.error(`[deleteTrip] Error al eliminar sub-viajes: ${subTripError}`);
-          // Continuar con la eliminación del viaje principal a pesar del error
-        }
+        console.log(`Eliminando viaje principal ${id} y todos sus sub-viajes`);
+        // Eliminar todos los sub-viajes que tienen este viaje como parentTripId
+        await db
+          .delete(schema.trips)
+          .where(eq(schema.trips.parentTripId, id));
       } else {
-        console.log(`[deleteTrip] El viaje ${id} es un sub-viaje, no tiene sub-viajes propios`);
+        console.log(`Eliminando sub-viaje ${id}`);
       }
       
       // Finalmente, eliminar el viaje solicitado
-      console.log(`[deleteTrip] Procediendo a eliminar el viaje ${id}`);
       const result = await db
         .delete(schema.trips)
         .where(eq(schema.trips.id, id))
         .returning({ id: schema.trips.id });
-      
-      const success = result.length > 0;
-      console.log(`[deleteTrip] Viaje ${id} ${success ? 'eliminado correctamente' : 'no se pudo eliminar'}`);
-      
-      if (success) {
-        console.log(`[deleteTrip] Resumen: Eliminado viaje ${id} y ${deletedSubTrips} sub-viajes relacionados`);
-      }
-      
-      return success;
+        
+      return result.length > 0;
     } catch (error) {
-      console.error(`[deleteTrip] Error grave al eliminar viaje ${id}:`, error);
+      console.error(`Error al eliminar viaje ${id}:`, error);
       return false;
     }
   }
