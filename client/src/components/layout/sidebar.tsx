@@ -65,16 +65,35 @@ function NavSection({ title, children }: NavSectionProps) {
 }
 
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
   const { user } = useAuth();
   
+  // Función para manejar la navegación basada en el tipo de tab
   const handleTabClick = (tab: TabType) => {
+    // Actualizar el estado activo
     onTabChange(tab);
     
-    // Actualizar el URL pero sin hacer una redirección completa
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', tab);
-    window.history.pushState({}, '', url.toString());
+    // Manejar la navegación basada en el tipo de tab
+    switch (tab) {
+      case "company":
+        navigate("/company");
+        break;
+      case "commissions":
+        navigate("/commissions");
+        break;
+      case "coupons":
+        navigate("/coupons");
+        break;
+      case "passenger-transfer":
+        navigate("/passenger-transfer");
+        break;
+      default:
+        // Para tabs que no tienen una página dedicada, solo actualizar el parámetro de URL
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
+        window.history.pushState({}, '', url.toString());
+        break;
+    }
   };
 
   // Función para verificar si el usuario tiene acceso a una sección
@@ -205,10 +224,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                 <NavItem 
                   icon={<Building2Icon className="h-5 w-5" />} 
                   active={activeTab === "company"}
-                  onClick={() => {
-                    handleTabClick("company");
-                    setLocation("/company");
-                  }}
+                  onClick={() => handleTabClick("company")}
                 >
                   Datos de Empresa
                 </NavItem>
@@ -217,10 +233,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                 <NavItem 
                   icon={<PercentIcon className="h-5 w-5" />} 
                   active={activeTab === "commissions"}
-                  onClick={() => {
-                    handleTabClick("commissions");
-                    setLocation("/commissions");
-                  }}
+                  onClick={() => handleTabClick("commissions")}
                 >
                   Comisiones
                 </NavItem>
@@ -229,10 +242,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                 <NavItem 
                   icon={<TagIcon className="h-5 w-5" />} 
                   active={activeTab === "coupons"}
-                  onClick={() => {
-                    handleTabClick("coupons");
-                    setLocation("/coupons");
-                  }}
+                  onClick={() => handleTabClick("coupons")}
                 >
                   Cupones
                 </NavItem>
@@ -241,10 +251,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                 <NavItem 
                   icon={<ArrowLeftRightIcon className="h-5 w-5" />} 
                   active={activeTab === "passenger-transfer"}
-                  onClick={() => {
-                    handleTabClick("passenger-transfer");
-                    setLocation("/passenger-transfer");
-                  }}
+                  onClick={() => handleTabClick("passenger-transfer")}
                 >
                   Transferir Pasajeros
                 </NavItem>
