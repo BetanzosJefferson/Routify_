@@ -92,6 +92,13 @@ export function convertTo12Hour(time24: string): {
 export function generateSegmentsFromRoute(route: RouteWithSegments): SegmentPrice[] {
   const segments: SegmentPrice[] = [];
   
+  // Siempre agregar el segmento principal (origen a destino final)
+  segments.push({
+    origin: route.origin,
+    destination: route.destination,
+    price: 0
+  });
+  
   // Add origin to first stop
   if (route.stops.length > 0) {
     segments.push({
@@ -115,16 +122,16 @@ export function generateSegmentsFromRoute(route: RouteWithSegments): SegmentPric
       destination: route.destination,
       price: 0
     });
-  } else {
-    // Direct route with no stops
-    segments.push({
-      origin: route.origin,
-      destination: route.destination,
-      price: 0
-    });
   }
   
-  return segments;
+  // Eliminar duplicados (por si acaso)
+  const uniqueSegments = segments.filter((segment, index, self) => 
+    index === self.findIndex(s => s.origin === segment.origin && s.destination === segment.destination)
+  );
+  
+  console.log("Segmentos generados (incluyendo origen-destino completo):", uniqueSegments);
+  
+  return uniqueSegments;
 }
 
 export function generateReservationId(id?: number): string {
