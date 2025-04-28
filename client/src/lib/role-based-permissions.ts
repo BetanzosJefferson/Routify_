@@ -36,7 +36,11 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "trip-summary",
     "boarding-list",
     "users",
-    "vehicles"
+    "vehicles",
+    "company",      // Nueva sección para datos de la empresa
+    "commissions",  // Sección para gestionar comisiones
+    "coupons",      // Nueva sección para gestionar cupones
+    "passenger-transfer" // Nueva sección para transferir pasajeros
   ],
   [UserRole.CALL_CENTER]: [
     "trips",
@@ -55,6 +59,10 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
   [UserRole.TICKET_OFFICE]: [
     "trips",
     "reservations"
+  ],
+  // Permisos para el nuevo rol COMMISSIONIST (comisionista)
+  [UserRole.COMMISSIONIST]: [
+    "trips", // Solo puede ver viajes y hacer reservaciones
   ],
   [UserRole.DEVELOPER]: ALL_SECTIONS.map(section => section.id) // Acceso total para desarrollo
 };
