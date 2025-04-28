@@ -92,6 +92,23 @@ export const insertPassengerSchema = createInsertSchema(passengers);
 export type InsertPassenger = z.infer<typeof insertPassengerSchema>;
 export type Passenger = typeof passengers.$inferSelect;
 
+// PAYMENT STATUS ENUM
+export const PaymentStatus = {
+  PENDING: "pendiente",
+  PAID: "pagado",
+  CANCELLED: "cancelado",
+} as const;
+
+export type PaymentStatusType = typeof PaymentStatus[keyof typeof PaymentStatus];
+
+// PAYMENT METHOD ENUM
+export const PaymentMethod = {
+  CASH: "efectivo",
+  TRANSFER: "transferencia",
+} as const;
+
+export type PaymentMethodType = typeof PaymentMethod[keyof typeof PaymentMethod];
+
 // RESERVATION SCHEMA
 export const reservations = pgTable("reservations", {
   id: serial("id").primaryKey(),
@@ -100,9 +117,15 @@ export const reservations = pgTable("reservations", {
   email: text("email").notNull(),
   phone: text("phone").notNull(),
   notes: text("notes"),
-  paymentMethod: text("payment_method").notNull().default("cash"), // 'cash' o 'transfer'
-  status: text("status").notNull().default("confirmed"),
+  // Campos de pago actualizados
+  paymentMethod: text("payment_method").notNull().default(PaymentMethod.CASH), // 'efectivo' o 'transferencia'
+  status: text("status").notNull().default("confirmed"), // Estado de la reservación (confirmed, cancelled)
+  paymentStatus: text("payment_status").notNull().default(PaymentStatus.PENDING), // Estado del pago (pendiente, pagado, cancelado)
+  advanceAmount: doublePrecision("advance_amount").default(0), // Monto del anticipo
+  advancePaymentMethod: text("advance_payment_method").default(PaymentMethod.CASH), // Método del anticipo
+  createdBy: integer("created_by"), // ID del usuario que crea la reservación
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
   // Campo para aislamiento de datos por compañía
   companyId: text("company_id"),
 });
@@ -185,20 +208,51 @@ export const publishTripValidationSchema = z.object({
 
 export const createReservationValidationSchema = z.object({
   tripId: z.number(),
-  numPassengers: z.number().min(1, "At least 1 passenger is required"),
+  numPassengers: z.number().min(1, "Al menos 1 pasajero es requerido"),
   passengers: z.array(
     z.object({
-      firstName: z.string().min(1, "First name is required"),
-      lastName: z.string().min(1, "Last name is required")
+      firstName: z.string().min(1, "Nombre es requerido"),
+      lastName: z.string().min(1, "Apellido es requerido")
     })
   ),
-  email: z.string().email("Valid email is required"),
-  phone: z.string().min(1, "Phone number is required"),
-  paymentMethod: z.enum(["cash", "transfer"], {
+  email: z.string().email("Correo electrónico válido es requerido"),
+  phone: z.string().min(1, "Número de teléfono es requerido"),
+  totalAmount: z.number().min(0, "El monto total debe ser un número positivo"),
+  // Nuevos campos
+  paymentMethod: z.enum([PaymentMethod.CASH, PaymentMethod.TRANSFER], {
     required_error: "Método de pago es requerido",
     invalid_type_error: "Método de pago debe ser efectivo o transferencia"
   }),
-  notes: z.string().optional()
+  advanceAmount: z.number().min(0, "El anticipo debe ser un número positivo").optional(),
+  advancePaymentMethod: z.enum([PaymentMethod.CASH, PaymentMethod.TRANSFER], {
+    required_error: "Método de pago del anticipo es requerido",
+    invalid_type_error: "Método de pago del anticipo debe ser efectivo o transferencia"
+  }).optional(),
+  paymentStatus: z.enum([PaymentStatus.PENDING, PaymentStatus.PAID], {
+    required_error: "Estado de pago es requerido"
+  }).optional(),
+  notes: z.string().optional(),
+  createdBy: z.number().optional()
+}).superRefine((data, ctx) => {
+  // Validar que el anticipo no sea mayor que el monto total
+  if (data.advanceAmount && data.advanceAmount > data.totalAmount) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "El anticipo no puede ser mayor que el monto total",
+      path: ["advanceAmount"]
+    });
+  }
+  
+  // Si el anticipo es igual al monto total, el estado de pago debería ser PAGADO
+  if (data.advanceAmount && data.advanceAmount === data.totalAmount) {
+    if (data.paymentStatus !== PaymentStatus.PAID) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Si el anticipo es igual al monto total, el estado de pago debe ser PAGADO",
+        path: ["paymentStatus"]
+      });
+    }
+  }
 });
 
 // LOCATION DATA SCHEMA
