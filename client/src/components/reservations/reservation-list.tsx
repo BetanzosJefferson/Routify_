@@ -181,7 +181,7 @@ export function ReservationList() {
   const openEditModal = (reservation: ReservationWithDetails) => {
     setEditingReservation(reservation);
     // Inicializar todos los campos del formulario con los valores actuales
-    setPaymentMethod(reservation.paymentMethod || "cash");
+    setPaymentMethod(reservation.paymentMethod || "efectivo");
     setNotes(reservation.notes || "");
     setEmail(reservation.email || "");
     setPhone(reservation.phone || "");
@@ -322,7 +322,7 @@ export function ReservationList() {
                         {(!reservation.advanceAmount || reservation.advanceAmount <= 0) ? (
                           <div className="flex justify-between text-xs">
                             <span className="text-gray-500">Método de pago:</span>
-                            <span>{reservation.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}</span>
+                            <span>{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</span>
                           </div>
                         ) : (
                           <>
@@ -332,7 +332,7 @@ export function ReservationList() {
                             </div>
                             <div className="flex justify-between text-xs">
                               <span className="text-gray-500">Método anticipo:</span>
-                              <span>{reservation.advancePaymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}</span>
+                              <span>{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</span>
                             </div>
                             {reservation.advanceAmount < reservation.totalAmount && (
                               <>
@@ -484,7 +484,7 @@ export function ReservationList() {
                           <>
                             <div>
                               <div className="text-gray-500">Método de pago</div>
-                              <div className="font-medium">{reservation.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}</div>
+                              <div className="font-medium">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
                             </div>
                             <div>
                               <div className="text-gray-500">Estado</div>
@@ -661,8 +661,8 @@ export function ReservationList() {
                       <SelectValue placeholder="Seleccionar método de pago" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="cash">Efectivo</SelectItem>
-                      <SelectItem value="transfer">Transferencia bancaria</SelectItem>
+                      <SelectItem value="efectivo">Efectivo</SelectItem>
+                      <SelectItem value="transferencia">Transferencia bancaria</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
