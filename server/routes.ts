@@ -13,7 +13,9 @@ import {
   RouteWithSegments,
   SegmentPrice,
   locationData,
-  UserRole
+  UserRole,
+  CheckStatus,
+  ChargeStatus
 } from "@shared/schema";
 
 import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
@@ -1623,9 +1625,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Validar los datos de la reservación
+      console.log("Datos recibidos para actualizar reserva:", JSON.stringify(req.body));
+      
       const validationResult = insertReservationSchema.partial().safeParse(req.body);
       
       if (!validationResult.success) {
+        console.log("Error de validación:", JSON.stringify(validationResult.error.format()));
         return res.status(400).json({ 
           error: "Invalid reservation data", 
           details: validationResult.error.format() 
@@ -1634,7 +1639,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Si está verificando, guardar el ID del usuario que verifica
       const reservationData = validationResult.data;
-      if (reservationData.checkStatus === "checked") {
+      console.log("En el backend, checkStatus recibido es:", reservationData.checkStatus);
+      console.log("En el backend, CheckStatus.CHECKED es:", CheckStatus.CHECKED);
+      
+      // Corregir el estado de verificación si es necesario
+      if (reservationData.checkStatus === "check" || reservationData.checkStatus === CheckStatus.CHECKED) {
+        console.log("Procesando verificación de boleto...");
+        reservationData.checkStatus = CheckStatus.CHECKED; // Asegurarnos que sea el valor correcto del enum
         reservationData.checkedBy = user.id;
         // Asegurarse de que se guarde la fecha si no viene en la petición
         if (!reservationData.checkedAt) {
