@@ -3,9 +3,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
-import { UserIcon, SearchIcon, Loader2Icon, XIcon, PhoneIcon, MailIcon, InfoIcon } from "lucide-react";
+import { UserIcon, SearchIcon, Loader2Icon, XIcon, PhoneIcon, MailIcon } from "lucide-react";
 import { useReservations } from "@/hooks/use-reservations";
-import { ReservationDetailsModal } from "./reservation-details-modal";
 
 import {
   AlertDialog,
@@ -47,11 +46,9 @@ export function ReservationList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
   const [editingReservation, setEditingReservation] = useState<ReservationWithDetails | null>(null);
-  const [selectedReservation, setSelectedReservation] = useState<ReservationWithDetails | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [notes, setNotes] = useState<string>("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   
   // Estados adicionales para mejorar la UX
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -227,17 +224,6 @@ export function ReservationList() {
     setSearchTerm(e.target.value);
   };
   
-  // Details modal handlers
-  const openDetailsModal = (reservation: ReservationWithDetails) => {
-    setSelectedReservation(reservation);
-    setIsDetailsModalOpen(true);
-  };
-  
-  const closeDetailsModal = () => {
-    setIsDetailsModalOpen(false);
-    setSelectedReservation(null);
-  };
-  
   return (
     <div className="py-6">
       <div className="flex items-center mb-4">
@@ -305,11 +291,7 @@ export function ReservationList() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredReservations.map((reservation) => (
-                  <tr 
-                    key={reservation.id} 
-                    className="cursor-pointer hover:bg-gray-50"
-                    onClick={() => openDetailsModal(reservation)}
-                  >
+                  <tr key={reservation.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       #{generateReservationId(reservation.id)}
                     </td>
@@ -378,7 +360,7 @@ export function ReservationList() {
                         {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
                       </Badge>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
                         <Button 
                           variant="link" 
@@ -421,11 +403,7 @@ export function ReservationList() {
           ) : filteredReservations && filteredReservations.length > 0 ? (
             <div className="divide-y divide-gray-200">
               {filteredReservations.map((reservation) => (
-                <div 
-                  key={reservation.id} 
-                  className="p-4 cursor-pointer hover:bg-gray-50"
-                  onClick={() => openDetailsModal(reservation)}
-                >
+                <div key={reservation.id} className="p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <div className="text-sm font-medium text-gray-900">
@@ -441,7 +419,7 @@ export function ReservationList() {
                       </Badge>
                     </div>
                     
-                    <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex space-x-2">
                       <Button 
                         size="sm"
                         variant="link" 
@@ -737,13 +715,6 @@ export function ReservationList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
-      {/* Detalles de Reservación */}
-      <ReservationDetailsModal 
-        reservation={selectedReservation} 
-        isOpen={isDetailsModalOpen} 
-        onClose={closeDetailsModal} 
-      />
     </div>
   );
 }
