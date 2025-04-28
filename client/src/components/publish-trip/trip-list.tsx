@@ -348,10 +348,11 @@ export default function TripList({ onEditTrip }: TripListProps) {
     return matchesSearch && matchesDate && matchesRoute;
   });
 
-  // Agrupar viajes por fecha
+  // Agrupar viajes por fecha y ordenarlos
   const groupTripsByDate = () => {
     const grouped: Record<string, Trip[]> = {};
     
+    // Primero filtramos solo los viajes principales (no sub-viajes)
     filteredTrips.filter((trip: Trip) => !trip.isSubTrip).forEach((trip: Trip) => {
       // Manejo explícito de la fecha para evitar problemas de zona horaria
       const date = new Date(trip.departureDate);
@@ -367,6 +368,13 @@ export default function TripList({ onEditTrip }: TripListProps) {
       }
       
       grouped[dateKey].push(trip);
+    });
+    
+    // Ordenar los viajes dentro de cada grupo por hora de salida
+    Object.keys(grouped).forEach(dateKey => {
+      grouped[dateKey].sort((a, b) => 
+        a.departureTime.localeCompare(b.departureTime)
+      );
     });
     
     return grouped;
@@ -505,7 +513,14 @@ export default function TripList({ onEditTrip }: TripListProps) {
           </div>
         ) : (
           <div className="space-y-6">
-            {Object.entries(groupTripsByDate()).map(([dateKey, trips]) => (
+            {Object.entries(groupTripsByDate())
+              // Ordenar fechas de más cercana a más lejana
+              .sort(([dateKeyA], [dateKeyB]) => {
+                const dateA = new Date(dateKeyA);
+                const dateB = new Date(dateKeyB);
+                return dateA.getTime() - dateB.getTime(); // Orden ascendente
+              })
+              .map(([dateKey, trips]) => (
               <div key={dateKey} className="space-y-4">
                 <div>
                   <h3 className="text-lg font-medium">{formatDateHeader(dateKey)}</h3>
