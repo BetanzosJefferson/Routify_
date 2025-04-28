@@ -15,13 +15,7 @@ import {
   Vehicle,
   InsertVehicle,
   Commission,
-  InsertCommission,
-  Coupon,
-  InsertCoupon,
-  Company,
-  InsertCompany,
-  TransferRequest,
-  InsertTransferRequest
+  InsertCommission
 } from "@shared/schema";
 
 export interface IStorage {
@@ -75,31 +69,6 @@ export interface IStorage {
   createCommission(commission: InsertCommission): Promise<Commission>;
   updateCommission(id: number, commission: Partial<Commission>): Promise<Commission | undefined>;
   deleteCommission(id: number): Promise<boolean>;
-  
-  // Coupon methods
-  getCoupons(companyId?: string): Promise<Coupon[]>;
-  getCoupon(id: number): Promise<Coupon | undefined>;
-  createCoupon(coupon: InsertCoupon): Promise<Coupon>;
-  updateCoupon(id: number, coupon: Partial<Coupon>): Promise<Coupon | undefined>;
-  deleteCoupon(id: number): Promise<boolean>;
-  
-  // Company methods
-  getCompanies(): Promise<Company[]>;
-  getCompany(id: string): Promise<Company | undefined>;
-  updateCompany(id: string, company: Partial<Company>): Promise<Company | undefined>;
-  
-  // Reservation search method
-  searchReservations(query: string, companyId?: string): Promise<ReservationWithDetails[]>;
-  
-  // Transfer request methods
-  getTransferRequests(): Promise<TransferRequest[]>;
-  getTransferRequest(id: number): Promise<TransferRequest | undefined>;
-  getTransferRequestsByCompany(companyId: string): Promise<TransferRequest[]>;
-  createTransferRequest(transferRequest: InsertTransferRequest): Promise<TransferRequest>;
-  updateTransferRequest(id: number, transferRequest: Partial<TransferRequest>): Promise<TransferRequest | undefined>;
-  
-  // User methods
-  getUsersByCompanyAndRoles(companyId: string, roles: string[]): Promise<any[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -109,9 +78,6 @@ export class MemStorage implements IStorage {
   private passengers: Map<number, Passenger>;
   private vehicles: Map<number, Vehicle>;
   private commissions: Map<number, Commission>;
-  private coupons: Map<number, Coupon>;
-  private companies: Map<string, Company>;
-  private transferRequests: Map<number, TransferRequest>;
   
   private routeId: number;
   private tripId: number;
@@ -119,8 +85,6 @@ export class MemStorage implements IStorage {
   private passengerId: number;
   private vehicleId: number;
   private commissionId: number;
-  private couponId: number;
-  private transferRequestId: number;
   
   constructor() {
     this.routes = new Map();
@@ -129,9 +93,6 @@ export class MemStorage implements IStorage {
     this.passengers = new Map();
     this.vehicles = new Map();
     this.commissions = new Map();
-    this.coupons = new Map();
-    this.companies = new Map();
-    this.transferRequests = new Map();
     
     this.routeId = 1;
     this.tripId = 1;
@@ -139,8 +100,6 @@ export class MemStorage implements IStorage {
     this.passengerId = 1;
     this.vehicleId = 1;
     this.commissionId = 1;
-    this.couponId = 1;
-    this.transferRequestId = 1;
 
     // Add some initial data
     this.createRoute({
@@ -718,159 +677,6 @@ export class MemStorage implements IStorage {
   
   async deleteCommission(id: number): Promise<boolean> {
     return this.commissions.delete(id);
-  }
-  
-  // Coupon methods
-  async getCoupons(companyId?: string): Promise<Coupon[]> {
-    let coupons = Array.from(this.coupons.values());
-    
-    // Filtrar por companyId si se proporciona
-    if (companyId) {
-      coupons = coupons.filter(coupon => coupon.companyId === companyId);
-    }
-    
-    return coupons;
-  }
-  
-  async getCoupon(id: number): Promise<Coupon | undefined> {
-    return this.coupons.get(id);
-  }
-  
-  async createCoupon(coupon: InsertCoupon): Promise<Coupon> {
-    const id = this.couponId++;
-    const newCoupon: Coupon = { 
-      ...coupon, 
-      id,
-      createdAt: new Date(),
-      updatedAt: null,
-      usedCount: coupon.usedCount ?? 0,
-      isActive: coupon.isActive ?? true,
-      description: coupon.description ?? null,
-      companyId: coupon.companyId || null
-    };
-    this.coupons.set(id, newCoupon);
-    return newCoupon;
-  }
-  
-  async updateCoupon(id: number, couponUpdate: Partial<Coupon>): Promise<Coupon | undefined> {
-    const existingCoupon = this.coupons.get(id);
-    if (!existingCoupon) return undefined;
-    
-    const updatedCoupon = { 
-      ...existingCoupon, 
-      ...couponUpdate,
-      updatedAt: new Date()
-    };
-    this.coupons.set(id, updatedCoupon);
-    return updatedCoupon;
-  }
-  
-  async deleteCoupon(id: number): Promise<boolean> {
-    return this.coupons.delete(id);
-  }
-  
-  // Company methods
-  async getCompanies(): Promise<Company[]> {
-    return Array.from(this.companies.values());
-  }
-  
-  async getCompany(id: string): Promise<Company | undefined> {
-    return this.companies.get(id);
-  }
-  
-  async updateCompany(id: string, companyUpdate: Partial<Company>): Promise<Company | undefined> {
-    const existingCompany = this.companies.get(id);
-    if (!existingCompany) return undefined;
-    
-    const updatedCompany = { 
-      ...existingCompany, 
-      ...companyUpdate,
-      updatedAt: new Date()
-    };
-    this.companies.set(id, updatedCompany);
-    return updatedCompany;
-  }
-  
-  // Reservation search method
-  async searchReservations(query: string, companyId?: string): Promise<ReservationWithDetails[]> {
-    // Obtenemos todas las reservaciones con detalles
-    const allReservations = await this.getReservations(companyId);
-    
-    if (!query) return allReservations;
-    
-    const queryLower = query.toLowerCase();
-    
-    // Filtramos reservaciones que coinciden con la búsqueda
-    return allReservations.filter(reservation => {
-      // Buscar en email, phone, nombres de pasajeros, notas
-      return (
-        reservation.email.toLowerCase().includes(queryLower) ||
-        reservation.phone.toLowerCase().includes(queryLower) ||
-        (reservation.notes && reservation.notes.toLowerCase().includes(queryLower)) ||
-        // Buscar en los nombres de los pasajeros (si están disponibles)
-        reservation.passengers?.some(passenger => 
-          passenger.name.toLowerCase().includes(queryLower) ||
-          passenger.email?.toLowerCase().includes(queryLower) ||
-          passenger.phone?.toLowerCase().includes(queryLower)
-        ) ||
-        // Buscar en el ID de la reservación
-        reservation.id.toString().includes(queryLower)
-      );
-    });
-  }
-
-  // Transfer request methods
-  async getTransferRequests(): Promise<TransferRequest[]> {
-    return Array.from(this.transferRequests.values());
-  }
-  
-  async getTransferRequest(id: number): Promise<TransferRequest | undefined> {
-    return this.transferRequests.get(id);
-  }
-  
-  async getTransferRequestsByCompany(companyId: string): Promise<TransferRequest[]> {
-    return Array.from(this.transferRequests.values())
-      .filter(tr => tr.sourceCompanyId === companyId || tr.targetCompanyId === companyId);
-  }
-  
-  async createTransferRequest(transferRequest: InsertTransferRequest): Promise<TransferRequest> {
-    const id = this.transferRequestId++;
-    const now = new Date();
-    
-    const newTransferRequest: TransferRequest = {
-      ...transferRequest,
-      id,
-      createdAt: now,
-      updatedAt: now,
-      approvedBy: null,
-      approvedAt: null,
-      rejectedBy: null,
-      rejectedAt: null
-    };
-    
-    this.transferRequests.set(id, newTransferRequest);
-    return newTransferRequest;
-  }
-  
-  async updateTransferRequest(id: number, update: Partial<TransferRequest>): Promise<TransferRequest | undefined> {
-    const existingTransferRequest = this.transferRequests.get(id);
-    if (!existingTransferRequest) return undefined;
-    
-    const updatedTransferRequest = { 
-      ...existingTransferRequest,
-      ...update,
-      updatedAt: new Date()
-    };
-    
-    this.transferRequests.set(id, updatedTransferRequest);
-    return updatedTransferRequest;
-  }
-  
-  // User methods
-  async getUsersByCompanyAndRoles(companyId: string, roles: string[]): Promise<any[]> {
-    // Esta función sería implementada en DatabaseStorage para obtener usuarios reales
-    // En MemStorage simplemente devolvemos un array vacío
-    return [];
   }
 }
 

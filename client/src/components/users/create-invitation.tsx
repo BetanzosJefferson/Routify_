@@ -253,19 +253,6 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
                       </div>
 
                       <div>
-                        <RadioGroupItem value={UserRole.COMMISSIONIST} id="commissionist" className="peer sr-only" />
-                        <Label
-                          htmlFor="commissionist"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                        >
-                          <span className="font-semibold">Comisionista</span>
-                          <span className="text-xs text-muted-foreground">
-                            Realizar reservaciones a comisión
-                          </span>
-                        </Label>
-                      </div>
-
-                      <div>
                         <RadioGroupItem value={UserRole.DEVELOPER} id="developer" className="peer sr-only" />
                         <Label
                           htmlFor="developer"
