@@ -293,7 +293,7 @@ export function ReservationList() {
                 {filteredReservations.map((reservation) => (
                   <tr key={reservation.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      #{generateReservationId()}
+                      #{generateReservationId(reservation.id)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
@@ -407,7 +407,7 @@ export function ReservationList() {
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <div className="text-sm font-medium text-gray-900">
-                        #{generateReservationId()}
+                        #{generateReservationId(reservation.id)}
                       </div>
                       <Badge 
                         variant={reservation.paymentStatus === 'pagado' ? "outline" : "secondary"}
@@ -579,7 +579,7 @@ export function ReservationList() {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-1 gap-2">
                 <Label htmlFor="reservation-id" className="text-gray-500 text-xs">CÓDIGO DE RESERVACIÓN</Label>
-                <div id="reservation-id" className="text-sm font-medium">#{generateReservationId()}</div>
+                <div id="reservation-id" className="text-sm font-medium">#{generateReservationId(editingReservation?.id || 0)}</div>
               </div>
               
               {/* Información de contacto */}
