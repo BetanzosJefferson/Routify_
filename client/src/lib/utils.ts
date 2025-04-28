@@ -127,8 +127,14 @@ export function generateSegmentsFromRoute(route: RouteWithSegments): SegmentPric
   return segments;
 }
 
-export function generateReservationId(): string {
-  return `RES${Math.floor(10000 + Math.random() * 90000)}`;
+export function generateReservationId(id?: number): string {
+  if (id) {
+    // Si se proporciona un ID real, úsalo
+    return `RES${id.toString().padStart(5, '0')}`;
+  } else {
+    // Fallback por si no hay ID (no debería ocurrir)
+    return `RES${Math.floor(10000 + Math.random() * 90000)}`;
+  }
 }
 
 export function isSameCity(location1: string, location2: string): boolean {

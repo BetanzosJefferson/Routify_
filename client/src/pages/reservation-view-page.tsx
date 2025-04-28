@@ -42,18 +42,25 @@ export default function ReservationViewPage() {
     mutationFn: async () => {
       if (!reservation) throw new Error("No reservation found");
       
+      // Crear un objeto simple con solo los campos que necesitamos actualizar
+      const updateData = {
+        checkStatus: "checked" as const, // Usar el valor string literal
+        checkedAt: new Date().toISOString(), // Convertir a string ISO para evitar problemas
+        checkedBy: user?.id || null // ID del usuario actual si está disponible
+      };
+      
+      console.log("Enviando datos de actualización:", updateData);
+      
       const response = await apiRequest(
         "PUT", 
         `/api/reservations/${reservation.id}`, 
-        {
-          checkStatus: CheckStatus.CHECKED,
-          checkedAt: new Date(),
-          checkedBy: 1 // ID del usuario actual (placeholder)
-        }
+        updateData
       );
       
       if (!response.ok) {
-        throw new Error("Failed to mark reservation as checked");
+        const errorData = await response.json();
+        console.error("Error response:", errorData);
+        throw new Error(`Failed to mark reservation as checked: ${JSON.stringify(errorData)}`);
       }
       
       return await response.json();
@@ -78,16 +85,23 @@ export default function ReservationViewPage() {
     mutationFn: async () => {
       if (!reservation) throw new Error("No reservation found");
       
+      // Crear un objeto simple con solo los campos que necesitamos actualizar
+      const updateData = {
+        chargeStatus: "charged" as const // Usar el valor string literal
+      };
+      
+      console.log("Enviando datos de actualización para cobrado:", updateData);
+      
       const response = await apiRequest(
         "PUT", 
         `/api/reservations/${reservation.id}`, 
-        {
-          chargeStatus: ChargeStatus.CHARGED
-        }
+        updateData
       );
       
       if (!response.ok) {
-        throw new Error("Failed to mark reservation as charged");
+        const errorData = await response.json();
+        console.error("Error response:", errorData);
+        throw new Error(`Failed to mark reservation as charged: ${JSON.stringify(errorData)}`);
       }
       
       return await response.json();
@@ -217,7 +231,7 @@ export default function ReservationViewPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-700 mb-3">
             <QrCodeIcon size={32} />
           </div>
-          <h1 className="text-2xl font-bold">Ticket #{generateReservationId()}</h1>
+          <h1 className="text-2xl font-bold">Ticket #{generateReservationId(reservation.id)}</h1>
         </div>
         
         <Card className="mb-4">
@@ -375,7 +389,7 @@ export default function ReservationViewPage() {
         )}
         
         <div className="mt-6 text-center text-sm text-gray-500">
-          <p>Código de Reservación: #{generateReservationId()}</p>
+          <p>Código de Reservación: #{generateReservationId(reservation.id)}</p>
         </div>
       </div>
       
