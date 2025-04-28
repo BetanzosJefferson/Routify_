@@ -729,44 +729,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`Generando todos los segmentos para la ruta ${route.id}`);
     console.log(`Puntos en la ruta: ${allPoints.join(' -> ')}`);
     
-    // Approach 1: Generate all possible combinations (not just consecutive stops)
+    // Implementación optimizada para evitar segmentos duplicados
+    // Enfoque: Generar solo segmentos significativos y evitar duplicaciones
+    
+    // Opción 1: Solo generar segmentos consecutivos (parada a parada)
+    // Esto crea una experiencia más sencilla pero con menos opciones para el usuario
     for (let i = 0; i < allPoints.length - 1; i++) {
-      for (let j = i + 1; j < allPoints.length; j++) {
-        // Skip the main route (origin to destination) as it's already created separately
-        if (i === 0 && j === allPoints.length - 1) {
-          console.log(`Saltando ruta principal: ${allPoints[i]} -> ${allPoints[j]} (se crea por separado)`);
-          continue;
-        }
-        
-        // Skip segments where origin and destination are in the same city
-        if (isSameCity(allPoints[i], allPoints[j])) {
-          console.log(`Saltando segmento en misma ciudad: ${allPoints[i]} -> ${allPoints[j]}`);
-          continue;
-        }
-        
-        // Para evitar duplicados, omitiremos los segmentos con solo una parada de diferencia
-        // si no es un segmento significativo (como origen a primera parada o última parada a destino)
-        const isShortSegment = j === i + 1;
-        const isFirstToSecond = i === 0 && j === 1; // Origen a primera parada
-        const isSecondToLast = j === allPoints.length - 1 && i === allPoints.length - 2; // Última parada a destino
-        
-        // Solo incluir segmentos cortos si son significativos o si la ruta tiene pocas paradas
-        if (isShortSegment && !isFirstToSecond && !isSecondToLast && allPoints.length > 3) {
-          console.log(`Saltando segmento corto no significativo: ${allPoints[i]} -> ${allPoints[j]}`);
-          continue;
-        }
-        
-        allSegments.push({
-          origin: allPoints[i],
-          destination: allPoints[j],
-          price: 0
-        });
-        
-        console.log(`  + Segmento: ${allPoints[i]} -> ${allPoints[j]}`);
+      // Crear segmento del punto actual al siguiente
+      const j = i + 1;
+      
+      // Skip segments where origin and destination are in the same city
+      if (isSameCity(allPoints[i], allPoints[j])) {
+        console.log(`Saltando segmento en misma ciudad: ${allPoints[i]} -> ${allPoints[j]}`);
+        continue;
       }
+      
+      allSegments.push({
+        origin: allPoints[i],
+        destination: allPoints[j],
+        price: 0
+      });
+      
+      console.log(`  + Segmento consecutivo: ${allPoints[i]} -> ${allPoints[j]}`);
     }
     
-    console.log(`Generados ${allSegments.length} segmentos válidos (excluyendo misma ciudad y ruta principal) para la ruta ${route.id}`);
+    // Opción 2: Añadir segmentos clave (no consecutivos) para rutas importantes
+    // Esto permite viajes directos entre puntos populares, como:
+    // - Origen a cualquier parada (saltar paradas intermedias)
+    // - Cualquier parada a destino (viajes directos al destino final)
+    
+    // Origen a cualquier parada (saltando intermedios)
+    for (let j = 2; j < allPoints.length - 1; j++) {
+      // Skip segments where origin and destination are in the same city
+      if (isSameCity(allPoints[0], allPoints[j])) {
+        continue;
+      }
+      
+      allSegments.push({
+        origin: allPoints[0],
+        destination: allPoints[j],
+        price: 0
+      });
+      
+      console.log(`  + Segmento desde origen: ${allPoints[0]} -> ${allPoints[j]}`);
+    }
+    
+    // Cualquier parada a destino final
+    for (let i = 1; i < allPoints.length - 2; i++) {
+      // Skip segments where origin and destination are in the same city
+      if (isSameCity(allPoints[i], allPoints[allPoints.length - 1])) {
+        continue;
+      }
+      
+      allSegments.push({
+        origin: allPoints[i],
+        destination: allPoints[allPoints.length - 1],
+        price: 0
+      });
+      
+      console.log(`  + Segmento a destino: ${allPoints[i]} -> ${allPoints[allPoints.length - 1]}`);
+    }
+    
+    console.log(`Generados ${allSegments.length} segmentos válidos optimizados para la ruta ${route.id}`);
     
     return allSegments;
   }
