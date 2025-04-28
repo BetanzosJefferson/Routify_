@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice } from "@/lib/utils";
-import { TripWithRouteInfo } from "@shared/schema";
+import { TripWithRouteInfo, PaymentMethod, PaymentStatus, ChargeStatus, CheckStatus } from "@shared/schema";
 import QRCode from "qrcode";
 import { openPrintWindow } from "./enhanced-ticket";
 
@@ -48,7 +48,7 @@ interface Passenger {
   lastName: string;
 }
 
-import { PaymentMethod, PaymentStatus, ChargeStatus, CheckStatus } from "@shared/schema";
+
 
 interface ReservationFormData {
   tripId: number;
