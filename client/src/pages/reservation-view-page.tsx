@@ -44,10 +44,12 @@ export default function ReservationViewPage() {
       
       // Crear un objeto simple con solo los campos que necesitamos actualizar
       const updateData = {
-        checkStatus: "checked" as const, // Usar el valor string literal
+        checkStatus: "check" as const, // Usar el valor exacto del enum (CheckStatus.CHECKED = "check")
         checkedAt: new Date().toISOString(), // Convertir a string ISO para evitar problemas
         checkedBy: user?.id || null // ID del usuario actual si está disponible
       };
+      
+      console.log("CheckStatus en el esquema es:", CheckStatus.CHECKED);
       
       console.log("Enviando datos de actualización:", updateData);
       
@@ -87,8 +89,10 @@ export default function ReservationViewPage() {
       
       // Crear un objeto simple con solo los campos que necesitamos actualizar
       const updateData = {
-        chargeStatus: "charged" as const // Usar el valor string literal
+        chargeStatus: "cobrado" as const // Valor del enum (ChargeStatus.CHARGED = "cobrado")
       };
+      
+      console.log("ChargeStatus en el esquema es:", ChargeStatus.CHARGED);
       
       console.log("Enviando datos de actualización para cobrado:", updateData);
       
