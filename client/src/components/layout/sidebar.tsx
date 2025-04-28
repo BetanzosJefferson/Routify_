@@ -15,7 +15,10 @@ import {
   ClipboardListIcon,
   TruckIcon,
   PercentIcon,
-  UsersIcon
+  UsersIcon,
+  Building2Icon,
+  TagIcon,
+  ArrowLeftRightIcon
 } from "lucide-react";
 
 interface SidebarProps {
@@ -187,8 +190,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           )}
           
           {/* Sección de Flota y Finanzas */}
-          {(canAccess("vehicles") || canAccess("commissions")) && (
-            <NavSection title="Flota y Finanzas">
+          {(canAccess("vehicles") || canAccess("commissions") || canAccess("company") || canAccess("coupons") || canAccess("passenger-transfer")) && (
+            <NavSection title="Empresa y Finanzas">
               {canAccess("vehicles") && (
                 <NavItem 
                   icon={<TruckIcon className="h-5 w-5" />} 
@@ -198,13 +201,48 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   Unidades
                 </NavItem>
               )}
+              {canAccess("company") && (
+                <NavItem 
+                  icon={<Building2Icon className="h-5 w-5" />} 
+                  active={activeTab === "company"}
+                  onClick={() => {
+                    setLocation("/company");
+                  }}
+                >
+                  Datos de Empresa
+                </NavItem>
+              )}
               {canAccess("commissions") && (
                 <NavItem 
                   icon={<PercentIcon className="h-5 w-5" />} 
                   active={activeTab === "commissions"}
-                  onClick={() => handleTabClick("commissions")}
+                  onClick={() => {
+                    setLocation("/commissions");
+                  }}
                 >
-                  Gestión de comisiones
+                  Comisiones
+                </NavItem>
+              )}
+              {canAccess("coupons") && (
+                <NavItem 
+                  icon={<TagIcon className="h-5 w-5" />} 
+                  active={activeTab === "coupons"}
+                  onClick={() => {
+                    setLocation("/coupons");
+                  }}
+                >
+                  Cupones
+                </NavItem>
+              )}
+              {canAccess("passenger-transfer") && (
+                <NavItem 
+                  icon={<ArrowLeftRightIcon className="h-5 w-5" />} 
+                  active={activeTab === "passenger-transfer"}
+                  onClick={() => {
+                    setLocation("/passenger-transfer");
+                  }}
+                >
+                  Transferir Pasajeros
                 </NavItem>
               )}
             </NavSection>

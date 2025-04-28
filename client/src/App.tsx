@@ -13,6 +13,10 @@ import Dashboard from "@/pages/dashboard";
 import AuthPage from "@/pages/auth-page";
 import RegisterPage from "@/pages/register-page";
 import PassengerListPage from "@/pages/passenger-list-page";
+import CompanyPage from "@/pages/company-page";
+import CommissionsPage from "@/pages/commissions-page";
+import CouponsPage from "@/pages/coupons-page";
+import PassengerTransferPage from "@/pages/passenger-transfer-page";
 import { UsersPage } from "@/components/users/users-page";
 
 function Router() {
@@ -21,6 +25,10 @@ function Router() {
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/dashboard" component={Dashboard} />
       <ProtectedRoute path="/trip/:tripId/passengers" component={PassengerListPage} />
+      <ProtectedRoute path="/company" component={CompanyPage} />
+      <ProtectedRoute path="/commissions" component={CommissionsPage} />
+      <ProtectedRoute path="/coupons" component={CouponsPage} />
+      <ProtectedRoute path="/passenger-transfer" component={PassengerTransferPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register/:token" component={RegisterPage} />
       <Route component={NotFound} />
