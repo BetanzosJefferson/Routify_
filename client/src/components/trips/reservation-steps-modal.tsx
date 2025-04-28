@@ -362,8 +362,13 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       setPassengers([{ firstName: "", lastName: "" }]);
       setEmail("");
       setPhone("");
-      setPaymentMethod("cash");
+      setPaymentMethod(PaymentMethod.CASH);
       setNotes("");
+      // Reset payment-related fields
+      setAdvanceAmount(0);
+      setAdvancePaymentMethod(PaymentMethod.CASH);
+      setPaymentStatus(PaymentStatus.PENDING);
+      setShowAdvancePayment(false);
     }
     
     onClose();
@@ -482,7 +487,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
               </div>
             )}
             
-            {/* Step 3: Contact Information */}
+            {/* Step 3: Contact Information and Payment */}
             {currentStep === 2 && (
               <div className="space-y-4">
                 <div className="flex items-center justify-center mb-4">
@@ -512,20 +517,89 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                     />
                   </div>
                   
-                  <div>
-                    <Label htmlFor="payment-method">Método de Pago</Label>
-                    <Select
-                      value={paymentMethod}
-                      onValueChange={(value: "cash" | "transfer") => setPaymentMethod(value)}
-                    >
-                      <SelectTrigger id="payment-method">
-                        <SelectValue placeholder="Seleccione método de pago" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">Efectivo</SelectItem>
-                        <SelectItem value="transfer">Transferencia Bancaria</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="border-t border-gray-200 pt-4 mt-2">
+                    <h3 className="font-medium text-gray-800 mb-3">Información de Pago</h3>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="payment-method">Método de Pago</Label>
+                        <Select
+                          value={paymentMethod}
+                          onValueChange={(value: typeof PaymentMethod.CASH | typeof PaymentMethod.TRANSFER) => setPaymentMethod(value)}
+                        >
+                          <SelectTrigger id="payment-method">
+                            <SelectValue placeholder="Seleccione método de pago" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={PaymentMethod.CASH}>Efectivo</SelectItem>
+                            <SelectItem value={PaymentMethod.TRANSFER}>Transferencia Bancaria</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="advance-payment"
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          checked={showAdvancePayment}
+                          onChange={(e) => setShowAdvancePayment(e.target.checked)}
+                        />
+                        <Label htmlFor="advance-payment" className="text-sm font-medium">
+                          Realizar anticipo
+                        </Label>
+                      </div>
+                      
+                      {showAdvancePayment && (
+                        <div className="pl-6 space-y-4 border-l-2 border-primary/20">
+                          <div>
+                            <Label htmlFor="advance-amount">Monto de Anticipo</Label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                              <Input
+                                id="advance-amount"
+                                type="number"
+                                min="0"
+                                max={totalPrice}
+                                step="0.01"
+                                className="pl-8"
+                                value={advanceAmount}
+                                onChange={(e) => setAdvanceAmount(parseFloat(e.target.value) || 0)}
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <div className="mt-1 text-xs text-gray-500 flex justify-between">
+                              <span>Mínimo: $0</span>
+                              <span>Máximo: {formatPrice(totalPrice)}</span>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="advance-payment-method">Método de Pago del Anticipo</Label>
+                            <Select
+                              value={advancePaymentMethod}
+                              onValueChange={(value: typeof PaymentMethod.CASH | typeof PaymentMethod.TRANSFER) => setAdvancePaymentMethod(value)}
+                            >
+                              <SelectTrigger id="advance-payment-method">
+                                <SelectValue placeholder="Seleccione método de pago" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={PaymentMethod.CASH}>Efectivo</SelectItem>
+                                <SelectItem value={PaymentMethod.TRANSFER}>Transferencia Bancaria</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div className="p-3 bg-blue-50 rounded border border-blue-200 text-blue-800 text-sm">
+                            {advanceAmount === totalPrice ? (
+                              <p>El pago será registrado como <strong>PAGADO</strong> ya que el anticipo cubre el monto total.</p>
+                            ) : (
+                              <p>El pago será registrado como <strong>PENDIENTE</strong> con un anticipo de {formatPrice(advanceAmount)}. Saldo restante: {formatPrice(totalPrice - advanceAmount)}.</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div>
@@ -585,8 +659,44 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                     <div className="text-gray-500">Teléfono:</div>
                     <div>{phone}</div>
                     <div className="text-gray-500">Método de Pago:</div>
-                    <div>{paymentMethod === "cash" ? "Efectivo" : "Transferencia Bancaria"}</div>
+                    <div>{paymentMethod === PaymentMethod.CASH ? "Efectivo" : "Transferencia Bancaria"}</div>
                   </div>
+                </div>
+                
+                <div className="border border-gray-200 rounded-md p-4">
+                  <h4 className="font-medium mb-2">Información de Pago</h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                    <div className="text-gray-500">Total:</div>
+                    <div className="font-bold">{formatPrice(totalPrice)}</div>
+                    
+                    {showAdvancePayment && (
+                      <>
+                        <div className="text-gray-500">Anticipo:</div>
+                        <div>{formatPrice(advanceAmount)}</div>
+                        
+                        <div className="text-gray-500">Método de anticipo:</div>
+                        <div>{advancePaymentMethod === PaymentMethod.CASH ? "Efectivo" : "Transferencia Bancaria"}</div>
+                        
+                        <div className="text-gray-500">Saldo pendiente:</div>
+                        <div>{formatPrice(totalPrice - advanceAmount)}</div>
+                        
+                        <div className="text-gray-500">Estado de pago:</div>
+                        <div className={advanceAmount === totalPrice ? "text-green-600 font-medium" : "text-amber-600 font-medium"}>
+                          {advanceAmount === totalPrice ? "PAGADO" : "PENDIENTE"}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  
+                  {paymentMethod === PaymentMethod.TRANSFER || (showAdvancePayment && advancePaymentMethod === PaymentMethod.TRANSFER) ? (
+                    <div className="bg-blue-50 border border-blue-100 rounded p-3 text-sm text-blue-800">
+                      <p className="font-medium mb-1">Información bancaria para transferencias:</p>
+                      <p>Banco: BBVA</p>
+                      <p>Titular: TransRoute S.A. de C.V.</p>
+                      <p>CLABE: 0123 4567 8901 2345 67</p>
+                      <p>Concepto: REF-{sessionStorage.getItem('user') ? JSON.parse(sessionStorage.getItem('user')!).id : 'USUARIO'}-{new Date().getTime().toString().slice(-6)}</p>
+                    </div>
+                  ) : null}
                 </div>
                 
                 <div className="bg-primary/10 p-4 rounded-md">
@@ -594,6 +704,13 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                     <div className="text-sm font-medium">Total ({numPassengers} pasajeros):</div>
                     <div className="text-lg font-bold">{formatPrice(totalPrice)}</div>
                   </div>
+                  
+                  {showAdvancePayment && (
+                    <div className="flex justify-between items-center mt-2 pt-2 border-t border-primary/20">
+                      <div className="text-sm font-medium">Saldo por pagar:</div>
+                      <div className="text-lg font-bold">{formatPrice(totalPrice - advanceAmount)}</div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -717,16 +834,54 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                   </div>
                   <div className="grid grid-cols-3 text-sm">
                     <span className="font-semibold text-gray-500">Pago:</span>
-                    <span className="col-span-2">{paymentMethod === "cash" ? "Efectivo" : "Transferencia"}</span>
+                    <span className="col-span-2">{paymentMethod === PaymentMethod.CASH ? "Efectivo" : "Transferencia Bancaria"}</span>
                   </div>
                   <div className="grid grid-cols-3 text-sm border-t pt-2 mt-2">
                     <span className="font-semibold text-gray-500">Total:</span>
                     <span className="col-span-2 font-bold">{formatPrice(totalPrice)}</span>
                   </div>
+                  
+                  {showAdvancePayment && (
+                    <>
+                      <div className="grid grid-cols-3 text-sm mt-1">
+                        <span className="font-semibold text-gray-500">Anticipo:</span>
+                        <span className="col-span-2">{formatPrice(advanceAmount)}</span>
+                      </div>
+                      <div className="grid grid-cols-3 text-sm">
+                        <span className="font-semibold text-gray-500">Método:</span>
+                        <span className="col-span-2">{advancePaymentMethod === PaymentMethod.CASH ? "Efectivo" : "Transferencia Bancaria"}</span>
+                      </div>
+                      <div className="grid grid-cols-3 text-sm">
+                        <span className="font-semibold text-gray-500">Saldo:</span>
+                        <span className="col-span-2 font-semibold">{formatPrice(totalPrice - advanceAmount)}</span>
+                      </div>
+                      <div className="grid grid-cols-3 text-sm">
+                        <span className="font-semibold text-gray-500">Estado:</span>
+                        <span className={`col-span-2 ${advanceAmount === totalPrice ? "text-green-600" : "text-amber-600"} font-semibold`}>
+                          {advanceAmount === totalPrice ? "PAGADO" : "PENDIENTE"}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
+                
+                {(paymentMethod === PaymentMethod.TRANSFER || (showAdvancePayment && advancePaymentMethod === PaymentMethod.TRANSFER)) && (
+                  <div className="mt-4 mb-4 p-3 border border-blue-200 rounded bg-blue-50 text-xs text-blue-800">
+                    <p className="font-semibold mb-1">Información Bancaria:</p>
+                    <p>Banco: BBVA</p>
+                    <p>Titular: TransRoute S.A. de C.V.</p>
+                    <p>CLABE: 0123 4567 8901 2345 67</p>
+                    <p className="mt-1">Verifica tu pago: 555-123-4567</p>
+                  </div>
+                )}
                 
                 <div className="border-t pt-4 text-xs text-center text-gray-500">
                   <p>Presente este boleto al abordar el vehículo</p>
+                  {showAdvancePayment && advanceAmount < totalPrice && (
+                    <p className="mt-1 text-amber-600 font-semibold">
+                      IMPORTANTE: Complete el pago antes de abordar
+                    </p>
+                  )}
                   <p className="mt-1">TransRoute © {new Date().getFullYear()}</p>
                 </div>
               </div>
