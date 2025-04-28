@@ -235,16 +235,30 @@ export function ReservationList() {
       
       <Card className="mb-6">
         <CardContent className="p-6">
-          <div className="relative rounded-md shadow-sm max-w-lg">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <SearchIcon className="h-5 w-5 text-gray-400" />
+          <div className="space-y-4">
+            <div className="relative rounded-md shadow-sm max-w-lg">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <SearchIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <Input
+                className="pl-10"
+                placeholder="Buscar por nombre, teléfono, correo, ruta o fecha..."
+                value={searchTerm}
+                onChange={handleSearch}
+              />
             </div>
-            <Input
-              className="pl-10"
-              placeholder="Search by name, route, date..."
-              value={searchTerm}
-              onChange={handleSearch}
-            />
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>
+                <span className="font-medium">Buscar por:</span>
+              </p>
+              <ul className="list-disc list-inside ml-1 grid grid-cols-1 md:grid-cols-3 gap-x-4">
+                <li>Nombre de pasajero</li>
+                <li>Número de teléfono</li>
+                <li>Correo electrónico</li>
+                <li>Nombre de ruta</li>
+                <li>Fecha de salida</li>
+              </ul>
+            </div>
           </div>
         </CardContent>
       </Card>

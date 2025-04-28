@@ -226,14 +226,31 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
 
       // Verificar permisos según el rol
       // Solo los SUPER_ADMIN pueden crear cualquier tipo de usuario
-      // Los OWNER solo pueden crear usuarios que no sean SUPER_ADMIN ni OWNER
+      // Los OWNER solo pueden crear usuarios de tipo DUEÑO, CALL CENTER, CHECADOR y CHOFER
       // Los ADMIN solo pueden crear usuarios que no sean SUPER_ADMIN, ADMIN ni OWNER
-      if (
-        (user.role === UserRole.OWNER && (role === UserRole.SUPER_ADMIN || role === UserRole.OWNER)) ||
-        (user.role === UserRole.ADMIN && (role === UserRole.SUPER_ADMIN || role === UserRole.ADMIN || role === UserRole.OWNER)) ||
-        (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER)
-      ) {
-        return res.status(403).json({ message: "No tiene permisos para crear este tipo de usuario" });
+      
+      // Nueva lógica para DUEÑO - solo puede invitar roles específicos
+      if (user.role === UserRole.OWNER) {
+        const rolesPermitidos = [UserRole.OWNER, UserRole.CALL_CENTER, UserRole.CHECKER, UserRole.DRIVER];
+        
+        if (!rolesPermitidos.includes(role)) {
+          return res.status(403).json({ 
+            message: "Como Dueño, solo puede invitar a usuarios con roles: Dueño, Call Center, Checador o Chofer" 
+          });
+        }
+      } 
+      // Mantener restricciones para Admin
+      else if (user.role === UserRole.ADMIN && 
+          (role === UserRole.SUPER_ADMIN || role === UserRole.ADMIN || role === UserRole.OWNER)) {
+        return res.status(403).json({ 
+          message: "No tiene permisos para crear este tipo de usuario" 
+        });
+      }
+      // Otros roles no pueden crear usuarios
+      else if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER) {
+        return res.status(403).json({ 
+          message: "Su rol no tiene permiso para crear usuarios" 
+        });
       }
 
       // Calcular fecha de expiración (24 horas desde ahora)
