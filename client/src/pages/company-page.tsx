@@ -21,6 +21,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Loader2, Save } from "lucide-react";
 import { companyFormSchema } from "@/lib/form-schemas";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageLayout } from "@/components/layout/page-layout";
 
 export default function CompanyPage() {
   const { toast } = useToast();
@@ -98,144 +99,144 @@ export default function CompanyPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <PageLayout title="Datos de la Empresa" activeTab="company">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="container py-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Datos de la Empresa</h1>
+    <PageLayout title="Datos de la Empresa" activeTab="company">
+      <div className="space-y-6">
+        <Tabs defaultValue="banking" className="w-full" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full md:w-auto grid-cols-1 md:grid-cols-2">
+            <TabsTrigger value="banking">Datos Bancarios</TabsTrigger>
+            <TabsTrigger value="general">Información General</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="banking" className="space-y-4 pt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Información Bancaria</CardTitle>
+                <CardDescription>
+                  Esta información se utilizará para pagos y transferencias. Asegúrate de que los
+                  datos sean correctos.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormField
+                        control={form.control}
+                        name="bankName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nombre del Banco</FormLabel>
+                            <FormControl>
+                              <Input placeholder="BBVA, Banorte, etc." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="accountHolder"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Titular de la Cuenta</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Transportes S.A. de C.V." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="clabe"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>CLABE Interbancaria</FormLabel>
+                            <FormControl>
+                              <Input placeholder="18 dígitos" {...field} />
+                            </FormControl>
+                            <FormDescription>
+                              CLABE de 18 dígitos para transferencias bancarias.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="contactPhone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Teléfono de Contacto</FormLabel>
+                            <FormControl>
+                              <Input placeholder="+52 123 456 7890" {...field} />
+                            </FormControl>
+                            <FormDescription>
+                              Teléfono para consultas relacionadas con pagos.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button
+                        type="submit"
+                        disabled={mutation.isPending}
+                        className="gap-2"
+                      >
+                        {mutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Guardando...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4" />
+                            Guardar Cambios
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="general" className="space-y-4 pt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Información General</CardTitle>
+                <CardDescription>
+                  Datos generales de tu empresa de transporte.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center p-8">
+                  <p className="text-muted-foreground">
+                    Esta sección está en desarrollo. Próximamente podrás editar la información general
+                    de tu empresa.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
-
-      <Tabs defaultValue="banking" className="w-full" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full md:w-auto grid-cols-1 md:grid-cols-2">
-          <TabsTrigger value="banking">Datos Bancarios</TabsTrigger>
-          <TabsTrigger value="general">Información General</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="banking" className="space-y-4 pt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Información Bancaria</CardTitle>
-              <CardDescription>
-                Esta información se utilizará para pagos y transferencias. Asegúrate de que los
-                datos sean correctos.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="bankName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nombre del Banco</FormLabel>
-                          <FormControl>
-                            <Input placeholder="BBVA, Banorte, etc." {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="accountHolder"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Titular de la Cuenta</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Transportes S.A. de C.V." {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="clabe"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>CLABE Interbancaria</FormLabel>
-                          <FormControl>
-                            <Input placeholder="18 dígitos" {...field} />
-                          </FormControl>
-                          <FormDescription>
-                            CLABE de 18 dígitos para transferencias bancarias.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="contactPhone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Teléfono de Contacto</FormLabel>
-                          <FormControl>
-                            <Input placeholder="+52 123 456 7890" {...field} />
-                          </FormControl>
-                          <FormDescription>
-                            Teléfono para consultas relacionadas con pagos.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button
-                      type="submit"
-                      disabled={mutation.isPending}
-                      className="gap-2"
-                    >
-                      {mutation.isPending ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Guardando...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4" />
-                          Guardar Cambios
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="general" className="space-y-4 pt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Información General</CardTitle>
-              <CardDescription>
-                Datos generales de tu empresa de transporte.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center p-8">
-                <p className="text-muted-foreground">
-                  Esta sección está en desarrollo. Próximamente podrás editar la información general
-                  de tu empresa.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
+    </PageLayout>
   );
 }
