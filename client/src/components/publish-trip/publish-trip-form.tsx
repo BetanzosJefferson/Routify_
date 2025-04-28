@@ -173,23 +173,44 @@ export function PublishTripForm() {
       
       // Verificar que route.segments existe antes de usar filter
       if (route.segments && Array.isArray(route.segments)) {
+        console.log("Segmentos recibidos de la API:", route.segments);
+        
+        // Filtrar segmentos válidos (eliminar segmentos en la misma ciudad)
         const segments = route.segments.filter(
           segment => segment && segment.origin && segment.destination && 
           !isSameCity(segment.origin, segment.destination)
         );
         
-        const segmentPricesWithDefaultValues = segments.map(segment => ({
-          origin: segment.origin,
-          destination: segment.destination,
-          price: 0
-        }));
+        console.log("Segmentos válidos después de filtrar segmentos en la misma ciudad:", segments);
         
-        setSegmentPrices(segmentPricesWithDefaultValues);
-        form.setValue("segmentPrices", segmentPricesWithDefaultValues);
+        if (segments.length > 0) {
+          const segmentPricesWithDefaultValues = segments.map(segment => ({
+            origin: segment.origin,
+            destination: segment.destination,
+            price: 0
+          }));
+          
+          console.log("Estableciendo segmentPrices:", segmentPricesWithDefaultValues);
+          setSegmentPrices(segmentPricesWithDefaultValues);
+          form.setValue("segmentPrices", segmentPricesWithDefaultValues);
+        } else {
+          // Si no hay segmentos válidos después del filtrado, generar algunos a partir de la ruta básica
+          console.log("No hay segmentos válidos después del filtrado, generando segmentos manualmente");
+          const generatedSegments = generateSegmentsFromRoute(route);
+          console.log("Segmentos generados manualmente:", generatedSegments);
+          
+          setSegmentPrices(generatedSegments);
+          form.setValue("segmentPrices", generatedSegments);
+        }
       } else {
         console.warn("No se encontraron segmentos en la ruta seleccionada o la estructura es incorrecta", route);
-        setSegmentPrices([]);
-        form.setValue("segmentPrices", []);
+        
+        // Intentar generar segmentos manualmente a partir de la ruta básica
+        const generatedSegments = generateSegmentsFromRoute(route);
+        console.log("Segmentos generados como fallback:", generatedSegments);
+        
+        setSegmentPrices(generatedSegments);
+        form.setValue("segmentPrices", generatedSegments);
       }
     }
   }, [routeSegmentsQuery.data, form]);
