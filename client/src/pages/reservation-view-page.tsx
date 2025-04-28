@@ -98,7 +98,8 @@ export default function ReservationViewPage() {
       setLoading(true);
       
       try {
-        const response = await apiRequest("GET", `/api/reservations/${id}`);
+        // Añadimos el parámetro qr=true para indicar que es una visualización por QR
+        const response = await apiRequest("GET", `/api/reservations/${id}?qr=true`);
         
         if (!response.ok) {
           if (response.status === 404) {
