@@ -121,47 +121,25 @@ export default function ReservationDetails() {
       </Button>
       
       <Card className="p-6 mb-4">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">
-              Reservación #{generateReservationId(reservation.id)}
-            </h1>
-            <Badge 
-              variant={reservation.paymentStatus === 'pagado' ? "outline" : "secondary"}
-              className={reservation.paymentStatus === 'pagado' 
-                ? "bg-green-100 text-green-800 border-green-200 text-xs" 
-                : "bg-amber-100 text-amber-800 border-amber-200 text-xs"}
-            >
-              {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
-            </Badge>
-          </div>
-
-          {reservation.paymentStatus !== 'pagado' && (
-            <Button 
-              onClick={markAsPaid} 
-              disabled={isMarkingAsPaid}
-              className="bg-green-600 hover:bg-green-700 text-white"
-            >
-              {isMarkingAsPaid ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                  Procesando...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Marcar como pagado
-                </>
-              )}
-            </Button>
-          )}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">
+            Reservación #{generateReservationId(reservation.id)}
+          </h1>
+          <Badge 
+            variant={reservation.paymentStatus === 'pagado' ? "outline" : "secondary"}
+            className={reservation.paymentStatus === 'pagado' 
+              ? "bg-green-100 text-green-700 border-green-200 text-xs px-3 py-1" 
+              : "bg-amber-100 text-amber-700 border-amber-200 text-xs px-3 py-1"}
+          >
+            {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+          </Badge>
         </div>
 
-        <div className="space-y-6">
-          {/* Información del pasajero */}
-          <div>
-            <h2 className="text-lg font-semibold mb-2 text-gray-800">Información del Pasajero</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-md">
+        {/* Información del pasajero */}
+        <div className="mb-6">
+          <h2 className="text-lg font-medium mb-3 text-gray-800">Información del Pasajero</h2>
+          <div className="bg-gray-50 p-4 rounded-md">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="text-sm text-gray-500">Nombre:</div>
                 <div className="font-medium">
@@ -176,106 +154,134 @@ export default function ReservationDetails() {
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Información del viaje */}
-          <div>
-            <h2 className="text-lg font-semibold mb-2 text-gray-800">Detalles del Viaje</h2>
-            <div className="bg-gray-50 p-4 rounded-md space-y-3">
+        {/* Detalles del viaje */}
+        <div className="mb-6">
+          <h2 className="text-lg font-medium mb-3 text-gray-800">Detalles del Viaje</h2>
+          <div className="bg-gray-50 p-4 rounded-md">
+            <div className="mb-3">
+              <div className="text-sm text-gray-500">Ruta:</div>
+              <div className="font-medium">{reservation.trip.route.name}</div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mb-3">
               <div>
-                <div className="text-sm text-gray-500">Ruta:</div>
-                <div className="font-medium">{reservation.trip.route.name}</div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-gray-500">Origen:</div>
-                  <div>{reservation.trip.segmentOrigin || reservation.trip.route.origin}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">Destino:</div>
-                  <div>{reservation.trip.segmentDestination || reservation.trip.route.destination}</div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-gray-500">Fecha:</div>
-                  <div>{formatDate(reservation.trip.departureDate)}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">Hora:</div>
-                  <div>{reservation.trip.departureTime}</div>
-                </div>
+                <div className="text-sm text-gray-500">Origen:</div>
+                <div>{reservation.trip.segmentOrigin || reservation.trip.route.origin}</div>
               </div>
               <div>
-                <div className="text-sm text-gray-500">Pasajeros:</div>
-                <div>{reservation.passengers.length}</div>
+                <div className="text-sm text-gray-500">Destino:</div>
+                <div>{reservation.trip.segmentDestination || reservation.trip.route.destination}</div>
               </div>
             </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-sm text-gray-500">Fecha:</div>
+                <div>{formatDate(reservation.trip.departureDate)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-500">Hora:</div>
+                <div>{reservation.trip.departureTime}</div>
+              </div>
+            </div>
+            
+            <div className="mt-3">
+              <div className="text-sm text-gray-500">Pasajeros:</div>
+              <div>{reservation.passengers.length}</div>
+            </div>
           </div>
+        </div>
 
-          {/* Información de pago */}
-          <div>
-            <h2 className="text-lg font-semibold mb-2 text-gray-800">Información de Pago</h2>
-            <div className="bg-gray-50 p-4 rounded-md">
-              <div className="grid grid-cols-2 gap-y-3">
-                <div>
-                  <div className="text-sm text-gray-500">Total:</div>
-                  <div className="text-lg font-bold">{formatPrice(reservation.totalAmount)}</div>
+        {/* Información de pago */}
+        <div>
+          <h2 className="text-lg font-medium mb-3 text-gray-800">Información de Pago</h2>
+          <div className="bg-gray-50 p-4 rounded-md">
+            <div className="grid grid-cols-2 gap-4 mb-3">
+              <div>
+                <div className="text-sm text-gray-500">Total:</div>
+                <div className="text-lg font-bold">{formatPrice(reservation.totalAmount)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-500">Estado:</div>
+                <div className={`font-semibold ${
+                  reservation.paymentStatus === 'pagado' 
+                    ? 'text-green-600' 
+                    : 'text-amber-600'
+                }`}>
+                  {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
                 </div>
-                <div>
-                  <div className="text-sm text-gray-500">Estado:</div>
-                  <div className={`font-semibold ${
-                    reservation.paymentStatus === 'pagado' 
-                      ? 'text-green-600' 
-                      : 'text-amber-600'
-                  }`}>
-                    {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+              </div>
+            </div>
+            
+            {(!reservation.advanceAmount || reservation.advanceAmount <= 0) ? (
+              <div>
+                <div className="text-sm text-gray-500">Método de pago:</div>
+                <div>{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-sm text-gray-500">Anticipo:</div>
+                    <div className="font-medium">{formatPrice(reservation.advanceAmount)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">Método anticipo:</div>
+                    <div>{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
                   </div>
                 </div>
                 
-                {(!reservation.advanceAmount || reservation.advanceAmount <= 0) ? (
-                  <div className="col-span-2">
-                    <div className="text-sm text-gray-500">Método de pago:</div>
-                    <div>{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                {reservation.advanceAmount < reservation.totalAmount && (
+                  <div className="grid grid-cols-2 gap-4 mt-3">
+                    <div>
+                      <div className="text-sm text-gray-500">Pendiente:</div>
+                      <div className="font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-500">Método pago final:</div>
+                      <div>{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                    </div>
                   </div>
-                ) : (
-                  <>
-                    <div>
-                      <div className="text-sm text-gray-500">Anticipo:</div>
-                      <div className="font-medium">{formatPrice(reservation.advanceAmount)}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-500">Método anticipo:</div>
-                      <div>{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-                    </div>
-                    
-                    {reservation.advanceAmount < reservation.totalAmount && (
-                      <>
-                        <div>
-                          <div className="text-sm text-gray-500">Pendiente:</div>
-                          <div className="font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-gray-500">Método pago final:</div>
-                          <div>{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-                        </div>
-                      </>
-                    )}
-                  </>
                 )}
-              </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Botón para marcar como pagado */}
+        {reservation.paymentStatus !== 'pagado' && (
+          <div className="mt-6">
+            <Button 
+              onClick={markAsPaid} 
+              disabled={isMarkingAsPaid}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+            >
+              {isMarkingAsPaid ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                  Procesando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Marcar como pagado
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Notas */}
+        {reservation.notes && (
+          <div className="mt-6">
+            <h2 className="text-lg font-medium mb-3 text-gray-800">Notas</h2>
+            <div className="bg-gray-50 p-4 rounded-md">
+              <p>{reservation.notes}</p>
             </div>
           </div>
-
-          {/* Notas */}
-          {reservation.notes && (
-            <div>
-              <h2 className="text-lg font-semibold mb-2 text-gray-800">Notas</h2>
-              <div className="bg-gray-50 p-4 rounded-md">
-                <p>{reservation.notes}</p>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </Card>
     </div>
   );
