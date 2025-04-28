@@ -4,18 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
-// Constantes para los estados de pago
-const PaymentStatus = {
-  PAID: 'pagado',
-  PENDING: 'pendiente',
-  CANCELLED: 'cancelado'
-};
-
-// Constantes para los métodos de pago
-const PaymentMethod = {
-  CASH: 'efectivo',
-  TRANSFER: 'transferencia'
-};
+import { PaymentStatus, PaymentMethod, ReservationWithDetails } from "@shared/schema";
 import { QrCodeIcon, PrinterIcon, CheckCircleIcon, ClockIcon, AlertTriangleIcon, CreditCardIcon } from "lucide-react";
 import QRCode from "qrcode";
 
@@ -49,12 +38,16 @@ export default function ReservationDetailsPage() {
     data: reservation,
     isLoading,
     error
-  } = useQuery({
-    queryKey: ['/api/reservations', parseInt(id)],
-    queryFn: getQueryFn({
-      customUrl: `/api/reservations/${id}?public=true`, 
-      on401: "returnNull"
-    }),
+  } = useQuery<ReservationWithDetails>({
+    queryKey: ['/api/reservations', id],
+    queryFn: () => fetch(`/api/reservations/${id}?public=true`)
+      .then(res => {
+        if (!res.ok) {
+          if (res.status === 401) return null;
+          throw new Error("Error al cargar la reservación");
+        }
+        return res.json();
+      }),
   });
 
   // Mutation para marcar como pagada
