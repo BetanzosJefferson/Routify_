@@ -627,6 +627,17 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                     </div>
                   </div>
                   
+                  <div className="mb-4">
+                    <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                      <h4 className="font-medium text-sm mb-2">Información de Estados</h4>
+                      <div className="text-xs text-gray-600 space-y-1">
+                        <p><span className="font-semibold">Estado de Check:</span> {CheckStatus.NOT_CHECKED} (se actualizará cuando el pasajero aborde)</p>
+                        <p><span className="font-semibold">Estado de Cobro:</span> {ChargeStatus.PENDING_CHARGE} (se actualizará cuando se complete el pago)</p>
+                        <p className="text-gray-500 italic mt-1">Estos estados se actualizarán automáticamente durante el proceso.</p>
+                      </div>
+                    </div>
+                  </div>
+                  
                   <div>
                     <Label htmlFor="notes">Notas adicionales</Label>
                     <Textarea
@@ -719,9 +730,17 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                       <p>Banco: BBVA</p>
                       <p>Titular: TransRoute S.A. de C.V.</p>
                       <p>CLABE: 0123 4567 8901 2345 67</p>
-                      <p>Concepto: REF-{sessionStorage.getItem('user') ? JSON.parse(sessionStorage.getItem('user')!).id : 'USUARIO'}-{new Date().getTime().toString().slice(-6)}</p>
+                      <p>Cuenta: 1234567890</p>
+                      <p>Referencia: REF-{Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}</p>
+                      <p className="mt-2 font-semibold">Envíe su comprobante vía WhatsApp al: 555-123-4567</p>
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="bg-gray-50 border border-gray-100 rounded p-3 text-sm text-gray-500">
+                      <p className="font-medium mb-1">Nota:</p>
+                      <p>Si desea cambiar a pago por transferencia, podrá hacerlo posteriormente escaneando el código QR del boleto.</p>
+                      <p className="mt-1">Los datos bancarios estarán disponibles en su boleto.</p>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="bg-primary/10 p-4 rounded-md">
@@ -895,27 +914,35 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                   <div className="grid grid-cols-3 text-sm mb-2">
                     <span className="font-semibold text-gray-500">Estado de Check:</span>
                     <span className="col-span-2 font-semibold text-amber-600">
-                      NO ESCANEADO
+                      {CheckStatus.NOT_CHECKED}
                     </span>
                   </div>
                   <div className="grid grid-cols-3 text-sm">
                     <span className="font-semibold text-gray-500">Estado de Cobro:</span>
                     <span className="col-span-2 font-semibold text-amber-600">
-                      PENDIENTE POR COBRAR
+                      {ChargeStatus.PENDING_CHARGE}
                     </span>
                   </div>
                 </div>
                 
                 {(paymentMethod === PaymentMethod.TRANSFER || (showAdvancePayment && advancePaymentMethod === PaymentMethod.TRANSFER)) && (
                   <div className="mb-4 p-3 border border-blue-200 rounded bg-blue-50 text-xs text-blue-800">
-                    <p className="font-semibold mb-1">Información Bancaria:</p>
+                    <p className="font-semibold mb-1">Información Bancaria para Transferencias:</p>
                     <p>Banco: BBVA</p>
                     <p>Titular: TransRoute S.A. de C.V.</p>
                     <p>CLABE: 0123 4567 8901 2345 67</p>
-                    <p className="mt-1">Verifica tu pago: 555-123-4567</p>
+                    <p>Cuenta: 1234567890</p>
+                    <p>Referencia: REF-{Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}</p>
+                    <p className="mt-2 font-semibold">WhatsApp para enviar comprobante: 555-123-4567</p>
                   </div>
                 )}
                 
+                <div className="my-4 p-3 border border-gray-200 rounded bg-gray-50 text-xs">
+                  <p className="font-semibold mb-1">Contacto de Soporte:</p>
+                  <p>WhatsApp: 555-123-4567</p>
+                  <p>Email: soporte@transroute.com</p>
+                </div>
+
                 <div className="border-t pt-4 text-xs text-center text-gray-500">
                   <p>Presente este boleto al abordar el vehículo</p>
                   {showAdvancePayment && advanceAmount < totalPrice && (
