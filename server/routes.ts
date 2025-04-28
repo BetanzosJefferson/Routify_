@@ -1497,23 +1497,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint para marcar una reservación como pagada (para escaneo QR)
   app.post(apiRouter("/reservations/:id/mark-paid"), async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id, 10);
+      const reservationId = parseInt(req.params.id, 10);
       
       // Obtener el usuario autenticado
       const { user } = req as any;
       
-      console.log(`[POST /reservations/${id}/mark-paid] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
+      console.log(`[POST /reservations/${reservationId}/mark-paid] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
       
       // Obtener la reservación actual
-      const reservation = await storage.getReservationWithDetails(id);
+      const reservation = await storage.getReservationWithDetails(reservationId);
       
       if (!reservation) {
-        console.log(`[POST /reservations/${id}/mark-paid] Reservación no encontrada`);
+        console.log(`[POST /reservations/${reservationId}/mark-paid] Reservación no encontrada`);
         return res.status(404).json({ error: "Reservación no encontrada" });
       }
       
       // Actualizar el estado de pago
-      const updatedReservation = await storage.updateReservation(id, {
+      const updatedReservation = await storage.updateReservation(reservationId, {
         paymentStatus: 'pagado',
         updatedAt: new Date()
       });
@@ -1522,10 +1522,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: "Error al actualizar la reservación" });
       }
       
-      console.log(`[POST /reservations/${id}/mark-paid] Reservación marcada como pagada`);
+      console.log(`[POST /reservations/${reservationId}/mark-paid] Reservación marcada como pagada`);
       res.json({ success: true, message: "Reservación marcada como pagada" });
     } catch (error) {
-      console.error(`[POST /reservations/${id}/mark-paid] Error: ${error}`);
+      console.error(`[POST /reservations/:id/mark-paid] Error: ${error}`);
       res.status(500).json({ error: "Error al marcar la reservación como pagada" });
     }
   });
