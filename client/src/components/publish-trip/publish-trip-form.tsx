@@ -440,26 +440,28 @@ export function PublishTripForm() {
     const arrivalTime = formattedStopTimes.length > 0 ? 
       `${formattedStopTimes[formattedStopTimes.length - 1].hour}:${formattedStopTimes[formattedStopTimes.length - 1].minute} ${formattedStopTimes[formattedStopTimes.length - 1].ampm}` : "";
     
-    // Calcular el precio base basado en el segmento más caro de origen a destino final
-    // Esto es para compatibilidad con la estructura de la base de datos
+    // Calcular el precio base usando el precio del segmento desde el origen principal 
+    // hasta el destino final de la ruta
     const calculateBasePrice = () => {
-      // Obtener el precio más alto entre todos los segmentos que tienen como destino 
-      // el destino final de la ruta
       const routeInfo = routeSegmentsQuery.data;
       if (!routeInfo || !segmentPrices.length) return 0;
-
-      // Buscar segmentos que tienen como destino el destino final de la ruta
-      const segmentsToFinalDestination = segmentPrices.filter(
-        segment => segment.destination === routeInfo.destination
+      
+      // Buscar el segmento específico: desde origen principal hasta destino final
+      const mainSegment = segmentPrices.find(
+        segment => segment.origin === routeInfo.origin && segment.destination === routeInfo.destination
       );
-
-      if (segmentsToFinalDestination.length > 0) {
-        // Tomar el más caro
-        return Math.max(...segmentsToFinalDestination.map(s => s.price));
+      
+      // Si encontramos el segmento principal, usar su precio
+      if (mainSegment) {
+        return mainSegment.price;
       }
-
-      // Si no hay segmentos a destino final, tomar el precio más alto general
-      return Math.max(...segmentPrices.map(s => s.price));
+      
+      // Si no hay un segmento directo, usar el precio del primer segmento como respaldo
+      if (segmentPrices.length > 0) {
+        return segmentPrices[0].price;
+      }
+      
+      return 0;
     };
 
     // Preparar datos comunes para crear o actualizar

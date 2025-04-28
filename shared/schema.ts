@@ -40,7 +40,7 @@ export const trips = pgTable("trips", {
   arrivalTime: text("arrival_time").notNull(),
   capacity: integer("capacity").notNull(),
   availableSeats: integer("available_seats").notNull(),
-  price: doublePrecision("price").notNull(),
+  price: doublePrecision("price").default(0), // Campo calculado a partir de los precios de segmentos
   vehicleType: text("vehicle_type").notNull(),
   segmentPrices: json("segment_prices").notNull(),
   // New fields for sub-trips
