@@ -17,6 +17,7 @@ import {
   CheckStatus,
   ChargeStatus
 } from "@shared/schema";
+import { generateBoardingListExcel, getBoardingListData } from './excel-service';
 
 import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
 import { setupAuthentication } from "./auth-session";
@@ -2035,6 +2036,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error(`[DELETE /vehicles/:id] Error: ${error}`);
       res.status(500).json({ error: "Error al eliminar el vehículo" });
+    }
+  });
+
+  // EXPORTACIÓN DE LISTA DE ABORDAJE A EXCEL
+  app.get(apiRouter("/trips/:id/boarding-list/excel"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const tripId = parseInt(req.params.id, 10);
+      if (isNaN(tripId)) {
+        return res.status(400).json({ error: "ID de viaje inválido" });
+      }
+
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      console.log(`[GET /trips/${tripId}/boarding-list/excel] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
+      
+      // Verificar que el viaje existe
+      const trip = await storage.getTrip(tripId);
+      if (!trip) {
+        return res.status(404).json({ error: "Viaje no encontrado" });
+      }
+      
+      // Verificar permisos: Solo roles específicos pueden exportar listas de abordaje
+      // superAdmin, admin, developer pueden exportar cualquier lista
+      // dueño (owner), oficina de boletos (ticket_office), checker solo de su compañía
+      if (user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN && 
+          user.role !== UserRole.DEVELOPER) {
+        
+        const userCompanyId = user.companyId || user.company;
+        if (!userCompanyId) {
+          return res.status(403).json({ error: "No tiene permisos para exportar esta lista de abordaje" });
+        }
+        
+        // Verificar que el viaje pertenece a la misma compañía
+        if (trip.companyId !== userCompanyId) {
+          return res.status(403).json({ error: "No tiene permisos para exportar esta lista de abordaje de otra compañía" });
+        }
+      }
+      
+      console.log(`[GET /trips/${tripId}/boarding-list/excel] Obteniendo datos para lista de abordaje`);
+      
+      // Obtener los datos de la lista de abordaje
+      const boardingData = await getBoardingListData(tripId);
+      if (!boardingData || boardingData.length === 0) {
+        return res.status(404).json({ error: "No hay reservaciones para este viaje" });
+      }
+      
+      console.log(`[GET /trips/${tripId}/boarding-list/excel] Generando Excel con ${boardingData.length} reservaciones`);
+      
+      // Generar el Excel
+      const excelBuffer = await generateBoardingListExcel(tripId, boardingData);
+      
+      // Configurar encabezados para la descarga
+      const routeName = trip.segmentOrigin && trip.segmentDestination 
+        ? `${trip.segmentOrigin}-${trip.segmentDestination}` 
+        : trip.id.toString();
+      const date = new Date(trip.departureDate).toLocaleDateString('es-MX').replace(/\//g, '-');
+      const filename = `Lista_Abordaje_${routeName}_${date}.xlsx`;
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+      res.setHeader('Content-Length', excelBuffer.length);
+      
+      // Enviar el archivo
+      res.send(excelBuffer);
+    } catch (error: any) {
+      console.error(`[GET /trips/${req.params.id}/boarding-list/excel] Error:`, error);
+      res.status(500).json({ 
+        error: "Error al generar la lista de abordaje", 
+        details: error.message || "Error desconocido" 
+      });
     }
   });
 

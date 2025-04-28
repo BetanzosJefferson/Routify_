@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
-import { Reservation } from '@shared/schema';
+import { Reservation, User } from '@shared/schema';
 import { storage } from './storage';
+import { Buffer } from 'buffer';
 
 // Interfaz para la información del pasajero con datos adicionales
 export interface PassengerBoardingInfo extends Reservation {
@@ -171,12 +172,12 @@ export async function getBoardingListData(tripId: number): Promise<PassengerBoar
 
     // Obtener información de los usuarios que verificaron o cobraron 
     const userIds = reservations
-      .flatMap(r => [r.checkedBy, r.createdBy])
-      .filter(id => id !== undefined && id !== null);
+      .flatMap((r: any) => [r.checkedBy, r.createdBy])
+      .filter((id: any) => id !== undefined && id !== null);
     
-    // Crear un mapa de usuarios usando un Set para eliminar duplicados
-    const uniqueUserIds = [...new Set(userIds)] as number[];
-    const usersMap = new Map();
+    // Crear un mapa de usuarios usando un Array para eliminar duplicados
+    const uniqueUserIds = Array.from(new Set(userIds)) as number[];
+    const usersMap = new Map<number, User>();
     
     // Cargar usuarios desde la base de datos y guardarlos en el mapa
     for (const userId of uniqueUserIds) {
