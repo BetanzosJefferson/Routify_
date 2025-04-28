@@ -66,6 +66,7 @@ interface ReservationFormData {
   chargeStatus?: typeof ChargeStatus.PENDING_CHARGE | typeof ChargeStatus.CHARGED | typeof ChargeStatus.CANCELLED;
   checkedAt?: Date;
   checkedBy?: number;
+  companyId?: string | null;
 }
 
 export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStepsModalProps) {
@@ -282,7 +283,9 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       createdBy: createdById,
       // Nuevos campos por defecto (serán actualizados posteriormente)
       checkStatus: CheckStatus.NOT_CHECKED,
-      chargeStatus: ChargeStatus.PENDING_CHARGE
+      chargeStatus: ChargeStatus.PENDING_CHARGE,
+      // Heredar companyId del viaje
+      companyId: trip.companyId
     };
     
     createReservationMutation.mutate(reservationData);
