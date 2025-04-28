@@ -17,10 +17,7 @@ export const ALL_SECTIONS: Section[] = [
   { id: "boarding-list", name: "Lista de Abordaje", description: "Control de abordaje de pasajeros" },
   { id: "users", name: "Usuarios", description: "Gestión de usuarios del sistema" },
   { id: "vehicles", name: "Unidades", description: "Gestión de vehículos y flota" },
-  { id: "company", name: "Empresa", description: "Gestión de datos de la empresa" },
   { id: "commissions", name: "Comisiones", description: "Configuración de comisiones" },
-  { id: "coupons", name: "Cupones", description: "Gestión de cupones de descuento" },
-  { id: "passenger-transfer", name: "Transferencia de Pasajeros", description: "Transferencia de pasajeros entre empresas" },
   { id: "settings", name: "Configuración", description: "Ajustes generales del sistema" }
 ];
 
@@ -36,11 +33,7 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "trip-summary",
     "boarding-list",
     "users",
-    "vehicles",
-    "company",      // Nueva sección para datos de la empresa
-    "commissions",  // Sección para gestionar comisiones
-    "coupons",      // Nueva sección para gestionar cupones
-    "passenger-transfer" // Nueva sección para transferir pasajeros
+    "vehicles"
   ],
   [UserRole.CALL_CENTER]: [
     "trips",
@@ -59,10 +52,6 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
   [UserRole.TICKET_OFFICE]: [
     "trips",
     "reservations"
-  ],
-  // Permisos para el nuevo rol COMMISSIONIST (comisionista)
-  [UserRole.COMMISSIONIST]: [
-    "trips", // Solo puede ver viajes y hacer reservaciones
   ],
   [UserRole.DEVELOPER]: ALL_SECTIONS.map(section => section.id) // Acceso total para desarrollo
 };

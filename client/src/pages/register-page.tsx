@@ -284,8 +284,6 @@ export default function RegisterPage() {
                   ? "Dueño"
                   : invitationRole === "desarrollador"
                   ? "Desarrollador"
-                  : invitationRole === "comisionista"
-                  ? "Comisionista"
                   : invitationRole || "Usuario"}
               </span>
             </CardDescription>
