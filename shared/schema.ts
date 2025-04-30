@@ -161,6 +161,8 @@ export type TripWithRouteInfo = Trip & {
 export type ReservationWithDetails = Reservation & {
   trip: TripWithRouteInfo;
   passengers: Passenger[];
+  segmentOrigin?: string;
+  segmentDestination?: string;
 };
 
 export type SegmentPrice = {

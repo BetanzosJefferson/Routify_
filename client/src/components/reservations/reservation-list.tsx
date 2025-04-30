@@ -143,9 +143,15 @@ export function ReservationList() {
   const [segmentOrigin, setSegmentOrigin] = useState<string>("");
   const [segmentDestination, setSegmentDestination] = useState<string>("");
 
+  // Define a type that includes our custom fields
+  type ReservationUpdateData = Partial<Reservation> & {
+    segmentOrigin?: string;
+    segmentDestination?: string;
+  };
+
   // Edit reservation mutation
   const editReservationMutation = useMutation({
-    mutationFn: async (data: { id: number, updates: Partial<Reservation> }) => {
+    mutationFn: async (data: { id: number, updates: ReservationUpdateData }) => {
       const response = await apiRequest(
         "PUT", 
         `/api/reservations/${data.id}`, 
