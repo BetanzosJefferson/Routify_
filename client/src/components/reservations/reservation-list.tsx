@@ -324,28 +324,55 @@ export function ReservationList() {
               </div>
             </div>
             
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <div className="flex items-center justify-between mb-2">
-                <div className="font-medium">Ver reservaciones:</div>
-                <TabsList>
-                  <TabsTrigger value="upcoming" className="flex items-center gap-1">
-                    <CalendarIcon className="h-4 w-4" />
-                    <span>Actuales y Futuras</span>
-                    <Badge className="ml-1 bg-primary text-white">{upcomingReservations.length}</Badge>
+            <div className="border-b border-gray-200 mb-3">
+              <div className="text-lg font-semibold mb-2">Ver reservaciones:</div>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="w-full bg-transparent border-b border-gray-100 p-0 mb-0">
+                  <TabsTrigger 
+                    value="upcoming" 
+                    className="flex-1 items-center gap-1 px-0 py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                  >
+                    <CalendarIcon className="h-5 w-5 mr-2" />
+                    <span className="font-medium">Actuales y Futuras</span>
+                    <Badge className="ml-2 bg-primary text-white">{upcomingReservations.length}</Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="archived" className="flex items-center gap-1">
-                    <ArchiveIcon className="h-4 w-4" />
-                    <span>Archivadas</span>
-                    <Badge className="ml-1 bg-muted-foreground text-white">{archivedReservations.length}</Badge>
+                  <TabsTrigger 
+                    value="archived" 
+                    className="flex-1 items-center gap-1 px-0 py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                  >
+                    <ArchiveIcon className="h-5 w-5 mr-2" />
+                    <span className="font-medium">Archivadas</span>
+                    <Badge className="ml-2 bg-muted text-muted-foreground">{archivedReservations.length}</Badge>
                   </TabsTrigger>
                 </TabsList>
-              </div>
-            </Tabs>
+              </Tabs>
+            </div>
           </div>
         </CardContent>
       </Card>
       
       <Card>
+        <CardHeader className="pb-0 pt-4 px-4">
+          <div className="flex items-center gap-2">
+            {activeTab === "upcoming" ? (
+              <>
+                <CalendarIcon className="h-5 w-5 text-primary" />
+                <CardTitle className="text-md">Reservaciones actuales y futuras</CardTitle>
+              </>
+            ) : (
+              <>
+                <ArchiveIcon className="h-5 w-5 text-muted-foreground" />
+                <CardTitle className="text-md">Reservaciones archivadas</CardTitle>
+              </>
+            )}
+          </div>
+          <CardDescription className="mt-1">
+            {activeTab === "upcoming" 
+              ? "Mostrando reservaciones a partir de hoy" 
+              : "Mostrando reservaciones anteriores a hoy"}
+          </CardDescription>
+        </CardHeader>
+        
         {/* Vista para Desktop: Tabla tradicional */}
         <div className="hidden md:block overflow-x-auto">
           {isLoading && showLoadingDelay ? (
@@ -466,7 +493,9 @@ export function ReservationList() {
             </table>
           ) : (
             <div className="text-center p-8 text-gray-500">
-              No reservations found.
+              {activeTab === "upcoming" 
+                ? "No hay reservaciones actuales o futuras disponibles."
+                : "No hay reservaciones archivadas disponibles."}
             </div>
           )}
         </div>
@@ -606,7 +635,9 @@ export function ReservationList() {
             </div>
           ) : (
             <div className="text-center p-8 text-gray-500">
-              No reservations found.
+              {activeTab === "upcoming" 
+                ? "No hay reservaciones actuales o futuras disponibles."
+                : "No hay reservaciones archivadas disponibles."}
             </div>
           )}
         </div>
