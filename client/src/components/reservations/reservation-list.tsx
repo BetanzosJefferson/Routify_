@@ -400,7 +400,11 @@ export function ReservationList() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredReservations.map((reservation) => (
-                  <tr key={reservation.id}>
+                  <tr 
+                    key={reservation.id} 
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => openEditModal(reservation)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       #{generateReservationId(reservation.id)}
                     </td>
@@ -470,20 +474,26 @@ export function ReservationList() {
                       </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                         <Button 
                           variant="link" 
                           className="text-blue-600 hover:text-blue-800 p-0"
-                          onClick={() => openEditModal(reservation)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditModal(reservation);
+                          }}
                         >
-                          Edit
+                          Editar
                         </Button>
                         <Button 
                           variant="link" 
                           className="text-red-600 hover:text-red-800 p-0"
-                          onClick={() => openDeleteConfirm(reservation.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDeleteConfirm(reservation.id);
+                          }}
                         >
-                          Cancel
+                          Cancelar
                         </Button>
                       </div>
                     </td>
@@ -514,7 +524,11 @@ export function ReservationList() {
           ) : filteredReservations && filteredReservations.length > 0 ? (
             <div className="divide-y divide-gray-200">
               {filteredReservations.map((reservation) => (
-                <div key={reservation.id} className="p-4">
+                <div 
+                  key={reservation.id} 
+                  className="p-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors duration-150"
+                  onClick={() => openEditModal(reservation)}
+                >
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <div className="text-sm font-medium text-gray-900">
@@ -530,22 +544,28 @@ export function ReservationList() {
                       </Badge>
                     </div>
                     
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                       <Button 
                         size="sm"
                         variant="link" 
                         className="text-blue-600 hover:text-blue-800 p-0"
-                        onClick={() => openEditModal(reservation)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditModal(reservation);
+                        }}
                       >
-                        Edit
+                        Editar
                       </Button>
                       <Button 
                         size="sm"
                         variant="link" 
                         className="text-red-600 hover:text-red-800 p-0"
-                        onClick={() => openDeleteConfirm(reservation.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDeleteConfirm(reservation.id);
+                        }}
                       >
-                        Cancel
+                        Cancelar
                       </Button>
                     </div>
                   </div>
@@ -661,18 +681,18 @@ export function ReservationList() {
       <AlertDialog open={confirmingDelete !== null} onOpenChange={() => setConfirmingDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Reservation</AlertDialogTitle>
+            <AlertDialogTitle>Cancelar Reservación</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel this reservation? This action cannot be undone.
+              ¿Estás seguro que deseas cancelar esta reservación? Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Volver</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
               onClick={handleDeleteConfirm}
             >
-              Confirm
+              Confirmar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -690,9 +710,25 @@ export function ReservationList() {
           
           {editingReservation && (
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-1 gap-2">
-                <Label htmlFor="reservation-id" className="text-gray-500 text-xs">CÓDIGO DE RESERVACIÓN</Label>
-                <div id="reservation-id" className="text-sm font-medium">#{generateReservationId(editingReservation?.id || 0)}</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="reservation-id" className="text-gray-500 text-xs">CÓDIGO DE RESERVACIÓN</Label>
+                  <div id="reservation-id" className="text-sm font-medium">#{generateReservationId(editingReservation?.id || 0)}</div>
+                </div>
+                
+                <div>
+                  <Label htmlFor="created-by" className="text-gray-500 text-xs">CREADA POR</Label>
+                  <div id="created-by" className="text-sm">
+                    {editingReservation.createdByUser ? (
+                      <div className="flex items-center gap-1 text-sm">
+                        <UserIcon className="h-3.5 w-3.5 text-primary/70" />
+                        <span>{editingReservation.createdByUser.firstName} {editingReservation.createdByUser.lastName}</span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">No disponible</span>
+                    )}
+                  </div>
+                </div>
               </div>
               
               {/* Información de contacto */}
