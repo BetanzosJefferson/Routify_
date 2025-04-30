@@ -128,6 +128,9 @@ export const reservations = pgTable("reservations", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   // Campo para aislamiento de datos por compañía
   companyId: text("company_id"),
+  // Campo para cupón de descuento
+  couponId: integer("coupon_id").references(() => coupons.id),
+  discountAmount: doublePrecision("discount_amount").default(0), // Monto descontado por el cupón
 });
 
 export const insertReservationSchema = createInsertSchema(reservations);
@@ -349,7 +352,11 @@ export const reservationRelations = relations(reservations, ({ one, many }) => (
     fields: [reservations.tripId],
     references: [trips.id]
   }),
-  passengers: many(passengers)
+  passengers: many(passengers),
+  coupon: one(coupons, {
+    fields: [reservations.couponId],
+    references: [coupons.id]
+  })
 }));
 
 export const passengerRelations = relations(passengers, ({ one }) => ({

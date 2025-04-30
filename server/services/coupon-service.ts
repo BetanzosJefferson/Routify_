@@ -5,7 +5,9 @@ import {
   DiscountType, 
   InsertCoupon, 
   Coupon, 
-  coupons 
+  coupons,
+  couponApplications,
+  InsertCouponApplication
 } from '@shared/schema';
 
 /**
@@ -124,6 +126,51 @@ export const CouponService = {
       .where(eq(coupons.code, code));
     
     return result[0].count > 0;
+  },
+  
+  /**
+   * Verifica si un cupón es válido para una reservación
+   * @returns Objeto con información del cupón y descuento calculado, o null si no es válido
+   */
+  async validateCouponForReservation(code: string, companyId: string, totalAmount: number): Promise<{
+    coupon: Coupon,
+    discountAmount: number
+  } | null> {
+    // Buscar el cupón por código
+    const coupon = await this.getCouponByCode(code, companyId);
+    
+    // Si no existe o no está activo, retornar null
+    if (!coupon) {
+      return null;
+    }
+    
+    // Calcular el descuento basado en el tipo y valor
+    const discountAmount = this.calculateDiscount(
+      totalAmount,
+      coupon.discountType as typeof DiscountType[keyof typeof DiscountType],
+      coupon.discountValue
+    );
+    
+    return {
+      coupon,
+      discountAmount
+    };
+  },
+  
+  /**
+   * Aplica un cupón a una reservación
+   */
+  async applyCouponToReservation(couponId: number, reservationId: number, discountAmount: number): Promise<void> {
+    // Registrar la aplicación del cupón
+    await db.insert(couponApplications)
+      .values({
+        couponId,
+        reservationId,
+        appliedDiscount: discountAmount
+      });
+    
+    // Incrementar el contador de uso del cupón
+    await this.incrementUsageCount(couponId);
   }
 };
 
