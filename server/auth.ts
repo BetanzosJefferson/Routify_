@@ -229,13 +229,20 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
       // Los OWNER solo pueden crear usuarios de tipo DUEÑO, CALL CENTER, CHECADOR y CHOFER
       // Los ADMIN solo pueden crear usuarios que no sean SUPER_ADMIN, ADMIN ni OWNER
       
-      // Nueva lógica para DUEÑO - solo puede invitar roles específicos
+      // Nueva lógica para DUEÑO - puede invitar roles específicos, incluyendo Administrador y Comisionista
       if (user.role === UserRole.OWNER) {
-        const rolesPermitidos = [UserRole.OWNER, UserRole.CALL_CENTER, UserRole.CHECKER, UserRole.DRIVER];
+        const rolesPermitidos = [
+          UserRole.OWNER,
+          UserRole.ADMIN,
+          UserRole.CALL_CENTER, 
+          UserRole.CHECKER, 
+          UserRole.DRIVER,
+          UserRole.COMMISSIONER
+        ];
         
         if (!rolesPermitidos.includes(role)) {
           return res.status(403).json({ 
-            message: "Como Dueño, solo puede invitar a usuarios con roles: Dueño, Call Center, Checador o Chofer" 
+            message: "Como Dueño, solo puede invitar a usuarios con roles: Dueño, Administrador, Call Center, Checador, Chofer o Comisionista" 
           });
         }
       } 
@@ -432,11 +439,13 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
         if (invitation[0].role !== UserRole.OWNER && invitation[0].role !== UserRole.SUPER_ADMIN) {
           profilePictureToUse = inviter[0].profilePicture || "";
           
-          // Para roles como call center, checador y chofer, heredan la empresa del dueño
-          if (invitation[0].role === UserRole.CALL_CENTER || 
+          // Para roles como admin, call center, checador, chofer y comisionista, heredan la empresa del dueño
+          if (invitation[0].role === UserRole.ADMIN ||
+              invitation[0].role === UserRole.CALL_CENTER || 
               invitation[0].role === UserRole.CHECKER ||
               invitation[0].role === UserRole.DRIVER ||
-              invitation[0].role === UserRole.TICKET_OFFICE) {
+              invitation[0].role === UserRole.TICKET_OFFICE ||
+              invitation[0].role === UserRole.COMMISSIONER) {
             companyToUse = companyName;
           }
         }
