@@ -3,7 +3,17 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
-import { UserIcon, SearchIcon, Loader2Icon, XIcon, PhoneIcon, MailIcon } from "lucide-react";
+import { 
+  UserIcon, 
+  SearchIcon, 
+  Loader2Icon, 
+  XIcon, 
+  PhoneIcon, 
+  MailIcon, 
+  CalendarIcon, 
+  ArchiveIcon,
+  FilterIcon
+} from "lucide-react";
 import { useReservations } from "@/hooks/use-reservations";
 
 import {
@@ -39,16 +49,19 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Reservation, ReservationWithDetails } from "@shared/schema";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function ReservationList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
   const [editingReservation, setEditingReservation] = useState<ReservationWithDetails | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [notes, setNotes] = useState<string>("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("upcoming");
   
   // Estados adicionales para mejorar la UX
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -73,25 +86,54 @@ export function ReservationList() {
     }
   }, [isLoading, reservationsError]);
   
-  // Filter reservations based on search term (mejorado para incluir teléfono y correo)
-  const filteredReservations = reservations?.filter((reservation) => {
-    if (!searchTerm) return true;
+  // Función para determinar si una fecha es hoy o posterior
+  const isDateTodayOrLater = (dateString: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const date = new Date(dateString);
+    return date >= today;
+  };
+  
+  // Separar reservaciones en actuales y archivadas
+  const upcomingReservations = reservations?.filter(
+    (reservation) => isDateTodayOrLater(reservation.trip.departureDate)
+  ) || [];
+  
+  const archivedReservations = reservations?.filter(
+    (reservation) => !isDateTodayOrLater(reservation.trip.departureDate)
+  ) || [];
+  
+  // Obtener las reservaciones según la pestaña activa
+  const activeReservations = activeTab === "upcoming" ? upcomingReservations : archivedReservations;
+  
+  // Filter reservations based on search term and date filter
+  const filteredReservations = activeReservations.filter((reservation) => {
+    // Aplicar filtro de búsqueda
+    let matchesSearch = true;
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      const routeName = reservation.trip.route.name.toLowerCase();
+      const passengerNames = reservation.passengers.map(
+        p => `${p.firstName} ${p.lastName}`.toLowerCase()
+      ).join(" ");
+      const email = (reservation.email || '').toLowerCase();
+      const phone = (reservation.phone || '').toLowerCase();
+      
+      matchesSearch = (
+        routeName.includes(searchLower) ||
+        passengerNames.includes(searchLower) ||
+        email.includes(searchLower) ||
+        phone.includes(searchLower)
+      );
+    }
     
-    const searchLower = searchTerm.toLowerCase();
-    const routeName = reservation.trip.route.name.toLowerCase();
-    const passengerNames = reservation.passengers.map(
-      p => `${p.firstName} ${p.lastName}`.toLowerCase()
-    ).join(" ");
-    const email = reservation.email.toLowerCase();
-    const phone = reservation.phone.toLowerCase();
+    // Aplicar filtro de fecha
+    let matchesDate = true;
+    if (dateFilter) {
+      matchesDate = formatDate(reservation.trip.departureDate).includes(dateFilter);
+    }
     
-    return (
-      routeName.includes(searchLower) ||
-      passengerNames.includes(searchLower) ||
-      email.includes(searchLower) ||
-      phone.includes(searchLower) ||
-      formatDate(reservation.trip.departureDate).toLowerCase().includes(searchLower)
-    );
+    return matchesSearch && matchesDate;
   });
   
   // Delete reservation mutation
@@ -235,30 +277,62 @@ export function ReservationList() {
       
       <Card className="mb-6">
         <CardContent className="p-6">
-          <div className="space-y-4">
-            <div className="relative rounded-md shadow-sm max-w-lg">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <SearchIcon className="h-5 w-5 text-gray-400" />
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <Label htmlFor="searchInput" className="mb-2 block text-sm font-medium">
+                  Buscar por nombre, teléfono o correo
+                </Label>
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <SearchIcon className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <Input
+                    id="searchInput"
+                    className="pl-10"
+                    placeholder="Nombre, teléfono o correo electrónico..."
+                    value={searchTerm}
+                    onChange={handleSearch}
+                  />
+                </div>
               </div>
-              <Input
-                className="pl-10"
-                placeholder="Buscar por nombre, teléfono, correo, ruta o fecha..."
-                value={searchTerm}
-                onChange={handleSearch}
-              />
+              
+              <div className="flex-1">
+                <Label htmlFor="dateFilter" className="mb-2 block text-sm font-medium">
+                  Filtrar por fecha
+                </Label>
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <CalendarIcon className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <Input
+                    id="dateFilter"
+                    className="pl-10"
+                    type="date"
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p>
-                <span className="font-medium">Buscar por:</span>
-              </p>
-              <ul className="list-disc list-inside ml-1 grid grid-cols-1 md:grid-cols-3 gap-x-4">
-                <li>Nombre de pasajero</li>
-                <li>Número de teléfono</li>
-                <li>Correo electrónico</li>
-                <li>Nombre de ruta</li>
-                <li>Fecha de salida</li>
-              </ul>
-            </div>
+            
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <div className="flex items-center justify-between mb-2">
+                <div className="font-medium">Ver reservaciones:</div>
+                <TabsList>
+                  <TabsTrigger value="upcoming" className="flex items-center gap-1">
+                    <CalendarIcon className="h-4 w-4" />
+                    <span>Actuales y Futuras</span>
+                    <Badge className="ml-1 bg-primary text-white">{upcomingReservations.length}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="archived" className="flex items-center gap-1">
+                    <ArchiveIcon className="h-4 w-4" />
+                    <span>Archivadas</span>
+                    <Badge className="ml-1 bg-muted-foreground text-white">{archivedReservations.length}</Badge>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            </Tabs>
           </div>
         </CardContent>
       </Card>
