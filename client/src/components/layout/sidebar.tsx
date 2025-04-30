@@ -212,6 +212,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   icon={<ClipboardListIcon className="h-5 w-5" />} 
                   active={activeTab === "commission-reservations"}
                   onClick={() => {
+                    handleTabClick("commission-reservations");
                     setLocation("/commission-reservations");
                   }}
                 >
