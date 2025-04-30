@@ -20,21 +20,19 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { format as formatDate } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import {
   UserIcon,
-  CalendarIcon,
   SearchIcon,
+  CalendarIcon,
   ClipboardListIcon,
   FileTextIcon,
 } from "lucide-react";
 import { ReservationWithDetails, UserRole } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
-import PageHeader from "@/components/layout/page-header";
 
 export default function CommissionReservationsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,22 +57,23 @@ export default function CommissionReservationsPage() {
       reservation.passengers?.some(
         p => 
           p.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          reservation.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          reservation.phone?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+          p.lastName?.toLowerCase().includes(searchTerm.toLowerCase())
+      ) ||
+      reservation.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      reservation.phone?.toLowerCase().includes(searchTerm.toLowerCase());
     
     // Filtro por fecha
     const dateMatch = 
       !selectedDate || 
-      format(new Date(reservation.trip.departureDate), 'yyyy-MM-dd') === 
-      format(selectedDate, 'yyyy-MM-dd');
+      (selectedDate && 
+        new Date(reservation.trip.departureDate).toDateString() === 
+        selectedDate.toDateString());
     
     return searchMatch && dateMatch;
   });
 
   // Formatear fecha para mostrar
-  const formatDateString = (dateString: string) => {
+  const formatTripDate = (dateString: string) => {
     const date = new Date(dateString);
     return format(date, "EEE d 'de' MMMM, yyyy", { locale: es });
   };
@@ -94,11 +93,15 @@ export default function CommissionReservationsPage() {
 
   return (
     <div className="container mx-auto py-6">
-      <PageHeader
-        title="Comisiones - Reservaciones"
-        description="Reservaciones creadas por comisionistas"
-        icon={<FileTextIcon className="w-6 h-6" />}
-      />
+      <div className="flex flex-col space-y-2">
+        <div className="flex items-center space-x-2">
+          <div className="text-primary">
+            <FileTextIcon className="w-6 h-6" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">Comisiones - Reservaciones</h1>
+        </div>
+        <p className="text-muted-foreground">Reservaciones creadas por comisionistas</p>
+      </div>
 
       <Card className="mt-6">
         <CardHeader className="pb-3">
@@ -127,14 +130,25 @@ export default function CommissionReservationsPage() {
             
             <div>
               <Label htmlFor="date-filter" className="text-xs text-gray-500">Filtrar por fecha</Label>
-              <div>
-                <DatePicker
-                  id="date-filter"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  placeholder="Seleccionar fecha"
-                />
-              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, "PPP", { locale: es }) : "Seleccionar fecha"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate || undefined}
+                    onSelect={(date: Date | undefined) => setSelectedDate(date || null)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             
             <div className="flex items-end">
@@ -196,7 +210,7 @@ export default function CommissionReservationsPage() {
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="font-medium">
-                            {formatDate(reservation.trip.departureDate)}
+                            {formatTripDate(String(reservation.trip.departureDate))}
                           </span>
                           <span className="text-xs text-gray-500">
                             {reservation.trip.departureTime}
@@ -218,9 +232,9 @@ export default function CommissionReservationsPage() {
                         <Badge
                           variant={
                             reservation.status === "confirmed"
-                              ? "success"
+                              ? "default"
                               : reservation.status === "pending"
-                              ? "warning"
+                              ? "outline"
                               : "destructive"
                           }
                         >
