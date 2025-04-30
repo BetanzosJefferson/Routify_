@@ -34,6 +34,10 @@ export const CouponService = {
    * Obtiene un cupón por su código
    */
   async getCouponByCode(code: string, companyId: string): Promise<Coupon | undefined> {
+    if (!code || !companyId) {
+      return undefined;
+    }
+    
     const [coupon] = await db.select()
       .from(coupons)
       .where(

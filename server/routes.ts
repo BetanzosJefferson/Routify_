@@ -18,6 +18,7 @@ import {
 
 import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
 import { setupAuthentication } from "./auth-session";
+import couponsRoutes from "./routes/coupons";
 // Utility function to check if two locations are in the same city
 function isSameCity(location1: string, location2: string): boolean {
   // Validar que ambas ubicaciones tienen el formato esperado
@@ -2032,6 +2033,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Error al obtener la reservación" });
     }
   });
+
+  // CUPONES ENDPOINTS
+  app.use(apiRouter('/coupons'), isAuthenticated, couponsRoutes);
 
   const httpServer = createServer(app);
   return httpServer;
