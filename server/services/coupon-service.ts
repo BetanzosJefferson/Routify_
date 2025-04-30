@@ -17,7 +17,7 @@ export const CouponService = {
    */
   async createCoupon(data: InsertCoupon): Promise<Coupon> {
     // Establecer la fecha de expiración basada en la duración seleccionada
-    const expiresAt = calculateExpirationDate(data.duration);
+    const expiresAt = data.duration ? calculateExpirationDate(data.duration) : null;
     
     // Crear el cupón con la fecha de expiración calculada
     const [coupon] = await db.insert(coupons)
@@ -130,9 +130,9 @@ export const CouponService = {
 /**
  * Calcula la fecha de expiración basada en la duración
  */
-function calculateExpirationDate(duration: string): Date | null {
-  // Si es permanente, no tiene fecha de expiración
-  if (duration === CouponDuration.PERMANENT) {
+function calculateExpirationDate(duration: string | undefined): Date | null {
+  // Si no hay duración o es permanente, no tiene fecha de expiración
+  if (!duration || duration === CouponDuration.PERMANENT) {
     return null;
   }
   
