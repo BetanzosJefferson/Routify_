@@ -81,9 +81,10 @@ export default function CouponsPage() {
   };
 
   // Formatear la fecha de expiración
-  const formatExpirationDate = (expiresAt: string | null) => {
+  const formatExpirationDate = (expiresAt: string | null | Date) => {
     if (!expiresAt) return "Sin expiración";
-    return format(new Date(expiresAt), "dd/MM/yyyy HH:mm", { locale: es });
+    const date = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt;
+    return format(date, "dd/MM/yyyy HH:mm", { locale: es });
   };
 
   return (
