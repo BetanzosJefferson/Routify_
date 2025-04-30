@@ -395,6 +395,7 @@ export function ReservationList() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seats</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pago</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado por</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -472,6 +473,20 @@ export function ReservationList() {
                       >
                         {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
                       </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {reservation.createdByUser ? (
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {reservation.createdByUser.firstName} {reservation.createdByUser.lastName}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {reservation.createdByUser.role}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">No disponible</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>

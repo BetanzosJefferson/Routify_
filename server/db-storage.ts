@@ -847,12 +847,28 @@ export class DatabaseStorage implements IStorage {
     // Obtener los pasajeros
     const passengers = await this.getPassengers(reservation.id);
     
+    // Obtener información del usuario que creó la reservación
+    let createdByUser = undefined;
+    if (reservation.createdBy) {
+      // Buscar el usuario por ID
+      const [user] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.id, reservation.createdBy));
+      
+      if (user) {
+        createdByUser = user;
+        console.log(`[getReservationWithDetails] Reserva ${id} creada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
+      }
+    }
+    
     console.log(`[getReservationWithDetails] Acceso concedido a reserva ${id} con ${passengers.length} pasajeros`);
     
     return {
       ...reservation,
       trip,
-      passengers
+      passengers,
+      createdByUser // Añadimos el usuario creador
     };
   }
   

@@ -253,6 +253,29 @@ export default function ReservationDetails() {
           </div>
         )}
 
+        {/* Información del creador */}
+        {reservation.createdByUser && (
+          <div className="mt-6">
+            <h2 className="text-lg font-medium mb-3 text-gray-800">Creado por</h2>
+            <div className="bg-gray-50 p-4 rounded-md">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-gray-500">Usuario:</div>
+                  <div>{reservation.createdByUser.firstName} {reservation.createdByUser.lastName}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">Rol:</div>
+                  <div>{reservation.createdByUser.role}</div>
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="text-sm text-gray-500">Empresa:</div>
+                <div>{reservation.createdByUser.company || '-'}</div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Notas */}
         {reservation.notes && (
           <div className="mt-6">
