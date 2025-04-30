@@ -86,21 +86,25 @@ export function ReservationList() {
     }
   }, [isLoading, reservationsError]);
   
-  // Función para determinar si una fecha es hoy o posterior
-  const isDateTodayOrLater = (dateString: string) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const date = new Date(dateString);
-    return date >= today;
-  };
+  // Ahora usamos funciones inline para manejar las comparaciones de fechas
   
   // Separar reservaciones en actuales y archivadas
   const upcomingReservations = reservations?.filter(
-    (reservation) => isDateTodayOrLater(reservation.trip.departureDate)
+    (reservation) => {
+      const date = new Date(reservation.trip.departureDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return date >= today;
+    }
   ) || [];
   
   const archivedReservations = reservations?.filter(
-    (reservation) => !isDateTodayOrLater(reservation.trip.departureDate)
+    (reservation) => {
+      const date = new Date(reservation.trip.departureDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return date < today;
+    }
   ) || [];
   
   // Obtener las reservaciones según la pestaña activa
@@ -130,7 +134,10 @@ export function ReservationList() {
     // Aplicar filtro de fecha
     let matchesDate = true;
     if (dateFilter) {
-      matchesDate = formatDate(reservation.trip.departureDate).includes(dateFilter);
+      // Convertir la fecha de la reservación a formato YYYY-MM-DD para comparar
+      const reservationDate = new Date(reservation.trip.departureDate);
+      const formattedReservationDate = reservationDate.toISOString().split('T')[0];
+      matchesDate = formattedReservationDate === dateFilter;
     }
     
     return matchesSearch && matchesDate;
