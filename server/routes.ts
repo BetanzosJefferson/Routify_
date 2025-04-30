@@ -19,6 +19,7 @@ import {
 import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
 import { setupAuthentication } from "./auth-session";
 import couponsRoutes from "./routes/coupons";
+import { CouponService } from "./services/coupon-service";
 // Utility function to check if two locations are in the same city
 function isSameCity(location1: string, location2: string): boolean {
   // Validar que ambas ubicaciones tienen el formato esperado
