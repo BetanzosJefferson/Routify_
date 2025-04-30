@@ -747,49 +747,11 @@ export class DatabaseStorage implements IStorage {
       
       // Ejecutar consulta con filtros
       console.log(`[getReservations] Ejecutando consulta CON filtros`);
-      try {
-        // Intentar con la consulta normal
-        reservations = await db.select().from(schema.reservations).where(whereClause);
-      } catch (error: any) {
-        // Si hay un error debido a columnas inexistentes (durante migración)
-        if (error?.message?.includes('column "coupon_id" does not exist')) {
-          console.log(`[getReservations] Error por columna faltante, usando SQL directo (compatible):`);
-          // Usar consulta SQL directa que solo seleccione las columnas existentes
-          const result = await db.execute(
-            sql`SELECT id, trip_id, total_amount, email, phone, notes, payment_method, status, 
-                payment_status, advance_amount, advance_payment_method, created_by, created_at, 
-                updated_at, company_id 
-                FROM reservations
-                WHERE ${whereClause}`
-          );
-          reservations = result.rows as unknown as typeof schema.reservations.$inferSelect[];
-        } else {
-          // Si es otro tipo de error, lo propagamos
-          throw error;
-        }
-      }
+      reservations = await db.select().from(schema.reservations).where(whereClause);
     } else {
       // Sin filtros (solo superAdmin debería llegar aquí)
       console.log(`[getReservations] Ejecutando consulta SIN filtros`);
-      try {
-        reservations = await db.select().from(schema.reservations);
-      } catch (error: any) {
-        // Si hay un error debido a columnas inexistentes (durante migración)
-        if (error?.message?.includes('column "coupon_id" does not exist')) {
-          console.log(`[getReservations] Error por columna faltante, usando SQL directo (compatible):`);
-          // Usar consulta SQL directa que solo seleccione las columnas existentes
-          const result = await db.execute(
-            sql`SELECT id, trip_id, total_amount, email, phone, notes, payment_method, status,
-                payment_status, advance_amount, advance_payment_method, created_by, created_at, 
-                updated_at, company_id 
-                FROM reservations`
-          );
-          reservations = result.rows as unknown as typeof schema.reservations.$inferSelect[];
-        } else {
-          // Si es otro tipo de error, lo propagamos
-          throw error;
-        }
-      }
+      reservations = await db.select().from(schema.reservations);
     }
     
     console.log(`[getReservations] Encontradas ${reservations.length} reservas`);
@@ -833,27 +795,8 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getReservation(id: number): Promise<Reservation | undefined> {
-    try {
-      const [reservation] = await db.select().from(schema.reservations).where(eq(schema.reservations.id, id));
-      return reservation;
-    } catch (error: any) {
-      // Si hay un error debido a columnas inexistentes (durante migración)
-      if (error?.message?.includes('column "coupon_id" does not exist')) {
-        console.log(`[getReservation] Error por columna faltante, usando SQL directo (compatible):`);
-        // Usar consulta SQL directa que solo seleccione las columnas existentes
-        const result = await db.execute(
-          sql`SELECT id, trip_id, total_amount, email, phone, notes, payment_method, status, 
-              payment_status, advance_amount, advance_payment_method, created_by, created_at, 
-              updated_at, company_id 
-              FROM reservations 
-              WHERE id = ${id}`
-        );
-        return result.rows?.[0] as unknown as Reservation | undefined;
-      } else {
-        // Si es otro tipo de error, lo propagamos
-        throw error;
-      }
-    }
+    const [reservation] = await db.select().from(schema.reservations).where(eq(schema.reservations.id, id));
+    return reservation;
   }
   
   async getReservationWithDetails(id: number, companyId?: string): Promise<ReservationWithDetails | undefined> {
