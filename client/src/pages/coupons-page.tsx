@@ -97,7 +97,7 @@ export default function CouponsPage() {
           </div>
           <Dialog>
             <DialogTrigger asChild>
-              <Button className="bg-fuchsia-600 hover:bg-fuchsia-700">Crear Cupón</Button>
+              <Button>Crear Cupón</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
@@ -234,7 +234,6 @@ export default function CouponsPage() {
                     </DialogClose>
                     <Button 
                       type="submit" 
-                      className="bg-fuchsia-600 hover:bg-fuchsia-700"
                       disabled={createCoupon.isPending}
                     >
                       {createCoupon.isPending ? "Creando..." : "Crear Cupón"}
