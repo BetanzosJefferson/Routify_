@@ -44,12 +44,13 @@ export interface IStorage {
   updateRelatedTripsAvailability(tripId: number, seatChange: number): Promise<void>;
   
   // Reservation methods
-  getReservations(companyId?: string): Promise<ReservationWithDetails[]>;
+  getReservations(companyId?: string, tripId?: number): Promise<ReservationWithDetails[]>;
   getReservation(id: number): Promise<Reservation | undefined>;
   getReservationWithDetails(id: number, companyId?: string): Promise<ReservationWithDetails | undefined>;
   createReservation(reservation: InsertReservation): Promise<Reservation>;
   updateReservation(id: number, reservation: Partial<Reservation>): Promise<Reservation | undefined>;
   deleteReservation(id: number): Promise<boolean>;
+  getCommissionerReservations(companyId?: string): Promise<ReservationWithDetails[]>;
   
   // Passenger methods
   getPassengers(reservationId: number): Promise<Passenger[]>;
