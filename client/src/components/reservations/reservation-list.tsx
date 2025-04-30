@@ -140,18 +140,10 @@ export function ReservationList() {
   const [email, setEmail] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
   const [status, setStatus] = useState<string>("confirmed");
-  const [segmentOrigin, setSegmentOrigin] = useState<string>("");
-  const [segmentDestination, setSegmentDestination] = useState<string>("");
-
-  // Define a type that includes our custom fields
-  type ReservationUpdateData = Partial<Reservation> & {
-    segmentOrigin?: string;
-    segmentDestination?: string;
-  };
 
   // Edit reservation mutation
   const editReservationMutation = useMutation({
-    mutationFn: async (data: { id: number, updates: ReservationUpdateData }) => {
+    mutationFn: async (data: { id: number, updates: Partial<Reservation> }) => {
       const response = await apiRequest(
         "PUT", 
         `/api/reservations/${data.id}`, 
@@ -194,11 +186,6 @@ export function ReservationList() {
     setEmail(reservation.email || "");
     setPhone(reservation.phone || "");
     setStatus(reservation.status || "confirmed");
-    
-    // Inicializar los campos de origen y destino
-    setSegmentOrigin(reservation.segmentOrigin || reservation.trip.segmentOrigin || reservation.trip.route.origin);
-    setSegmentDestination(reservation.segmentDestination || reservation.trip.segmentDestination || reservation.trip.route.destination);
-    
     setIsEditModalOpen(true);
   };
   
@@ -217,9 +204,7 @@ export function ReservationList() {
         notes,
         email,
         phone,
-        status,
-        segmentOrigin,
-        segmentDestination
+        status
       }
     });
   };
@@ -647,23 +632,11 @@ export function ReservationList() {
                   <div id="route-info" className="text-sm">
                     {editingReservation.trip.route.name}
                   </div>
-                  <div className="grid grid-cols-1 gap-2 mt-2">
-                    <Label htmlFor="segment-origin" className="text-gray-500 text-xs">ORIGEN</Label>
-                    <Input
-                      id="segment-origin"
-                      value={segmentOrigin}
-                      onChange={(e) => setSegmentOrigin(e.target.value)}
-                      placeholder="Ciudad de origen"
-                    />
+                  <div className="text-sm">
+                    <span className="text-gray-500">Origen:</span> {editingReservation.trip.segmentOrigin || editingReservation.trip.route.origin}
                   </div>
-                  <div className="grid grid-cols-1 gap-2 mt-2">
-                    <Label htmlFor="segment-destination" className="text-gray-500 text-xs">DESTINO</Label>
-                    <Input
-                      id="segment-destination"
-                      value={segmentDestination}
-                      onChange={(e) => setSegmentDestination(e.target.value)}
-                      placeholder="Ciudad de destino"
-                    />
+                  <div className="text-sm">
+                    <span className="text-gray-500">Destino:</span> {editingReservation.trip.segmentDestination || editingReservation.trip.route.destination}
                   </div>
                   <div className="text-sm">
                     <span className="text-gray-500">Fecha:</span> {formatDate(editingReservation.trip.departureDate)}

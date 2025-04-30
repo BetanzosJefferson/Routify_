@@ -18,7 +18,6 @@ import {
 
 import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
 import { setupAuthentication } from "./auth-session";
-import { runMigrations } from "./db-migrations";
 // Utility function to check if two locations are in the same city
 function isSameCity(location1: string, location2: string): boolean {
   // Validar que ambas ubicaciones tienen el formato esperado
@@ -49,13 +48,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes (both old and new)
   // Pasamos el middleware de autenticación al setup de rutas de autenticación
   setupAuthRoutes(app, isAuthenticated);
-
-  // Ejecutar migraciones de base de datos
-  try {
-    await runMigrations();
-  } catch (error) {
-    console.error("Error al ejecutar migraciones:", error);
-  }
 
   // Populate location data on server start
   try {
