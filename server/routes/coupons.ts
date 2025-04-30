@@ -101,12 +101,12 @@ router.post('/', requireOwnerRole, async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/coupons/validate/:code
- * Valida un código de cupón y retorna la información del descuento
+ * POST /api/coupons/validate
+ * Valida un código de cupón y retorna la información del descuento aplicado al monto total
  */
-router.get('/validate/:code', async (req: Request, res: Response) => {
+router.post('/validate', async (req: Request, res: Response) => {
   try {
-    const { code } = req.params;
+    const { code, totalAmount } = req.body;
     const { companyId } = req.user as any || req.body;
     
     if (!companyId) {
@@ -115,17 +115,28 @@ router.get('/validate/:code', async (req: Request, res: Response) => {
       });
     }
     
-    const coupon = await CouponService.getCouponByCode(code, companyId);
+    if (!totalAmount || isNaN(totalAmount) || totalAmount <= 0) {
+      return res.status(400).json({
+        error: 'Se requiere un monto total válido para calcular el descuento'
+      });
+    }
     
-    if (!coupon) {
+    const validationResult = await CouponService.validateCouponForReservation(
+      code, 
+      companyId,
+      parseFloat(totalAmount)
+    );
+    
+    if (!validationResult) {
       return res.status(404).json({ 
         error: 'Cupón no encontrado o expirado'
       });
     }
     
-    res.json(coupon);
+    // Retornar el cupón y el descuento calculado
+    res.json(validationResult);
   } catch (error) {
-    console.error('[GET /coupons/validate] Error:', error);
+    console.error('[POST /coupons/validate] Error:', error);
     res.status(500).json({ 
       error: 'Error al validar el cupón'
     });
