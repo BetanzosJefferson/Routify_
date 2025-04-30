@@ -57,9 +57,7 @@ export class CouponService {
       }
       
       const [coupon] = await db.insert(coupons).values({
-        ...data,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        ...data
       }).returning();
       
       return coupon;
@@ -143,8 +141,7 @@ export class CouponService {
       const [updatedCoupon] = await db
         .update(coupons)
         .set({
-          ...data,
-          updatedAt: new Date()
+          ...data
         })
         .where(eq(coupons.id, id))
         .returning();
@@ -203,9 +200,9 @@ export class CouponService {
         return null;
       }
       
-      // Verificar si el cupón ha alcanzado el máximo de usos
-      if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
-        console.log(`Cupón ${code} alcanzó el máximo de usos (${coupon.maxUses})`);
+      // Verificar si el cupón está activo
+      if (coupon.isActive === false) {
+        console.log(`Cupón ${code} no está activo`);
         return null;
       }
       
@@ -238,10 +235,7 @@ export class CouponService {
         // Descuento porcentual
         discountAmount = (amount * coupon.discountValue) / 100;
         
-        // Si hay monto máximo de descuento, limitarlo
-        if (coupon.maxDiscountAmount !== null && discountAmount > coupon.maxDiscountAmount) {
-          discountAmount = coupon.maxDiscountAmount;
-        }
+        // Aplicar el descuento porcentual
       } else {
         // Descuento de monto fijo
         discountAmount = coupon.discountValue;
@@ -257,7 +251,7 @@ export class CouponService {
       
       // Actualizar el contador de usos del cupón
       await this.updateCoupon(coupon.id, {
-        usedCount: coupon.usedCount + 1
+        usedCount: (coupon.usedCount || 0) + 1
       });
       
       return {
