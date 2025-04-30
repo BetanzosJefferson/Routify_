@@ -623,6 +623,17 @@ export function ReservationList() {
                       <div className="font-medium">{formatPrice(reservation.totalAmount)}</div>
                     </div>
                     
+                    {/* Información del creador para móvil */}
+                    {reservation.createdByUser && (
+                      <div className="col-span-2 mt-2">
+                        <div className="text-xs text-gray-500">Creado por:</div>
+                        <div className="text-sm">
+                          {reservation.createdByUser.firstName} {reservation.createdByUser.lastName}
+                          <span className="text-xs text-gray-500 ml-1">({reservation.createdByUser.role})</span>
+                        </div>
+                      </div>
+                    )}
+                    
                     {/* Información de pago para móvil */}
                     <div className="col-span-2 mt-2 bg-gray-50 p-2 rounded-md border border-gray-100 text-xs">
                       <div className="grid grid-cols-2 gap-2">
