@@ -30,6 +30,7 @@ import {
   CalendarIcon,
   ClipboardListIcon,
   FileTextIcon,
+  DollarSign,
 } from "lucide-react";
 import { ReservationWithDetails, UserRole } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
@@ -39,15 +40,10 @@ export default function CommissionReservationsPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const { user } = useAuth();
 
-  const { data: reservations = [], isLoading } = useQuery<ReservationWithDetails[]>({
-    queryKey: ["/api/reservations"],
+  // Usar nuestro nuevo endpoint específico para reservaciones de comisionistas
+  const { data: commissionerReservations = [], isLoading } = useQuery<ReservationWithDetails[]>({
+    queryKey: ["/api/commissioner-reservations"],
     enabled: !!user,
-  });
-
-  // Filtrar reservaciones creadas solo por usuarios con rol COMISIONISTA
-  const commissionerReservations = reservations.filter(reservation => {
-    console.log(`Reservación ${reservation.id} creada por: ${reservation.createdByUser?.role}`);
-    return reservation.createdByUser?.role === UserRole.COMMISSIONER;
   });
 
   // Aplicar filtros adicionales
@@ -102,6 +98,63 @@ export default function CommissionReservationsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Comisiones - Reservaciones</h1>
         </div>
         <p className="text-muted-foreground">Reservaciones creadas por comisionistas</p>
+      </div>
+
+      {/* Tarjetas de estadísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 mb-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total de reservaciones
+                </p>
+                <h3 className="text-2xl font-bold mt-1">
+                  {commissionerReservations.length}
+                </h3>
+              </div>
+              <div className="p-2 bg-primary/10 rounded-full">
+                <FileTextIcon className="h-5 w-5 text-primary" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total en ventas
+                </p>
+                <h3 className="text-2xl font-bold mt-1">
+                  {formatPrice(commissionerReservations.reduce((sum, r) => sum + r.totalAmount, 0))}
+                </h3>
+              </div>
+              <div className="p-2 bg-green-50 rounded-full">
+                <DollarSign className="h-5 w-5 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total en comisiones
+                </p>
+                <h3 className="text-2xl font-bold mt-1 text-green-600">
+                  {formatPrice(commissionerReservations.reduce((sum, r) => sum + (r.totalAmount * 0.10), 0))}
+                </h3>
+              </div>
+              <div className="p-2 bg-green-50 rounded-full">
+                <UserIcon className="h-5 w-5 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="mt-6">
@@ -180,7 +233,8 @@ export default function CommissionReservationsPage() {
                     <TableHead>Pasajero</TableHead>
                     <TableHead>Fecha</TableHead>
                     <TableHead>Ruta</TableHead>
-                    <TableHead>Monto</TableHead>
+                    <TableHead>Monto Total</TableHead>
+                    <TableHead>Comisión</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Creado por</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
@@ -228,6 +282,11 @@ export default function CommissionReservationsPage() {
                       </TableCell>
                       <TableCell>
                         {formatPrice(reservation.totalAmount)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="bg-green-50 text-green-700 hover:bg-green-100">
+                          {formatPrice(reservation.totalAmount * 0.10)} {/* Calculamos 10% de comisión */}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge
