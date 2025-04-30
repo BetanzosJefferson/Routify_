@@ -1064,8 +1064,8 @@ export class DatabaseStorage implements IStorage {
     const condiciones = [];
     
     // Filtro para solo obtener reservaciones creadas por comisionistas
-    // Usamos el campo "created_by_user_id" que debe existir en la tabla reservations
-    condiciones.push(sql`created_by_user_id IN (${sql.join(comisionistaIds, sql`, `)})`);
+    // Usamos el campo "created_by" que existe en la tabla reservations
+    condiciones.push(sql`created_by IN (${sql.join(comisionistaIds, sql`, `)})`);
     
     // Aplicar filtro de compañía si existe
     if (companyId) {
@@ -1109,8 +1109,8 @@ export class DatabaseStorage implements IStorage {
         
         // Obtener usuario que creó la reserva
         let createdByUser = null;
-        if (reservation.createdByUserid !== undefined) {
-          const user = await db.select().from(schema.users).where(sql`id = ${reservation.createdByUserid}`).limit(1);
+        if (reservation.createdBy !== undefined) {
+          const user = await db.select().from(schema.users).where(sql`id = ${reservation.createdBy}`).limit(1);
           if (user && user.length > 0) {
             createdByUser = user[0];
             console.log(`[getCommissionerReservations] Reserva ${reservation.id} creada por usuario ${user[0].firstName} ${user[0].lastName} (ID: ${user[0].id})`);
