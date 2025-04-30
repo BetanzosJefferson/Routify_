@@ -187,7 +187,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           )}
           
           {/* Sección de Flota y Finanzas */}
-          {(canAccess("vehicles") || canAccess("commissions")) && (
+          {(canAccess("vehicles") || canAccess("commissions") || canAccess("commission-reservations")) && (
             <NavSection title="Flota y Finanzas">
               {canAccess("vehicles") && (
                 <NavItem 
@@ -205,6 +205,17 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   onClick={() => handleTabClick("commissions")}
                 >
                   Gestión de comisiones
+                </NavItem>
+              )}
+              {canAccess("commission-reservations") && (
+                <NavItem 
+                  icon={<ClipboardListIcon className="h-5 w-5" />} 
+                  active={activeTab === "commission-reservations"}
+                  onClick={() => {
+                    setLocation("/commission-reservations");
+                  }}
+                >
+                  Comisiones de Reservas
                 </NavItem>
               )}
             </NavSection>
