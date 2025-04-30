@@ -1,19 +1,22 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/layout/sidebar";
+import { TabType } from "@/hooks/use-active-tab";
 
 type DashboardLayoutProps = {
   children: ReactNode;
+  defaultTab?: TabType;
 };
 
-export function DashboardLayout({ children }: DashboardLayoutProps) {
+export function DashboardLayout({ children, defaultTab = "reservations" }: DashboardLayoutProps) {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
 
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar - visible en escritorio */}
       <div className="hidden md:flex md:w-64 md:flex-col">
-        <Sidebar />
+        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
 
       {/* Contenido principal */}
