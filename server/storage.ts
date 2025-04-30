@@ -679,6 +679,37 @@ export class MemStorage implements IStorage {
   async deleteCommission(id: number): Promise<boolean> {
     return this.commissions.delete(id);
   }
+  
+  // Implementación para obtener reservaciones creadas por comisionistas
+  async getCommissionerReservations(companyId?: string): Promise<ReservationWithDetails[]> {
+    let reservations = Array.from(this.reservations.values());
+    
+    // Filtrar por comisionistas
+    // Esto es una implementación simplificada, ya que en memoria no tenemos una forma eficiente
+    // de saber si un usuario es comisionista sin cargar todos los usuarios
+    if (companyId) {
+      reservations = reservations.filter(res => res.companyId === companyId);
+    }
+    
+    // Cargar detalles
+    const reservationsWithDetails: ReservationWithDetails[] = [];
+    
+    for (const reservation of reservations) {
+      const trip = await this.getTripWithRouteInfo(reservation.tripId);
+      if (!trip) continue;
+      
+      const passengers = await this.getPassengers(reservation.id);
+      
+      reservationsWithDetails.push({
+        ...reservation,
+        trip,
+        passengers,
+        createdByUser: null // En la implementación en memoria no tenemos esta relación
+      });
+    }
+    
+    return reservationsWithDetails;
+  }
 }
 
 // Importamos la clase DatabaseStorage desde el archivo separado
