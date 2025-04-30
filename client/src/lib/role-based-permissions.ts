@@ -53,6 +53,11 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "trips",
     "reservations"
   ],
+  // Permisos para el nuevo rol COMISIONISTA
+  [UserRole.COMMISSIONER]: [
+    "trips",
+    "commissions"
+  ],
   [UserRole.DEVELOPER]: ALL_SECTIONS.map(section => section.id) // Acceso total para desarrollo
 };
 
