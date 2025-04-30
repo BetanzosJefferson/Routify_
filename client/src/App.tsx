@@ -23,7 +23,7 @@ function Router() {
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/dashboard" component={Dashboard} />
       <ProtectedRoute path="/trip/:tripId/passengers" component={PassengerListPage} />
-      <ProtectedRoute path="/cupones" component={CouponsPage} requiredRoles={['OWNER', 'SUPER_ADMIN']} />
+      <ProtectedRoute path="/cupones" component={CouponsPage} requiredRoles={['dueño', 'superAdmin']} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register/:token" component={RegisterPage} />
       <Route path="/reservation-details" component={ReservationDetails} />
