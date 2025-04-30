@@ -1540,6 +1540,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentStatus = "pagado";
       }
 
+      // Obtener el usuario autenticado, si existe
+      const { user } = req as any;
+      
+      // Si el frontend no envió createdBy pero hay un usuario autenticado, usamos su ID
+      const createdByUserId = reservationData.createdBy || (user ? user.id : null);
+      
+      if (createdByUserId) {
+        console.log(`Registrando usuario creador de la reservación: ID ${createdByUserId}`);
+      }
+      
       const reservation = await storage.createReservation({
         tripId: reservationData.tripId,
         totalAmount,
@@ -1552,7 +1562,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         companyId: companyId || null,  // Heredar el companyId del viaje
         advanceAmount: reservationData.advanceAmount || 0, // Añadir campo de anticipo
         advancePaymentMethod: reservationData.advancePaymentMethod || "efectivo", // Añadir método de pago del anticipo
-        paymentStatus: paymentStatus // Estado del pago basado en el anticipo
+        paymentStatus: paymentStatus, // Estado del pago basado en el anticipo
+        createdBy: createdByUserId // ID del usuario que crea la reservación (para comisiones)
       });
       
       // Create the passengers
