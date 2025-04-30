@@ -88,7 +88,7 @@ export default function CouponsPage() {
   };
 
   return (
-    <DashboardLayout>
+    <DashboardLayout defaultTab="coupons">
       <div className="container mx-auto p-4">
         <div className="flex justify-between items-center mb-6">
           <div>
