@@ -63,6 +63,7 @@ interface ReservationFormData {
   advancePaymentMethod: typeof PaymentMethod.CASH | typeof PaymentMethod.TRANSFER;
   notes: string;
   createdBy?: number;
+  couponCode?: string; // Código de cupón opcional
 }
 
 export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStepsModalProps) {
@@ -82,6 +83,13 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
   const [advanceAmount, setAdvanceAmount] = useState(0);
   const [advancePaymentMethod, setAdvancePaymentMethod] = useState<typeof PaymentMethod.CASH | typeof PaymentMethod.TRANSFER>(PaymentMethod.CASH);
   const [paymentStatus, setPaymentStatus] = useState<typeof PaymentStatus.PENDING | typeof PaymentStatus.PAID>(PaymentStatus.PENDING);
+  
+  // Campos para cupones
+  const [couponCode, setCouponCode] = useState("");
+  const [couponApplied, setCouponApplied] = useState(false);
+  const [discount, setDiscount] = useState(0);
+  const [couponError, setCouponError] = useState("");
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   
   // Steps state
   const [currentStep, setCurrentStep] = useState(0);
@@ -373,8 +381,60 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
     onClose();
   };
   
-  // Calculate total price
-  const totalPrice = numPassengers * trip.price;
+  // Validate coupon
+  const validateCouponMutation = useMutation({
+    mutationFn: async (code: string) => {
+      const response = await apiRequest("POST", "/api/coupons/validate", { code, amount: numPassengers * (trip.price || 0) });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Cupón inválido");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setCouponApplied(true);
+      setDiscount(data.discount);
+      setCouponError("");
+      toast({
+        title: "Cupón aplicado",
+        description: `Descuento de ${formatPrice(data.discount)} aplicado correctamente`,
+      });
+    },
+    onError: (error: Error) => {
+      setCouponApplied(false);
+      setDiscount(0);
+      setCouponError(error.message);
+      toast({
+        title: "Error al aplicar cupón",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      setIsValidatingCoupon(false);
+    }
+  });
+  
+  const handleApplyCoupon = () => {
+    if (!couponCode.trim()) {
+      setCouponError("Por favor ingrese un código de cupón");
+      return;
+    }
+    
+    setIsValidatingCoupon(true);
+    validateCouponMutation.mutate(couponCode.trim());
+  };
+  
+  const handleRemoveCoupon = () => {
+    setCouponCode("");
+    setCouponApplied(false);
+    setDiscount(0);
+    setCouponError("");
+  };
+  
+  // Calculate total price with discount
+  const basePrice = numPassengers * (trip.price || 0);
+  const totalPrice = Math.max(0, basePrice - discount);
   
   // Format reservation ID
   const formatReservationId = (id: number) => {
