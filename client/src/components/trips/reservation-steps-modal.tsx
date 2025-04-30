@@ -284,7 +284,8 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       advanceAmount: advanceAmount,
       advancePaymentMethod: advanceAmount > 0 ? advancePaymentMethod : PaymentMethod.CASH,
       notes,
-      createdBy: createdById
+      createdBy: createdById,
+      couponCode: couponApplied ? couponCode : undefined
     };
     
     createReservationMutation.mutate(reservationData);
@@ -669,6 +670,54 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                           <p>El pago será registrado como <strong>PENDIENTE</strong> por un monto total de {formatPrice(totalPrice)}.</p>
                         )}
                       </div>
+                      
+                      {/* Sección de cupones */}
+                      <div className="border-t border-gray-200 pt-4 mt-4">
+                        <h3 className="font-medium text-gray-800 mb-3">Cupón de Descuento</h3>
+                        
+                        {!couponApplied ? (
+                          <div className="flex space-x-2">
+                            <div className="flex-1">
+                              <Input
+                                id="coupon-code"
+                                value={couponCode}
+                                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                placeholder="Ingrese código de cupón"
+                                maxLength={5}
+                                className={couponError ? "border-red-500" : ""}
+                              />
+                              {couponError && (
+                                <div className="text-red-500 text-xs mt-1">{couponError}</div>
+                              )}
+                            </div>
+                            <Button 
+                              type="button" 
+                              onClick={handleApplyCoupon}
+                              disabled={isValidatingCoupon || !couponCode.trim()}
+                              className="shrink-0"
+                            >
+                              {isValidatingCoupon ? "Validando..." : "Aplicar"}
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="border border-green-200 bg-green-50 rounded-md p-3">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <div className="text-green-700 font-medium">Cupón aplicado: {couponCode}</div>
+                                <div className="text-green-600 text-sm">Descuento: {formatPrice(discount)}</div>
+                              </div>
+                              <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm"
+                                onClick={handleRemoveCoupon}
+                              >
+                                Remover
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                   
@@ -736,8 +785,28 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                 <div className="border border-gray-200 rounded-md p-4">
                   <h4 className="font-medium mb-2">Información de Pago</h4>
                   <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                    <div className="text-gray-500">Total:</div>
-                    <div className="font-bold">{formatPrice(totalPrice)}</div>
+                    <div className="text-gray-500">Subtotal:</div>
+                    <div>{formatPrice(basePrice)}</div>
+                    
+                    {couponApplied && discount > 0 && (
+                      <>
+                        <div className="text-gray-500">Cupón aplicado:</div>
+                        <div className="text-green-600">{couponCode}</div>
+                        
+                        <div className="text-gray-500">Descuento:</div>
+                        <div className="text-green-600">- {formatPrice(discount)}</div>
+                        
+                        <div className="text-gray-500">Total con descuento:</div>
+                        <div className="font-bold">{formatPrice(totalPrice)}</div>
+                      </>
+                    )}
+                    
+                    {!couponApplied && (
+                      <>
+                        <div className="text-gray-500">Total:</div>
+                        <div className="font-bold">{formatPrice(totalPrice)}</div>
+                      </>
+                    )}
                     
                     {advanceAmount > 0 && (
                       <>
