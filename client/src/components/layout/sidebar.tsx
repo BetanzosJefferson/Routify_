@@ -210,22 +210,6 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             </NavSection>
           )}
           
-          {/* Sección de Marketing y Promociones */}
-          {(canAccess("coupons")) && (
-            <NavSection title="Marketing y Promociones">
-              <NavItem 
-                icon={<PercentIcon className="h-5 w-5" />} 
-                active={activeTab === "coupons"}
-                onClick={() => {
-                  handleTabClick("coupons");
-                  setLocation('/cupones');
-                }}
-              >
-                Cupones
-              </NavItem>
-            </NavSection>
-          )}
-          
           {/* Sección de Configuración - no incluida en TabType por el momento */}
           {/*{canAccess("settings") && (
             <NavSection title="Configuración">

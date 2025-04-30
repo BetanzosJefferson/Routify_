@@ -18,7 +18,6 @@ export const ALL_SECTIONS: Section[] = [
   { id: "users", name: "Usuarios", description: "Gestión de usuarios del sistema" },
   { id: "vehicles", name: "Unidades", description: "Gestión de vehículos y flota" },
   { id: "commissions", name: "Comisiones", description: "Configuración de comisiones" },
-  { id: "coupons", name: "Cupones", description: "Gestión de cupones de descuento" },
   { id: "settings", name: "Configuración", description: "Ajustes generales del sistema" }
 ];
 
@@ -34,8 +33,7 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "trip-summary",
     "boarding-list",
     "users",
-    "vehicles",
-    "coupons"
+    "vehicles"
   ],
   [UserRole.CALL_CENTER]: [
     "trips",

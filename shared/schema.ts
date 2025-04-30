@@ -128,9 +128,6 @@ export const reservations = pgTable("reservations", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   // Campo para aislamiento de datos por compañía
   companyId: text("company_id"),
-  // Campo para cupón de descuento
-  couponId: integer("coupon_id").references(() => coupons.id),
-  discountAmount: doublePrecision("discount_amount").default(0), // Monto descontado por el cupón
 });
 
 export const insertReservationSchema = createInsertSchema(reservations);
@@ -235,9 +232,7 @@ export const createReservationValidationSchema = z.object({
     required_error: "Estado de pago es requerido"
   }).optional(),
   notes: z.string().optional(),
-  createdBy: z.number().optional(),
-  // Campo para cupón de descuento
-  couponCode: z.string().max(5).optional(),
+  createdBy: z.number().optional()
 }).superRefine((data, ctx) => {
   // Validar que el anticipo no sea mayor que el monto total
   if (data.advanceAmount && data.advanceAmount > data.totalAmount) {
@@ -352,11 +347,7 @@ export const reservationRelations = relations(reservations, ({ one, many }) => (
     fields: [reservations.tripId],
     references: [trips.id]
   }),
-  passengers: many(passengers),
-  coupon: one(coupons, {
-    fields: [reservations.couponId],
-    references: [coupons.id]
-  })
+  passengers: many(passengers)
 }));
 
 export const passengerRelations = relations(passengers, ({ one }) => ({
@@ -379,7 +370,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   // Campo para referenciar al usuario que invitó/creó este usuario
-  invitedById: integer("invited_by_id"),
+  invitedById: integer("invited_by_id").references(() => users.id),
   // Campo para referenciar la compañía a la que pertenece el usuario
   companyId: text("company_id").default(""),
 });
@@ -443,80 +434,5 @@ export const commissionRelations = relations(commissions, ({ one }) => ({
   route: one(routes, {
     fields: [commissions.routeId],
     references: [routes.id]
-  })
-}));
-
-// ENUMS PARA CUPONES
-export const DiscountType = {
-  PERCENTAGE: "percentage", // Descuento porcentual (%)
-  FIXED: "fixed", // Descuento fijo ($)
-} as const;
-
-export type DiscountTypeType = typeof DiscountType[keyof typeof DiscountType];
-
-export const CouponDuration = {
-  ONE_HOUR: "1hour", // 1 hora
-  ONE_DAY: "24hours", // 24 horas
-  TWO_DAYS: "48hours", // 48 horas
-  ONE_WEEK: "7days", // 7 días
-  PERMANENT: "permanent", // Permanente
-} as const;
-
-export type CouponDurationType = typeof CouponDuration[keyof typeof CouponDuration];
-
-// SCHEMA DE CUPONES
-export const coupons = pgTable("coupons", {
-  id: serial("id").primaryKey(),
-  code: varchar("code", { length: 5 }).notNull().unique(), // Código del cupón (máx 5 caracteres)
-  discountType: text("discount_type").notNull().default(DiscountType.PERCENTAGE), // Tipo de descuento
-  discountValue: doublePrecision("discount_value").notNull(), // Valor del descuento
-  duration: text("duration").notNull().default(CouponDuration.ONE_DAY), // Duración del cupón
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  expiresAt: timestamp("expires_at"), // Fecha de expiración calculada
-  usedCount: integer("used_count").default(0), // Contador de uso
-  isActive: boolean("is_active").default(true), // Estado del cupón
-  companyId: text("company_id").notNull(), // Compañía a la que pertenece
-  createdById: integer("created_by_id").notNull(), // Usuario que creó el cupón
-});
-
-export const insertCouponSchema = createInsertSchema(coupons)
-  .extend({
-    code: z.string().min(1, "El código es requerido").max(5, "El código no debe exceder 5 caracteres"),
-    discountValue: z.number().positive("El valor del descuento debe ser positivo"),
-  });
-
-export type InsertCoupon = z.infer<typeof insertCouponSchema>;
-export type Coupon = typeof coupons.$inferSelect;
-
-// SCHEMA DE APLICACIÓN DE CUPONES
-export const couponApplications = pgTable("coupon_applications", {
-  id: serial("id").primaryKey(),
-  couponId: integer("coupon_id").notNull().references(() => coupons.id),
-  reservationId: integer("reservation_id").notNull().references(() => reservations.id),
-  appliedDiscount: doublePrecision("applied_discount").notNull(), // Monto del descuento aplicado
-  appliedAt: timestamp("applied_at").notNull().defaultNow(),
-});
-
-export const insertCouponApplicationSchema = createInsertSchema(couponApplications);
-export type InsertCouponApplication = z.infer<typeof insertCouponApplicationSchema>;
-export type CouponApplication = typeof couponApplications.$inferSelect;
-
-// RELACIONES PARA CUPONES
-export const couponRelations = relations(coupons, ({ one, many }) => ({
-  createdBy: one(users, {
-    fields: [coupons.createdById],
-    references: [users.id]
-  }),
-  applications: many(couponApplications)
-}));
-
-export const couponApplicationRelations = relations(couponApplications, ({ one }) => ({
-  coupon: one(coupons, {
-    fields: [couponApplications.couponId],
-    references: [coupons.id]
-  }),
-  reservation: one(reservations, {
-    fields: [couponApplications.reservationId],
-    references: [reservations.id]
   })
 }));
