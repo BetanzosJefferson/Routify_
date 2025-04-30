@@ -126,6 +126,9 @@ export const reservations = pgTable("reservations", {
   createdBy: integer("created_by"), // ID del usuario que crea la reservación
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  // Campos para personalizar origen y destino específicos para esta reserva
+  segmentOrigin: text("segment_origin"),
+  segmentDestination: text("segment_destination"),
   // Campo para aislamiento de datos por compañía
   companyId: text("company_id"),
 });

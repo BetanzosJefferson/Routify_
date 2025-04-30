@@ -641,11 +641,23 @@ export function ReservationList() {
                   <div id="route-info" className="text-sm">
                     {editingReservation.trip.route.name}
                   </div>
-                  <div className="text-sm">
-                    <span className="text-gray-500">Origen:</span> {editingReservation.trip.segmentOrigin || editingReservation.trip.route.origin}
+                  <div className="grid grid-cols-1 gap-2 mt-2">
+                    <Label htmlFor="segment-origin" className="text-gray-500 text-xs">ORIGEN</Label>
+                    <Input
+                      id="segment-origin"
+                      value={segmentOrigin}
+                      onChange={(e) => setSegmentOrigin(e.target.value)}
+                      placeholder="Ciudad de origen"
+                    />
                   </div>
-                  <div className="text-sm">
-                    <span className="text-gray-500">Destino:</span> {editingReservation.trip.segmentDestination || editingReservation.trip.route.destination}
+                  <div className="grid grid-cols-1 gap-2 mt-2">
+                    <Label htmlFor="segment-destination" className="text-gray-500 text-xs">DESTINO</Label>
+                    <Input
+                      id="segment-destination"
+                      value={segmentDestination}
+                      onChange={(e) => setSegmentDestination(e.target.value)}
+                      placeholder="Ciudad de destino"
+                    />
                   </div>
                   <div className="text-sm">
                     <span className="text-gray-500">Fecha:</span> {formatDate(editingReservation.trip.departureDate)}
