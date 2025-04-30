@@ -1529,22 +1529,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Create the reservation
-      const totalAmount = (trip.price || 0) * passengerCount;
-      
       // Obtener el companyId del viaje para asignarlo a la reservación (aislamiento de datos)
       const companyId = trip.companyId;
-      console.log(`Asignando companyId: ${companyId || 'null'} a la nueva reservación (heredado del viaje ${trip.id})`);
+      console.log(`[POST /reservations] Asignando companyId: ${companyId || 'null'} a la nueva reservación (heredado del viaje ${trip.id})`);
+      
+      // Calcular el precio base antes de aplicar cupones
+      let baseAmount = (trip.price || 0) * passengerCount;
+      let finalAmount = baseAmount;
+      let couponId = null;
+      let discountAmount = 0;
+      
+      // Verificar si se proporcionó un código de cupón y aplicarlo si es válido
+      if (reservationData.couponCode) {
+        try {
+          console.log(`[POST /reservations] Validando cupón con código: ${reservationData.couponCode}`);
+          
+          // Aplicar el cupón usando el servicio
+          const couponResult = await CouponService.applyCoupon(
+            reservationData.couponCode, 
+            baseAmount, 
+            companyId || undefined
+          );
+          
+          if (couponResult) {
+            console.log(`[POST /reservations] Cupón válido: ${reservationData.couponCode}, descuento aplicado: ${couponResult.discountAmount}`);
+            
+            // Actualizar montos con el descuento
+            finalAmount = couponResult.finalAmount;
+            couponId = couponResult.couponId;
+            discountAmount = couponResult.discountAmount;
+            
+            console.log(`[POST /reservations] Monto original: ${baseAmount}, monto con descuento: ${finalAmount}`);
+          } else {
+            console.log(`[POST /reservations] Cupón inválido o expirado: ${reservationData.couponCode}`);
+          }
+        } catch (error) {
+          console.error(`[POST /reservations] Error al aplicar cupón:`, error);
+          // No detener la creación de la reserva si hay error con el cupón
+        }
+      }
       
       // Determinar estado de pago basado en anticipo
       let paymentStatus = "pendiente";
-      if (reservationData.advanceAmount && reservationData.advanceAmount >= totalAmount) {
+      if (reservationData.advanceAmount && reservationData.advanceAmount >= finalAmount) {
         paymentStatus = "pagado";
       }
 
       const reservation = await storage.createReservation({
         tripId: reservationData.tripId,
-        totalAmount,
+        totalAmount: finalAmount, // Usar el monto después de aplicar descuentos
         email: reservationData.email,
         phone: reservationData.phone,
         paymentMethod: reservationData.paymentMethod || "cash", // Método de pago desde el formulario
@@ -1554,7 +1587,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         companyId: companyId || null,  // Heredar el companyId del viaje
         advanceAmount: reservationData.advanceAmount || 0, // Añadir campo de anticipo
         advancePaymentMethod: reservationData.advancePaymentMethod || "efectivo", // Añadir método de pago del anticipo
-        paymentStatus: paymentStatus // Estado del pago basado en el anticipo
+        paymentStatus: paymentStatus, // Estado del pago basado en el anticipo
+        couponId: couponId, // Guardar referencia al cupón utilizado
+        discountAmount: discountAmount // Guardar el monto de descuento aplicado
       });
       
       // Create the passengers
@@ -2036,7 +2071,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // CUPONES ENDPOINTS
-  app.use(apiRouter('/coupons'), isAuthenticated, couponsRoutes);
+  app.use(apiRouter('/coupons'), couponsRoutes);
 
   const httpServer = createServer(app);
   return httpServer;
