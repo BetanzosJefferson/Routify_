@@ -45,9 +45,10 @@ export default function CommissionReservationsPage() {
   });
 
   // Filtrar reservaciones creadas solo por usuarios con rol COMISIONISTA
-  const commissionerReservations = reservations.filter(reservation => 
-    reservation.createdByUser?.role === UserRole.COMMISSIONER
-  );
+  const commissionerReservations = reservations.filter(reservation => {
+    console.log(`Reservación ${reservation.id} creada por: ${reservation.createdByUser?.role}`);
+    return reservation.createdByUser?.role === UserRole.COMMISSIONER;
+  });
 
   // Aplicar filtros adicionales
   const filteredReservations = commissionerReservations.filter(reservation => {

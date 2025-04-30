@@ -25,7 +25,20 @@ export const ALL_SECTIONS: Section[] = [
 // Mapa de permisos por rol
 export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
   [UserRole.SUPER_ADMIN]: ALL_SECTIONS.map(section => section.id), // Acceso total
-  [UserRole.ADMIN]: ALL_SECTIONS.map(section => section.id), // Acceso total
+  [UserRole.ADMIN]: [
+    "dashboard",
+    "routes",
+    "trips",
+    "publish-trip",
+    "reservations",
+    "trip-summary",
+    "boarding-list",
+    "users",
+    "vehicles",
+    "commissions",
+    "commission-reservations",
+    "settings"
+  ],
   [UserRole.OWNER]: [
     "routes",
     "trips",
