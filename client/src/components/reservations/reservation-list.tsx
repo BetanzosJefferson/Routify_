@@ -61,6 +61,7 @@ export function ReservationList() {
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [notes, setNotes] = useState<string>("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  // Por defecto mostramos las reservaciones actuales/futuras
   const [activeTab, setActiveTab] = useState("upcoming");
   
   // Estados adicionales para mejorar la UX
