@@ -783,7 +783,7 @@ export class DatabaseStorage implements IStorage {
       const passengers = await this.getPassengers(reservation.id);
       
       // Obtener información del usuario que creó la reservación
-      let createdByUser = undefined;
+      let createdByUser: schema.User | undefined = undefined;
       if (reservation.createdBy) {
         // Buscar el usuario por ID
         const [user] = await db
@@ -848,7 +848,7 @@ export class DatabaseStorage implements IStorage {
     const passengers = await this.getPassengers(reservation.id);
     
     // Obtener información del usuario que creó la reservación
-    let createdByUser = undefined;
+    let createdByUser: schema.User | undefined = undefined;
     if (reservation.createdBy) {
       // Buscar el usuario por ID
       const [user] = await db
