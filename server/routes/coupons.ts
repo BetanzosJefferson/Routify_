@@ -107,7 +107,7 @@ router.post('/', requireOwnerRole, async (req: Request, res: Response) => {
 router.get('/validate/:code', async (req: Request, res: Response) => {
   try {
     const { code } = req.params;
-    const { companyId } = req.body; // Debe enviarse desde el cliente
+    const { companyId } = req.user as any || req.body;
     
     if (!companyId) {
       return res.status(400).json({ 
