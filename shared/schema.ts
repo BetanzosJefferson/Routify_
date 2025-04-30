@@ -159,6 +159,7 @@ export type TripWithRouteInfo = Trip & {
 export type ReservationWithDetails = Reservation & {
   trip: TripWithRouteInfo;
   passengers: Passenger[];
+  createdByUser?: User;
 };
 
 export type SegmentPrice = {
@@ -348,7 +349,11 @@ export const reservationRelations = relations(reservations, ({ one, many }) => (
     fields: [reservations.tripId],
     references: [trips.id]
   }),
-  passengers: many(passengers)
+  passengers: many(passengers),
+  createdByUser: one(users, {
+    fields: [reservations.createdBy],
+    references: [users.id]
+  })
 }));
 
 export const passengerRelations = relations(passengers, ({ one }) => ({
@@ -411,6 +416,11 @@ export const userRelations = relations(users, ({ many, one }) => ({
     fields: [users.invitedById],
     references: [users.id],
     relationName: 'invitedBy'
+  }),
+  // Relación para las reservaciones creadas por este usuario
+  createdReservations: many(reservations, {
+    fields: [users.id],
+    references: [reservations.createdBy]
   })
 }));
 
