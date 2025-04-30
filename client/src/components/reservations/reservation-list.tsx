@@ -140,6 +140,8 @@ export function ReservationList() {
   const [email, setEmail] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
   const [status, setStatus] = useState<string>("confirmed");
+  const [segmentOrigin, setSegmentOrigin] = useState<string>("");
+  const [segmentDestination, setSegmentDestination] = useState<string>("");
 
   // Edit reservation mutation
   const editReservationMutation = useMutation({
@@ -186,6 +188,11 @@ export function ReservationList() {
     setEmail(reservation.email || "");
     setPhone(reservation.phone || "");
     setStatus(reservation.status || "confirmed");
+    
+    // Inicializar los campos de origen y destino
+    setSegmentOrigin(reservation.segmentOrigin || reservation.trip.segmentOrigin || reservation.trip.route.origin);
+    setSegmentDestination(reservation.segmentDestination || reservation.trip.segmentDestination || reservation.trip.route.destination);
+    
     setIsEditModalOpen(true);
   };
   
@@ -204,7 +211,9 @@ export function ReservationList() {
         notes,
         email,
         phone,
-        status
+        status,
+        segmentOrigin,
+        segmentDestination
       }
     });
   };
