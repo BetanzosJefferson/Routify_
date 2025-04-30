@@ -107,6 +107,8 @@ export function UsersPage() {
         return "Chófer";
       case UserRole.TICKET_OFFICE:
         return "Taquilla";
+      case UserRole.COMMISSIONER:
+        return "Comisionista";
       default:
         return role;
     }

@@ -13,6 +13,7 @@ export const UserRole = {
   TICKET_OFFICE: "taquilla",
   OWNER: "dueño",
   DEVELOPER: "desarrollador",
+  COMMISSIONER: "comisionista",
 } as const;
 
 export type UserRoleType = typeof UserRole[keyof typeof UserRole];

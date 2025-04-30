@@ -24,13 +24,15 @@ type InvitationFormValues = z.infer<typeof invitationFormSchema>;
 
 // Función para obtener los roles permitidos según el rol del usuario autenticado
 function getFilteredRoles(userRole?: string): string[] {
-  // Si el usuario es dueño, solo puede invitar a ciertos roles específicos
+  // Si el usuario es dueño, ahora también puede invitar a administradores y comisionistas
   if (userRole === UserRole.OWNER) {
     return [
       UserRole.OWNER,
+      UserRole.ADMIN,
       UserRole.CALL_CENTER,
       UserRole.CHECKER,
-      UserRole.DRIVER
+      UserRole.DRIVER,
+      UserRole.COMMISSIONER
     ];
   }
   
@@ -43,7 +45,8 @@ function getFilteredRoles(userRole?: string): string[] {
       UserRole.CHECKER,
       UserRole.DRIVER,
       UserRole.TICKET_OFFICE,
-      UserRole.DEVELOPER
+      UserRole.DEVELOPER,
+      UserRole.COMMISSIONER
     ];
   }
   
@@ -56,7 +59,8 @@ function getFilteredRoles(userRole?: string): string[] {
     UserRole.CHECKER,
     UserRole.DRIVER,
     UserRole.TICKET_OFFICE,
-    UserRole.DEVELOPER
+    UserRole.DEVELOPER,
+    UserRole.COMMISSIONER
   ];
 }
 
@@ -340,6 +344,22 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
                             <span className="font-semibold">Taquilla</span>
                             <span className="text-xs text-muted-foreground">
                               Vender boletos y gestionar reservas
+                            </span>
+                          </Label>
+                        </div>
+                      )}
+                      
+                      {/* Comisionista */}
+                      {allowedRoles.includes(UserRole.COMMISSIONER) && (
+                        <div>
+                          <RadioGroupItem value={UserRole.COMMISSIONER} id="commissioner" className="peer sr-only" />
+                          <Label
+                            htmlFor="commissioner"
+                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                          >
+                            <span className="font-semibold">Comisionista</span>
+                            <span className="text-xs text-muted-foreground">
+                              Gestionar comisiones por ventas
                             </span>
                           </Label>
                         </div>
