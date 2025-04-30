@@ -1227,6 +1227,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ENDPOINT PARA RESERVACIONES DE COMISIONISTAS
+  app.get(apiRouter("/commissioner-reservations"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      // Solo permitir a roles específicos (dueño y administrador) acceder a esta información
+      if (!user || (user.role !== UserRole.OWNER && user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN)) {
+        console.log(`[GET /commissioner-reservations] Acceso denegado para rol: ${user?.role || 'No autenticado'}`);
+        return res.status(403).json({ error: "No tiene permiso para acceder a esta información" });
+      }
+      
+      console.log(`[GET /commissioner-reservations] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
+      
+      // Filtrar por compañía del usuario (excepto para superAdmin que puede ver todo)
+      let companyId = null;
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        companyId = user.companyId || user.company || null;
+        
+        if (!companyId) {
+          console.log(`[GET /commissioner-reservations] Usuario sin compañía - no verá ninguna reservación`);
+          return res.json([]);
+        }
+        
+        console.log(`[GET /commissioner-reservations] Filtrando por compañía: ${companyId}`);
+      }
+      
+      // Obtener reservaciones creadas por comisionistas
+      const reservations = await storage.getCommissionerReservations(companyId || undefined);
+      
+      console.log(`[GET /commissioner-reservations] Encontradas ${reservations.length} reservaciones de comisionistas`);
+      
+      res.json(reservations);
+    } catch (error) {
+      console.error("[GET /commissioner-reservations] Error:", error);
+      res.status(500).json({ error: "Error al obtener reservaciones de comisionistas" });
+    }
+  });
+  
   // RESERVATIONS ENDPOINTS
   app.get(apiRouter("/reservations"), async (req: Request, res: Response) => {
     try {
