@@ -377,6 +377,11 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       setAdvanceAmount(0);
       setAdvancePaymentMethod(PaymentMethod.CASH);
       setPaymentStatus(PaymentStatus.PENDING);
+      // Reset coupon-related fields
+      setCouponCode("");
+      setCouponApplied(false);
+      setDiscount(0);
+      setCouponError("");
     }
     
     onClose();
@@ -984,13 +989,37 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                     <h4 className="text-lg font-medium mb-2">Información de Pago</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2">
                       <div>
-                        <div className="text-sm text-gray-500">Total:</div>
-                        <div className="text-lg font-bold">{formatPrice(totalPrice)}</div>
+                        <div className="text-sm text-gray-500">Subtotal:</div>
+                        <div>{formatPrice(basePrice)}</div>
                       </div>
                       <div>
                         <div className="text-sm text-gray-500">Método de pago:</div>
                         <div>{paymentMethod === PaymentMethod.CASH ? "Efectivo" : "Transferencia"}</div>
                       </div>
+                      
+                      {couponApplied && discount > 0 && (
+                        <>
+                          <div>
+                            <div className="text-sm text-gray-500">Cupón aplicado:</div>
+                            <div className="text-green-600">{couponCode}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Descuento:</div>
+                            <div className="text-green-600">- {formatPrice(discount)}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Total con descuento:</div>
+                            <div className="text-lg font-bold">{formatPrice(totalPrice)}</div>
+                          </div>
+                        </>
+                      )}
+                      
+                      {!couponApplied && (
+                        <div>
+                          <div className="text-sm text-gray-500">Total:</div>
+                          <div className="text-lg font-bold">{formatPrice(totalPrice)}</div>
+                        </div>
+                      )}
                       
                       {advanceAmount > 0 && (
                         <>
