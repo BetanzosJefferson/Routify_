@@ -1,178 +1,251 @@
-import { Request, Response, Router } from 'express';
-import { UserRole } from '@shared/schema';
-import { CouponService } from '../services/coupon-service';
-import { requireRole } from '../middleware/auth';
+import { Router } from "express";
+import { CouponService } from "../services/coupon-service";
+import { insertCouponSchema, UserRole } from "@shared/schema";
+import { isAuthenticated, requireRole } from "../middleware/auth";
 
 const router = Router();
 
-/**
- * Middleware para verificar si el usuario es "Dueño" de la compañía
- */
-const requireOwnerRole = requireRole([UserRole.OWNER, UserRole.SUPER_ADMIN]);
+// Middleware para verificar si el usuario tiene rol de dueño o superadmin (únicos que pueden gestionar cupones)
+const requireOwnerOrSuperAdmin = requireRole([UserRole.OWNER, UserRole.SUPER_ADMIN, UserRole.DEVELOPER]);
 
-/**
- * GET /api/coupons
- * Obtiene todos los cupones de la compañía del usuario
- */
-router.get('/', requireOwnerRole, async (req: Request, res: Response) => {
+// Obtener todos los cupones (filtrados por compañía si corresponde)
+router.get("/", isAuthenticated, async (req, res) => {
   try {
-    const { companyId } = req.user as any;
-
-    // Verificar que el usuario tenga una compañía asignada
-    if (!companyId) {
-      return res.status(400).json({ 
-        error: 'El usuario no tiene una compañía asignada'
-      });
+    const { user } = req as any;
+    let companyId: string | undefined;
+    
+    // Solo superadmin puede ver TODOS los cupones
+    // El resto solo ve los cupones de su compañía
+    if (user && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.DEVELOPER) {
+      companyId = user.companyId || user.company;
+      
+      if (!companyId) {
+        return res.status(403).json({ error: "No tiene permiso para ver cupones" });
+      }
     }
-
-    const coupons = await CouponService.getCouponsByCompany(companyId);
+    
+    const coupons = await CouponService.getCoupons(companyId);
     res.json(coupons);
-  } catch (error) {
-    console.error('[GET /coupons] Error:', error);
-    res.status(500).json({ 
-      error: 'Error al obtener los cupones'
-    });
+  } catch (error: any) {
+    console.error("Error al obtener cupones:", error);
+    res.status(500).json({ error: "Error al obtener cupones", details: error.message || "Error desconocido" });
   }
 });
 
-/**
- * POST /api/coupons
- * Crea un nuevo cupón
- */
-router.post('/', requireOwnerRole, async (req: Request, res: Response) => {
+// Obtener un cupón por su ID
+router.get("/:id", isAuthenticated, async (req, res) => {
   try {
-    const { companyId, id: userId } = req.user as any;
+    const id = parseInt(req.params.id, 10);
+    const { user } = req as any;
     
-    // Verificar que el usuario tenga una compañía asignada
-    if (!companyId) {
-      return res.status(400).json({ 
-        error: 'El usuario no tiene una compañía asignada'
-      });
-    }
-    
-    const { code, discountType, discountValue, duration, isRandomCode } = req.body;
-    
-    // Si se solicita un código aleatorio, generarlo
-    let couponCode = code;
-    if (isRandomCode) {
-      let attempts = 0;
-      let uniqueCodeFound = false;
-      
-      // Intentar generar un código único (max 5 intentos)
-      while (!uniqueCodeFound && attempts < 5) {
-        couponCode = CouponService.generateRandomCode();
-        uniqueCodeFound = !(await CouponService.codeExists(couponCode));
-        attempts++;
-      }
-      
-      if (!uniqueCodeFound) {
-        return res.status(400).json({ 
-          error: 'No se pudo generar un código único. Intente más tarde.'
-        });
-      }
-    } else {
-      // Verificar si el código personalizado ya existe
-      const codeExists = await CouponService.codeExists(couponCode);
-      if (codeExists) {
-        return res.status(400).json({ 
-          error: 'El código ingresado ya existe'
-        });
-      }
-    }
-    
-    // Crear el cupón
-    const coupon = await CouponService.createCoupon({
-      code: couponCode,
-      discountType,
-      discountValue,
-      duration,
-      companyId,
-      createdById: userId,
-      isActive: true
-    });
-    
-    res.status(201).json(coupon);
-  } catch (error) {
-    console.error('[POST /coupons] Error:', error);
-    res.status(500).json({ 
-      error: 'Error al crear el cupón'
-    });
-  }
-});
-
-/**
- * POST /api/coupons/validate
- * Valida un código de cupón y retorna la información del descuento aplicado al monto total
- */
-router.post('/validate', async (req: Request, res: Response) => {
-  try {
-    const { code, totalAmount } = req.body;
-    const { companyId } = req.user as any || req.body;
-    
-    if (!companyId) {
-      return res.status(400).json({ 
-        error: 'Se requiere la compañía para validar el cupón'
-      });
-    }
-    
-    if (!totalAmount || isNaN(totalAmount) || totalAmount <= 0) {
-      return res.status(400).json({
-        error: 'Se requiere un monto total válido para calcular el descuento'
-      });
-    }
-    
-    const validationResult = await CouponService.validateCouponForReservation(
-      code, 
-      companyId,
-      parseFloat(totalAmount)
-    );
-    
-    if (!validationResult) {
-      return res.status(404).json({ 
-        error: 'Cupón no encontrado o expirado'
-      });
-    }
-    
-    // Retornar el cupón y el descuento calculado
-    res.json(validationResult);
-  } catch (error) {
-    console.error('[POST /coupons/validate] Error:', error);
-    res.status(500).json({ 
-      error: 'Error al validar el cupón'
-    });
-  }
-});
-
-/**
- * PUT /api/coupons/:id/deactivate
- * Desactiva un cupón
- */
-router.put('/:id/deactivate', requireOwnerRole, async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { companyId } = req.user as any;
-    
-    // Verificar que el usuario tenga una compañía asignada
-    if (!companyId) {
-      return res.status(400).json({ 
-        error: 'El usuario no tiene una compañía asignada'
-      });
-    }
-    
-    const coupon = await CouponService.deactivateCoupon(parseInt(id));
+    const coupon = await CouponService.getCouponById(id);
     
     if (!coupon) {
-      return res.status(404).json({ 
-        error: 'Cupón no encontrado'
-      });
+      return res.status(404).json({ error: "Cupón no encontrado" });
+    }
+    
+    // Verificar acceso por compañía (excepto superadmin)
+    if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.DEVELOPER) {
+      const companyId = user.companyId || user.company;
+      
+      if (!companyId || (coupon.companyId && coupon.companyId !== companyId)) {
+        return res.status(403).json({ error: "No tiene permiso para ver este cupón" });
+      }
     }
     
     res.json(coupon);
-  } catch (error) {
-    console.error('[PUT /coupons/:id/deactivate] Error:', error);
-    res.status(500).json({ 
-      error: 'Error al desactivar el cupón'
-    });
+  } catch (error: any) {
+    console.error("Error al obtener cupón:", error);
+    res.status(500).json({ error: "Error al obtener cupón", details: error.message || "Error desconocido" });
+  }
+});
+
+// Obtener un cupón por su código
+router.get("/code/:code", isAuthenticated, async (req, res) => {
+  try {
+    const code = req.params.code;
+    const { user } = req as any;
+    
+    const coupon = await CouponService.getCouponByCode(code);
+    
+    if (!coupon) {
+      return res.status(404).json({ error: "Cupón no encontrado" });
+    }
+    
+    // Verificar acceso por compañía (excepto superadmin)
+    if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.DEVELOPER) {
+      const companyId = user.companyId || user.company;
+      
+      if (!companyId || (coupon.companyId && coupon.companyId !== companyId)) {
+        return res.status(403).json({ error: "No tiene permiso para ver este cupón" });
+      }
+    }
+    
+    res.json(coupon);
+  } catch (error: any) {
+    console.error("Error al obtener cupón por código:", error);
+    res.status(500).json({ error: "Error al obtener cupón por código", details: error.message || "Error desconocido" });
+  }
+});
+
+// Crear un nuevo cupón (solo Owner o SuperAdmin)
+router.post("/", isAuthenticated, requireOwnerOrSuperAdmin, async (req, res) => {
+  try {
+    const { user } = req as any;
+    const validationResult = insertCouponSchema.safeParse(req.body);
+    
+    if (!validationResult.success) {
+      return res.status(400).json({ 
+        error: "Datos de cupón inválidos", 
+        details: validationResult.error.format() 
+      });
+    }
+    
+    const couponData = validationResult.data;
+    
+    // Asignar compañía del usuario al cupón si no se proporciona una
+    if (!couponData.companyId) {
+      couponData.companyId = user.companyId || user.company;
+      
+      // Si es superadmin y no se proporcionó compañía, asignar una por defecto
+      if (!couponData.companyId && user.role === UserRole.SUPER_ADMIN) {
+        couponData.companyId = "viaja-facil-123";
+      }
+      
+      if (!couponData.companyId) {
+        return res.status(400).json({ error: "No se pudo determinar la compañía para el cupón" });
+      }
+    }
+    
+    const coupon = await CouponService.createCoupon(couponData);
+    res.status(201).json(coupon);
+  } catch (error: any) {
+    console.error("Error al crear cupón:", error);
+    res.status(500).json({ error: "Error al crear cupón", details: error.message || "Error desconocido" });
+  }
+});
+
+// Actualizar un cupón (solo Owner o SuperAdmin)
+router.put("/:id", isAuthenticated, requireOwnerOrSuperAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { user } = req as any;
+    
+    // Primero verificar que el cupón existe y pertenece a la compañía del usuario
+    const existingCoupon = await CouponService.getCouponById(id);
+    
+    if (!existingCoupon) {
+      return res.status(404).json({ error: "Cupón no encontrado" });
+    }
+    
+    // Verificar acceso por compañía (excepto superadmin)
+    if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.DEVELOPER) {
+      const companyId = user.companyId || user.company;
+      
+      if (!companyId || (existingCoupon.companyId && existingCoupon.companyId !== companyId)) {
+        return res.status(403).json({ error: "No tiene permiso para modificar este cupón" });
+      }
+    }
+    
+    const validationResult = insertCouponSchema.partial().safeParse(req.body);
+    
+    if (!validationResult.success) {
+      return res.status(400).json({ 
+        error: "Datos de cupón inválidos", 
+        details: validationResult.error.format() 
+      });
+    }
+    
+    const couponData = validationResult.data;
+    const updatedCoupon = await CouponService.updateCoupon(id, couponData);
+    
+    res.json(updatedCoupon);
+  } catch (error: any) {
+    console.error("Error al actualizar cupón:", error);
+    res.status(500).json({ error: "Error al actualizar cupón", details: error.message || "Error desconocido" });
+  }
+});
+
+// Eliminar un cupón (solo Owner o SuperAdmin)
+router.delete("/:id", isAuthenticated, requireOwnerOrSuperAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { user } = req as any;
+    
+    // Primero verificar que el cupón existe y pertenece a la compañía del usuario
+    const existingCoupon = await CouponService.getCouponById(id);
+    
+    if (!existingCoupon) {
+      return res.status(404).json({ error: "Cupón no encontrado" });
+    }
+    
+    // Verificar acceso por compañía (excepto superadmin)
+    if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.DEVELOPER) {
+      const companyId = user.companyId || user.company;
+      
+      if (!companyId || (existingCoupon.companyId && existingCoupon.companyId !== companyId)) {
+        return res.status(403).json({ error: "No tiene permiso para eliminar este cupón" });
+      }
+    }
+    
+    const success = await CouponService.deleteCoupon(id);
+    
+    if (success) {
+      res.status(204).end();
+    } else {
+      res.status(500).json({ error: "No se pudo eliminar el cupón" });
+    }
+  } catch (error: any) {
+    console.error("Error al eliminar cupón:", error);
+    res.status(500).json({ error: "Error al eliminar cupón", details: error.message || "Error desconocido" });
+  }
+});
+
+// Validar un cupón
+router.post("/validate", async (req, res) => {
+  try {
+    const { code, companyId } = req.body;
+    
+    if (!code) {
+      return res.status(400).json({ error: "Código de cupón requerido" });
+    }
+    
+    const coupon = await CouponService.validateCoupon(code, companyId);
+    
+    if (!coupon) {
+      return res.status(404).json({ error: "Cupón no válido o expirado" });
+    }
+    
+    res.json(coupon);
+  } catch (error: any) {
+    console.error("Error al validar cupón:", error);
+    res.status(500).json({ error: "Error al validar cupón", details: error.message || "Error desconocido" });
+  }
+});
+
+// Aplicar un cupón a un monto
+router.post("/apply", async (req, res) => {
+  try {
+    const { code, amount, companyId } = req.body;
+    
+    if (!code) {
+      return res.status(400).json({ error: "Código de cupón requerido" });
+    }
+    
+    if (amount === undefined || isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ error: "Monto inválido" });
+    }
+    
+    const result = await CouponService.applyCoupon(code, amount, companyId);
+    
+    if (!result) {
+      return res.status(404).json({ error: "Cupón no válido o expirado" });
+    }
+    
+    res.json(result);
+  } catch (error: any) {
+    console.error("Error al aplicar cupón:", error);
+    res.status(500).json({ error: "Error al aplicar cupón", details: error.message || "Error desconocido" });
   }
 });
 

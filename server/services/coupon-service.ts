@@ -1,206 +1,277 @@
-import { and, count, eq, gte, sql } from 'drizzle-orm';
-import { db } from '../db';
-import { 
-  CouponDuration, 
-  DiscountType, 
-  InsertCoupon, 
-  Coupon, 
-  coupons,
-  couponApplications,
-  InsertCouponApplication
-} from '@shared/schema';
+import { db } from "../db";
+import { sql, eq, and, gt, lt } from "drizzle-orm";
+import { coupons, insertCouponSchema } from "@shared/schema";
+import { randomBytes } from "crypto";
+import { z } from "zod";
 
-/**
- * Servicio para gestionar cupones de descuento
- */
-export const CouponService = {
-  /**
-   * Crea un nuevo cupón
-   */
-  async createCoupon(data: InsertCoupon): Promise<Coupon> {
-    // Establecer la fecha de expiración basada en la duración seleccionada
-    const expiresAt = data.duration ? calculateExpirationDate(data.duration) : null;
-    
-    // Crear el cupón con la fecha de expiración calculada
-    const [coupon] = await db.insert(coupons)
-      .values({
-        ...data,
-        expiresAt
-      })
-      .returning();
-    
-    return coupon;
-  },
-  
-  /**
-   * Obtiene un cupón por su código
-   */
-  async getCouponByCode(code: string, companyId: string): Promise<Coupon | undefined> {
-    if (!code || !companyId) {
-      return undefined;
-    }
-    
-    const [coupon] = await db.select()
-      .from(coupons)
-      .where(
-        and(
-          eq(coupons.code, code),
-          eq(coupons.companyId, companyId),
-          eq(coupons.isActive, true),
-          sql`${coupons.expiresAt} IS NULL OR ${coupons.expiresAt} > NOW()`
-        )
-      );
-    
-    return coupon;
-  },
-  
-  /**
-   * Obtiene todos los cupones de una compañía
-   */
-  async getCouponsByCompany(companyId: string): Promise<Coupon[]> {
-    return db.select()
-      .from(coupons)
-      .where(eq(coupons.companyId, companyId))
-      .orderBy(sql`${coupons.createdAt} DESC`);
-  },
-  
-  /**
-   * Incrementa el contador de uso de un cupón
-   */
-  async incrementUsageCount(couponId: number): Promise<void> {
-    await db.update(coupons)
-      .set({ 
-        usedCount: sql`${coupons.usedCount} + 1` 
-      })
-      .where(eq(coupons.id, couponId));
-  },
-  
-  /**
-   * Desactiva un cupón
-   */
-  async deactivateCoupon(couponId: number): Promise<Coupon> {
-    const [updatedCoupon] = await db.update(coupons)
-      .set({ isActive: false })
-      .where(eq(coupons.id, couponId))
-      .returning();
-    
-    return updatedCoupon;
-  },
-  
-  /**
-   * Calcula el descuento a aplicar basado en el tipo de descuento y valor
-   */
-  calculateDiscount(totalAmount: number, discountType: typeof DiscountType[keyof typeof DiscountType], discountValue: number): number {
-    if (discountType === DiscountType.PERCENTAGE) {
-      // Descuento porcentual (hasta máximo 100%)
-      const percentage = Math.min(discountValue, 100) / 100;
-      return totalAmount * percentage;
-    } else {
-      // Descuento fijo (no puede ser mayor que el total)
-      return Math.min(discountValue, totalAmount);
-    }
-  },
-  
+export type CouponCreateInput = z.infer<typeof insertCouponSchema>;
+
+export class CouponService {
   /**
    * Genera un código aleatorio para un cupón
+   * @param length Longitud del código (por defecto 5)
+   * @returns Código aleatorio en formato alfanumérico
    */
-  generateRandomCode(): string {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    const codeLength = 5;
-    let code = '';
+  static generateRandomCode(length: number = 5): string {
+    // Generar bytes aleatorios y convertirlos a una cadena hexadecimal
+    const randomBuffer = randomBytes(Math.ceil(length / 2));
+    const randomHex = randomBuffer.toString('hex').slice(0, length);
     
-    for (let i = 0; i < codeLength; i++) {
-      const randomIndex = Math.floor(Math.random() * characters.length);
-      code += characters.charAt(randomIndex);
-    }
-    
-    return code;
-  },
-  
-  /**
-   * Verifica si un código de cupón ya existe
-   */
-  async codeExists(code: string): Promise<boolean> {
-    const result = await db.select({ count: count() })
-      .from(coupons)
-      .where(eq(coupons.code, code));
-    
-    return result[0].count > 0;
-  },
-  
-  /**
-   * Verifica si un cupón es válido para una reservación
-   * @returns Objeto con información del cupón y descuento calculado, o null si no es válido
-   */
-  async validateCouponForReservation(code: string, companyId: string, totalAmount: number): Promise<{
-    coupon: Coupon,
-    discountAmount: number
-  } | null> {
-    // Buscar el cupón por código
-    const coupon = await this.getCouponByCode(code, companyId);
-    
-    // Si no existe o no está activo, retornar null
-    if (!coupon) {
-      return null;
-    }
-    
-    // Calcular el descuento basado en el tipo y valor
-    const discountAmount = this.calculateDiscount(
-      totalAmount,
-      coupon.discountType as typeof DiscountType[keyof typeof DiscountType],
-      coupon.discountValue
-    );
-    
-    return {
-      coupon,
-      discountAmount
-    };
-  },
-  
-  /**
-   * Aplica un cupón a una reservación
-   */
-  async applyCouponToReservation(couponId: number, reservationId: number, discountAmount: number): Promise<void> {
-    // Registrar la aplicación del cupón
-    await db.insert(couponApplications)
-      .values({
-        couponId,
-        reservationId,
-        appliedDiscount: discountAmount
-      });
-    
-    // Incrementar el contador de uso del cupón
-    await this.incrementUsageCount(couponId);
+    // Convertir a mayúsculas para mejor legibilidad
+    return randomHex.toUpperCase();
   }
-};
 
-/**
- * Calcula la fecha de expiración basada en la duración
- */
-function calculateExpirationDate(duration: string | undefined): Date | null {
-  // Si no hay duración o es permanente, no tiene fecha de expiración
-  if (!duration || duration === CouponDuration.PERMANENT) {
-    return null;
+  /**
+   * Crea un nuevo cupón
+   * @param data Datos del cupón a crear
+   * @returns El cupón creado
+   */
+  static async createCoupon(data: CouponCreateInput) {
+    try {
+      // Si no se proporciona código, generar uno aleatorio
+      if (!data.code) {
+        data.code = this.generateRandomCode();
+        
+        // Verificar que el código generado no exista ya
+        let isUnique = false;
+        let attempts = 0;
+        
+        while (!isUnique && attempts < 5) {
+          const existingCoupon = await db
+            .select({ id: coupons.id })
+            .from(coupons)
+            .where(eq(coupons.code, data.code))
+            .limit(1);
+          
+          isUnique = existingCoupon.length === 0;
+          
+          if (!isUnique) {
+            data.code = this.generateRandomCode();
+            attempts++;
+          }
+        }
+        
+        if (!isUnique) {
+          throw new Error("No se pudo generar un código único después de 5 intentos");
+        }
+      }
+      
+      const [coupon] = await db.insert(coupons).values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }).returning();
+      
+      return coupon;
+    } catch (error) {
+      console.error("Error al crear cupón:", error);
+      throw error;
+    }
   }
-  
-  const now = new Date();
-  
-  switch (duration) {
-    case CouponDuration.ONE_HOUR:
-      now.setHours(now.getHours() + 1);
-      break;
-    case CouponDuration.ONE_DAY:
-      now.setHours(now.getHours() + 24);
-      break;
-    case CouponDuration.TWO_DAYS:
-      now.setHours(now.getHours() + 48);
-      break;
-    case CouponDuration.ONE_WEEK:
-      now.setDate(now.getDate() + 7);
-      break;
-    default:
+
+  /**
+   * Obtiene todos los cupones
+   * @param companyId ID de la compañía para filtrar (opcional)
+   * @returns Lista de cupones
+   */
+  static async getCoupons(companyId?: string) {
+    try {
+      if (companyId) {
+        return await db
+          .select()
+          .from(coupons)
+          .where(eq(coupons.companyId, companyId))
+          .orderBy(sql`${coupons.createdAt} DESC`);
+      }
+      
+      return await db
+        .select()
+        .from(coupons)
+        .orderBy(sql`${coupons.createdAt} DESC`);
+    } catch (error) {
+      console.error("Error al obtener cupones:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene un cupón por su ID
+   * @param id ID del cupón
+   * @returns El cupón o undefined si no existe
+   */
+  static async getCouponById(id: number) {
+    try {
+      const [coupon] = await db
+        .select()
+        .from(coupons)
+        .where(eq(coupons.id, id));
+      
+      return coupon;
+    } catch (error) {
+      console.error("Error al obtener cupón por ID:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene un cupón por su código
+   * @param code Código del cupón
+   * @returns El cupón o undefined si no existe
+   */
+  static async getCouponByCode(code: string) {
+    try {
+      const [coupon] = await db
+        .select()
+        .from(coupons)
+        .where(eq(coupons.code, code));
+      
+      return coupon;
+    } catch (error) {
+      console.error("Error al obtener cupón por código:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Actualiza un cupón
+   * @param id ID del cupón a actualizar
+   * @param data Datos a actualizar
+   * @returns El cupón actualizado o undefined si no existe
+   */
+  static async updateCoupon(id: number, data: Partial<CouponCreateInput>) {
+    try {
+      const [updatedCoupon] = await db
+        .update(coupons)
+        .set({
+          ...data,
+          updatedAt: new Date()
+        })
+        .where(eq(coupons.id, id))
+        .returning();
+      
+      return updatedCoupon;
+    } catch (error) {
+      console.error("Error al actualizar cupón:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Elimina un cupón
+   * @param id ID del cupón a eliminar
+   * @returns true si se eliminó correctamente, false si no existe
+   */
+  static async deleteCoupon(id: number) {
+    try {
+      const result = await db
+        .delete(coupons)
+        .where(eq(coupons.id, id))
+        .returning({ id: coupons.id });
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error al eliminar cupón:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Valida un cupón verificando si existe, si está vigente y si tiene usos disponibles
+   * @param code Código del cupón a validar
+   * @param companyId ID de la compañía para validar que el cupón pertenezca a ella
+   * @returns El cupón si es válido, null si no lo es
+   */
+  static async validateCoupon(code: string, companyId?: string) {
+    try {
+      if (!code) return null;
+      
+      // Buscar el cupón por código
+      const coupon = await this.getCouponByCode(code);
+      
+      // Si no existe, retornar null
+      if (!coupon) return null;
+      
+      // Si hay companyId y el cupón tiene companyId diferente, retornar null
+      if (companyId && coupon.companyId && coupon.companyId !== companyId) {
+        console.log(`Cupón ${code} no pertenece a la compañía ${companyId}, sino a ${coupon.companyId}`);
+        return null;
+      }
+      
+      // Verificar si el cupón ha expirado
+      if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
+        console.log(`Cupón ${code} expirado el ${coupon.expiresAt}`);
+        return null;
+      }
+      
+      // Verificar si el cupón ha alcanzado el máximo de usos
+      if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
+        console.log(`Cupón ${code} alcanzó el máximo de usos (${coupon.maxUses})`);
+        return null;
+      }
+      
+      return coupon;
+    } catch (error) {
+      console.error("Error al validar cupón:", error);
       return null;
+    }
   }
-  
-  return now;
+
+  /**
+   * Aplica un cupón a un monto total
+   * @param code Código del cupón
+   * @param amount Monto al que se aplicará el descuento
+   * @param companyId ID de la compañía para validar que el cupón pertenezca a ella
+   * @returns Objeto con información del descuento o null si el cupón no es válido
+   */
+  static async applyCoupon(code: string, amount: number, companyId?: string) {
+    try {
+      // Validar el cupón
+      const coupon = await this.validateCoupon(code, companyId);
+      
+      // Si el cupón no es válido, retornar null
+      if (!coupon) return null;
+      
+      let discountAmount = 0;
+      
+      // Calcular el descuento según el tipo
+      if (coupon.discountType === "percentage") {
+        // Descuento porcentual
+        discountAmount = (amount * coupon.discountValue) / 100;
+        
+        // Si hay monto máximo de descuento, limitarlo
+        if (coupon.maxDiscountAmount !== null && discountAmount > coupon.maxDiscountAmount) {
+          discountAmount = coupon.maxDiscountAmount;
+        }
+      } else {
+        // Descuento de monto fijo
+        discountAmount = coupon.discountValue;
+        
+        // El descuento no puede ser mayor que el monto total
+        if (discountAmount > amount) {
+          discountAmount = amount;
+        }
+      }
+      
+      // Calcular el monto final
+      const finalAmount = amount - discountAmount;
+      
+      // Actualizar el contador de usos del cupón
+      await this.updateCoupon(coupon.id, {
+        usedCount: coupon.usedCount + 1
+      });
+      
+      return {
+        couponId: coupon.id,
+        code: coupon.code,
+        originalAmount: amount,
+        discountAmount,
+        finalAmount,
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue
+      };
+    } catch (error) {
+      console.error("Error al aplicar cupón:", error);
+      return null;
+    }
+  }
 }
