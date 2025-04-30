@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { TripWithRouteInfo } from "@shared/schema";
 import QRCode from "qrcode";
@@ -67,6 +68,7 @@ interface ReservationFormData {
 
 export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStepsModalProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const ticketRef = useRef<HTMLDivElement>(null);
   
@@ -252,18 +254,8 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       currentPaymentStatus = PaymentStatus.PAID;
     }
     
-    // Get the currently logged in user's ID if available
-    const userDataStr = sessionStorage.getItem('user');
-    let createdById = undefined;
-    if (userDataStr) {
-      try {
-        const userData = JSON.parse(userDataStr);
-        createdById = userData.id;
-      } catch (e) {
-        console.error("Error parsing user data", e);
-      }
-    }
-    
+    // Obtener el ID del usuario autenticado actual usando el hook useAuth
+    // Este ID se usará para registrar quién creó la reservación (para comisiones y temas administrativos)
     const reservationData: ReservationFormData = {
       tripId: trip.id,
       numPassengers,
@@ -276,7 +268,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       advanceAmount: advanceAmount,
       advancePaymentMethod: advanceAmount > 0 ? advancePaymentMethod : PaymentMethod.CASH,
       notes,
-      createdBy: createdById
+      createdBy: user?.id // Usamos el ID del usuario actual desde el context de autenticación
     };
     
     createReservationMutation.mutate(reservationData);
