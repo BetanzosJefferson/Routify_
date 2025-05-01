@@ -882,7 +882,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <div className="text-sm text-gray-500">Fecha:</div>
-                          <div>{formatDate(trip.departureDate)}</div>
+                          <div>{formatDateLong(trip.departureDate)}</div>
                         </div>
                         <div>
                           <div className="text-sm text-gray-500">Hora:</div>
