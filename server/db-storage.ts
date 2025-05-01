@@ -1035,4 +1035,90 @@ export class DatabaseStorage implements IStorage {
       .returning({ id: schema.commissions.id });
     return result.length > 0;
   }
+
+  // User methods
+  async getUsers(): Promise<schema.User[]> {
+    console.log("[getUsers] Obteniendo todos los usuarios");
+    return await db.select().from(schema.users);
+  }
+
+  async getUserById(id: number): Promise<schema.User | undefined> {
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id));
+    return user;
+  }
+
+  async updateUser(id: number, userData: { 
+    email?: string; 
+    password?: string; 
+    commissionPercentage?: number; 
+  }): Promise<schema.User | undefined> {
+    // Si se proporciona una contraseña, hacemos hash
+    const updateData: any = { ...userData };
+    
+    if (userData.password) {
+      const bcrypt = require('bcryptjs');
+      const salt = await bcrypt.genSalt(10);
+      updateData.password = await bcrypt.hash(userData.password, salt);
+    }
+    
+    // Asegurarnos de actualizar la fecha
+    updateData.updatedAt = new Date();
+    
+    try {
+      const [updatedUser] = await db
+        .update(schema.users)
+        .set(updateData)
+        .where(eq(schema.users.id, id))
+        .returning();
+      
+      console.log(`[updateUser] Usuario con ID ${id} actualizado correctamente`);
+      return updatedUser;
+    } catch (error) {
+      console.error(`[updateUser] Error al actualizar usuario con ID ${id}:`, error);
+      return undefined;
+    }
+  }
+
+  async deleteUser(id: number): Promise<boolean> {
+    try {
+      // Verificar si el usuario tiene reservaciones asociadas
+      const reservations = await db
+        .select({ id: schema.reservations.id })
+        .from(schema.reservations)
+        .where(eq(schema.reservations.createdBy, id));
+      
+      if (reservations.length > 0) {
+        console.log(`[deleteUser] No se puede eliminar usuario con ID ${id} porque tiene ${reservations.length} reservaciones asociadas`);
+        return false;
+      }
+      
+      // Verificar si ha invitado a otros usuarios
+      const invitedUsers = await db
+        .select({ id: schema.users.id })
+        .from(schema.users)
+        .where(eq(schema.users.invitedById, id));
+      
+      if (invitedUsers.length > 0) {
+        console.log(`[deleteUser] No se puede eliminar usuario con ID ${id} porque tiene ${invitedUsers.length} usuarios invitados`);
+        return false;
+      }
+      
+      // Eliminar invitaciones creadas por el usuario
+      await db
+        .delete(schema.invitations)
+        .where(eq(schema.invitations.createdById, id));
+      
+      // Eliminar el usuario
+      const result = await db
+        .delete(schema.users)
+        .where(eq(schema.users.id, id))
+        .returning({ id: schema.users.id });
+      
+      console.log(`[deleteUser] Usuario con ID ${id} eliminado correctamente`);
+      return result.length > 0;
+    } catch (error) {
+      console.error(`[deleteUser] Error al eliminar usuario con ID ${id}:`, error);
+      return false;
+    }
+  }
 }
