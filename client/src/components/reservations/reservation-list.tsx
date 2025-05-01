@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
+import { formatDate, formatPrice, generateReservationId, normalizeToStartOfDay, isSameLocalDay } from "@/lib/utils";
 import { 
   UserIcon, 
   SearchIcon, 
@@ -89,22 +89,24 @@ export function ReservationList() {
   
   // Ahora usamos funciones inline para manejar las comparaciones de fechas
   
-  // Separar reservaciones en actuales y archivadas
+  // Separar reservaciones en actuales y archivadas usando nuestras funciones de utilidad
   const upcomingReservations = reservations?.filter(
     (reservation) => {
-      const date = new Date(reservation.trip.departureDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return date >= today;
+      // Usar normalizeToStartOfDay para obtener la fecha normalizada del viaje
+      const tripDate = normalizeToStartOfDay(reservation.trip.departureDate);
+      // Normalizar la fecha actual también para hacer una comparación correcta
+      const today = normalizeToStartOfDay(new Date());
+      return tripDate >= today;
     }
   ) || [];
   
   const archivedReservations = reservations?.filter(
     (reservation) => {
-      const date = new Date(reservation.trip.departureDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return date < today;
+      // Usar normalizeToStartOfDay para obtener la fecha normalizada del viaje
+      const tripDate = normalizeToStartOfDay(reservation.trip.departureDate);
+      // Normalizar la fecha actual también para hacer una comparación correcta
+      const today = normalizeToStartOfDay(new Date());
+      return tripDate < today;
     }
   ) || [];
   
@@ -132,13 +134,13 @@ export function ReservationList() {
       );
     }
     
-    // Aplicar filtro de fecha
+    // Aplicar filtro de fecha usando nuestras utilidades de normalización
     let matchesDate = true;
     if (dateFilter) {
-      // Convertir la fecha de la reservación a formato YYYY-MM-DD para comparar
-      const reservationDate = new Date(reservation.trip.departureDate);
-      const formattedReservationDate = reservationDate.toISOString().split('T')[0];
-      matchesDate = formattedReservationDate === dateFilter;
+      // Usar isSameLocalDay para comparar las fechas
+      const tripDate = normalizeToStartOfDay(reservation.trip.departureDate);
+      const filterDate = normalizeToStartOfDay(dateFilter);
+      matchesDate = isSameLocalDay(tripDate, filterDate);
     }
     
     return matchesSearch && matchesDate;
