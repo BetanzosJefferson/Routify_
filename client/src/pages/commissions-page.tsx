@@ -103,6 +103,7 @@ export default function CommissionsPage() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pasajeros</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comisión</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                       </tr>
                     </thead>
@@ -135,6 +136,16 @@ export default function CommissionsPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium">{formatPrice(reservation.totalAmount)}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {reservation.createdByUser?.commissionPercentage ? (
+                              <div className="text-sm font-medium text-primary">
+                                {formatPrice(reservation.totalAmount * (reservation.createdByUser.commissionPercentage / 100))}
+                                <span className="text-xs text-gray-500 ml-1">({reservation.createdByUser.commissionPercentage}%)</span>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-500">No configurada</div>
+                            )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <Badge 
