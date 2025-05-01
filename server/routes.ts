@@ -2180,6 +2180,281 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // =========== RUTAS PARA SOLICITUDES DE RESERVACIÓN ===========
+  
+  // Crear una solicitud de reservación (para comisionistas)
+  app.post(apiRouter('/reservation-requests'), isAuthenticated, async (req, res) => {
+    try {
+      const currentUser = req.user as any;
+      if (!currentUser) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      // Solo comisionistas pueden crear solicitudes de reservación
+      if (currentUser.role !== UserRole.AGENT) {
+        return res.status(403).json({ 
+          message: "Solo los comisionistas pueden crear solicitudes de reservación" 
+        });
+      }
+      
+      // Validar datos del request
+      const { tripId, passengersData, totalAmount, email, phone, 
+              paymentStatus, advanceAmount, advancePaymentMethod, 
+              paymentMethod, notes } = req.body;
+      
+      if (!tripId || !passengersData || !totalAmount || !email || !phone) {
+        return res.status(400).json({ 
+          message: "Faltan datos obligatorios para la solicitud de reservación" 
+        });
+      }
+      
+      // Verificar que el viaje exista y sea de la misma compañía que el comisionista
+      const trip = await storage.getTrip(tripId);
+      if (!trip) {
+        return res.status(404).json({ message: "Viaje no encontrado" });
+      }
+      
+      if (trip.companyId !== currentUser.companyId) {
+        console.log(`ALERTA: Intento de acceso no autorizado a viaje de otra compañía`);
+        return res.status(403).json({ 
+          message: "No tienes acceso a este viaje" 
+        });
+      }
+      
+      // Crear la solicitud de reservación
+      const requestData = {
+        tripId,
+        passengersData,
+        totalAmount,
+        email,
+        phone,
+        paymentStatus: paymentStatus || 'pendiente',
+        advanceAmount: advanceAmount || 0,
+        advancePaymentMethod: advancePaymentMethod || 'efectivo',
+        paymentMethod: paymentMethod || 'efectivo',
+        notes,
+        requesterId: currentUser.id,
+        companyId: currentUser.companyId,
+      };
+      
+      const request = await storage.createReservationRequest(requestData);
+      
+      res.status(201).json({
+        message: "Solicitud de reservación creada con éxito. Espera la aprobación.",
+        request
+      });
+    } catch (error) {
+      console.error("Error al crear solicitud de reservación:", error);
+      res.status(500).json({ message: "Error interno al procesar la solicitud" });
+    }
+  });
+  
+  // Obtener solicitudes de reservación (filtradas por compañía/estado/comisionista)
+  app.get(apiRouter('/reservation-requests'), isAuthenticated, async (req, res) => {
+    try {
+      const currentUser = req.user as any;
+      if (!currentUser) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      // Construir filtros basados en permisos
+      const filters: { companyId?: string, status?: string, requesterId?: number } = {};
+      
+      // Si es comisionista, solo puede ver sus propias solicitudes
+      if (currentUser.role === UserRole.AGENT) {
+        filters.requesterId = currentUser.id;
+      } 
+      // Si no es superAdmin, solo puede ver solicitudes de su compañía
+      else if (currentUser.role !== UserRole.SUPER_ADMIN && currentUser.companyId) {
+        filters.companyId = currentUser.companyId;
+      }
+      
+      // Aplicar filtros adicionales de la consulta
+      if (req.query.status) {
+        filters.status = req.query.status as string;
+      }
+      
+      const requests = await storage.getReservationRequests(filters);
+      
+      res.json(requests);
+    } catch (error) {
+      console.error("Error al obtener solicitudes de reservación:", error);
+      res.status(500).json({ message: "Error interno al procesar la solicitud" });
+    }
+  });
+  
+  // Obtener una solicitud de reservación específica
+  app.get(apiRouter('/reservation-requests/:id'), isAuthenticated, async (req, res) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      if (isNaN(requestId)) {
+        return res.status(400).json({ message: "ID de solicitud inválido" });
+      }
+      
+      const currentUser = req.user as any;
+      if (!currentUser) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      // Obtener la solicitud
+      const request = await storage.getReservationRequest(requestId);
+      
+      if (!request) {
+        return res.status(404).json({ message: "Solicitud no encontrada" });
+      }
+      
+      // Verificar permisos de acceso
+      if (currentUser.role === UserRole.AGENT && request.requesterId !== currentUser.id) {
+        return res.status(403).json({ 
+          message: "No tienes permiso para ver esta solicitud" 
+        });
+      }
+      
+      if (currentUser.role !== UserRole.SUPER_ADMIN && 
+          currentUser.role !== UserRole.AGENT && 
+          request.companyId !== currentUser.companyId) {
+        return res.status(403).json({ 
+          message: "No tienes permiso para ver esta solicitud" 
+        });
+      }
+      
+      res.json(request);
+    } catch (error) {
+      console.error(`Error al obtener solicitud de reservación ${req.params.id}:`, error);
+      res.status(500).json({ message: "Error interno al procesar la solicitud" });
+    }
+  });
+  
+  // Aprobar o rechazar una solicitud de reservación
+  app.post(apiRouter('/reservation-requests/:id/update-status'), isAuthenticated, async (req, res) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      if (isNaN(requestId)) {
+        return res.status(400).json({ message: "ID de solicitud inválido" });
+      }
+      
+      const { status, reviewNotes } = req.body;
+      if (!status || !['aprobada', 'rechazada'].includes(status)) {
+        return res.status(400).json({ 
+          message: "Estado inválido. Debe ser 'aprobada' o 'rechazada'" 
+        });
+      }
+      
+      const currentUser = req.user as any;
+      if (!currentUser) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      // Verificar que el usuario tenga permisos para aprobar/rechazar
+      const canApprove = [UserRole.OWNER, UserRole.ADMIN, UserRole.CALL_CENTER].includes(currentUser.role);
+      if (!canApprove) {
+        return res.status(403).json({ 
+          message: "No tienes permisos para aprobar o rechazar solicitudes" 
+        });
+      }
+      
+      // Obtener la solicitud para verificar que pertenezca a la misma compañía
+      const request = await storage.getReservationRequest(requestId);
+      if (!request) {
+        return res.status(404).json({ message: "Solicitud no encontrada" });
+      }
+      
+      if (currentUser.role !== UserRole.SUPER_ADMIN && request.companyId !== currentUser.companyId) {
+        return res.status(403).json({ 
+          message: "No tienes permiso para modificar esta solicitud" 
+        });
+      }
+      
+      // Actualizar el estado de la solicitud
+      const updatedRequest = await storage.updateReservationRequestStatus(
+        requestId, 
+        status, 
+        currentUser.id, 
+        reviewNotes
+      );
+      
+      res.json({
+        message: `Solicitud de reservación ${status}`,
+        request: updatedRequest
+      });
+    } catch (error) {
+      console.error(`Error al actualizar estado de solicitud ${req.params.id}:`, error);
+      res.status(500).json({ message: "Error interno al procesar la solicitud" });
+    }
+  });
+  
+  // =========== RUTAS PARA NOTIFICACIONES ===========
+  
+  // Obtener notificaciones del usuario actual
+  app.get(apiRouter('/notifications'), isAuthenticated, async (req, res) => {
+    try {
+      const currentUser = req.user as any;
+      if (!currentUser) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      const notifications = await storage.getNotifications(currentUser.id);
+      
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error al obtener notificaciones:", error);
+      res.status(500).json({ message: "Error interno al procesar la solicitud" });
+    }
+  });
+  
+  // Marcar una notificación como leída
+  app.post(apiRouter('/notifications/:id/mark-read'), isAuthenticated, async (req, res) => {
+    try {
+      const notificationId = parseInt(req.params.id);
+      if (isNaN(notificationId)) {
+        return res.status(400).json({ message: "ID de notificación inválido" });
+      }
+      
+      const currentUser = req.user as any;
+      if (!currentUser) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      // Obtener la notificación para verificar que pertenezca al usuario actual
+      const notifications = await storage.getNotifications(currentUser.id);
+      const notification = notifications.find(n => n.id === notificationId);
+      
+      if (!notification) {
+        return res.status(404).json({ 
+          message: "Notificación no encontrada o no pertenece a este usuario" 
+        });
+      }
+      
+      // Marcar como leída
+      const updatedNotification = await storage.markNotificationAsRead(notificationId);
+      
+      res.json({
+        message: "Notificación marcada como leída",
+        notification: updatedNotification
+      });
+    } catch (error) {
+      console.error(`Error al marcar notificación ${req.params.id} como leída:`, error);
+      res.status(500).json({ message: "Error interno al procesar la solicitud" });
+    }
+  });
+  
+  // Obtener contador de notificaciones no leídas
+  app.get(apiRouter('/notifications/unread-count'), isAuthenticated, async (req, res) => {
+    try {
+      const currentUser = req.user as any;
+      if (!currentUser) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      const count = await storage.getUnreadNotificationsCount(currentUser.id);
+      
+      res.json({ count });
+    } catch (error) {
+      console.error("Error al obtener contador de notificaciones no leídas:", error);
+      res.status(500).json({ message: "Error interno al procesar la solicitud" });
+    }
+  });
+  
   // Rutas para manejo de usuarios
   // GET /api/users - Obtener todos los usuarios
   app.get(apiRouter('/users'), isAuthenticated, hasRole([UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN]), async (req, res) => {
