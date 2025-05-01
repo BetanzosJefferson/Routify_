@@ -1,0 +1,383 @@
+import { useEffect, useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sidebar } from "@/components/layout/sidebar";
+import { MobileNav } from "@/components/layout/mobile-nav";
+import { Topbar } from "@/components/layout/topbar";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { formatPrice } from "@/lib/utils";
+import { Check, X, CalendarIcon, CreditCard, MapPin, Phone, User } from "lucide-react";
+import { TabType } from "@/hooks/use-active-tab";
+
+// Interfaz para el tipo de solicitud de reservación
+interface ReservationRequest {
+  id: number;
+  tripId: number;
+  passengersData: any[]; // Detalles de los pasajeros
+  requesterId: number;
+  requesterName?: string;
+  companyId: string | null;
+  totalAmount: number;
+  email: string;
+  phone: string;
+  paymentStatus: string;
+  advanceAmount: number;
+  advancePaymentMethod: string;
+  paymentMethod: string;
+  notes: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  reviewedBy: number | null;
+  reviewNotes: string | null;
+  reviewedAt: string | null;
+  
+  // Información adicional que puede venir del join
+  tripOrigin?: string;
+  tripDestination?: string;
+  tripDate?: string;
+  tripDepartureTime?: string;
+}
+
+export default function ReservationRequestsPage() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<string>("pending");
+  const [selectedRequest, setSelectedRequest] = useState<ReservationRequest | null>(null);
+  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState<boolean>(false);
+  const [reviewNotes, setReviewNotes] = useState<string>("");
+
+  // Consulta para obtener solicitudes de reservación
+  const { data: requests, isLoading, refetch } = useQuery<ReservationRequest[]>({
+    queryKey: ["/api/reservation-requests", activeTab],
+    queryFn: async () => {
+      const url = `/api/reservation-requests${activeTab === "pending" ? "?status=pendiente" : ""}`;
+      const response = await apiRequest("GET", url);
+      return await response.json();
+    },
+  });
+
+  // Mutación para aprobar/rechazar solicitudes
+  const updateRequestMutation = useMutation({
+    mutationFn: async ({ id, status, reviewNotes }: { id: number; status: string; reviewNotes?: string }) => {
+      const response = await apiRequest("POST", `/api/reservation-requests/${id}/update-status`, {
+        status,
+        reviewNotes: reviewNotes || ""
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reservation-requests"] });
+      refetch();
+      setSelectedRequest(null);
+      setIsReviewDialogOpen(false);
+      setReviewNotes("");
+      toast({
+        title: "Solicitud actualizada",
+        description: "La solicitud ha sido procesada correctamente.",
+        variant: "default",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al procesar la solicitud",
+        description: error.message || "Ha ocurrido un error. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleApprove = () => {
+    if (!selectedRequest) return;
+    updateRequestMutation.mutate({ 
+      id: selectedRequest.id, 
+      status: "aprobada", 
+      reviewNotes 
+    });
+  };
+
+  const handleReject = () => {
+    if (!selectedRequest) return;
+    updateRequestMutation.mutate({ 
+      id: selectedRequest.id, 
+      status: "rechazada", 
+      reviewNotes 
+    });
+  };
+
+  const openReviewDialog = (request: ReservationRequest) => {
+    setSelectedRequest(request);
+    setReviewNotes("");
+    setIsReviewDialogOpen(true);
+  };
+
+  // Filtrar solicitudes por estado
+  const pendingRequests = requests?.filter(req => req.status === "pendiente") || [];
+  const processedRequests = requests?.filter(req => req.status !== "pendiente") || [];
+
+  // Función para el cambio de pestañas en el sidebar
+  const [, setLocation] = useLocation();
+  const [sidebarActiveTab, setSidebarActiveTab] = useState<TabType>("reservation-requests");
+  
+  const handleTabChange = (tab: TabType) => {
+    // Redirigir al dashboard con la pestaña seleccionada utilizando wouter
+    setLocation(`/?tab=${tab}`);
+  };
+
+  // Componente de contenido de solicitudes de reservación
+  function ReservationRequestsContent() {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Solicitudes de Reservación</h1>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="pending" className="relative">
+              Pendientes
+              {pendingRequests.length > 0 && (
+                <Badge className="ml-2 bg-primary text-white" variant="outline">
+                  {pendingRequests.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="processed">Procesadas</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pending">
+            {isLoading ? (
+              <div className="flex justify-center my-12">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+              </div>
+            ) : pendingRequests.length === 0 ? (
+              <Card>
+                <CardContent className="py-10 text-center">
+                  <p className="text-muted-foreground">No hay solicitudes pendientes.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {pendingRequests.map((request) => (
+                  <RequestCard 
+                    key={request.id} 
+                    request={request} 
+                    onReview={openReviewDialog} 
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="processed">
+            {isLoading ? (
+              <div className="flex justify-center my-12">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+              </div>
+            ) : processedRequests.length === 0 ? (
+              <Card>
+                <CardContent className="py-10 text-center">
+                  <p className="text-muted-foreground">No hay solicitudes procesadas.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {processedRequests.map((request) => (
+                  <RequestCard 
+                    key={request.id} 
+                    request={request} 
+                    isProcessed 
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        {/* Diálogo de revisión */}
+        <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Revisar Solicitud de Reservación</DialogTitle>
+              <DialogDescription>
+                Selecciona si deseas aprobar o rechazar esta solicitud.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedRequest && (
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Notas sobre la revisión (opcional)</Label>
+                  <Textarea 
+                    placeholder="Escribe algún comentario si es necesario" 
+                    value={reviewNotes}
+                    onChange={(e) => setReviewNotes(e.target.value)}
+                  />
+                </div>
+                
+                <div className="flex items-center text-sm space-x-4">
+                  <div className="flex-1">
+                    <span className="font-semibold">Viaje:</span> {selectedRequest.tripOrigin} - {selectedRequest.tripDestination}
+                  </div>
+                  <div>
+                    <span className="font-semibold">Total:</span> {formatPrice(selectedRequest.totalAmount)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="flex justify-between sm:justify-between">
+              <Button 
+                type="button" 
+                variant="destructive" 
+                onClick={handleReject}
+                disabled={updateRequestMutation.isPending}
+              >
+                <X className="mr-2 h-4 w-4" /> Rechazar
+              </Button>
+              <Button 
+                type="button" 
+                onClick={handleApprove}
+                disabled={updateRequestMutation.isPending}
+              >
+                <Check className="mr-2 h-4 w-4" /> Aprobar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+  
+  // Layout principal
+  return (
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar activeTab={sidebarActiveTab} onTabChange={handleTabChange} />
+      
+      <div className="flex flex-col flex-1 w-0 overflow-hidden">
+        <MobileNav activeTab={sidebarActiveTab} onTabChange={handleTabChange} />
+        <Topbar />
+        
+        <div className="flex-1 overflow-auto focus:outline-none">
+          <main className="relative z-0 flex-1 overflow-y-auto">
+            <ReservationRequestsContent />
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface RequestCardProps {
+  request: ReservationRequest;
+  isProcessed?: boolean;
+  onReview?: (request: ReservationRequest) => void;
+}
+
+function RequestCard({ request, isProcessed, onReview }: RequestCardProps) {
+  // Formatear fechas
+  const formattedCreatedAt = format(new Date(request.createdAt), "dd MMM yyyy, HH:mm", { locale: es });
+  const formattedReviewedAt = request.reviewedAt 
+    ? format(new Date(request.reviewedAt), "dd MMM yyyy, HH:mm", { locale: es }) 
+    : null;
+  
+  // Estado con colores
+  const getStatusBadge = () => {
+    switch (request.status) {
+      case "pendiente":
+        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">Pendiente</Badge>;
+      case "aprobada":
+        return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">Aprobada</Badge>;
+      case "rechazada":
+        return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">Rechazada</Badge>;
+      default:
+        return <Badge>{request.status}</Badge>;
+    }
+  };
+
+  return (
+    <Card className={request.status === "rechazada" ? "border-red-200 bg-red-50" : ""}>
+      <CardHeader className="pb-3">
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-xl flex items-center">
+              Solicitud #{request.id} 
+              <span className="ml-3">{getStatusBadge()}</span>
+            </CardTitle>
+            <CardDescription>
+              {formattedCreatedAt} • por {request.requesterName || `Agente #${request.requesterId}`}
+            </CardDescription>
+          </div>
+          {!isProcessed && onReview && (
+            <Button onClick={() => onReview(request)}>
+              Revisar
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center text-sm">
+              <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span>{request.tripOrigin} → {request.tripDestination}</span>
+            </div>
+            <div className="flex items-center text-sm">
+              <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span>
+                {request.tripDate} • {request.tripDepartureTime}
+              </span>
+            </div>
+            <div className="flex items-center text-sm">
+              <User className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span>{request.passengersData?.length || 0} pasajeros</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center text-sm">
+              <CreditCard className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span>Total: <strong>{formatPrice(request.totalAmount)}</strong></span>
+            </div>
+            <div className="flex items-center text-sm">
+              <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
+              <span>{request.phone}</span>
+            </div>
+            <div className="flex items-center text-sm">
+              <span className="mr-2">📧</span>
+              <span>{request.email}</span>
+            </div>
+          </div>
+        </div>
+        
+        {request.notes && (
+          <div className="text-sm mt-2">
+            <p className="font-medium">Notas:</p>
+            <p className="text-muted-foreground">{request.notes}</p>
+          </div>
+        )}
+        
+        {/* Información de revisión para solicitudes procesadas */}
+        {isProcessed && (
+          <div className="text-sm mt-2 pt-4 border-t border-border">
+            <p className="font-medium">Revisado el {formattedReviewedAt}</p>
+            {request.reviewNotes && (
+              <p className="text-muted-foreground">{request.reviewNotes}</p>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

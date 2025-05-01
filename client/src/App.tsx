@@ -15,6 +15,8 @@ import RegisterPage from "@/pages/register-page";
 import PassengerListPage from "@/pages/passenger-list-page";
 import ReservationDetails from "@/pages/reservation-details";
 import CommissionsPage from "@/pages/commissions-page";
+import ReservationRequestsPage from "@/pages/reservation-requests-page";
+import NotificationsPage from "@/pages/notifications-page";
 import { UsersPage } from "@/components/users/users-page";
 
 function Router() {
@@ -24,6 +26,8 @@ function Router() {
       <ProtectedRoute path="/dashboard" component={Dashboard} />
       <ProtectedRoute path="/trip/:tripId/passengers" component={PassengerListPage} />
       <ProtectedRoute path="/commissions" component={CommissionsPage} />
+      <ProtectedRoute path="/reservation-requests" component={ReservationRequestsPage} />
+      <ProtectedRoute path="/notifications" component={NotificationsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register/:token" component={RegisterPage} />
       <Route path="/reservation-details" component={ReservationDetails} />
