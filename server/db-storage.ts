@@ -1020,6 +1020,50 @@ export class DatabaseStorage implements IStorage {
     return updatedReservation;
   }
   
+  async checkTicket(id: number, userId: number): Promise<Reservation | undefined> {
+    try {
+      // Primero obtenemos la reservación para ver si ya ha sido escaneada
+      const reservation = await this.getReservationById(id);
+      
+      if (!reservation) {
+        throw new Error("Reservación no encontrada");
+      }
+      
+      // Si es la primera vez que se escanea, actualizamos los campos correspondientes
+      if (!reservation.checkedBy) {
+        console.log(`[checkTicket] Primera vez que se escanea el ticket #${id} por el usuario ${userId}`);
+        
+        const [updatedReservation] = await db
+          .update(schema.reservations)
+          .set({
+            checkedBy: userId,
+            checkedAt: new Date(),
+            checkCount: 1
+          })
+          .where(eq(schema.reservations.id, id))
+          .returning();
+          
+        return updatedReservation;
+      } else {
+        // Si ya ha sido escaneado, solo incrementamos el contador
+        console.log(`[checkTicket] Ticket #${id} ya fue escaneado por el usuario ${reservation.checkedBy}. Incrementando contador.`);
+        
+        const [updatedReservation] = await db
+          .update(schema.reservations)
+          .set({
+            checkCount: (reservation.checkCount || 0) + 1
+          })
+          .where(eq(schema.reservations.id, id))
+          .returning();
+          
+        return updatedReservation;
+      }
+    } catch (error) {
+      console.error("[checkTicket] Error al registrar escaneo de ticket:", error);
+      throw error;
+    }
+  }
+  
   async deleteReservation(id: number): Promise<boolean> {
     const result = await db
       .delete(schema.reservations)

@@ -130,6 +130,10 @@ export const reservations = pgTable("reservations", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   // Campo para aislamiento de datos por compañía
   companyId: text("company_id"),
+  // Campos para control de escaneo de ticket
+  checkedBy: integer("checked_by"), // ID del usuario que escaneó el ticket
+  checkedAt: timestamp("checked_at"), // Fecha y hora del escaneo
+  checkCount: integer("check_count").default(0), // Contador de veces que se ha escaneado el ticket
 });
 
 export const insertReservationSchema = createInsertSchema(reservations);
@@ -354,6 +358,10 @@ export const reservationRelations = relations(reservations, ({ one, many }) => (
   createdByUser: one(users, {
     fields: [reservations.createdBy],
     references: [users.id]
+  }),
+  checkedByUser: one(users, {
+    fields: [reservations.checkedBy],
+    references: [users.id]
   })
 }));
 
@@ -424,6 +432,11 @@ export const userRelations = relations(users, ({ many, one }) => ({
   createdReservations: many(reservations, {
     fields: [users.id],
     references: [reservations.createdBy]
+  }),
+  // Relación para las reservaciones escaneadas por este usuario
+  checkedReservations: many(reservations, {
+    fields: [users.id],
+    references: [reservations.checkedBy]
   })
 }));
 
