@@ -43,8 +43,8 @@ function NavItem({ icon, active, onClick, children }: NavItemProps) {
       )}
       onClick={onClick}
     >
-      <span className={cn("mr-3", active ? "text-white" : "text-gray-500 dark:text-gray-400 group-hover:text-primary")}>{icon}</span>
-      <span>{children}</span>
+      <span className={cn("mr-3 flex-shrink-0", active ? "text-white" : "text-gray-500 dark:text-gray-400 group-hover:text-primary")}>{icon}</span>
+      <span className="truncate">{children}</span>
     </button>
   );
 }
