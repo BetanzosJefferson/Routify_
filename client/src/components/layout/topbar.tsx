@@ -73,7 +73,11 @@ export function Topbar() {
           {/* Acciones del lado derecho */}
           <div className="flex items-center space-x-4">
             {/* Menú de notificaciones */}
-            <NotificationsMenu />
+            <div className="relative">
+              <NotificationsMenu />
+              {/* Componente de depuración: esto debe quitarse en producción */}
+              <div id="debug-notification-count" className="hidden"></div>
+            </div>
 
             {/* Menú de usuario */}
             <DropdownMenu>
