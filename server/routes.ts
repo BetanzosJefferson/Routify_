@@ -2100,6 +2100,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint para marcar comisiones como pagadas
+  app.put(apiRouter("/commissions/pay"), async (req: Request, res: Response) => {
+    try {
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      console.log(`[PUT /commissions/pay] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
+      if (user) {
+        console.log(`[PUT /commissions/pay] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
+      }
+      
+      // SEGURIDAD: Verificar que solo los roles autorizados puedan acceder
+      if (!user) {
+        return res.status(401).json({ error: "No autorizado" });
+      }
+      
+      // Solo los roles Dueño y Administrador pueden acceder a esta sección
+      if (user.role !== UserRole.OWNER && user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.DEVELOPER) {
+        console.log(`[PUT /commissions/pay] ACCESO DENEGADO: El rol ${user.role} no tiene permiso para marcar comisiones como pagadas`);
+        return res.status(403).json({ error: "Acceso denegado" });
+      }
+      
+      // Verificar datos en el cuerpo de la petición
+      if (!req.body.reservationIds || !Array.isArray(req.body.reservationIds) || req.body.reservationIds.length === 0) {
+        return res.status(400).json({ error: "Se requieren IDs de reservaciones válidos" });
+      }
+      
+      const { reservationIds } = req.body;
+      const results = [];
+      
+      // Actualizar cada reservación
+      for (const id of reservationIds) {
+        try {
+          // Verificar que la reservación exista
+          const reservation = await storage.getReservation(id);
+          
+          if (!reservation) {
+            results.push({ id, success: false, message: "Reservación no encontrada" });
+            continue;
+          }
+          
+          // SEGURIDAD: Verificar que pertenece a la compañía del usuario
+          if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.DEVELOPER) {
+            const userCompanyId = user.companyId || user.company;
+            if (reservation.companyId && reservation.companyId !== userCompanyId) {
+              results.push({ id, success: false, message: "No tiene permisos para modificar reservaciones de otra compañía" });
+              continue;
+            }
+          }
+          
+          // Actualizar el campo de comisión pagada
+          const updated = await storage.updateReservation(id, { commissionPaid: true });
+          
+          if (updated) {
+            results.push({ id, success: true, message: "Comisión marcada como pagada" });
+          } else {
+            results.push({ id, success: false, message: "Error al actualizar la reservación" });
+          }
+        } catch (error) {
+          console.error(`[PUT /commissions/pay] Error al procesar la reservación ${id}: ${error}`);
+          results.push({ id, success: false, message: "Error interno al procesar la reservación" });
+        }
+      }
+      
+      const successful = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+      
+      console.log(`[PUT /commissions/pay] Actualización completada: ${successful} exitosas, ${failed} fallidas`);
+      
+      res.json({
+        success: failed === 0,
+        message: `Se han marcado ${successful} de ${reservationIds.length} comisiones como pagadas`,
+        results
+      });
+    } catch (error) {
+      console.error(`[PUT /commissions/pay] Error: ${error}`);
+      res.status(500).json({ error: "Error al marcar las comisiones como pagadas" });
+    }
+  });
+  
   // Rutas para manejo de usuarios
   // GET /api/users - Obtener todos los usuarios
   app.get(apiRouter('/users'), isAuthenticated, hasRole([UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN]), async (req, res) => {
