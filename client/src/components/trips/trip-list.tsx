@@ -143,7 +143,7 @@ export function TripList() {
       const params: SearchParams = {};
       if (origin) params.origin = origin;
       if (destination) params.destination = destination;
-      if (date) params.date = date;
+      if (date) params.date = formatDateForApiQuery(date);
       if (seats && !isNaN(parseInt(seats, 10))) {
         params.seats = parseInt(seats, 10);
       }
