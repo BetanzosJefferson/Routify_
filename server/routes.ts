@@ -1243,6 +1243,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let tripId: number | null = null;
       let includeRelatedTrips = req.query.includeRelated === 'true';
       
+      // Verificar si se solicitan reservaciones pendientes de aprobación
+      const pendingApproval = req.query.pendingApproval === 'true';
+      
       // Verificar si se solicita filtrar por viaje específico
       if (req.query.tripId) {
         tripId = parseInt(req.query.tripId as string, 10);
@@ -2249,6 +2252,174 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error(`[PUT /commissions/pay] Error: ${error}`);
       res.status(500).json({ error: "Error al marcar las comisiones como pagadas" });
+    }
+  });
+  
+  // Nuevo endpoint para aprobar o rechazar reservaciones pendientes
+  app.patch(apiRouter('/reservations/:id/approve'), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const { approved, notes } = req.body;
+      
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      console.log(`[PATCH /reservations/${id}/approve] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
+      
+      // Verificar permisos - solo dueños, administradores y call center pueden aprobar
+      if (![UserRole.OWNER, UserRole.ADMIN, UserRole.CALL_CENTER, UserRole.SUPER_ADMIN, UserRole.DEVELOPER].includes(user.role)) {
+        console.log(`[PATCH /reservations/${id}/approve] ACCESO DENEGADO: El rol ${user.role} no puede aprobar reservaciones`);
+        return res.status(403).json({ message: "No tienes permisos para aprobar reservaciones" });
+      }
+      
+      // Obtener la reservación
+      const reservation = await storage.getReservation(id);
+      
+      if (!reservation) {
+        return res.status(404).json({ message: "Reservación no encontrada" });
+      }
+      
+      // Verificar que la reservación esté pendiente de aprobación
+      if (reservation.isApproved) {
+        return res.status(400).json({ message: "Esta reservación ya está aprobada" });
+      }
+      
+      // SEGURIDAD: Verificar que pertenece a la compañía del usuario (excepto superAdmin y desarrollador)
+      if (![UserRole.SUPER_ADMIN, UserRole.DEVELOPER].includes(user.role)) {
+        const userCompanyId = user.companyId || user.company;
+        if (reservation.companyId && reservation.companyId !== userCompanyId) {
+          console.log(`[PATCH /reservations/${id}/approve] ACCESO DENEGADO: La reservación pertenece a la compañía ${reservation.companyId} pero el usuario es de ${userCompanyId}`);
+          return res.status(403).json({ message: "No tienes permisos para aprobar reservaciones de otra compañía" });
+        }
+      }
+      
+      // Si el usuario decide aprobar la reservación
+      if (approved) {
+        console.log(`[PATCH /reservations/${id}/approve] Aprobando reservación ${id}`);
+        
+        // 1. Actualizar la reservación
+        const updatedReservation = await storage.updateReservation(id, {
+          isApproved: true,
+          reviewedBy: user.id,
+          reviewNotes: notes || null,
+          updatedAt: new Date()
+        });
+        
+        if (!updatedReservation) {
+          return res.status(500).json({ message: "Error al actualizar la reservación" });
+        }
+        
+        // 2. Obtener información completa para actualizar asientos
+        const reservationWithDetails = await storage.getReservationWithDetails(id, reservation.companyId || undefined);
+        
+        if (!reservationWithDetails) {
+          return res.status(500).json({ message: "Error al obtener detalles de la reservación" });
+        }
+        
+        // 3. Obtener el viaje asociado
+        const trip = await storage.getTrip(reservation.tripId);
+        
+        if (!trip) {
+          return res.status(500).json({ message: "Error al obtener el viaje asociado" });
+        }
+        
+        // 4. Contar pasajeros
+        const passengerCount = reservationWithDetails.passengers.length;
+        
+        if (passengerCount > 0) {
+          // Verificar si hay asientos suficientes
+          if (trip.availableSeats < passengerCount) {
+            // Rechazar la aprobación si no hay asientos suficientes
+            await storage.updateReservation(id, {
+              isApproved: false,
+              reviewedBy: user.id,
+              reviewNotes: `Rechazada automáticamente: No hay suficientes asientos disponibles (${trip.availableSeats} disponibles, ${passengerCount} requeridos)`,
+              updatedAt: new Date()
+            });
+            
+            return res.status(400).json({ 
+              message: "No hay suficientes asientos disponibles para aprobar esta reservación", 
+              availableSeats: trip.availableSeats,
+              requiredSeats: passengerCount
+            });
+          }
+          
+          // 5. Actualizar asientos disponibles en el viaje
+          await storage.updateTrip(trip.id, {
+            availableSeats: trip.availableSeats - passengerCount
+          });
+          
+          console.log(`[PATCH /reservations/${id}/approve] Actualizados ${passengerCount} asientos en el viaje ${trip.id}. Quedan ${trip.availableSeats - passengerCount} asientos disponibles.`);
+          
+          // 6. Actualizar disponibilidad en viajes relacionados
+          await storage.updateRelatedTripsAvailability(trip.id, -passengerCount);
+        }
+        
+        // 7. Notificar al comisionista que su reservación fue aprobada
+        if (reservationWithDetails.createdByUser) {
+          await storage.createNotification({
+            userId: reservationWithDetails.createdByUser.id,
+            type: "reservation_approved",
+            title: "Reservación aprobada",
+            message: `Tu reservación #${id} ha sido aprobada.${notes ? ` Nota: ${notes}` : ''}`,
+            relatedId: id,
+            read: false,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+        }
+        
+        return res.status(200).json({ 
+          message: "Reservación aprobada correctamente",
+          reservation: updatedReservation
+        });
+      } 
+      // Si el usuario rechaza la reservación
+      else {
+        console.log(`[PATCH /reservations/${id}/approve] Rechazando reservación ${id}`);
+        
+        // Actualizar la reservación como rechazada (mantenemos isApproved=false)
+        const updatedReservation = await storage.updateReservation(id, {
+          reviewedBy: user.id,
+          reviewNotes: notes || "Rechazada sin motivo especificado",
+          status: "cancelled", // También marcamos como cancelada
+          updatedAt: new Date()
+        });
+        
+        if (!updatedReservation) {
+          return res.status(500).json({ message: "Error al actualizar la reservación" });
+        }
+        
+        // Notificar al comisionista que su reservación fue rechazada
+        if (reservation.createdBy) {
+          const creator = await storage.getUserById(reservation.createdBy);
+          
+          if (creator) {
+            await storage.createNotification({
+              userId: creator.id,
+              type: "reservation_rejected",
+              title: "Reservación rechazada",
+              message: `Tu reservación #${id} ha sido rechazada.${notes ? ` Motivo: ${notes}` : ''}`,
+              relatedId: id,
+              read: false,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            });
+          }
+        }
+        
+        return res.status(200).json({ 
+          message: "Reservación rechazada correctamente",
+          reservation: updatedReservation
+        });
+      }
+    } catch (error) {
+      console.error(`[PATCH /reservations/:id/approve] Error:`, error);
+      res.status(500).json({ message: "Error al procesar la aprobación de reservación" });
     }
   });
   
