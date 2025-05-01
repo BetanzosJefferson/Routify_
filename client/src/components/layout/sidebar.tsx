@@ -188,27 +188,16 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             </NavSection>
           )}
           
-          {/* Sección de Solicitudes y Notificaciones */}
-          {(canAccess("reservation-requests") || canAccess("notifications")) && (
-            <NavSection title="Solicitudes y Notificaciones">
-              {canAccess("reservation-requests") && (
-                <NavItem 
-                  icon={<FileTextIcon className="h-5 w-5" />} 
-                  active={window.location.pathname === "/reservation-requests"}
-                  onClick={() => setLocation("/reservation-requests")}
-                >
-                  Solicitudes de Reservación
-                </NavItem>
-              )}
-              {canAccess("notifications") && (
-                <NavItem 
-                  icon={<BellIcon className="h-5 w-5" />}
-                  active={window.location.pathname === "/notifications"}
-                  onClick={() => setLocation("/notifications")}
-                >
-                  Notificaciones
-                </NavItem>
-              )}
+          {/* Sección de Solicitudes */}
+          {canAccess("reservation-requests") && (
+            <NavSection title="Solicitudes">
+              <NavItem 
+                icon={<FileTextIcon className="h-5 w-5" />} 
+                active={window.location.pathname === "/reservation-requests"}
+                onClick={() => setLocation("/reservation-requests")}
+              >
+                Solicitudes de Reservación
+              </NavItem>
             </NavSection>
           )}
           
