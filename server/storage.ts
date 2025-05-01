@@ -80,6 +80,34 @@ export interface IStorage {
     commissionPercentage?: number; 
   }): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
+  
+  // Reservation Requests methods (new)
+  createReservationRequest(requestData: any): Promise<ReservationRequest>;
+  getReservationRequests(filters?: { 
+    companyId?: string, 
+    status?: string,
+    requesterId?: number 
+  }): Promise<any[]>;
+  getReservationRequest(id: number): Promise<any>;
+  updateReservationRequestStatus(
+    id: number, 
+    status: string, 
+    reviewedBy: number, 
+    reviewNotes?: string
+  ): Promise<ReservationRequest>;
+  
+  // Notification methods (new)
+  createNotification(notificationData: InsertNotification): Promise<Notification>;
+  getNotifications(userId: number): Promise<Notification[]>;
+  markNotificationAsRead(id: number): Promise<Notification>;
+  getUnreadNotificationsCount(userId: number): Promise<number>;
+  
+  // Pagos de comisiones
+  markCommissionsAsPaid(reservationIds: number[]): Promise<{
+    success: boolean;
+    message: string;
+    affectedCount: number;
+  }>;
 }
 
 export class MemStorage implements IStorage {
