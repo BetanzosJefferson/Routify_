@@ -1227,45 +1227,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ENDPOINT PARA RESERVACIONES DE COMISIONISTAS
-  app.get(apiRouter("/commissioner-reservations"), isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      // Obtener el usuario autenticado
-      const { user } = req as any;
-      
-      // Solo permitir a roles específicos (dueño y administrador) acceder a esta información
-      if (!user || (user.role !== UserRole.OWNER && user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN)) {
-        console.log(`[GET /commissioner-reservations] Acceso denegado para rol: ${user?.role || 'No autenticado'}`);
-        return res.status(403).json({ error: "No tiene permiso para acceder a esta información" });
-      }
-      
-      console.log(`[GET /commissioner-reservations] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
-      
-      // Filtrar por compañía del usuario (excepto para superAdmin que puede ver todo)
-      let companyId = null;
-      if (user.role !== UserRole.SUPER_ADMIN) {
-        companyId = user.companyId || user.company || null;
-        
-        if (!companyId) {
-          console.log(`[GET /commissioner-reservations] Usuario sin compañía - no verá ninguna reservación`);
-          return res.json([]);
-        }
-        
-        console.log(`[GET /commissioner-reservations] Filtrando por compañía: ${companyId}`);
-      }
-      
-      // Obtener reservaciones creadas por comisionistas
-      const reservations = await storage.getCommissionerReservations(companyId || undefined);
-      
-      console.log(`[GET /commissioner-reservations] Encontradas ${reservations.length} reservaciones de comisionistas`);
-      
-      res.json(reservations);
-    } catch (error) {
-      console.error("[GET /commissioner-reservations] Error:", error);
-      res.status(500).json({ error: "Error al obtener reservaciones de comisionistas" });
-    }
-  });
-  
   // RESERVATIONS ENDPOINTS
   app.get(apiRouter("/reservations"), async (req: Request, res: Response) => {
     try {
@@ -2057,53 +2018,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error(`[DELETE /vehicles/:id] Error: ${error}`);
       res.status(500).json({ error: "Error al eliminar el vehículo" });
-    }
-  });
-
-  // Endpoint para obtener reservaciones creadas por comisionistas
-  app.get(apiRouter("/commissioner-reservations"), async (req: Request, res: Response) => {
-    try {
-      const user = req.user as User | undefined;
-      
-      // SEGURIDAD: Verificar autenticación
-      if (!user) {
-        console.log(`[GET /commissioner-reservations] Intento de acceso sin autenticación`);
-        return res.status(401).json({ error: "No autenticado" });
-      }
-      
-      // Verificar permisos (solo los superAdmin, admin y dueños pueden ver las comisiones)
-      if (![UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.OWNER].includes(user.role as UserRole)) {
-        console.log(`[GET /commissioner-reservations] ACCESO DENEGADO: El rol ${user.role} no tiene permisos para ver reservaciones por comisionistas`);
-        return res.status(403).json({ 
-          error: "Acceso denegado", 
-          details: "No tiene permisos para ver reservaciones por comisionistas" 
-        });
-      }
-      
-      // Determinar filtro de compañía según el rol
-      let companyId: string | undefined = undefined;
-      
-      if (user.role !== UserRole.SUPER_ADMIN) {
-        companyId = user.companyId || user.company || undefined;
-        
-        if (!companyId) {
-          console.log(`[GET /commissioner-reservations] ADVERTENCIA: Usuario sin compañía asignada`);
-          return res.json([]); // Si no tiene compañía asignada, devolver lista vacía por seguridad
-        }
-        
-        console.log(`[GET /commissioner-reservations] Aplicando filtro por compañía: ${companyId}`);
-      } else {
-        console.log(`[GET /commissioner-reservations] Usuario SuperAdmin accediendo a todas las reservaciones de comisionistas`);
-      }
-      
-      // Obtener reservaciones creadas por comisionistas
-      const reservations = await storage.getCommissionerReservations(companyId);
-      
-      console.log(`[GET /commissioner-reservations] Encontradas ${reservations.length} reservaciones de comisionistas`);
-      res.json(reservations);
-    } catch (error) {
-      console.error(`[GET /commissioner-reservations] Error: ${error}`);
-      res.status(500).json({ error: "Error al obtener reservaciones de comisionistas" });
     }
   });
 
