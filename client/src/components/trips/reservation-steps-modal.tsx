@@ -182,8 +182,31 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       const endpoint = isCommissioner ? "/api/reservation-requests" : "/api/reservations";
       
       console.log(`Usuario con rol ${user?.role} enviando solicitud a ${endpoint}`);
+      console.log("Datos que se están enviando:", JSON.stringify(data, null, 2));
       
-      const response = await apiRequest("POST", endpoint, data);
+      // Si es comisionista, adaptar los datos al formato que espera el endpoint de solicitudes
+      let response;
+      if (isCommissioner) {
+        // El endpoint /api/reservation-requests espera passengersData en lugar de passengers
+        const adaptedData = {
+          tripId: data.tripId,
+          passengersData: data.passengers,
+          totalAmount: data.totalAmount,
+          email: data.email,
+          phone: data.phone,
+          paymentStatus: data.paymentStatus,
+          advanceAmount: data.advanceAmount,
+          advancePaymentMethod: data.advancePaymentMethod,
+          paymentMethod: data.paymentMethod,
+          notes: data.notes
+        };
+        
+        console.log("Datos adaptados para solicitud:", JSON.stringify(adaptedData, null, 2));
+        response = await apiRequest("POST", endpoint, adaptedData);
+      } else {
+        response = await apiRequest("POST", endpoint, data);
+      }
+      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to create reservation");
