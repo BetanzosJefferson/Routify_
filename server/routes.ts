@@ -2082,7 +2082,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Obtener todas las reservaciones con sus detalles
-      const allReservations = await storage.getReservations(companyId);
+      // El parámetro companyId ya está tipado como string | null,
+      // pasar undefined si es null para que coincida con la firma de la función
+      const allReservations = await storage.getReservations(companyId === null ? undefined : companyId);
       
       // Filtrar solo aquellas creadas por usuarios comisionistas
       const comissionerReservations = allReservations.filter(
