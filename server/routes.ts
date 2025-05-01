@@ -2589,5 +2589,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/reservations/:id/check - Marcar un ticket como escaneado
+  app.post(apiRouter('/reservations/:id/check'), isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Verificar que la reservación existe
+      const reservation = await storage.getReservation(id);
+      if (!reservation) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Reservación no encontrada' 
+        });
+      }
+      
+      // Verificar que el usuario está autenticado
+      if (!req.user) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Usuario no autenticado' 
+        });
+      }
+    
+      // Verificar permisos: solo ciertos roles pueden escanear tickets
+      const allowedRoles = [
+        UserRole.SUPER_ADMIN, 
+        UserRole.ADMIN, 
+        UserRole.OWNER, 
+        UserRole.CHECKER, 
+        UserRole.DRIVER, 
+        UserRole.TICKET_OFFICE
+      ];
+      
+      if (!allowedRoles.includes(req.user.role as schema.UserRoleType)) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'No tienes permiso para escanear tickets' 
+        });
+      }
+      
+      // Si el usuario no es superAdmin o dueño, verificar que pertenece a la misma compañía
+      if (![UserRole.SUPER_ADMIN, UserRole.OWNER].includes(req.user.role as schema.UserRoleType)) {
+        const userCompany = req.user.company || (req.user as any).companyId;
+        if (reservation.companyId && reservation.companyId !== userCompany) {
+          return res.status(403).json({ 
+            success: false, 
+            message: 'No puedes escanear tickets de otra compañía' 
+          });
+        }
+      }
+      
+      // Marcar el ticket como escaneado
+      const updatedReservation = await storage.checkTicket(id, req.user.id);
+      
+      // Determinar si es la primera vez que se escanea este ticket
+      const isFirstScan = reservation.checkedBy === null || reservation.checkedBy === undefined;
+      
+      res.json({ 
+        success: true, 
+        isFirstScan,
+        reservation: updatedReservation,
+        message: isFirstScan 
+          ? 'Ticket escaneado por primera vez' 
+          : 'Ticket escaneado nuevamente'
+      });
+    } catch (error) {
+      console.error('Error al escanear ticket:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error al procesar el escaneo del ticket' 
+      });
+    }
+  });
+
   return httpServer;
 }
