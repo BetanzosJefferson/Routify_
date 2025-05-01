@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserPlus, RefreshCw, Trash2 } from "lucide-react";
+import { UserPlus, RefreshCw, Trash2, Edit, Pencil } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { CreateInvitationForm } from "./create-invitation";
@@ -11,11 +11,35 @@ import { UserRole, UserRoleType, type User, type Invitation } from "@shared/sche
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { 
+  Form, 
+  FormControl, 
+  FormField, 
+  FormItem, 
+  FormLabel, 
+  FormMessage 
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+// Esquema de validación para la edición de usuario
+const userEditSchema = z.object({
+  email: z.string().email("Correo electrónico inválido").optional(),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres").optional(),
+  commissionPercentage: z.number().min(0, "El porcentaje no puede ser negativo").max(100, "El porcentaje no puede superar 100").optional(),
+});
+
+type UserEditFormValues = z.infer<typeof userEditSchema>;
 
 export function UsersPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<number | null>(null);
+  const [userToEdit, setUserToEdit] = useState<User | null>(null);
   const [currentTab, setCurrentTab] = useState<"users" | "invitations">("users");
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
@@ -60,6 +84,83 @@ export function UsersPage() {
   const confirmDeleteUser = () => {
     if (userToDelete) {
       deleteUserMutation.mutate(userToDelete);
+    }
+  };
+  
+  // Formulario para editar usuario
+  const form = useForm<UserEditFormValues>({
+    resolver: zodResolver(userEditSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      commissionPercentage: undefined,
+    },
+  });
+
+  // Mutation para actualizar usuario
+  const updateUserMutation = useMutation({
+    mutationFn: async (data: { id: number; data: UserEditFormValues }) => {
+      const response = await apiRequest("PATCH", `/api/users/${data.id}`, data.data);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Error al actualizar usuario");
+      }
+      return await response.json();
+    },
+    onSuccess: () => {
+      // Refrescar lista de usuarios
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setIsEditDialogOpen(false);
+      setUserToEdit(null);
+      form.reset();
+      
+      toast({
+        title: "Usuario actualizado",
+        description: "El usuario ha sido actualizado correctamente",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "No se pudo actualizar el usuario",
+      });
+    }
+  });
+  
+  // Función para iniciar el proceso de edición
+  const handleEditUser = (user: User) => {
+    setUserToEdit(user);
+    
+    // Configurar valores por defecto (solo email y porcentaje de comisión)
+    form.reset({
+      email: user.email,
+      password: "",
+      commissionPercentage: user.commissionPercentage ?? undefined,
+    });
+    
+    setIsEditDialogOpen(true);
+  };
+  
+  // Función para enviar el formulario de edición
+  const onSubmitEditForm = (data: UserEditFormValues) => {
+    if (!userToEdit) return;
+    
+    // Filtrar campos vacíos o indefinidos
+    const filteredData: UserEditFormValues = {};
+    if (data.email && data.email !== userToEdit.email) filteredData.email = data.email;
+    if (data.password) filteredData.password = data.password;
+    if (data.commissionPercentage !== undefined) filteredData.commissionPercentage = data.commissionPercentage;
+    
+    // Solo enviar si hay datos a actualizar
+    if (Object.keys(filteredData).length > 0) {
+      updateUserMutation.mutate({ id: userToEdit.id, data: filteredData });
+    } else {
+      toast({
+        title: "Sin cambios",
+        description: "No se detectaron cambios para guardar",
+      });
+      setIsEditDialogOpen(false);
     }
   };
 
@@ -190,6 +291,11 @@ export function UsersPage() {
                           </td>
                           <td className="px-4 py-2">
                             {user.firstName} {user.lastName}
+                            {user.role === UserRole.COMMISSIONER && user.commissionPercentage !== null && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Comisión: {user.commissionPercentage}%
+                              </div>
+                            )}
                           </td>
                           <td className="px-4 py-2">{user.email}</td>
                           <td className="px-4 py-2">
@@ -200,9 +306,19 @@ export function UsersPage() {
                           <td className="px-4 py-2">
                             {new Date(user.createdAt).toLocaleDateString()}
                           </td>
-                          <td className="px-4 py-2">
-                            {/* Botón de eliminar solo visible para superAdmin */}
-                            {currentUser?.role === UserRole.SUPER_ADMIN && (
+                          <td className="px-4 py-2 space-x-2">
+                            {/* Botones de acción */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditUser(user)}
+                              title="Editar usuario"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            
+                            {/* Botón de eliminar solo visible para superAdmin o Dueño */}
+                            {(currentUser?.role === UserRole.SUPER_ADMIN || currentUser?.role === UserRole.OWNER) && (
                               <Button
                                 variant="destructive"
                                 size="sm"
@@ -363,6 +479,111 @@ export function UsersPage() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog para editar usuario */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>Editar Usuario</DialogTitle>
+            <DialogDescription>
+              {userToEdit && (
+                <div>
+                  Editando a: <strong>{userToEdit.firstName} {userToEdit.lastName}</strong> 
+                  (<span className="text-primary">{getRoleDisplayName(userToEdit.role)}</span>)
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmitEditForm)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Correo Electrónico</FormLabel>
+                    <FormControl>
+                      <Input placeholder="correo@ejemplo.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nueva Contraseña</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="password" 
+                        placeholder="Dejar vacío para mantener la actual" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {/* Mostrar campo de porcentaje de comisión solo para comisionistas */}
+              {userToEdit?.role === UserRole.COMMISSIONER && (
+                <FormField
+                  control={form.control}
+                  name="commissionPercentage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Porcentaje de Comisión</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="Ej: 10"
+                          min={0}
+                          max={100}
+                          step={0.5}
+                          {...field}
+                          value={field.value ?? ''}
+                          onChange={(e) => {
+                            const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                            field.onChange(value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditDialogOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={updateUserMutation.isPending}
+                >
+                  {updateUserMutation.isPending ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    "Guardar Cambios"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </div>
