@@ -33,7 +33,8 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "trip-summary",
     "boarding-list",
     "users",
-    "vehicles"
+    "vehicles",
+    "commissions"
   ],
   [UserRole.CALL_CENTER]: [
     "trips",
