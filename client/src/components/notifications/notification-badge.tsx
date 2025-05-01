@@ -14,8 +14,8 @@ export function NotificationBadge() {
   }
 
   return (
-    <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 flex items-center justify-center">
-      <span className="text-xs font-medium text-white">
+    <div className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-red-500 flex items-center justify-center shadow-sm">
+      <span className="text-xs font-bold text-white">
         {count > 9 ? '9+' : count}
       </span>
     </div>
