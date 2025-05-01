@@ -6,7 +6,6 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogFooter,
-  DialogClose
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -370,9 +369,7 @@ export default function ReservationDetailsModal({
               </div>
               
               <DialogFooter>
-                <DialogClose asChild>
-                  <Button className="w-full sm:w-auto">Cerrar</Button>
-                </DialogClose>
+                <Button className="w-full sm:w-auto" onClick={handleClose}>Cerrar</Button>
               </DialogFooter>
             </>
           )}
@@ -382,8 +379,8 @@ export default function ReservationDetailsModal({
       {/* Modal de verificación de ticket */}
       {ticketCheckResult && (
         <TicketCheckedModal
-          open={isTicketModalOpen}
-          onOpenChange={setIsTicketModalOpen}
+          isOpen={isTicketModalOpen}
+          onClose={() => setIsTicketModalOpen(false)}
           reservation={ticketCheckResult.reservation}
           isFirstScan={ticketCheckResult.isFirstScan}
         />
