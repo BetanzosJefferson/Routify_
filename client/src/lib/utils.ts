@@ -1,26 +1,74 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { format, addDays, eachDayOfInterval } from "date-fns";
+import { format, addDays, eachDayOfInterval, parseISO, startOfDay, endOfDay, isEqual, isSameDay } from "date-fns";
 import { RouteWithSegments, SegmentPrice } from "@shared/schema";
  
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatDate(date: Date | string): string {
+/**
+ * Convierte cualquier formato de fecha a un objeto Date en el inicio del día en hora local
+ * @param date - Fecha en formato Date o string
+ * @returns Objeto Date normalizado al inicio del día
+ */
+export function normalizeToStartOfDay(date: Date | string): Date {
+  // Si es string, primero convertir a Date
+  let dateObj: Date;
+  
   if (typeof date === 'string') {
-    // Crear fecha a partir de componentes individuales para evitar problemas de zona horaria
-    const parts = date.split('-');
-    if (parts.length === 3) {
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1; // Meses en JS son 0-11
-      const day = parseInt(parts[2], 10);
-      date = new Date(year, month, day);
+    // Si es formato ISO o tiene 'T', usar parseISO
+    if (date.includes('T')) {
+      dateObj = parseISO(date);
     } else {
-      date = new Date(date);
+      // Si es formato YYYY-MM-DD simple
+      const parts = date.split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // Meses en JS son 0-11
+        const day = parseInt(parts[2], 10);
+        dateObj = new Date(year, month, day);
+      } else {
+        dateObj = new Date(date);
+      }
     }
+  } else {
+    dateObj = date;
   }
-  return format(date, 'MMMM dd, yyyy');
+  
+  // Normalizar al inicio del día
+  return startOfDay(dateObj);
+}
+
+/**
+ * Convierte cualquier formato de fecha a un objeto Date al final del día en hora local
+ * @param date - Fecha en formato Date o string
+ * @returns Objeto Date normalizado al final del día
+ */
+export function normalizeToEndOfDay(date: Date | string): Date {
+  return endOfDay(normalizeToStartOfDay(date));
+}
+
+/**
+ * Compara si dos fechas representan el mismo día, independientemente de la hora
+ * @param dateA - Primera fecha a comparar
+ * @param dateB - Segunda fecha a comparar
+ * @returns true si ambas fechas representan el mismo día
+ */
+export function isSameLocalDay(dateA: Date | string, dateB: Date | string): boolean {
+  const normalizedA = normalizeToStartOfDay(dateA);
+  const normalizedB = normalizeToStartOfDay(dateB);
+  return isEqual(normalizedA, normalizedB);
+}
+
+/**
+ * Formatea una fecha para mostrarla al usuario
+ * @param date - Fecha a formatear
+ * @returns Fecha formateada como string
+ */
+export function formatDate(date: Date | string): string {
+  const normalizedDate = normalizeToStartOfDay(date);
+  return format(normalizedDate, 'MMMM dd, yyyy');
 }
 
 export function formatTime(time: string): string {
