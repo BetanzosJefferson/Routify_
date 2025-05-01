@@ -450,3 +450,73 @@ export const commissionRelations = relations(commissions, ({ one }) => ({
     references: [routes.id]
   })
 }));
+
+// ESQUEMA PARA SOLICITUDES DE RESERVACIÓN
+export const reservationRequests = pgTable("reservation_requests", {
+  id: serial("id").primaryKey(),
+  tripId: integer("trip_id").notNull(),
+  passengersData: jsonb("passengers_data").notNull(),
+  totalAmount: doublePrecision("total_amount").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone").notNull(),
+  paymentStatus: text("payment_status").notNull().default(PaymentStatus.PENDING),
+  advanceAmount: doublePrecision("advance_amount").default(0),
+  advancePaymentMethod: text("advance_payment_method").default(PaymentMethod.CASH),
+  paymentMethod: text("payment_method").notNull().default(PaymentMethod.CASH),
+  notes: text("notes"),
+  requesterId: integer("requester_id").notNull(), // ID del comisionista que solicita
+  companyId: text("company_id").notNull(),
+  status: text("status").notNull().default("pendiente"), // pendiente, aprobada, rechazada
+  reviewedBy: integer("reviewed_by"), // ID del usuario que aprobó/rechazó
+  reviewNotes: text("review_notes"), // Notas de la revisión
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertReservationRequestSchema = createInsertSchema(reservationRequests).omit({ 
+  id: true, 
+  reviewedBy: true,
+  reviewNotes: true,
+});
+export type InsertReservationRequest = z.infer<typeof insertReservationRequestSchema>;
+export type ReservationRequest = typeof reservationRequests.$inferSelect;
+
+// ESQUEMA PARA NOTIFICACIONES
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // Usuario al que va dirigida la notificación
+  type: text("type").notNull(), // tipo: 'reservation_request', 'payment', etc.
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  relatedId: integer("related_id"), // ID del objeto relacionado (ej: id de solicitud)
+  read: boolean("read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true });
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
+
+// RELACIONES PARA SOLICITUDES DE RESERVACIÓN Y NOTIFICACIONES
+export const reservationRequestRelations = relations(reservationRequests, ({ one }) => ({
+  trip: one(trips, {
+    fields: [reservationRequests.tripId],
+    references: [trips.id]
+  }),
+  requester: one(users, {
+    fields: [reservationRequests.requesterId],
+    references: [users.id]
+  }),
+  reviewer: one(users, {
+    fields: [reservationRequests.reviewedBy],
+    references: [users.id]
+  })
+}));
+
+export const notificationRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id]
+  })
+}));
