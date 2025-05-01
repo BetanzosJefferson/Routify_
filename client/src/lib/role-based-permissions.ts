@@ -13,6 +13,7 @@ export const ALL_SECTIONS: Section[] = [
   { id: "trips", name: "Viajes", description: "Lista de viajes programados" },
   { id: "publish-trip", name: "Publicar Viaje", description: "Crear y publicar nuevos viajes" },
   { id: "reservations", name: "Reservaciones", description: "Gestión de reservaciones de pasajeros" },
+  { id: "pending-reservations", name: "Reservaciones Pendientes", description: "Aprobar o rechazar reservaciones pendientes" },
   { id: "trip-summary", name: "Resumen de Viajes", description: "Reportes y estadísticas de viajes" },
   { id: "boarding-list", name: "Lista de Abordaje", description: "Control de abordaje de pasajeros" },
   { id: "users", name: "Usuarios", description: "Gestión de usuarios del sistema" },

@@ -230,7 +230,7 @@ export default function PendingReservationsPage() {
                         <span>Total:</span>
                         <span>{formatCurrency(reservation.totalAmount)}</span>
                       </div>
-                      {reservation.advanceAmount > 0 && (
+                      {reservation.advanceAmount && reservation.advanceAmount > 0 && (
                         <div className="flex items-center justify-between">
                           <span>Anticipo ({reservation.advancePaymentMethod}):</span>
                           <span>{formatCurrency(reservation.advanceAmount)}</span>
@@ -238,7 +238,8 @@ export default function PendingReservationsPage() {
                       )}
                       <div className="flex items-center gap-2">
                         <span>Estado de pago:</span>
-                        <Badge variant={reservation.paymentStatus === "pagado" ? "success" : "default"}>
+                        <Badge variant={reservation.paymentStatus === "pagado" ? "outline" : "default"} 
+                               className={reservation.paymentStatus === "pagado" ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}>
                           {reservation.paymentStatus === "pagado" ? "PAGADO" : "PENDIENTE"}
                         </Badge>
                       </div>
