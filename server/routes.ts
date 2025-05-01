@@ -2461,8 +2461,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const count = await storage.getUnreadNotificationsCount(currentUser.id);
       
-      // Devolver directamente el número, no un objeto
-      res.json(count);
+      console.log(`[GET /notifications/unread-count] Usuario: ${currentUser.id}, Conteo: ${count}`);
+      
+      // Asegurarnos de devolver un número (no un objeto ni cadena)
+      res.json(Number(count));
     } catch (error) {
       console.error("Error al obtener contador de notificaciones no leídas:", error);
       res.status(500).json({ message: "Error interno al procesar la solicitud" });
