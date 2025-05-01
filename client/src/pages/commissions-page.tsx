@@ -73,7 +73,7 @@ export default function CommissionsPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>("commissions");
   const [selectedReservations, setSelectedReservations] = useState<number[]>([]);
-  const [selectedCommissioner, setSelectedCommissioner] = useState<string>("");
+  const [selectedCommissioner, setSelectedCommissioner] = useState<string>("all");
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentSummary, setPaymentSummary] = useState<{
@@ -184,7 +184,7 @@ export default function CommissionsPage() {
         let matches = true;
         
         // Filtro por comisionista
-        if (selectedCommissioner && reservation.createdByUser) {
+        if (selectedCommissioner && selectedCommissioner !== 'all' && reservation.createdByUser) {
           matches = matches && reservation.createdByUser.id.toString() === selectedCommissioner;
         }
         
@@ -202,8 +202,10 @@ export default function CommissionsPage() {
     : [];
 
   // Manejar selección/deselección de reservación
-  const toggleReservationSelection = (id: number, e: React.MouseEvent) => {
-    e.stopPropagation(); // Evitar que se propague al tr y navegue a detalles
+  const toggleReservationSelection = (id: number, e: any) => {
+    if (e && e.stopPropagation) {
+      e.stopPropagation(); // Evitar que se propague al tr y navegue a detalles
+    }
     setSelectedReservations(prev => 
       prev.includes(id) 
         ? prev.filter(resId => resId !== id) 
@@ -297,7 +299,7 @@ export default function CommissionsPage() {
                   <SelectValue placeholder="Seleccionar comisionista" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos los comisionistas</SelectItem>
+                  <SelectItem key="all" value="all">Todos los comisionistas</SelectItem>
                   {commissioners.map((commissioner) => (
                     <SelectItem key={commissioner.id} value={commissioner.id.toString()}>
                       {commissioner.name}
@@ -395,7 +397,7 @@ export default function CommissionsPage() {
                       <td className="px-2 py-4 whitespace-nowrap text-center">
                         <Checkbox 
                           checked={selectedReservations.includes(reservation.id)}
-                          onCheckedChange={() => toggleReservationSelection(reservation.id, { stopPropagation: () => {} } as any)}
+                          onCheckedChange={(checked) => toggleReservationSelection(reservation.id, null)}
                           disabled={reservation.commissionPaid}
                         />
                       </td>
