@@ -945,11 +945,59 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
+    // Obtener información de la empresa asociada al viaje
+    let companyInfo = { 
+      companyName: trip.companyId || "Transporte", 
+      companyLogo: "" 
+    };
+    
+    if (trip.companyId) {
+      try {
+        // Buscamos un usuario tipo dueño (owner) de esa compañía que suele tener la foto de perfil
+        const [companyOwner] = await db
+          .select()
+          .from(schema.users)
+          .where(
+            and(
+              eq(schema.users.companyId, trip.companyId),
+              eq(schema.users.role, UserRole.OWNER)
+            )
+          );
+          
+        if (companyOwner && companyOwner.profilePicture) {
+          companyInfo.companyLogo = companyOwner.profilePicture;
+          companyInfo.companyName = companyOwner.company || trip.companyId;
+          console.log(`[getReservationWithDetails] Información de empresa encontrada: ${companyInfo.companyName}`);
+        } else {
+          // Si no hay un dueño, buscamos cualquier usuario de esa compañía
+          const [anyCompanyUser] = await db
+            .select()
+            .from(schema.users)
+            .where(eq(schema.users.companyId, trip.companyId));
+            
+          if (anyCompanyUser && anyCompanyUser.profilePicture) {
+            companyInfo.companyLogo = anyCompanyUser.profilePicture;
+            companyInfo.companyName = anyCompanyUser.company || trip.companyId;
+            console.log(`[getReservationWithDetails] Información de empresa desde cualquier usuario: ${companyInfo.companyName}`);
+          }
+        }
+      } catch (error) {
+        console.error(`[getReservationWithDetails] Error al buscar información de la empresa:`, error);
+      }
+    }
+    
     console.log(`[getReservationWithDetails] Acceso concedido a reserva ${id} con ${passengers.length} pasajeros`);
+    
+    // Añadimos la información de la empresa al objeto trip
+    const tripWithCompanyInfo = {
+      ...trip,
+      companyName: companyInfo.companyName,
+      companyLogo: companyInfo.companyLogo
+    };
     
     return {
       ...reservation,
-      trip,
+      trip: tripWithCompanyInfo,
       passengers,
       createdByUser // Añadimos el usuario creador
     };
