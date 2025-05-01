@@ -642,13 +642,32 @@ export class DatabaseStorage implements IStorage {
     const trip = await this.getTrip(tripId);
     if (!trip) return;
     
+    // Determinar si estamos añadiendo o eliminando asientos
+    const isAddingSeats = seatChange > 0;
+    const isReducingSeats = seatChange < 0;
+    const absoluteChange = Math.abs(seatChange);
+    
+    console.log(`[updateRelatedTripsAvailability] Actualizando viaje ${tripId} con cambio de ${seatChange} asientos (${isAddingSeats ? 'añadiendo' : 'reduciendo'})`);
+    
     if (trip.isSubTrip && trip.parentTripId && trip.segmentOrigin && trip.segmentDestination) {
       // Este es un sub-viaje, actualizar el viaje principal
       const mainTrip = await this.getTrip(trip.parentTripId);
       if (!mainTrip) return;
       
-      // Calcular asientos disponibles sin exceder la capacidad máxima
-      const newAvailableSeats = Math.min(mainTrip.availableSeats + seatChange, mainTrip.capacity);
+      // Calcular nuevos asientos disponibles
+      let newAvailableSeats;
+      
+      if (isAddingSeats) {
+        // Al añadir asientos, no exceder la capacidad máxima
+        newAvailableSeats = Math.min(mainTrip.availableSeats + absoluteChange, mainTrip.capacity);
+      } else if (isReducingSeats) {
+        // Al reducir asientos, no permitir negativos
+        newAvailableSeats = Math.max(mainTrip.availableSeats - absoluteChange, 0);
+      } else {
+        // Si no hay cambio, mantener igual
+        newAvailableSeats = mainTrip.availableSeats;
+      }
+      
       console.log(`[updateRelatedTripsAvailability] Actualizando viaje principal ${mainTrip.id}: asientos ${mainTrip.availableSeats} a ${newAvailableSeats} (capacidad máxima: ${mainTrip.capacity})`);
       
       // Actualizar el viaje principal
@@ -702,8 +721,20 @@ export class DatabaseStorage implements IStorage {
         );
         
         if (hasOverlap) {
-          // Calcular asientos disponibles sin exceder la capacidad máxima para este sub-viaje
-          const newSubAvailableSeats = Math.min(subTrip.availableSeats + seatChange, subTrip.capacity);
+          // Calcular nuevos asientos disponibles para el sub-viaje
+          let newSubAvailableSeats;
+          
+          if (isAddingSeats) {
+            // Al añadir asientos, no exceder la capacidad máxima
+            newSubAvailableSeats = Math.min(subTrip.availableSeats + absoluteChange, subTrip.capacity);
+          } else if (isReducingSeats) {
+            // Al reducir asientos, no permitir negativos
+            newSubAvailableSeats = Math.max(subTrip.availableSeats - absoluteChange, 0);
+          } else {
+            // Si no hay cambio, mantener igual
+            newSubAvailableSeats = subTrip.availableSeats;
+          }
+          
           console.log(`[updateRelatedTripsAvailability] Actualizando sub-viaje ${subTrip.id}: asientos ${subTrip.availableSeats} a ${newSubAvailableSeats} (capacidad máxima: ${subTrip.capacity})`);
           
           await db
@@ -720,8 +751,20 @@ export class DatabaseStorage implements IStorage {
         .where(eq(schema.trips.parentTripId, tripId));
         
       for (const subTrip of subTrips) {
-        // Calcular asientos disponibles sin exceder la capacidad máxima para cada sub-viaje
-        const newSubAvailableSeats = Math.min(subTrip.availableSeats + seatChange, subTrip.capacity);
+        // Calcular nuevos asientos disponibles para el sub-viaje
+        let newSubAvailableSeats;
+        
+        if (isAddingSeats) {
+          // Al añadir asientos, no exceder la capacidad máxima
+          newSubAvailableSeats = Math.min(subTrip.availableSeats + absoluteChange, subTrip.capacity);
+        } else if (isReducingSeats) {
+          // Al reducir asientos, no permitir negativos
+          newSubAvailableSeats = Math.max(subTrip.availableSeats - absoluteChange, 0);
+        } else {
+          // Si no hay cambio, mantener igual
+          newSubAvailableSeats = subTrip.availableSeats;
+        }
+        
         console.log(`[updateRelatedTripsAvailability] Actualizando sub-viaje ${subTrip.id} del viaje principal ${tripId}: asientos ${subTrip.availableSeats} a ${newSubAvailableSeats} (capacidad máxima: ${subTrip.capacity})`);
         
         await db
@@ -920,7 +963,44 @@ export class DatabaseStorage implements IStorage {
       reservationData.notes = null;
     }
     
+    // Crear la reservación en la base de datos
     const [newReservation] = await db.insert(schema.reservations).values(reservationData).returning();
+
+    // Verificar si hay pasajeros asociados a esta reservación (ya sea del request original o nuevos)
+    const passengersData = reservationData['passengersData'] as any[] || [];
+    const passengerCount = passengersData.length;
+    
+    console.log(`[createReservation] Reservación ${newReservation.id} creada con ${passengerCount} pasajeros`);
+    
+    // Actualizar la disponibilidad de asientos en el viaje
+    if (passengerCount > 0) {
+      try {
+        const trip = await this.getTrip(reservation.tripId);
+        if (trip) {
+          console.log(`[createReservation] Viaje ${trip.id}: asientos disponibles antes = ${trip.availableSeats}`);
+          
+          // No permitir asientos negativos
+          const newAvailableSeats = Math.max(0, trip.availableSeats - passengerCount);
+          
+          // Actualizar los asientos disponibles
+          await db
+            .update(schema.trips)
+            .set({ availableSeats: newAvailableSeats })
+            .where(eq(schema.trips.id, trip.id));
+          
+          console.log(`[createReservation] Viaje ${trip.id}: asientos disponibles actualizados a ${newAvailableSeats}`);
+          
+          // Actualizar viajes relacionados si existen
+          await this.updateRelatedTripsAvailability(trip.id, -passengerCount);
+        } else {
+          console.error(`[createReservation] No se encontró el viaje ${reservation.tripId} para actualizar asientos`);
+        }
+      } catch (error) {
+        console.error(`[createReservation] Error al actualizar asientos disponibles:`, error);
+        // No fallamos aquí para no interrumpir la creación de la reservación
+      }
+    }
+    
     return newReservation;
   }
   
@@ -1464,11 +1544,39 @@ export class DatabaseStorage implements IStorage {
         
         // Crear los pasajeros
         const passengersData = currentRequest.passengersData as any[];
+        const passengerCount = passengersData.length;
+        
+        // Crear cada pasajero en la base de datos
         for (const passengerData of passengersData) {
           await this.createPassenger({
             ...passengerData,
             reservationId: reservation.id
           });
+        }
+        
+        // Actualizar la cantidad de asientos disponibles en el viaje
+        try {
+          const trip = await this.getTrip(currentRequest.tripId);
+          if (trip && passengerCount > 0) {
+            console.log(`[updateReservationRequestStatus] Viaje ${trip.id}: asientos disponibles antes = ${trip.availableSeats}, pasajeros = ${passengerCount}`);
+            
+            // Calcular nuevos asientos disponibles, no permitir que sean negativos
+            const newAvailableSeats = Math.max(0, trip.availableSeats - passengerCount);
+            
+            // Actualizar asientos disponibles
+            await db
+              .update(schema.trips)
+              .set({ availableSeats: newAvailableSeats })
+              .where(eq(schema.trips.id, trip.id));
+            
+            console.log(`[updateReservationRequestStatus] Viaje ${trip.id}: asientos disponibles actualizados a ${newAvailableSeats}`);
+            
+            // Actualizar viajes relacionados
+            await this.updateRelatedTripsAvailability(trip.id, -passengerCount);
+          }
+        } catch (error) {
+          console.error(`[updateReservationRequestStatus] Error al actualizar asientos disponibles:`, error);
+          // No fallamos aquí para no interrumpir el proceso principal
         }
         
         // Crear notificación para el comisionista
