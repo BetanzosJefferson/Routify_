@@ -171,195 +171,187 @@ export default function ReservationDetailsModal({
               </DialogHeader>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                {/* Información del pasajero */}
                 <div className="space-y-4">
-                  <h3 className="font-medium text-lg">Información del pasajero</h3>
-                  <div className="bg-gray-50 p-4 rounded-md space-y-3">
-                    <div>
-                      <div className="text-sm text-gray-500 flex items-center">
-                        <User className="h-4 w-4 mr-1" /> NOMBRE
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <h3 className="font-medium text-base border-b pb-2 mb-4">Información del pasajero</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="text-sm text-gray-500 font-medium">NOMBRE</div>
+                        <div>
+                          {reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}
+                        </div>
                       </div>
-                      <div className="font-medium">
-                        {reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}
+                      
+                      <div>
+                        <div className="text-sm text-gray-500 font-medium">EMAIL</div>
+                        <div>{reservation.email || '-'}</div>
                       </div>
-                    </div>
-                    
-                    <div>
-                      <div className="text-sm text-gray-500 flex items-center">
-                        <Mail className="h-4 w-4 mr-1" /> EMAIL
+                      
+                      <div>
+                        <div className="text-sm text-gray-500 font-medium">TELÉFONO</div>
+                        <div>{reservation.phone || '-'}</div>
                       </div>
-                      <div>{reservation.email || '-'}</div>
-                    </div>
-                    
-                    <div>
-                      <div className="text-sm text-gray-500 flex items-center">
-                        <Phone className="h-4 w-4 mr-1" /> TELÉFONO
-                      </div>
-                      <div>{reservation.phone || '-'}</div>
-                    </div>
-                    
-                    <div>
-                      <div className="text-sm text-gray-500 flex items-center">
-                        <User className="h-4 w-4 mr-1" /> PASAJEROS
-                      </div>
-                      <div className="flex items-center">
-                        <User className="h-4 w-4 mr-1" /> {reservation.passengers.length}
+                      
+                      <div>
+                        <div className="text-sm text-gray-500 font-medium">PASAJEROS</div>
+                        <div className="flex items-center">
+                          <User className="h-4 w-4 mr-1" /> {reservation.passengers.length}
+                        </div>
                       </div>
                     </div>
                   </div>
                   
                   {/* Detalles del viaje */}
-                  <h3 className="font-medium text-lg mt-4">Detalles del viaje</h3>
-                  <div className="bg-gray-50 p-4 rounded-md space-y-3">
-                    <div>
-                      <div className="text-sm text-gray-500">RUTA</div>
-                      <div className="font-medium">
-                        {reservation.trip.route?.name || `${reservation.trip.segmentOrigin} - ${reservation.trip.segmentDestination}`}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <div className="text-sm text-gray-500 flex items-center">
-                        <MapPin className="h-4 w-4 mr-1" /> ORIGEN
-                      </div>
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <h3 className="font-medium text-base border-b pb-2 mb-4">Detalles del viaje</h3>
+                    <div className="space-y-4">
                       <div>
-                        {reservation.trip.segmentOrigin || reservation.trip.route?.origin}{" "}
-                        {reservation.trip.route?.originDetails && `- ${reservation.trip.route.originDetails}`}
+                        <div className="text-sm text-gray-500 font-medium">RUTA</div>
+                        <div>
+                          {reservation.trip.route?.name || `${reservation.trip.segmentOrigin} - ${reservation.trip.segmentDestination}`}
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div>
-                      <div className="text-sm text-gray-500 flex items-center">
-                        <MapPin className="h-4 w-4 mr-1" /> DESTINO
-                      </div>
+                      
                       <div>
-                        {reservation.trip.segmentDestination || reservation.trip.route?.destination}{" "}
-                        {reservation.trip.route?.destinationDetails && `- ${reservation.trip.route.destinationDetails}`}
+                        <div className="text-sm text-gray-500 font-medium">ORIGEN</div>
+                        <div>
+                          {reservation.trip.segmentOrigin || reservation.trip.route?.origin}{" "}
+                          {reservation.trip.route?.originDetails && `- ${reservation.trip.route.originDetails}`}
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div>
-                      <div className="text-sm text-gray-500 flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" /> FECHA
+                      
+                      <div>
+                        <div className="text-sm text-gray-500 font-medium">DESTINO</div>
+                        <div>
+                          {reservation.trip.segmentDestination || reservation.trip.route?.destination}{" "}
+                          {reservation.trip.route?.destinationDetails && `- ${reservation.trip.route.destinationDetails}`}
+                        </div>
                       </div>
-                      <div>{formatDate(reservation.trip.departureDate)}</div>
-                    </div>
-                    
-                    <div>
-                      <div className="text-sm text-gray-500 flex items-center">
-                        <Clock className="h-4 w-4 mr-1" /> HORA DE SALIDA
+                      
+                      <div>
+                        <div className="text-sm text-gray-500 font-medium">FECHA</div>
+                        <div>{formatDate(reservation.trip.departureDate)}</div>
                       </div>
-                      <div>{reservation.trip.departureTime}</div>
+                      
+                      <div>
+                        <div className="text-sm text-gray-500 font-medium">HORA DE SALIDA</div>
+                        <div>{reservation.trip.departureTime}</div>
+                      </div>
                     </div>
                   </div>
                 </div>
                 
                 {/* Información de pago */}
                 <div className="space-y-4">
-                  <h3 className="font-medium text-lg">Información de pago</h3>
-                  <div className="bg-gray-50 p-4 rounded-md space-y-3">
-                    <div className="grid grid-cols-2 items-center">
-                      <div className="text-sm text-gray-500">ESTADO DE PAGO</div>
-                      <div className="text-right">
-                        <Badge 
-                          className={reservation.paymentStatus === 'pagado' 
-                            ? 'bg-green-100 text-green-800 border-green-200' 
-                            : 'bg-yellow-100 text-yellow-800 border-yellow-200'}
-                        >
-                          {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 items-center">
-                      <div className="text-sm text-gray-500">MONTO TOTAL</div>
-                      <div className="text-right font-medium">{formatPrice(reservation.totalAmount)}</div>
-                    </div>
-                    
-                    {(reservation.advanceAmount && reservation.advanceAmount > 0) && (
-                      <>
-                        <div className="grid grid-cols-2 items-center">
-                          <div className="text-sm text-gray-500">ANTICIPO</div>
-                          <div className="text-right font-medium">{formatPrice(reservation.advanceAmount)}</div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 items-center">
-                          <div className="text-sm text-gray-500">MÉTODO ANTICIPO</div>
-                          <div className="text-right">{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-                        </div>
-                        
-                        {reservation.advanceAmount < reservation.totalAmount && (
-                          <>
-                            <div className="grid grid-cols-2 items-center">
-                              <div className="text-sm text-gray-500">PENDIENTE DE PAGO</div>
-                              <div className="text-right font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</div>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 items-center">
-                              <div className="text-sm text-gray-500">MÉTODO PAGO FINAL</div>
-                              <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-                            </div>
-                          </>
-                        )}
-                      </>
-                    )}
-                    
-                    {(!reservation.advanceAmount || reservation.advanceAmount <= 0) && (
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <h3 className="font-medium text-base border-b pb-2 mb-4">Información de pago</h3>
+                    <div className="space-y-3">
                       <div className="grid grid-cols-2 items-center">
-                        <div className="text-sm text-gray-500">MÉTODO DE PAGO</div>
-                        <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                        <div className="text-sm text-gray-500 font-medium">ESTADO DE PAGO</div>
+                        <div className="text-right">
+                          <Badge 
+                            className={reservation.paymentStatus === 'pagado' 
+                              ? 'bg-green-100 text-green-800 border-green-200' 
+                              : 'bg-yellow-100 text-yellow-800 border-yellow-200'}
+                          >
+                            {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+                          </Badge>
+                        </div>
                       </div>
-                    )}
-                    
-                    {user && reservation.paymentStatus !== 'pagado' && (
-                      <Button 
-                        onClick={markAsPaid}
-                        disabled={isMarkingAsPaid}
-                        variant="default"
-                        className="w-full mt-3 bg-green-600 hover:bg-green-700 border-green-700 border-2"
-                      >
-                        {isMarkingAsPaid ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Procesando...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Marcar como pagado
-                          </>
-                        )}
-                      </Button>
-                    )}
+                      
+                      <div className="grid grid-cols-2 items-center">
+                        <div className="text-sm text-gray-500 font-medium">MONTO TOTAL</div>
+                        <div className="text-right font-medium">{formatPrice(reservation.totalAmount)}</div>
+                      </div>
+                      
+                      {(reservation.advanceAmount && reservation.advanceAmount > 0) && (
+                        <>
+                          <div className="grid grid-cols-2 items-center">
+                            <div className="text-sm text-gray-500 font-medium">ANTICIPO</div>
+                            <div className="text-right font-medium">{formatPrice(reservation.advanceAmount)}</div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 items-center">
+                            <div className="text-sm text-gray-500 font-medium">MÉTODO ANTICIPO</div>
+                            <div className="text-right">{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                          </div>
+                          
+                          {reservation.advanceAmount < reservation.totalAmount && (
+                            <>
+                              <div className="grid grid-cols-2 items-center">
+                                <div className="text-sm text-gray-500 font-medium">PENDIENTE DE PAGO</div>
+                                <div className="text-right font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</div>
+                              </div>
+                              
+                              <div className="grid grid-cols-2 items-center">
+                                <div className="text-sm text-gray-500 font-medium">MÉTODO PAGO FINAL</div>
+                                <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                              </div>
+                            </>
+                          )}
+                        </>
+                      )}
+                      
+                      {(!reservation.advanceAmount || reservation.advanceAmount <= 0) && (
+                        <div className="grid grid-cols-2 items-center">
+                          <div className="text-sm text-gray-500 font-medium">MÉTODO DE PAGO</div>
+                          <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                        </div>
+                      )}
+                      
+                      {user && reservation.paymentStatus !== 'pagado' && (
+                        <Button 
+                          onClick={markAsPaid}
+                          disabled={isMarkingAsPaid}
+                          variant="default"
+                          className="w-full mt-3 bg-green-600 hover:bg-green-700 border-green-700 border-2"
+                        >
+                          {isMarkingAsPaid ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Procesando...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Marcar como pagado
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Código QR */}
-                  <h3 className="font-medium text-lg mt-4">Código QR</h3>
-                  <div className="bg-gray-50 p-4 rounded-md text-center">
-                    <img 
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/public/reservations/${reservation.id}`} 
-                      alt="QR Code"
-                      className="mx-auto my-4 w-48 h-48"
-                    />
-                    <p className="text-sm text-gray-500 mb-2">
-                      Este código QR contiene los detalles de la reservación.
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Escanea el código para ver o compartir el boleto completo.
-                    </p>
-                    
-                    <a 
-                      href={`/public/reservations/${reservation.id}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="mt-4 inline-block text-blue-600 hover:underline"
-                    >
-                      Ver boleto completo
-                    </a>
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <h3 className="font-medium text-base border-b pb-2 mb-4">Código QR</h3>
+                    <div className="text-center">
+                      <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/public/reservations/${reservation.id}`} 
+                        alt="QR Code"
+                        className="mx-auto my-4 w-48 h-48"
+                      />
+                      <p className="text-sm text-gray-500 mb-2">
+                        Este código QR contiene los detalles de la reservación.
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Escanea el código para ver o compartir el boleto completo.
+                      </p>
+                      
+                      <a 
+                        href={`/public/reservations/${reservation.id}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="mt-4 inline-block text-blue-600 hover:underline"
+                      >
+                        Ver boleto completo
+                      </a>
+                    </div>
                   </div>
                   
-                  {/* Botones de acción */}
-                  <div className="space-y-2 mt-4">
+                  {/* Verificación de ticket */}
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <h3 className="font-medium text-base border-b pb-2 mb-4">Verificación de ticket</h3>
                     <Button
                       variant="secondary"
                       className="w-full"
