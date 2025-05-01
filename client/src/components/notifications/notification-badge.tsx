@@ -1,15 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 export function NotificationBadge() {
   // Consultar el conteo de notificaciones no leídas
-  const { data: unreadCount, isLoading } = useQuery<number>({
+  const { data: unreadCount, isLoading, refetch } = useQuery<number>({
     queryKey: ['/api/notifications/unread-count'],
-    refetchInterval: 60000, // Refrescar cada minuto
+    refetchInterval: 30000, // Refrescar cada 30 segundos
   });
   
+  // Forzar una actualización cuando el componente se monte
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
   const count = unreadCount || 0;
 
-  if (isLoading || count === 0) {
+  // No renderizar nada si no hay notificaciones no leídas
+  if (count === 0) {
     return null;
   }
 
