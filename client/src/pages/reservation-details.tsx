@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
-import { Loader2, CheckCircle, XCircle, ArrowLeft, Ticket, Bell, AlertTriangle } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -16,11 +16,9 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [reservationId, setReservationId] = useState<number | null>(null);
   const [isMarkingAsPaid, setIsMarkingAsPaid] = useState(false);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
   const [ticketCheckResult, setTicketCheckResult] = useState<{
     isFirstScan: boolean;
     reservation?: any;
@@ -30,18 +28,13 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
   useEffect(() => {
     // Primero intentamos obtener el ID de los parámetros de ruta
     if (params?.id) {
-      console.log("ID de reservación de parámetros de ruta:", params.id);
       setReservationId(parseInt(params.id, 10));
     } else {
       // Si no está en los parámetros de ruta, intentamos usar los parámetros de consulta
-      // para mantener compatibilidad con posibles enlaces existentes
       const urlParams = new URLSearchParams(window.location.search);
       const id = urlParams.get("id");
       if (id) {
-        console.log("ID de reservación de parámetros de consulta:", id);
         setReservationId(parseInt(id, 10));
-      } else {
-        console.log("No se encontró ID de reservación en la URL");
       }
     }
   }, [params]);
@@ -60,63 +53,34 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
     enabled: !!reservationId,
   });
 
-  // Mutación para verificar tickets
+  // Auto verificación del ticket cuando se carga por primera vez
   const checkTicketMutation = useMutation({
     mutationFn: async () => {
-      if (!reservationId) throw new Error("ID de reservación no válido");
+      if (!reservationId || !user) return null;
       const response = await apiRequest("POST", `/api/reservations/${reservationId}/check`);
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Error al verificar el ticket");
-      }
+      if (!response.ok) return null;
       return response.json();
     },
     onSuccess: (data) => {
+      if (!data) return;
+      
       setTicketCheckResult({
         isFirstScan: data.isFirstScan,
         reservation: data.reservation
       });
-      setIsTicketModalOpen(true);
       
-      // Si fue la primera vez o un re-escaneo, refrescamos los datos
+      if (data.isFirstScan) {
+        setIsTicketModalOpen(true);
+        toast({
+          title: "Ticket Verificado",
+          description: "El ticket ha sido marcado como verificado correctamente.",
+          variant: "default",
+        });
+      }
+      
       refetch();
-      
-      toast({
-        title: data.isFirstScan ? "Ticket Verificado" : "Ticket Re-escaneado",
-        description: data.isFirstScan 
-          ? "El ticket ha sido marcado como verificado correctamente." 
-          : "Este ticket ya había sido verificado anteriormente.",
-        variant: "default",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error al verificar ticket",
-        description: error instanceof Error 
-          ? error.message 
-          : "No se pudo verificar el ticket. Verifica que estés autenticado con los permisos correctos.",
-        variant: "destructive",
-      });
-    },
-    onSettled: () => {
-      setIsChecking(false);
     }
   });
-  
-  // Función para verificar ticket
-  const handleCheckTicket = () => {
-    if (!user) {
-      toast({
-        title: "Autenticación requerida",
-        description: "Para verificar un ticket necesita iniciar sesión con una cuenta autorizada.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsChecking(true);
-    checkTicketMutation.mutate();
-  };
 
   // Función para marcar como pagado
   const markAsPaid = async () => {
@@ -124,23 +88,18 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
     
     setIsMarkingAsPaid(true);
     try {
-      // Primero intentamos hacer la solicitud (esto probablemente fallará si no está autenticado)
       let response = await apiRequest(
         "PUT", 
         `/api/reservations/${reservationId}`, 
         { paymentStatus: "pagado" }
       );
       
-      // Si la solicitud falla, mostramos un mensaje indicando que se necesita autenticación
       if (!response.ok) {
         toast({
           title: "Autenticación requerida",
           description: "Para marcar como pagado necesita iniciar sesión con una cuenta autorizada.",
           variant: "destructive",
         });
-        
-        // Opcionalmente, podríamos redirigir a la página de inicio de sesión
-        // setLocation("/auth");
         return;
       }
       
@@ -150,7 +109,6 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
         variant: "default",
       });
       
-      // Recargar los datos para mostrar el cambio
       refetch();
     } catch (error) {
       toast({
@@ -162,6 +120,13 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
       setIsMarkingAsPaid(false);
     }
   };
+
+  // Intentar verificar automáticamente al cargar la página si el usuario está autenticado
+  useEffect(() => {
+    if (user && reservation && !reservation.checkedBy) {
+      checkTicketMutation.mutate();
+    }
+  }, [user, reservation]);
 
   if (isLoading) {
     return (
@@ -188,40 +153,69 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
     );
   }
 
+  // Obtener iniciales de la empresa para el avatar
+  const getCompanyInitials = () => {
+    const companyName = reservation.trip?.companyName || "TR";
+    return companyName.substring(0, 2).toUpperCase();
+  };
+
   return (
-    <div className="container max-w-2xl mx-auto px-4 py-8">
-      <Button 
-        variant="outline" 
-        className="mb-6"
-        onClick={() => setLocation("/")}
-      >
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Volver
-      </Button>
+    <div className="container max-w-2xl mx-auto px-4 py-6">
+      <div className="flex items-center mb-6">
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => setLocation("/")}
+          className="rounded-full"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span className="ml-2">Volver</span>
+        </Button>
+      </div>
       
-      <Card className="p-6 mb-4">
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+      <Card className="p-4 sm:p-6 mb-4 border-0 shadow-md">
+        {/* Logo/Avatar de la empresa */}
+        <div className="flex flex-col items-center mb-6">
+          <Avatar className="h-20 w-20 mb-4 border-2 border-gray-200">
+            <AvatarImage src={reservation.trip?.companyLogo} alt={reservation.trip?.companyName || "Empresa"} />
+            <AvatarFallback className="bg-primary text-white text-xl">
+              {getCompanyInitials()}
+            </AvatarFallback>
+          </Avatar>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">
             Reservación #{generateReservationId(reservation.id)}
           </h1>
-          <div className="text-xl font-semibold">
+          <div className="text-xl font-medium text-gray-800">
             {reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}
             {reservation.passengers.length > 1 && ` +${reservation.passengers.length - 1}`}
           </div>
         </div>
 
+        {/* Estado del pago */}
+        <div className="text-center mb-6">
+          <Badge 
+            className={`text-lg px-6 py-1.5 rounded-full ${
+              reservation.paymentStatus === 'pagado' 
+                ? 'bg-green-100 text-green-800 border-green-300' 
+                : 'bg-amber-100 text-amber-800 border-amber-300'
+            }`}
+          >
+            {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+          </Badge>
+        </div>
+
         {/* Información del pasajero */}
         <div className="mb-6">
-          <h2 className="text-lg font-medium mb-3 text-gray-800">Información del Pasajero</h2>
+          <h2 className="text-base font-medium mb-3 border-b pb-2">Información del Pasajero</h2>
           <div className="bg-gray-50 p-4 rounded-md">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <div className="text-sm text-gray-500">Contacto:</div>
+                <div className="text-sm text-gray-500 font-medium">CONTACTO</div>
                 <div className="break-words">{reservation.email || '-'}</div>
                 <div>{reservation.phone || '-'}</div>
               </div>
               <div>
-                <div className="text-sm text-gray-500">Pasajeros:</div>
+                <div className="text-sm text-gray-500 font-medium">PASAJEROS</div>
                 <div>{reservation.passengers.length}</div>
               </div>
             </div>
@@ -230,26 +224,26 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
 
         {/* Detalles del viaje */}
         <div className="mb-6">
-          <h2 className="text-lg font-medium mb-3 text-gray-800">Detalles del Viaje</h2>
+          <h2 className="text-base font-medium mb-3 border-b pb-2">Detalles del Viaje</h2>
           <div className="bg-gray-50 p-4 rounded-md">            
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
               <div>
-                <div className="text-sm text-gray-500">Origen:</div>
-                <div>{reservation.trip.segmentOrigin || reservation.trip.route.origin}</div>
+                <div className="text-sm text-gray-500 font-medium">ORIGEN</div>
+                <div>{reservation.trip.segmentOrigin || reservation.trip.route?.origin}</div>
               </div>
               <div>
-                <div className="text-sm text-gray-500">Destino:</div>
-                <div>{reservation.trip.segmentDestination || reservation.trip.route.destination}</div>
+                <div className="text-sm text-gray-500 font-medium">DESTINO</div>
+                <div>{reservation.trip.segmentDestination || reservation.trip.route?.destination}</div>
               </div>
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <div className="text-sm text-gray-500">Fecha:</div>
+                <div className="text-sm text-gray-500 font-medium">FECHA</div>
                 <div>{formatDate(reservation.trip.departureDate)}</div>
               </div>
               <div>
-                <div className="text-sm text-gray-500">Hora:</div>
+                <div className="text-sm text-gray-500 font-medium">HORA</div>
                 <div>{reservation.trip.departureTime}</div>
               </div>
             </div>
@@ -258,140 +252,86 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
 
         {/* Información de pago */}
         <div className="mb-6">
-          <h2 className="text-lg font-medium mb-3 text-gray-800">Información de Pago</h2>
+          <h2 className="text-base font-medium mb-3 border-b pb-2">Información de Pago</h2>
           <div className="bg-gray-50 p-4 rounded-md">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
-              <div>
-                <div className="text-sm text-gray-500">Total:</div>
-                <div className="text-lg font-bold">{formatPrice(reservation.totalAmount)}</div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-500">Método de pago:</div>
-                <div>{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-              </div>
+            <div className="grid grid-cols-2 items-center mb-3">
+              <div className="text-sm text-gray-500 font-medium">TOTAL</div>
+              <div className="text-right font-medium">{formatPrice(reservation.totalAmount)}</div>
+            </div>
+            
+            <div className="grid grid-cols-2 items-center mb-3">
+              <div className="text-sm text-gray-500 font-medium">MÉTODO DE PAGO</div>
+              <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
             </div>
             
             {(reservation.advanceAmount && reservation.advanceAmount > 0) && (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-sm text-gray-500">Anticipo:</div>
-                    <div className="font-medium">{formatPrice(reservation.advanceAmount)}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-gray-500">Método anticipo:</div>
-                    <div>{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-                  </div>
+                <div className="grid grid-cols-2 items-center mb-3">
+                  <div className="text-sm text-gray-500 font-medium">ANTICIPO</div>
+                  <div className="text-right font-medium">{formatPrice(reservation.advanceAmount)}</div>
+                </div>
+                
+                <div className="grid grid-cols-2 items-center mb-3">
+                  <div className="text-sm text-gray-500 font-medium">MÉTODO ANTICIPO</div>
+                  <div className="text-right">{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
                 </div>
                 
                 {reservation.advanceAmount < reservation.totalAmount && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
-                    <div>
-                      <div className="text-sm text-gray-500">Pendiente:</div>
-                      <div className="font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</div>
+                  <>
+                    <div className="grid grid-cols-2 items-center mb-3">
+                      <div className="text-sm text-gray-500 font-medium">PENDIENTE DE PAGO</div>
+                      <div className="text-right font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</div>
                     </div>
-                    <div>
-                      <div className="text-sm text-gray-500">Método pago final:</div>
-                      <div>{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                    
+                    <div className="grid grid-cols-2 items-center">
+                      <div className="text-sm text-gray-500 font-medium">MÉTODO PAGO FINAL</div>
+                      <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
                     </div>
-                  </div>
+                  </>
                 )}
               </>
             )}
-          </div>
-        </div>
-
-        {/* Estado grande */}
-        <div className="my-6 text-center">
-          <div className="text-sm text-gray-500 mb-2">Estado:</div>
-          <div className="text-2xl font-bold text-amber-500">
-            {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
-          </div>
-        </div>
-
-        {/* Botones de acción */}
-        <div className="mt-4 space-y-3">
-          {/* Botón para verificar ticket */}
-          <Button 
-            onClick={handleCheckTicket} 
-            disabled={isChecking}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            {isChecking ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                Verificando...
-              </>
-            ) : (
-              <>
-                <Ticket className="mr-2 h-4 w-4" />
-                {reservation.checkedBy ? 'Re-verificar Ticket' : 'Verificar Ticket'}
-              </>
+            
+            {/* Botón para marcar como pagado */}
+            {reservation.paymentStatus !== 'pagado' && user && (
+              <Button 
+                onClick={markAsPaid} 
+                disabled={isMarkingAsPaid}
+                className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white"
+              >
+                {isMarkingAsPaid ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Marcar como pagado
+                  </>
+                )}
+              </Button>
             )}
-          </Button>
-          
-          {/* Información de verificación (si ya se verificó) */}
-          {reservation.checkedBy && (
-            <div className="text-center text-sm text-green-600 bg-green-50 p-2 rounded-md flex items-center justify-center">
-              <CheckCircle className="w-4 h-4 mr-1" />
-              {reservation.checkCount > 1 
-                ? `Ticket verificado ${reservation.checkCount} veces`
-                : 'Ticket ya verificado'}
-            </div>
-          )}
-          
-          {/* Botón para marcar como pagado */}
-          {reservation.paymentStatus !== 'pagado' && (
-            <Button 
-              onClick={markAsPaid} 
-              disabled={isMarkingAsPaid}
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
-            >
-              {isMarkingAsPaid ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                  Procesando...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Marcar como pagado
-                </>
-              )}
-            </Button>
-          )}
+          </div>
         </div>
-
-        {/* Información del creador */}
-        {reservation.createdByUser && (
-          <div className="mt-6">
-            <h2 className="text-lg font-medium mb-3 text-gray-800">Creado por</h2>
+        
+        {/* Notas */}
+        {reservation.notes && (
+          <div className="mb-6">
+            <h2 className="text-base font-medium mb-3 border-b pb-2">Notas</h2>
             <div className="bg-gray-50 p-4 rounded-md">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-gray-500">Usuario:</div>
-                  <div>{reservation.createdByUser.firstName} {reservation.createdByUser.lastName}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">Rol:</div>
-                  <div>{reservation.createdByUser.role}</div>
-                </div>
-              </div>
-              <div className="mt-2">
-                <div className="text-sm text-gray-500">Empresa:</div>
-                <div>{reservation.createdByUser.company || '-'}</div>
-              </div>
+              <p>{reservation.notes}</p>
             </div>
           </div>
         )}
         
-        {/* Notas */}
-        {reservation.notes && (
-          <div className="mt-6">
-            <h2 className="text-lg font-medium mb-3 text-gray-800">Notas</h2>
-            <div className="bg-gray-50 p-4 rounded-md">
-              <p>{reservation.notes}</p>
-            </div>
+        {/* Información de verificación (si ya se verificó) */}
+        {reservation.checkedBy && (
+          <div className="text-center text-sm text-green-600 bg-green-50 p-3 rounded-md flex items-center justify-center mb-4">
+            <CheckCircle className="w-5 h-5 mr-2" />
+            {reservation.checkCount > 1 
+              ? `Ticket verificado ${reservation.checkCount} veces`
+              : 'Ticket verificado correctamente'}
           </div>
         )}
       </Card>
