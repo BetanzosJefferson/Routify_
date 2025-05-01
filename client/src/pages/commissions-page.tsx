@@ -27,6 +27,7 @@ import {
   DialogDescription,
   DialogFooter
 } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Popover,
   PopoverContent,
@@ -274,6 +275,13 @@ export default function CommissionsPage() {
 
   // Componente para el contenido de comisiones
   const CommissionsContent = () => {
+    // Estado para las pestañas
+    const [commissionTab, setCommissionTab] = useState("pendientes");
+
+    // Filtrar las reservaciones según el estado de pago de comisión
+    const pendingCommissions = filteredReservations.filter(res => !res.commissionPaid);
+    const paidCommissions = filteredReservations.filter(res => res.commissionPaid);
+
     return (
       <div className="px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex justify-between items-center mb-6">
@@ -349,7 +357,7 @@ export default function CommissionsPage() {
                 variant="default" 
                 className="w-full" 
                 onClick={handlePayCommissions}
-                disabled={selectedReservations.length === 0}
+                disabled={selectedReservations.length === 0 || commissionTab === "pagadas"}
               >
                 Pagar Comisiones
               </Button>
@@ -370,122 +378,256 @@ export default function CommissionsPage() {
               </AlertDescription>
             </Alert>
           ) : filteredReservations && filteredReservations.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Seleccionar
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reservación</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comisionista</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ruta</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pasajeros</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comisión</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comisión Pagada</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredReservations.map((reservation) => (
-                    <tr
-                      key={reservation.id}
-                      className="hover:bg-gray-50"
-                    >
-                      <td className="px-2 py-4 whitespace-nowrap text-center">
-                        <Checkbox 
-                          checked={selectedReservations.includes(reservation.id)}
-                          onCheckedChange={(checked) => toggleReservationSelection(reservation.id, null)}
-                          disabled={reservation.commissionPaid}
-                        />
-                      </td>
-                      <td 
-                        className="px-6 py-4 whitespace-nowrap cursor-pointer"
-                        onClick={() => goToReservationDetails(reservation.id)}
-                      >
-                        <div className="text-sm font-medium text-gray-900">#{reservation.id}</div>
-                      </td>
-                      <td 
-                        className="px-6 py-4 whitespace-nowrap cursor-pointer"
-                        onClick={() => goToReservationDetails(reservation.id)}
-                      >
-                        <div className="text-sm font-medium text-gray-900">
-                          {reservation.createdByUser?.firstName} {reservation.createdByUser?.lastName}
-                        </div>
-                        <div className="text-xs text-gray-500">{reservation.createdByUser?.email}</div>
-                      </td>
-                      <td 
-                        className="px-6 py-4 whitespace-nowrap cursor-pointer"
-                        onClick={() => goToReservationDetails(reservation.id)}
-                      >
-                        <div className="text-sm text-gray-900">{reservation.trip.route.name}</div>
-                        <div className="text-xs text-gray-500">{reservation.trip.route.origin} → {reservation.trip.route.destination}</div>
-                      </td>
-                      <td 
-                        className="px-6 py-4 whitespace-nowrap cursor-pointer"
-                        onClick={() => goToReservationDetails(reservation.id)}
-                      >
-                        <div className="text-sm text-gray-900">{formatDate(reservation.trip.departureDate)}</div>
-                        <div className="text-xs text-gray-500">{reservation.trip.departureTime}</div>
-                      </td>
-                      <td 
-                        className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 cursor-pointer"
-                        onClick={() => goToReservationDetails(reservation.id)}
-                      >
-                        {reservation.passengers.length}
-                      </td>
-                      <td 
-                        className="px-6 py-4 whitespace-nowrap cursor-pointer"
-                        onClick={() => goToReservationDetails(reservation.id)}
-                      >
-                        <div className="text-sm font-medium">{formatPrice(reservation.totalAmount)}</div>
-                      </td>
-                      <td 
-                        className="px-6 py-4 whitespace-nowrap cursor-pointer"
-                        onClick={() => goToReservationDetails(reservation.id)}
-                      >
-                        {reservation.createdByUser?.commissionPercentage ? (
-                          <div className="text-sm font-medium text-primary">
-                            {formatPrice(reservation.totalAmount * (reservation.createdByUser.commissionPercentage / 100))}
-                            <span className="text-xs text-gray-500 ml-1">({reservation.createdByUser.commissionPercentage}%)</span>
-                          </div>
-                        ) : (
-                          <div className="text-xs text-gray-500">No configurada</div>
-                        )}
-                      </td>
-                      <td 
-                        className="px-6 py-4 whitespace-nowrap cursor-pointer"
-                        onClick={() => goToReservationDetails(reservation.id)}
-                      >
-                        <Badge 
-                          variant={reservation.paymentStatus === 'pagado' ? "outline" : "secondary"}
-                          className={reservation.paymentStatus === 'pagado' 
-                            ? "bg-green-100 text-green-800 border-green-200" 
-                            : "bg-amber-100 text-amber-800 border-amber-200"}
-                        >
-                          {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
-                        </Badge>
-                      </td>
-                      <td 
-                        className="px-6 py-4 whitespace-nowrap cursor-pointer"
-                        onClick={() => goToReservationDetails(reservation.id)}
-                      >
-                        <Badge 
-                          variant="outline"
-                          className={reservation.commissionPaid
-                            ? "bg-green-100 text-green-800 border-green-200" 
-                            : "bg-gray-100 text-gray-800 border-gray-200"}
-                        >
-                          {reservation.commissionPaid ? 'PAGADA' : 'NO PAGADA'}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Tabs defaultValue="pendientes" className="w-full" onValueChange={setCommissionTab}>
+              <div className="px-4 py-2 border-b">
+                <TabsList className="grid w-[400px] grid-cols-2">
+                  <TabsTrigger value="pendientes">Pendientes por pagar</TabsTrigger>
+                  <TabsTrigger value="pagadas">Pagadas</TabsTrigger>
+                </TabsList>
+              </div>
+              
+              <TabsContent value="pendientes" className="w-full">
+                {pendingCommissions.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Seleccionar
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reservación</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comisionista</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ruta</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pasajeros</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comisión</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comisión Pagada</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {pendingCommissions.map((reservation) => (
+                          <tr
+                            key={reservation.id}
+                            className="hover:bg-gray-50"
+                          >
+                            <td className="px-2 py-4 whitespace-nowrap text-center">
+                              <Checkbox 
+                                checked={selectedReservations.includes(reservation.id)}
+                                onCheckedChange={(checked) => toggleReservationSelection(reservation.id, null)}
+                                disabled={reservation.commissionPaid}
+                              />
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              <div className="text-sm font-medium text-gray-900">#{reservation.id}</div>
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              <div className="text-sm font-medium text-gray-900">
+                                {reservation.createdByUser?.firstName} {reservation.createdByUser?.lastName}
+                              </div>
+                              <div className="text-xs text-gray-500">{reservation.createdByUser?.email}</div>
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              <div className="text-sm text-gray-900">{reservation.trip.route.name}</div>
+                              <div className="text-xs text-gray-500">{reservation.trip.route.origin} → {reservation.trip.route.destination}</div>
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              <div className="text-sm text-gray-900">{formatDate(reservation.trip.departureDate)}</div>
+                              <div className="text-xs text-gray-500">{reservation.trip.departureTime}</div>
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              {reservation.passengers.length}
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              <div className="text-sm font-medium">{formatPrice(reservation.totalAmount)}</div>
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              {reservation.createdByUser?.commissionPercentage ? (
+                                <div className="text-sm font-medium text-primary">
+                                  {formatPrice(reservation.totalAmount * (reservation.createdByUser.commissionPercentage / 100))}
+                                  <span className="text-xs text-gray-500 ml-1">({reservation.createdByUser.commissionPercentage}%)</span>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-gray-500">No configurada</div>
+                              )}
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              <Badge 
+                                variant={reservation.paymentStatus === 'pagado' ? "outline" : "secondary"}
+                                className={reservation.paymentStatus === 'pagado' 
+                                  ? "bg-green-100 text-green-800 border-green-200" 
+                                  : "bg-amber-100 text-amber-800 border-amber-200"}
+                              >
+                                {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+                              </Badge>
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              <Badge 
+                                variant="outline"
+                                className="bg-gray-100 text-gray-800 border-gray-200"
+                              >
+                                NO PAGADA
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center p-8 text-gray-500">
+                    No hay comisiones pendientes por pagar.
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="pagadas" className="w-full">
+                {paidCommissions.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Estado
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reservación</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comisionista</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ruta</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pasajeros</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comisión</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado Pago</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comisión Pagada</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {paidCommissions.map((reservation) => (
+                          <tr
+                            key={reservation.id}
+                            className="hover:bg-gray-50"
+                          >
+                            <td className="px-2 py-4 whitespace-nowrap text-center">
+                              <CheckCircle className="h-5 w-5 text-green-600 mx-auto" />
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              <div className="text-sm font-medium text-gray-900">#{reservation.id}</div>
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              <div className="text-sm font-medium text-gray-900">
+                                {reservation.createdByUser?.firstName} {reservation.createdByUser?.lastName}
+                              </div>
+                              <div className="text-xs text-gray-500">{reservation.createdByUser?.email}</div>
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              <div className="text-sm text-gray-900">{reservation.trip.route.name}</div>
+                              <div className="text-xs text-gray-500">{reservation.trip.route.origin} → {reservation.trip.route.destination}</div>
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              <div className="text-sm text-gray-900">{formatDate(reservation.trip.departureDate)}</div>
+                              <div className="text-xs text-gray-500">{reservation.trip.departureTime}</div>
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              {reservation.passengers.length}
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              <div className="text-sm font-medium">{formatPrice(reservation.totalAmount)}</div>
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              {reservation.createdByUser?.commissionPercentage ? (
+                                <div className="text-sm font-medium text-primary">
+                                  {formatPrice(reservation.totalAmount * (reservation.createdByUser.commissionPercentage / 100))}
+                                  <span className="text-xs text-gray-500 ml-1">({reservation.createdByUser.commissionPercentage}%)</span>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-gray-500">No configurada</div>
+                              )}
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              <Badge 
+                                variant={reservation.paymentStatus === 'pagado' ? "outline" : "secondary"}
+                                className={reservation.paymentStatus === 'pagado' 
+                                  ? "bg-green-100 text-green-800 border-green-200" 
+                                  : "bg-amber-100 text-amber-800 border-amber-200"}
+                              >
+                                {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+                              </Badge>
+                            </td>
+                            <td 
+                              className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                              onClick={() => goToReservationDetails(reservation.id)}
+                            >
+                              <Badge 
+                                variant="outline"
+                                className="bg-green-100 text-green-800 border-green-200"
+                              >
+                                PAGADA
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center p-8 text-gray-500">
+                    No hay comisiones pagadas.
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           ) : (
             <div className="text-center p-8 text-gray-500">
               No hay reservaciones de comisionistas disponibles.
