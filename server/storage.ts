@@ -15,7 +15,8 @@ import {
   Vehicle,
   InsertVehicle,
   Commission,
-  InsertCommission
+  InsertCommission,
+  User
 } from "@shared/schema";
 
 export interface IStorage {
@@ -69,6 +70,16 @@ export interface IStorage {
   createCommission(commission: InsertCommission): Promise<Commission>;
   updateCommission(id: number, commission: Partial<Commission>): Promise<Commission | undefined>;
   deleteCommission(id: number): Promise<boolean>;
+  
+  // User methods
+  getUsers(): Promise<User[]>;
+  getUserById(id: number): Promise<User | undefined>;
+  updateUser(id: number, userData: { 
+    email?: string; 
+    password?: string; 
+    commissionPercentage?: number; 
+  }): Promise<User | undefined>;
+  deleteUser(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
