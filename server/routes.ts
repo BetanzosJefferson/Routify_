@@ -2099,6 +2099,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Error al obtener las reservaciones de comisionistas" });
     }
   });
+  
+  // Rutas para manejo de usuarios
+  // GET /api/users - Obtener todos los usuarios
+  app.get(apiRouter('/users'), isAuthenticated, hasRole([UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMINISTRATOR]), async (req, res) => {
+    try {
+      const users = await storage.getUsers();
+      res.json(users);
+    } catch (error) {
+      console.error('Error al obtener usuarios:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
+  
+  // GET /api/users/:id - Obtener un usuario por ID
+  app.get(apiRouter('/users/:id'), isAuthenticated, hasRole([UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMINISTRATOR]), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = await storage.getUserById(id);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+      
+      res.json(user);
+    } catch (error) {
+      console.error(`Error al obtener usuario con ID ${req.params.id}:`, error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
+  
+  // PATCH /api/users/:id - Actualizar un usuario
+  app.patch(apiRouter('/users/:id'), isAuthenticated, hasRole([UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMINISTRATOR]), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { email, password, commissionPercentage } = req.body;
+      
+      // Verificar si el usuario existe
+      const existingUser = await storage.getUserById(id);
+      if (!existingUser) {
+        return res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+      
+      // Solo permitir actualizar usuarios de la misma compañía (excepto para super admin)
+      if (req.user.role !== UserRole.SUPER_ADMIN) {
+        if (existingUser.companyId !== req.user.companyId) {
+          return res.status(403).json({ message: 'No tienes permiso para editar este usuario' });
+        }
+      }
+      
+      // Verificar si se intenta modificar el porcentaje de comisión solo para comisionistas
+      if (commissionPercentage !== undefined && existingUser.role !== 'comisionista') {
+        return res.status(400).json({ message: 'Solo se puede establecer el porcentaje de comisión para usuarios con rol Comisionista' });
+      }
+      
+      // Construir objeto de actualización
+      const updateData: {
+        email?: string;
+        password?: string;
+        commissionPercentage?: number;
+      } = {};
+      
+      if (email) updateData.email = email;
+      if (password) updateData.password = password;
+      if (commissionPercentage !== undefined) updateData.commissionPercentage = commissionPercentage;
+      
+      // Actualizar el usuario
+      const updatedUser = await storage.updateUser(id, updateData);
+      
+      res.json(updatedUser);
+    } catch (error) {
+      console.error(`Error al actualizar usuario con ID ${req.params.id}:`, error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
+  
+  // DELETE /api/users/:id - Eliminar un usuario
+  app.delete(apiRouter('/users/:id'), isAuthenticated, hasRole([UserRole.SUPER_ADMIN, UserRole.OWNER]), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Verificar si el usuario existe
+      const existingUser = await storage.getUserById(id);
+      if (!existingUser) {
+        return res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+      
+      // No permitir eliminar a uno mismo
+      if (req.user.id === id) {
+        return res.status(400).json({ message: 'No puedes eliminar tu propia cuenta' });
+      }
+      
+      // Solo permitir eliminar usuarios de la misma compañía (excepto para super admin)
+      if (req.user.role !== UserRole.SUPER_ADMIN) {
+        if (existingUser.companyId !== req.user.companyId) {
+          return res.status(403).json({ message: 'No tienes permiso para eliminar este usuario' });
+        }
+      }
+      
+      // Intentar eliminar el usuario
+      const deleted = await storage.deleteUser(id);
+      
+      if (deleted) {
+        res.json({ success: true, message: 'Usuario eliminado correctamente' });
+      } else {
+        res.status(400).json({ 
+          success: false, 
+          message: 'No se pudo eliminar el usuario. Puede tener reservaciones asociadas u otros usuarios invitados.' 
+        });
+      }
+    } catch (error) {
+      console.error(`Error al eliminar usuario con ID ${req.params.id}:`, error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
 
   return httpServer;
 }
