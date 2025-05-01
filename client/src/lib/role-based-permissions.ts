@@ -18,27 +18,13 @@ export const ALL_SECTIONS: Section[] = [
   { id: "users", name: "Usuarios", description: "Gestión de usuarios del sistema" },
   { id: "vehicles", name: "Unidades", description: "Gestión de vehículos y flota" },
   { id: "commissions", name: "Comisiones", description: "Configuración de comisiones" },
-  { id: "commission-reservations", name: "Comisiones", description: "Reservaciones por comisionistas" },
   { id: "settings", name: "Configuración", description: "Ajustes generales del sistema" }
 ];
 
 // Mapa de permisos por rol
 export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
   [UserRole.SUPER_ADMIN]: ALL_SECTIONS.map(section => section.id), // Acceso total
-  [UserRole.ADMIN]: [
-    "dashboard",
-    "routes",
-    "trips",
-    "publish-trip",
-    "reservations",
-    "trip-summary",
-    "boarding-list",
-    "users",
-    "vehicles",
-    "commissions",
-    "commission-reservations",
-    "settings"
-  ],
+  [UserRole.ADMIN]: ALL_SECTIONS.map(section => section.id), // Acceso total
   [UserRole.OWNER]: [
     "routes",
     "trips",
@@ -47,8 +33,7 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "trip-summary",
     "boarding-list",
     "users",
-    "vehicles",
-    "commission-reservations"
+    "vehicles"
   ],
   [UserRole.CALL_CENTER]: [
     "trips",
