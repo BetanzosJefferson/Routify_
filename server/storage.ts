@@ -47,10 +47,10 @@ export interface IStorage {
   getReservations(companyId?: string, tripId?: number): Promise<ReservationWithDetails[]>;
   getReservation(id: number): Promise<Reservation | undefined>;
   getReservationWithDetails(id: number, companyId?: string): Promise<ReservationWithDetails | undefined>;
+  getCommissionerReservations(companyId?: string): Promise<ReservationWithDetails[]>;
   createReservation(reservation: InsertReservation): Promise<Reservation>;
   updateReservation(id: number, reservation: Partial<Reservation>): Promise<Reservation | undefined>;
   deleteReservation(id: number): Promise<boolean>;
-  getCommissionerReservations(companyId?: string): Promise<ReservationWithDetails[]>;
   
   // Passenger methods
   getPassengers(reservationId: number): Promise<Passenger[]>;
@@ -488,6 +488,8 @@ export class MemStorage implements IStorage {
       passengers
     };
   }
+  
+
   
   async createReservation(reservation: InsertReservation): Promise<Reservation> {
     const id = this.reservationId++;
