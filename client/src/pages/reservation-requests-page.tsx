@@ -78,15 +78,29 @@ export default function ReservationRequestsPage() {
       });
       return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Invalidar las solicitudes de reservación para actualizar la lista
       queryClient.invalidateQueries({ queryKey: ["/api/reservation-requests"] });
+      
+      // Invalidar también las consultas de viajes para actualizar los asientos disponibles en tiempo real
+      queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
+      
+      // Invalidar las reservaciones
+      queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
+      
+      console.log("Solicitud procesada correctamente. Actualizando datos en tiempo real...");
+      
       refetch();
       setSelectedRequest(null);
       setIsReviewDialogOpen(false);
       setReviewNotes("");
+      
+      // Mostrar un mensaje diferente según si se aprobó o rechazó
+      const actionText = data.request?.status === "aprobada" ? "aprobada" : "rechazada";
+      
       toast({
-        title: "Solicitud actualizada",
-        description: "La solicitud ha sido procesada correctamente.",
+        title: `Solicitud ${actionText}`,
+        description: `La solicitud ha sido ${actionText} correctamente.`,
         variant: "default",
       });
     },
