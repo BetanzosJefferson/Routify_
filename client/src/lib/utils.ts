@@ -93,7 +93,17 @@ export function isSameLocalDay(dateA: Date | string, dateB: Date | string): bool
  */
 export function formatDate(date: Date | string): string {
   const normalizedDate = normalizeToStartOfDay(date);
-  return format(normalizedDate, 'MMMM dd, yyyy', { locale: es });
+  return format(normalizedDate, 'dd/MM/yyyy', { locale: es });
+}
+
+/**
+ * Formatea una fecha en formato largo (ej: "30 de abril de 2025")
+ * @param date - Fecha a formatear
+ * @returns Fecha formateada como string
+ */
+export function formatDateLong(date: Date | string): string {
+  const normalizedDate = normalizeToStartOfDay(date);
+  return format(normalizedDate, "d 'de' MMMM 'de' yyyy", { locale: es });
 }
 
 /**
