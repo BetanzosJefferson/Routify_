@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId, normalizeToStartOfDay, isSameLocalDay } from "@/lib/utils";
+import { useLocation } from "wouter";
 import { 
   UserIcon, 
   SearchIcon, 
@@ -12,7 +13,9 @@ import {
   MailIcon, 
   CalendarIcon, 
   ArchiveIcon,
-  FilterIcon
+  FilterIcon,
+  QrCode,
+  ExternalLink
 } from "lucide-react";
 import { useReservations } from "@/hooks/use-reservations";
 
@@ -54,6 +57,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export function ReservationList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
@@ -406,7 +410,7 @@ export function ReservationList() {
                   <tr 
                     key={reservation.id} 
                     className="cursor-pointer hover:bg-gray-50"
-                    onClick={() => openEditModal(reservation)}
+                    onClick={() => setLocation(`/reservation-details/${reservation.id}`)}
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       #{generateReservationId(reservation.id)}
@@ -544,7 +548,7 @@ export function ReservationList() {
                 <div 
                   key={reservation.id} 
                   className="p-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors duration-150"
-                  onClick={() => openEditModal(reservation)}
+                  onClick={() => setLocation(`/reservation-details/${reservation.id}`)}
                 >
                   <div className="flex justify-between items-start mb-3">
                     <div>
