@@ -414,7 +414,10 @@ export function ReservationList() {
                   <tr 
                     key={reservation.id} 
                     className="cursor-pointer hover:bg-gray-50"
-                    onClick={() => setLocation(`/reservation-details/${reservation.id}`)}
+                    onClick={() => {
+                      setSelectedReservationId(reservation.id);
+                      setIsDetailsModalOpen(true);
+                    }}
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       #{generateReservationId(reservation.id)}
@@ -552,7 +555,10 @@ export function ReservationList() {
                 <div 
                   key={reservation.id} 
                   className="p-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors duration-150"
-                  onClick={() => setLocation(`/reservation-details/${reservation.id}`)}
+                  onClick={() => {
+                    setSelectedReservationId(reservation.id);
+                    setIsDetailsModalOpen(true);
+                  }}
                 >
                   <div className="flex justify-between items-start mb-3">
                     <div>
@@ -712,6 +718,15 @@ export function ReservationList() {
           </div>
         </div>
       </Card>
+
+      {/* Modal de detalles de reservación */}
+      {selectedReservationId && (
+        <ReservationDetailsModal
+          reservationId={selectedReservationId}
+          isOpen={isDetailsModalOpen}
+          onOpenChange={setIsDetailsModalOpen}
+        />
+      )}
       
       {/* Confirmation Dialog */}
       <AlertDialog open={confirmingDelete !== null} onOpenChange={() => setConfirmingDelete(null)}>
