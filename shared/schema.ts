@@ -125,6 +125,7 @@ export const reservations = pgTable("reservations", {
   advanceAmount: doublePrecision("advance_amount").default(0), // Monto del anticipo
   advancePaymentMethod: text("advance_payment_method").default(PaymentMethod.CASH), // Método del anticipo
   createdBy: integer("created_by"), // ID del usuario que crea la reservación
+  commissionPaid: boolean("commission_paid").default(false), // Indicador si la comisión ha sido pagada
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   // Campo para aislamiento de datos por compañía
