@@ -2102,7 +2102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Rutas para manejo de usuarios
   // GET /api/users - Obtener todos los usuarios
-  app.get(apiRouter('/users'), isAuthenticated, hasRole([UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMINISTRATOR]), async (req, res) => {
+  app.get(apiRouter('/users'), isAuthenticated, hasRole([UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN]), async (req, res) => {
     try {
       const users = await storage.getUsers();
       res.json(users);
@@ -2113,7 +2113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // GET /api/users/:id - Obtener un usuario por ID
-  app.get(apiRouter('/users/:id'), isAuthenticated, hasRole([UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMINISTRATOR]), async (req, res) => {
+  app.get(apiRouter('/users/:id'), isAuthenticated, hasRole([UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN]), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const user = await storage.getUserById(id);
@@ -2130,7 +2130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // PATCH /api/users/:id - Actualizar un usuario
-  app.patch(apiRouter('/users/:id'), isAuthenticated, hasRole([UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMINISTRATOR]), async (req, res) => {
+  app.patch(apiRouter('/users/:id'), isAuthenticated, hasRole([UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN]), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const { email, password, commissionPercentage } = req.body;
@@ -2142,8 +2142,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Solo permitir actualizar usuarios de la misma compañía (excepto para super admin)
-      if (req.user.role !== UserRole.SUPER_ADMIN) {
-        if (existingUser.companyId !== req.user.companyId) {
+      if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
+        const userCompany = req.user.company || req.user.companyId;
+        const existingUserCompany = existingUser.company || existingUser.companyId;
+        if (existingUserCompany !== userCompany) {
           return res.status(403).json({ message: 'No tienes permiso para editar este usuario' });
         }
       }
@@ -2186,13 +2188,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // No permitir eliminar a uno mismo
-      if (req.user.id === id) {
+      if (req.user && req.user.id === id) {
         return res.status(400).json({ message: 'No puedes eliminar tu propia cuenta' });
       }
       
       // Solo permitir eliminar usuarios de la misma compañía (excepto para super admin)
-      if (req.user.role !== UserRole.SUPER_ADMIN) {
-        if (existingUser.companyId !== req.user.companyId) {
+      if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
+        const userCompany = req.user.company || req.user.companyId;
+        const existingUserCompany = existingUser.company || existingUser.companyId;
+        if (existingUserCompany !== userCompany) {
           return res.status(403).json({ message: 'No tienes permiso para eliminar este usuario' });
         }
       }
