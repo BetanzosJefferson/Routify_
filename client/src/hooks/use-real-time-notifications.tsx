@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { useNotificationSound } from '@/hooks/use-notification-sound';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -23,6 +24,7 @@ export function useRealTimeNotifications() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const lastNotificationIdRef = useRef<number | null>(null);
+  const { playNotificationSound } = useNotificationSound();
   
   // Consulta de notificaciones
   const { data: notifications } = useQuery<Notification[]>({
@@ -57,6 +59,14 @@ export function useRealTimeNotifications() {
       // Actualizar el ID de referencia
       lastNotificationIdRef.current = latestNotification.id;
       
+      // Si hay notificaciones nuevas, reproducir sonido una vez
+      if (newNotifications.length > 0) {
+        // Reproducir sonido sólo una vez, independientemente del número de notificaciones
+        playNotificationSound();
+        
+        console.log(`Recibidas ${newNotifications.length} notificaciones nuevas`);
+      }
+      
       // Mostrar toast para cada notificación nueva (limitado a 3 para evitar spam)
       newNotifications.slice(0, 3).forEach(notification => {
         const formattedDate = format(new Date(notification.createdAt), 'HH:mm', { locale: es });
@@ -77,7 +87,7 @@ export function useRealTimeNotifications() {
       // Actualizar el contador de notificaciones no leídas
       queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread-count'] });
     }
-  }, [notifications, toast, queryClient]);
+  }, [notifications, toast, queryClient, playNotificationSound]);
   
   return { notifications };
 }
