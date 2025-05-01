@@ -18,6 +18,7 @@ import {
   ExternalLink
 } from "lucide-react";
 import { useReservations } from "@/hooks/use-reservations";
+import ReservationDetailsModal from "@/components/reservations/reservation-details-modal";
 
 import {
   AlertDialog,
@@ -65,6 +66,9 @@ export function ReservationList() {
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [notes, setNotes] = useState<string>("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  // Modal de detalles de reservación
+  const [selectedReservationId, setSelectedReservationId] = useState<number | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   // Por defecto mostramos las reservaciones actuales/futuras
   const [activeTab, setActiveTab] = useState("upcoming");
   
