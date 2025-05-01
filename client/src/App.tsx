@@ -31,7 +31,7 @@ function Router() {
       <ProtectedRoute path="/notifications" component={NotificationsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register/:token" component={RegisterPage} />
-      <Route path="/reservation-details" component={ReservationDetails} />
+      <Route path="/reservation-details/:id" component={ReservationDetails} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -12,7 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import TicketCheckedModal from "@/components/reservations/ticket-checked-modal";
 
-export default function ReservationDetails() {
+export default function ReservationDetails({ params }: { params?: { id?: string } }) {
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -26,14 +26,25 @@ export default function ReservationDetails() {
     reservation?: any;
   } | null>(null);
 
-  // Extraer el ID de la reservación de la URL
+  // Extraer el ID de la reservación de los parámetros de ruta
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const id = urlParams.get("id");
-    if (id) {
-      setReservationId(parseInt(id, 10));
+    // Primero intentamos obtener el ID de los parámetros de ruta
+    if (params?.id) {
+      console.log("ID de reservación de parámetros de ruta:", params.id);
+      setReservationId(parseInt(params.id, 10));
+    } else {
+      // Si no está en los parámetros de ruta, intentamos usar los parámetros de consulta
+      // para mantener compatibilidad con posibles enlaces existentes
+      const urlParams = new URLSearchParams(window.location.search);
+      const id = urlParams.get("id");
+      if (id) {
+        console.log("ID de reservación de parámetros de consulta:", id);
+        setReservationId(parseInt(id, 10));
+      } else {
+        console.log("No se encontró ID de reservación en la URL");
+      }
     }
-  }, []);
+  }, [params]);
 
   // Cargar los detalles de la reservación usando el endpoint público
   const { data: reservation, isLoading, error, refetch } = useQuery({
