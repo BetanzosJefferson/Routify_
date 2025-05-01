@@ -19,16 +19,37 @@ export function normalizeToStartOfDay(date: Date | string): Date {
   let dateObj: Date;
   
   if (typeof date === 'string') {
-    // Si es formato ISO o tiene 'T', usar parseISO pero asegurarnos que sea tratado como UTC
+    // Si es formato ISO o tiene 'T', tratar de forma especial para evitar ajustes de zona horaria
     if (date.includes('T')) {
-      // Parsear como ISO pero luego extraer solo año, mes, día en zona horaria local
-      const parsedDate = parseISO(date);
-      const year = parsedDate.getFullYear();
-      const month = parsedDate.getMonth(); // 0-11
-      const day = parsedDate.getDate();
+      console.log(`[normalizeToStartOfDay] Procesando fecha ISO: ${date}`);
       
-      // Crear nueva fecha local con estos componentes y hora 12 para evitar problemas de DST
-      dateObj = new Date(year, month, day, 12, 0, 0);
+      // Para fechas en formato ISO, extraer explícitamente año, mes y día del string
+      // sin dejarlo a interpretación automática de JavaScript
+      const parts = date.split('T')[0].split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // Meses en JS son 0-11
+        const day = parseInt(parts[2], 10);
+        
+        // IMPORTANTE: Usar Date.UTC para crear fecha consistente
+        // y luego convertirla a fecha local para evitar errores de zona horaria
+        const utcDate = new Date(Date.UTC(year, month, day, 12, 0, 0));
+        dateObj = new Date(utcDate);
+        
+        // Asegurarse de que se mantenga el día correcto independientemente de la zona horaria
+        // Forzar el día que se especificó en el string original
+        if (dateObj.getDate() !== day) {
+          console.log(`[normalizeToStartOfDay] Corrigiendo día de ${dateObj.getDate()} a ${day}`);
+          dateObj.setDate(day);
+        }
+        
+        console.log(`[normalizeToStartOfDay] Fecha ISO procesada: ${dateObj.toISOString()}`);
+      } else {
+        console.log(`[normalizeToStartOfDay] Formato ISO inválido, usando parseISO`);
+        dateObj = parseISO(date);
+        // Asegurar hora al mediodía para evitar problemas de DST
+        dateObj.setHours(12, 0, 0, 0);
+      }
     } else {
       // Si es formato YYYY-MM-DD simple
       const parts = date.split('-');
@@ -37,8 +58,15 @@ export function normalizeToStartOfDay(date: Date | string): Date {
         const month = parseInt(parts[1], 10) - 1; // Meses en JS son 0-11
         const day = parseInt(parts[2], 10);
         
-        // Crear fecha con hora 12 para evitar problemas de cambio de día por zona horaria
-        dateObj = new Date(year, month, day, 12, 0, 0);
+        // Usar fecha UTC para mantener consistencia, luego convertir a local
+        const utcDate = new Date(Date.UTC(year, month, day, 12, 0, 0));
+        dateObj = new Date(utcDate);
+        
+        // Forzar el día que se especificó en el string original
+        if (dateObj.getDate() !== day) {
+          console.log(`[normalizeToStartOfDay] Corrigiendo día de ${dateObj.getDate()} a ${day}`);
+          dateObj.setDate(day);
+        }
       } else {
         // Para otros formatos, asumimos que está en zona horaria local
         const tempDate = new Date(date);
@@ -53,12 +81,22 @@ export function normalizeToStartOfDay(date: Date | string): Date {
   } else {
     // Si ya es un objeto Date, extraer sus componentes y crear nueva fecha
     // con hora a mediodía para evitar problemas de cambio de día
-    dateObj = new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      12, 0, 0
-    );
+    
+    // Usar los componentes pero crear con la zona horaria correcta
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+    
+    console.log(`[normalizeToStartOfDay] Fecha objeto original: ${date.toISOString()}`);
+    console.log(`[normalizeToStartOfDay] Componentes extraídos: año=${year}, mes=${month}, día=${day}`);
+    
+    // Crear nueva fecha asegurando que se mantenga el día especificado
+    dateObj = new Date(year, month, day, 12, 0, 0);
+  }
+  
+  // Asegurarnos que la fecha tenga 12:00:00 para evitar problemas de DST
+  if (dateObj.getHours() !== 12) {
+    dateObj.setHours(12, 0, 0, 0);
   }
   
   // Retornar fecha normalizada sin aplicar startOfDay que podría cambiar la fecha
