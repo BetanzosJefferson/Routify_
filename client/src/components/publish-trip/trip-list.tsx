@@ -2,7 +2,13 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { normalizeToStartOfDay, isSameLocalDay } from "@/lib/utils";
+import { 
+  normalizeToStartOfDay, 
+  isSameLocalDay, 
+  formatDate, 
+  formatDateForInput, 
+  dateToLocalISOString
+} from "@/lib/utils";
 import { 
   PencilIcon, 
   TrashIcon, 
@@ -334,7 +340,13 @@ export default function TripList({ onEditTrip }: TripListProps) {
     // Filtrar por fecha usando nuestras utilidades de normalización
     if (dateFilter) {
       // Usar isSameLocalDay para comparar las fechas correctamente
-      matchesDate = isSameLocalDay(trip.departureDate, dateFilter);
+      try {
+        matchesDate = isSameLocalDay(trip.departureDate, dateFilter);
+        console.log(`Comparando fechas: ${trip.departureDate} con ${dateFilter.toISOString()} - Resultado: ${matchesDate}`);
+      } catch (error) {
+        console.error(`Error al comparar fechas: ${error}`);
+        matchesDate = false;
+      }
     }
     
     // Filtrar por ruta
