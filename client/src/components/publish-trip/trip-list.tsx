@@ -331,13 +331,10 @@ export default function TripList({ onEditTrip }: TripListProps) {
         (trip.routeName?.toLowerCase().includes(search) ?? false);
     }
 
-    // Filtrar por fecha
+    // Filtrar por fecha usando nuestras utilidades de normalización
     if (dateFilter) {
-      const tripDate = new Date(trip.departureDate);
-      matchesDate = 
-        tripDate.getFullYear() === dateFilter.getFullYear() &&
-        tripDate.getMonth() === dateFilter.getMonth() &&
-        tripDate.getDate() === dateFilter.getDate();
+      // Usar isSameLocalDay para comparar las fechas correctamente
+      matchesDate = isSameLocalDay(trip.departureDate, dateFilter);
     }
     
     // Filtrar por ruta
@@ -355,14 +352,11 @@ export default function TripList({ onEditTrip }: TripListProps) {
     
     // Primero filtramos solo los viajes principales (no sub-viajes)
     filteredTrips.filter((trip: Trip) => !trip.isSubTrip).forEach((trip: Trip) => {
-      // Manejo explícito de la fecha para evitar problemas de zona horaria
-      const date = new Date(trip.departureDate);
-      const day = date.getUTCDate();
-      const month = date.getUTCMonth() + 1; // getUTCMonth() devuelve 0-11
-      const year = date.getUTCFullYear();
+      // Normalizar la fecha para evitar problemas de zona horaria
+      const localDate = normalizeToStartOfDay(trip.departureDate);
       
-      // Formato yyyy-MM-dd
-      const dateKey = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      // Formato yyyy-MM-dd que usaremos como clave
+      const dateKey = format(localDate, "yyyy-MM-dd");
       
       if (!grouped[dateKey]) {
         grouped[dateKey] = [];
@@ -383,9 +377,8 @@ export default function TripList({ onEditTrip }: TripListProps) {
 
   // Formatear fecha para encabezado
   const formatDateHeader = (dateString: string) => {
-    // Creamos la fecha usando los componentes individuales para evitar problemas de zona horaria
-    const [year, month, day] = dateString.split('-').map(num => parseInt(num));
-    const localDate = new Date(year, month - 1, day, 12, 0, 0);
+    // Usamos normalizeToStartOfDay para asegurar una fecha correcta
+    const localDate = normalizeToStartOfDay(dateString);
     
     return format(localDate, "'Viajes para' d 'de' MMMM 'de' yyyy", { locale: es });
   };
@@ -565,13 +558,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
                                 <div className="flex items-center text-sm text-muted-foreground">
                                   <CalendarIcon className="h-4 w-4 mr-1" />
                                   <span>
-                                    {(() => {
-                                      const date = new Date(trip.departureDate);
-                                      const day = date.getUTCDate();
-                                      const month = date.getUTCMonth() + 1;
-                                      const year = date.getUTCFullYear();
-                                      return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
-                                    })()}
+                                    {format(normalizeToStartOfDay(trip.departureDate), "dd/MM/yyyy")}
                                   </span>
                                   <ClockIcon className="h-4 w-4 ml-4 mr-1" />
                                   <span>{formatTime(trip.departureTime)} - {formatTime(trip.arrivalTime)}</span>
