@@ -126,9 +126,6 @@ export const reservations = pgTable("reservations", {
   advancePaymentMethod: text("advance_payment_method").default(PaymentMethod.CASH), // Método del anticipo
   createdBy: integer("created_by"), // ID del usuario que crea la reservación
   commissionPaid: boolean("commission_paid").default(false), // Indicador si la comisión ha sido pagada
-  isApproved: boolean("is_approved").notNull().default(true), // Por defecto true para reservaciones normales, false para las de comisionistas hasta ser aprobadas
-  reviewedBy: integer("reviewed_by"), // ID del usuario que aprobó la reservación (si aplica)
-  reviewNotes: text("review_notes"), // Notas del revisor (si aplica)
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   // Campo para aislamiento de datos por compañía

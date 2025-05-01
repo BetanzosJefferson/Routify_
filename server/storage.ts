@@ -45,7 +45,7 @@ export interface IStorage {
   updateRelatedTripsAvailability(tripId: number, seatChange: number): Promise<void>;
   
   // Reservation methods
-  getReservations(companyId?: string, tripId?: number, pendingApproval?: boolean): Promise<ReservationWithDetails[]>;
+  getReservations(companyId?: string): Promise<ReservationWithDetails[]>;
   getReservation(id: number): Promise<Reservation | undefined>;
   getReservationWithDetails(id: number, companyId?: string): Promise<ReservationWithDetails | undefined>;
   createReservation(reservation: InsertReservation): Promise<Reservation>;
@@ -480,24 +480,12 @@ export class MemStorage implements IStorage {
   }
   
   // Reservation methods
-  async getReservations(companyId?: string, tripId?: number, pendingApproval?: boolean): Promise<ReservationWithDetails[]> {
+  async getReservations(companyId?: string): Promise<ReservationWithDetails[]> {
     let reservations = Array.from(this.reservations.values());
     
     // Filtrar por companyId si se proporciona
     if (companyId) {
       reservations = reservations.filter(reservation => reservation.companyId === companyId);
-    }
-    
-    // Filtrar por tripId si se proporciona
-    if (tripId) {
-      reservations = reservations.filter(reservation => reservation.tripId === tripId);
-    }
-    
-    // Filtrar por estado de aprobación si se especifica
-    if (pendingApproval !== undefined) {
-      reservations = reservations.filter(reservation => 
-        pendingApproval ? !reservation.isApproved : reservation.isApproved !== false
-      );
     }
     
     const result: ReservationWithDetails[] = [];

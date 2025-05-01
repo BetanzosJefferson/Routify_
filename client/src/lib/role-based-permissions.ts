@@ -13,7 +13,6 @@ export const ALL_SECTIONS: Section[] = [
   { id: "trips", name: "Viajes", description: "Lista de viajes programados" },
   { id: "publish-trip", name: "Publicar Viaje", description: "Crear y publicar nuevos viajes" },
   { id: "reservations", name: "Reservaciones", description: "Gestión de reservaciones de pasajeros" },
-  { id: "pending-reservations", name: "Reservaciones Pendientes", description: "Aprobar o rechazar reservaciones pendientes" },
   { id: "trip-summary", name: "Resumen de Viajes", description: "Reportes y estadísticas de viajes" },
   { id: "boarding-list", name: "Lista de Abordaje", description: "Control de abordaje de pasajeros" },
   { id: "users", name: "Usuarios", description: "Gestión de usuarios del sistema" },
@@ -33,7 +32,6 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "trips",
     "publish-trip",
     "reservations",
-    "pending-reservations",
     "trip-summary",
     "boarding-list",
     "users",
@@ -47,7 +45,6 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "trips",
     "publish-trip",
     "reservations",
-    "pending-reservations",
     "trip-summary",
     "boarding-list",
     "users",
@@ -59,7 +56,6 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
   [UserRole.CALL_CENTER]: [
     "trips",
     "reservations",
-    "pending-reservations",
     "boarding-list",
     "reservation-requests",
     "notifications"
