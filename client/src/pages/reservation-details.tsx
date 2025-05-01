@@ -158,6 +158,14 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
     const companyName = reservation.trip?.companyName || "TR";
     return companyName.substring(0, 2).toUpperCase();
   };
+  
+  // Verificar si tenemos una imagen de perfil válida
+  const hasValidProfileImage = () => {
+    return reservation.trip?.companyLogo && 
+           reservation.trip.companyLogo.length > 0 && 
+           (reservation.trip.companyLogo.startsWith('data:image') || 
+            reservation.trip.companyLogo.startsWith('http'));
+  };
 
   return (
     <div className="container max-w-2xl mx-auto px-4 py-6">
@@ -176,12 +184,17 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
       <Card className="p-4 sm:p-6 mb-4 border-0 shadow-md">
         {/* Logo/Avatar de la empresa */}
         <div className="flex flex-col items-center mb-6">
-          <Avatar className="h-20 w-20 mb-4 border-2 border-gray-200">
-            <AvatarImage src={reservation.trip?.companyLogo} alt={reservation.trip?.companyName || "Empresa"} />
-            <AvatarFallback className="bg-primary text-white text-xl">
-              {getCompanyInitials()}
-            </AvatarFallback>
-          </Avatar>
+          <div className="rounded-full overflow-hidden h-20 w-20 mb-4 border-2 border-gray-200 flex items-center justify-center bg-primary">
+            {hasValidProfileImage() ? (
+              <img 
+                src={reservation.trip.companyLogo} 
+                alt={reservation.trip?.companyName || "Empresa"} 
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="text-white text-xl font-bold">{getCompanyInitials()}</span>
+            )}
+          </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">
             Reservación #{generateReservationId(reservation.id)}
           </h1>
