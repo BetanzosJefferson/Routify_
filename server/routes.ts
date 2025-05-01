@@ -2191,7 +2191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Solo comisionistas pueden crear solicitudes de reservación
-      if (currentUser.role !== UserRole.AGENT) {
+      if (currentUser.role !== UserRole.COMMISSIONER) {
         return res.status(403).json({ 
           message: "Solo los comisionistas pueden crear solicitudes de reservación" 
         });
@@ -2261,7 +2261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filters: { companyId?: string, status?: string, requesterId?: number } = {};
       
       // Si es comisionista, solo puede ver sus propias solicitudes
-      if (currentUser.role === UserRole.AGENT) {
+      if (currentUser.role === UserRole.COMMISSIONER) {
         filters.requesterId = currentUser.id;
       } 
       // Si no es superAdmin, solo puede ver solicitudes de su compañía
@@ -2304,14 +2304,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verificar permisos de acceso
-      if (currentUser.role === UserRole.AGENT && request.requesterId !== currentUser.id) {
+      if (currentUser.role === UserRole.COMMISSIONER && request.requesterId !== currentUser.id) {
         return res.status(403).json({ 
           message: "No tienes permiso para ver esta solicitud" 
         });
       }
       
       if (currentUser.role !== UserRole.SUPER_ADMIN && 
-          currentUser.role !== UserRole.AGENT && 
+          currentUser.role !== UserRole.COMMISSIONER && 
           request.companyId !== currentUser.companyId) {
         return res.status(403).json({ 
           message: "No tienes permiso para ver esta solicitud" 
