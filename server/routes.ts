@@ -1653,14 +1653,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Actualizar asientos disponibles en el viaje
       if (passengerCount > 0) {
+        // Obtener información detallada del viaje para conocer su capacidad original
+        const tripDetails = await storage.getTripWithRouteInfo(trip.id);
+        const capacityLimit = tripDetails?.capacity || trip.capacity;
+        
+        // Calcular los nuevos asientos disponibles, pero sin exceder la capacidad máxima
+        const newAvailableSeats = Math.min(trip.availableSeats + passengerCount, capacityLimit);
+        
+        console.log(`[DELETE /reservations/${id}] Capacidad máxima del viaje: ${capacityLimit}, asientos actuales: ${trip.availableSeats}, asientos a liberar: ${passengerCount}`);
+        
+        if (newAvailableSeats > capacityLimit) {
+          console.warn(`[DELETE /reservations/${id}] ADVERTENCIA: Se intentó establecer más asientos (${trip.availableSeats + passengerCount}) que la capacidad máxima (${capacityLimit})`);
+        }
+        
         await storage.updateTrip(trip.id, {
-          availableSeats: trip.availableSeats + passengerCount
+          availableSeats: newAvailableSeats
         });
         
-        console.log(`Asientos actualizados para el viaje ${trip.id}. Nuevos asientos disponibles: ${trip.availableSeats + passengerCount}`);
+        console.log(`Asientos actualizados para el viaje ${trip.id}. Nuevos asientos disponibles: ${newAvailableSeats} (limitado a capacidad máxima ${capacityLimit})`);
         
         try {
-          // Actualizar disponibilidad en viajes relacionados si existen
+          // Para viajes relacionados, también aplicar la misma lógica de límite en updateRelatedTripsAvailability
           await storage.updateRelatedTripsAvailability(trip.id, passengerCount);
         } catch (e) {
           console.error("Error al actualizar viajes relacionados:", e);
