@@ -1,9 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 
 export function NotificationBadge() {
-  const [, navigate] = useLocation();
-  
   // Consultar el conteo de notificaciones no leídas
   const { data: unreadCount, isLoading } = useQuery<number>({
     queryKey: ['/api/notifications/unread-count'],
@@ -17,10 +14,7 @@ export function NotificationBadge() {
   }
 
   return (
-    <div 
-      className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 flex items-center justify-center cursor-pointer"
-      onClick={() => navigate('/notifications')}
-    >
+    <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 flex items-center justify-center">
       <span className="text-xs font-medium text-white">
         {count > 9 ? '9+' : count}
       </span>
