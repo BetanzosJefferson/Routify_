@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 // Componente principal para la página de comisiones
 export default function CommissionsPage() {
   const [activeTab, setActiveTab] = useState('reservations');
+  const [, setLocation] = useLocation();
 
   // Consulta para obtener todas las reservaciones creadas por comisionistas
   const { data: commissionReservations, isLoading } = useQuery({
@@ -25,6 +26,11 @@ export default function CommissionsPage() {
       return response.json();
     },
   });
+
+  // Función para ir a la página de detalles de reservación
+  const goToReservationDetails = (reservationId: number) => {
+    setLocation(`/reservation-details?id=${reservationId}`);
+  };
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'dd MMMM yyyy', { locale: es });
@@ -73,7 +79,11 @@ export default function CommissionsPage() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {commissionReservations.map((reservation: any) => (
-                      <tr key={reservation.id} className="hover:bg-gray-50">
+                      <tr
+                        key={reservation.id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => goToReservationDetails(reservation.id)}
+                      >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">#{reservation.id}</div>
                         </td>
