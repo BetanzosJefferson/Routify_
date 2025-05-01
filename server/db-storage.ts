@@ -15,11 +15,16 @@ import {
   Vehicle,
   InsertVehicle,
   Commission,
-  InsertCommission
+  InsertCommission,
+  ReservationRequest,
+  InsertReservationRequest,
+  Notification,
+  InsertNotification,
+  UserRole
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db } from "./db";
-import { eq, and, gte, lt, like, or, sql } from "drizzle-orm";
+import { eq, and, gte, lt, like, or, sql, desc, isNull, not } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   async getRoutes(companyId?: string): Promise<Route[]> {
@@ -1119,6 +1124,420 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error(`[deleteUser] Error al eliminar usuario con ID ${id}:`, error);
       return false;
+    }
+  }
+  
+  // =================== MÉTODOS PARA PAGOS DE COMISIONES ===================
+  
+  async markCommissionsAsPaid(reservationIds: number[]): Promise<{
+    success: boolean;
+    message: string;
+    affectedCount: number;
+  }> {
+    try {
+      // Actualizar todas las reservaciones en la lista para marcarlas como pagadas
+      const results = await db
+        .update(schema.reservations)
+        .set({ 
+          commissionPaid: true,
+          updatedAt: new Date()
+        })
+        .where(
+          and(
+            sql`id = ANY(${reservationIds})`,  // Más eficiente para listas de IDs
+            eq(schema.reservations.commissionPaid, false) // Asegurarse de que no estén pagadas ya
+          )
+        )
+        .returning({ id: schema.reservations.id });
+      
+      // Número de reservaciones actualizadas
+      const affectedCount = results.length;
+      
+      if (affectedCount > 0) {
+        return {
+          success: true, 
+          message: `Se marcaron ${affectedCount} comisiones como pagadas.`,
+          affectedCount
+        };
+      } else {
+        return {
+          success: false,
+          message: "No se encontraron comisiones pendientes para los IDs proporcionados.",
+          affectedCount: 0
+        };
+      }
+    } catch (error) {
+      console.error("Error al marcar comisiones como pagadas:", error);
+      return {
+        success: false,
+        message: `Error al marcar comisiones como pagadas: ${error.message}`,
+        affectedCount: 0
+      };
+    }
+  }
+  
+  // =================== MÉTODOS PARA SOLICITUDES DE RESERVACIÓN ===================
+  
+  async createReservationRequest(requestData: any): Promise<ReservationRequest> {
+    try {
+      console.log("[createReservationRequest] Creando solicitud de reservación:", requestData);
+      
+      // Insertar la solicitud en la base de datos
+      const [newRequest] = await db
+        .insert(schema.reservationRequests)
+        .values({
+          ...requestData,
+          status: "pendiente",
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
+      
+      console.log("[createReservationRequest] Solicitud creada con ID:", newRequest.id);
+      
+      // Buscar usuarios que puedan aprobar la solicitud (Dueño, Administrador, Call Center)
+      // de la misma empresa que el comisionista
+      const approvers = await db
+        .select()
+        .from(schema.users)
+        .where(
+          and(
+            eq(schema.users.companyId, requestData.companyId),
+            or(
+              eq(schema.users.role, UserRole.OWNER),
+              eq(schema.users.role, UserRole.ADMIN),
+              eq(schema.users.role, UserRole.CALL_CENTER)
+            )
+          )
+        );
+      
+      console.log(`[createReservationRequest] Encontrados ${approvers.length} usuarios aprobadores para la empresa ${requestData.companyId}`);
+      
+      // Obtener datos del comisionista para incluir en la notificación
+      const [requester] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.id, requestData.requesterId));
+      
+      if (!requester) {
+        console.error(`No se encontró al comisionista con ID ${requestData.requesterId}`);
+        return newRequest;
+      }
+      
+      // Obtener información del viaje para la notificación
+      const [trip] = await db
+        .select()
+        .from(schema.trips)
+        .where(eq(schema.trips.id, requestData.tripId));
+      
+      if (!trip) {
+        console.error(`No se encontró el viaje con ID ${requestData.tripId}`);
+        return newRequest;
+      }
+      
+      // Crear una notificación para cada usuario que puede aprobar
+      for (const approver of approvers) {
+        const notification: InsertNotification = {
+          userId: approver.id,
+          type: "reservation_request",
+          title: "Nueva solicitud de reservación",
+          message: `${requester.firstName} ${requester.lastName} ha solicitado una reservación para ${trip.departureDate.toLocaleDateString()} con ${requestData.passengersData.length} pasajeros. Monto total: $${requestData.totalAmount}.`,
+          relatedId: newRequest.id,
+          read: false,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        
+        await this.createNotification(notification);
+      }
+      
+      return newRequest;
+    } catch (error) {
+      console.error("Error al crear solicitud de reservación:", error);
+      throw error;
+    }
+  }
+  
+  async getReservationRequests(filters?: { 
+    companyId?: string, 
+    status?: string,
+    requesterId?: number 
+  }): Promise<any[]> {
+    try {
+      // Construir condiciones para la consulta
+      const conditions = [];
+      
+      if (filters?.companyId) {
+        conditions.push(eq(schema.reservationRequests.companyId, filters.companyId));
+      }
+      
+      if (filters?.status) {
+        conditions.push(eq(schema.reservationRequests.status, filters.status));
+      }
+      
+      if (filters?.requesterId) {
+        conditions.push(eq(schema.reservationRequests.requesterId, filters.requesterId));
+      }
+      
+      // Ejecutar la consulta con los filtros
+      let query = db.select().from(schema.reservationRequests);
+      
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+      
+      // Ordenar por fecha de creación (más recientes primero)
+      query = query.orderBy(desc(schema.reservationRequests.createdAt));
+      
+      const requests = await query;
+      
+      // Enriquecer los datos de las solicitudes con información adicional
+      const enrichedRequests = await Promise.all(
+        requests.map(async (request) => {
+          // Obtener información del viaje
+          const [trip] = await db
+            .select()
+            .from(schema.trips)
+            .leftJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
+            .where(eq(schema.trips.id, request.tripId));
+          
+          // Obtener información del comisionista
+          const [requester] = await db
+            .select()
+            .from(schema.users)
+            .where(eq(schema.users.id, request.requesterId));
+          
+          // Obtener información del revisor (si existe)
+          let reviewer = null;
+          if (request.reviewedBy) {
+            [reviewer] = await db
+              .select()
+              .from(schema.users)
+              .where(eq(schema.users.id, request.reviewedBy));
+          }
+          
+          return {
+            ...request,
+            trip: trip,
+            requester: requester,
+            reviewer: reviewer
+          };
+        })
+      );
+      
+      return enrichedRequests;
+    } catch (error) {
+      console.error("Error al obtener solicitudes de reservación:", error);
+      return [];
+    }
+  }
+  
+  async getReservationRequest(id: number): Promise<any> {
+    try {
+      const [request] = await db
+        .select()
+        .from(schema.reservationRequests)
+        .where(eq(schema.reservationRequests.id, id));
+      
+      if (!request) {
+        return null;
+      }
+      
+      // Obtener información del viaje
+      const [trip] = await db
+        .select()
+        .from(schema.trips)
+        .leftJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
+        .where(eq(schema.trips.id, request.tripId));
+      
+      // Obtener información del comisionista
+      const [requester] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.id, request.requesterId));
+      
+      // Obtener información del revisor (si existe)
+      let reviewer = null;
+      if (request.reviewedBy) {
+        [reviewer] = await db
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.id, request.reviewedBy));
+      }
+      
+      return {
+        ...request,
+        trip: trip,
+        requester: requester,
+        reviewer: reviewer
+      };
+    } catch (error) {
+      console.error(`Error al obtener solicitud de reservación ${id}:`, error);
+      return null;
+    }
+  }
+  
+  async updateReservationRequestStatus(
+    id: number, 
+    status: string, 
+    reviewedBy: number, 
+    reviewNotes?: string
+  ): Promise<ReservationRequest> {
+    try {
+      // Obtener la solicitud actual antes de actualizarla
+      const [currentRequest] = await db
+        .select()
+        .from(schema.reservationRequests)
+        .where(eq(schema.reservationRequests.id, id));
+      
+      if (!currentRequest) {
+        throw new Error(`No se encontró la solicitud con ID ${id}`);
+      }
+      
+      // Actualizar el estado de la solicitud
+      const [updatedRequest] = await db
+        .update(schema.reservationRequests)
+        .set({
+          status,
+          reviewedBy,
+          reviewNotes,
+          updatedAt: new Date()
+        })
+        .where(eq(schema.reservationRequests.id, id))
+        .returning();
+      
+      // Si fue aprobada, crear una reservación real
+      if (status === "aprobada") {
+        const newReservation: InsertReservation = {
+          tripId: currentRequest.tripId,
+          totalAmount: currentRequest.totalAmount,
+          email: currentRequest.email,
+          phone: currentRequest.phone,
+          notes: currentRequest.notes || null,
+          paymentMethod: currentRequest.paymentMethod,
+          paymentStatus: currentRequest.paymentStatus,
+          advanceAmount: currentRequest.advanceAmount || 0,
+          advancePaymentMethod: currentRequest.advancePaymentMethod || "efectivo",
+          createdById: currentRequest.requesterId, // El creador es el comisionista
+          companyId: currentRequest.companyId,
+          status: "confirmada", // La reservación se crea ya confirmada
+          commissionPaid: false // Por defecto, la comisión no está pagada
+        };
+        
+        // Crear la reservación
+        const reservation = await this.createReservation(newReservation);
+        
+        // Crear los pasajeros
+        const passengersData = currentRequest.passengersData as any[];
+        for (const passengerData of passengersData) {
+          await this.createPassenger({
+            ...passengerData,
+            reservationId: reservation.id
+          });
+        }
+        
+        // Crear notificación para el comisionista
+        const notification: InsertNotification = {
+          userId: currentRequest.requesterId,
+          type: "reservation_approved",
+          title: "Solicitud de reservación aprobada",
+          message: `Tu solicitud de reservación ha sido aprobada. Se ha creado la reservación #${reservation.id}.`,
+          relatedId: reservation.id,
+          read: false,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        
+        await this.createNotification(notification);
+      } else if (status === "rechazada") {
+        // Si fue rechazada, notificar al comisionista
+        const notification: InsertNotification = {
+          userId: currentRequest.requesterId,
+          type: "reservation_rejected",
+          title: "Solicitud de reservación rechazada",
+          message: `Tu solicitud de reservación ha sido rechazada.${reviewNotes ? ` Motivo: ${reviewNotes}` : ""}`,
+          relatedId: id,
+          read: false,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        
+        await this.createNotification(notification);
+      }
+      
+      return updatedRequest;
+    } catch (error) {
+      console.error(`Error al actualizar estado de solicitud ${id}:`, error);
+      throw error;
+    }
+  }
+  
+  // =================== MÉTODOS PARA NOTIFICACIONES ===================
+  
+  async createNotification(notificationData: InsertNotification): Promise<Notification> {
+    try {
+      const [newNotification] = await db
+        .insert(schema.notifications)
+        .values(notificationData)
+        .returning();
+      
+      return newNotification;
+    } catch (error) {
+      console.error("Error al crear notificación:", error);
+      throw error;
+    }
+  }
+  
+  async getNotifications(userId: number): Promise<Notification[]> {
+    try {
+      // Obtener notificaciones ordenadas por fecha (más recientes primero)
+      const notifications = await db
+        .select()
+        .from(schema.notifications)
+        .where(eq(schema.notifications.userId, userId))
+        .orderBy(desc(schema.notifications.createdAt));
+      
+      return notifications;
+    } catch (error) {
+      console.error(`Error al obtener notificaciones para usuario ${userId}:`, error);
+      return [];
+    }
+  }
+  
+  async markNotificationAsRead(id: number): Promise<Notification> {
+    try {
+      const [updatedNotification] = await db
+        .update(schema.notifications)
+        .set({
+          read: true,
+          updatedAt: new Date()
+        })
+        .where(eq(schema.notifications.id, id))
+        .returning();
+      
+      return updatedNotification;
+    } catch (error) {
+      console.error(`Error al marcar notificación ${id} como leída:`, error);
+      throw error;
+    }
+  }
+  
+  async getUnreadNotificationsCount(userId: number): Promise<number> {
+    try {
+      const result = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(schema.notifications)
+        .where(
+          and(
+            eq(schema.notifications.userId, userId),
+            eq(schema.notifications.read, false)
+          )
+        );
+      
+      return Number(result[0]?.count || 0);
+    } catch (error) {
+      console.error(`Error al contar notificaciones no leídas para usuario ${userId}:`, error);
+      return 0;
     }
   }
 }
