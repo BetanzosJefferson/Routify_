@@ -27,10 +27,13 @@ export function formatTime(time: string): string {
   return time;
 }
 
-export function formatPrice(price: number): string {
-  return new Intl.NumberFormat('en-US', {
+export function formatPrice(price: number | null | undefined): string {
+  if (price === null || price === undefined) {
+    return '$0 MXN';
+  }
+  return new Intl.NumberFormat('es-MX', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'MXN',
     minimumFractionDigits: 0,
   }).format(price);
 }
