@@ -379,6 +379,8 @@ export const users = pgTable("users", {
   invitedById: integer("invited_by_id").references(() => users.id),
   // Campo para referenciar la compañía a la que pertenece el usuario
   companyId: text("company_id").default(""),
+  // Campo para almacenar el porcentaje de comisión para usuarios comisionistas
+  commissionPercentage: doublePrecision("commission_percentage").default(0),
 });
 
 export const insertUserSchema = createInsertSchema(users)
