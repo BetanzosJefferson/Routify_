@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
-import { Loader2, CheckCircle, XCircle, ArrowLeft, Ticket, Bell, AlertTriangle, QrCode } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, ArrowLeft, Ticket, Bell, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import TicketCheckedModal from "@/components/reservations/ticket-checked-modal";
-import ReservationQR from "@/components/reservations/reservation-qr";
 
 export default function ReservationDetails() {
   const [_, setLocation] = useLocation();
@@ -291,25 +290,11 @@ export default function ReservationDetails() {
           </div>
         </div>
 
-        {/* Estado grande y QR code */}
-        <div className="my-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-          <div className="text-center">
-            <div className="text-sm text-gray-500 mb-2">Estado:</div>
-            <div className="text-2xl font-bold text-amber-500">
-              {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
-            </div>
-          </div>
-          
-          <div className="flex flex-col items-center justify-center">
-            <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-              <QrCode className="h-4 w-4 mr-1" />
-              Código QR
-            </h3>
-            <ReservationQR 
-              reservationId={reservation.id} 
-              size={150}
-              className="mx-auto"  
-            />
+        {/* Estado grande */}
+        <div className="my-6 text-center">
+          <div className="text-sm text-gray-500 mb-2">Estado:</div>
+          <div className="text-2xl font-bold text-amber-500">
+            {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
           </div>
         </div>
 
