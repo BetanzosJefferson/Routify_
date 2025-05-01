@@ -1580,7 +1580,11 @@ export class DatabaseStorage implements IStorage {
           createdBy: currentRequest.requesterId, // El creador es el comisionista
           companyId: currentRequest.companyId,
           status: "confirmada", // La reservación se crea ya confirmada
-          commissionPaid: false // Por defecto, la comisión no está pagada
+          commissionPaid: false, // Por defecto, la comisión no está pagada
+          // Inicializar los campos de escaneo de tickets
+          checkedBy: null,
+          checkedAt: null,
+          checkCount: 0
         };
         
         // Crear la reservación
