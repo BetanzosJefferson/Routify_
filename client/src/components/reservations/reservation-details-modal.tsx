@@ -327,7 +327,7 @@ export default function ReservationDetailsModal({
                     <h3 className="font-medium text-base border-b pb-2 mb-4">Código QR</h3>
                     <div className="text-center">
                       <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/public/reservations/${reservation.id}`} 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/reservation-details?id=${reservation.id}`} 
                         alt="QR Code"
                         className="mx-auto my-4 w-48 h-48"
                       />
@@ -339,7 +339,7 @@ export default function ReservationDetailsModal({
                       </p>
                       
                       <a 
-                        href={`/public/reservations/${reservation.id}`} 
+                        href={`/reservation-details?id=${reservation.id}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="mt-4 inline-block text-blue-600 hover:underline"
