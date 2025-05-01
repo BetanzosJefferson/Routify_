@@ -89,6 +89,7 @@ export class MemStorage implements IStorage {
   private passengers: Map<number, Passenger>;
   private vehicles: Map<number, Vehicle>;
   private commissions: Map<number, Commission>;
+  private users: Map<number, User>;
   
   private routeId: number;
   private tripId: number;
@@ -96,6 +97,7 @@ export class MemStorage implements IStorage {
   private passengerId: number;
   private vehicleId: number;
   private commissionId: number;
+  private userId: number;
   
   constructor() {
     this.routes = new Map();
@@ -104,6 +106,7 @@ export class MemStorage implements IStorage {
     this.passengers = new Map();
     this.vehicles = new Map();
     this.commissions = new Map();
+    this.users = new Map();
     
     this.routeId = 1;
     this.tripId = 1;
@@ -111,6 +114,7 @@ export class MemStorage implements IStorage {
     this.passengerId = 1;
     this.vehicleId = 1;
     this.commissionId = 1;
+    this.userId = 1;
 
     // Add some initial data
     this.createRoute({
@@ -688,6 +692,37 @@ export class MemStorage implements IStorage {
   
   async deleteCommission(id: number): Promise<boolean> {
     return this.commissions.delete(id);
+  }
+  
+  // User methods
+  async getUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+  
+  async getUserById(id: number): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+  
+  async updateUser(id: number, userData: { 
+    email?: string; 
+    password?: string; 
+    commissionPercentage?: number; 
+  }): Promise<User | undefined> {
+    const existingUser = this.users.get(id);
+    if (!existingUser) return undefined;
+    
+    const updatedUser = { 
+      ...existingUser, 
+      ...userData,
+      updatedAt: new Date()
+    };
+    
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+  
+  async deleteUser(id: number): Promise<boolean> {
+    return this.users.delete(id);
   }
 }
 
