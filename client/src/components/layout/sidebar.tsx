@@ -143,7 +143,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           )}
           
           {/* Sección de Reservaciones y Reportes */}
-          {(canAccess("reservations") || canAccess("pending-reservations") || canAccess("trip-summary") || canAccess("boarding-list")) && (
+          {(canAccess("reservations") || canAccess("trip-summary") || canAccess("boarding-list")) && (
             <NavSection title="Reservaciones y Reportes">
               {canAccess("reservations") && (
                 <NavItem 
@@ -152,15 +152,6 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   onClick={() => handleTabClick("reservations")}
                 >
                   Reservaciones
-                </NavItem>
-              )}
-              {canAccess("pending-reservations") && (
-                <NavItem 
-                  icon={<ClipboardListIcon className="h-5 w-5" />} 
-                  active={window.location.pathname === "/pending-reservations"}
-                  onClick={() => setLocation("/pending-reservations")}
-                >
-                  Reservaciones Pendientes
                 </NavItem>
               )}
               {canAccess("trip-summary") && (

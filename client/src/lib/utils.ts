@@ -176,16 +176,6 @@ export function formatTime(time: string): string {
   return time;
 }
 
-/**
- * Formatea una fecha con hora para mostrarla al usuario
- * @param date - Fecha a formatear
- * @returns Fecha y hora formateada como string (formato: dd/MM/yyyy HH:mm)
- */
-export function getFormattedDateTime(date: Date | string): string {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return format(dateObj, 'dd/MM/yyyy HH:mm', { locale: es });
-}
-
 export function formatPrice(price: number | null | undefined): string {
   if (price === null || price === undefined) {
     return '$0 MXN';
@@ -195,15 +185,6 @@ export function formatPrice(price: number | null | undefined): string {
     currency: 'MXN',
     minimumFractionDigits: 0,
   }).format(price);
-}
-
-/**
- * Formatea un valor monetario usando Intl.NumberFormat
- * @param amount - Cantidad a formatear
- * @returns Cantidad formateada como moneda (ej: $1,500 MXN)
- */
-export function formatCurrency(amount: number | null | undefined): string {
-  return formatPrice(amount);
 }
 
 export function generateTripsForDateRange(

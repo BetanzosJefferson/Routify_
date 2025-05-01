@@ -1464,41 +1464,11 @@ export class DatabaseStorage implements IStorage {
         
         // Crear los pasajeros
         const passengersData = currentRequest.passengersData as any[];
-        console.log(`[updateReservationRequestStatus] Creando ${passengersData.length} pasajeros para la reservación ${reservation.id}`);
-        
-        // Contar cuántos pasajeros se crearán
-        const passengerCount = passengersData.length;
-        
         for (const passengerData of passengersData) {
           await this.createPassenger({
             ...passengerData,
             reservationId: reservation.id
           });
-        }
-        
-        // IMPORTANTE: Actualizar los asientos disponibles en el viaje
-        try {
-          const trip = await this.getTrip(currentRequest.tripId);
-          if (trip) {
-            // Calcular nuevos asientos disponibles (restando los pasajeros)
-            const newAvailableSeats = Math.max(0, trip.availableSeats - passengerCount);
-            console.log(`[updateReservationRequestStatus] Actualizando asientos disponibles del viaje ${trip.id}: ${trip.availableSeats} -> ${newAvailableSeats} (${passengerCount} pasajeros)`);
-            
-            // Actualizar asientos en el viaje
-            await db
-              .update(schema.trips)
-              .set({
-                availableSeats: newAvailableSeats
-              })
-              .where(eq(schema.trips.id, trip.id));
-            
-            // Actualizar asientos en viajes relacionados si es necesario
-            await this.updateRelatedTripsAvailability(trip.id, -passengerCount);
-          } else {
-            console.error(`[updateReservationRequestStatus] No se encontró el viaje ${currentRequest.tripId} para actualizar los asientos disponibles`);
-          }
-        } catch (error) {
-          console.error(`[updateReservationRequestStatus] Error al actualizar asientos del viaje ${currentRequest.tripId}:`, error);
         }
         
         // Crear notificación para el comisionista

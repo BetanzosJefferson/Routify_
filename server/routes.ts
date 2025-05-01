@@ -1243,9 +1243,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let tripId: number | null = null;
       let includeRelatedTrips = req.query.includeRelated === 'true';
       
-      // Verificar si se solicitan reservaciones pendientes de aprobación
-      const pendingApproval = req.query.pendingApproval === 'true';
-      
       // Verificar si se solicita filtrar por viaje específico
       if (req.query.tripId) {
         tripId = parseInt(req.query.tripId as string, 10);
@@ -1306,7 +1303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const allReservations = [];
                 
                 for (const id of relatedTripIds) {
-                  const tripReservations = await storage.getReservations(undefined, id, undefined);
+                  const tripReservations = await storage.getReservations(undefined, id);
                   allReservations.push(...tripReservations);
                   console.log(`[GET /reservations] Encontradas ${tripReservations.length} reservaciones para viaje relacionado ${id}`);
                 }
@@ -1320,7 +1317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             // Comportamiento original: solo reservaciones del viaje específico
-            const tripReservations = await storage.getReservations(undefined, tripId, undefined);
+            const tripReservations = await storage.getReservations(undefined, tripId);
             return res.json(tripReservations);
           } else {
             console.log(`[GET /reservations] ACCESO DENEGADO: El viaje ${tripId} no está asignado al conductor ${user.id}`);
@@ -1387,8 +1384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Aplicar filtro de compañía solo si es necesario para este rol
             const tripReservations = await storage.getReservations(
               (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN) ? undefined : (companyId || undefined),
-              id,
-              undefined
+              id
             );
             allReservations.push(...tripReservations);
             console.log(`[GET /reservations] Encontradas ${tripReservations.length} reservaciones para viaje relacionado ${id}`);
@@ -1399,11 +1395,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (error) {
           console.error('[GET /reservations] Error al obtener viajes relacionados:', error);
           // Si hay error, caer al comportamiento normal (solo el viaje solicitado)
-          reservations = await storage.getReservations(companyId || undefined, tripId || undefined, pendingApproval);
+          reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
         }
       } else {
         // Ejecutar la consulta normal con el filtro de compañía si aplica
-        reservations = await storage.getReservations(companyId || undefined, tripId || undefined, pendingApproval);
+        reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
       }
       
       console.log(`[GET /reservations] Encontradas ${reservations.length} reservaciones`);
@@ -1550,29 +1546,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Si el frontend no envió createdBy pero hay un usuario autenticado, usamos su ID
       const createdByUserId = reservationData.createdBy || (user ? user.id : null);
       
-      // Verificar si es un comisionista
-      let needsApproval = false;
-      let creatorRole = "";
-      
       if (createdByUserId) {
         console.log(`Registrando usuario creador de la reservación: ID ${createdByUserId}`);
-        
-        // Buscar el usuario para verificar su rol
-        try {
-          const creator = await storage.getUserById(createdByUserId);
-          if (creator) {
-            creatorRole = creator.role;
-            console.log(`Usuario creador tiene rol: ${creatorRole}`);
-            
-            // Solo los comisionistas necesitan aprobación
-            if (creator.role === UserRole.COMMISSIONER) {
-              needsApproval = true;
-              console.log(`[POST /reservations] Creada por comisionista ${creator.firstName} ${creator.lastName} - Requiere aprobación`);
-            }
-          }
-        } catch (error) {
-          console.error(`Error al obtener datos del usuario creador:`, error);
-        }
       }
       
       const reservation = await storage.createReservation({
@@ -1588,8 +1563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         advanceAmount: reservationData.advanceAmount || 0, // Añadir campo de anticipo
         advancePaymentMethod: reservationData.advancePaymentMethod || "efectivo", // Añadir método de pago del anticipo
         paymentStatus: paymentStatus, // Estado del pago basado en el anticipo
-        createdBy: createdByUserId, // ID del usuario que crea la reservación (para comisiones)
-        isApproved: !needsApproval, // Solo las reservaciones de comisionistas necesitan aprobación
+        createdBy: createdByUserId // ID del usuario que crea la reservación (para comisiones)
       });
       
       // Create the passengers
@@ -1603,50 +1577,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         passengers.push(passenger);
       }
       
-      // Solo actualizar asientos disponibles en el viaje si la reservación NO necesita aprobación
-      if (!needsApproval) {
-        console.log(`[POST /reservations] Reservación aprobada automáticamente, actualizando ${passengerCount} asientos en viaje ${trip.id}`);
-        
-        // Actualizar asientos disponibles en el viaje
-        await storage.updateTrip(trip.id, {
-          availableSeats: trip.availableSeats - passengerCount
-        });
-        
-        // Actualizar disponibilidad en viajes relacionados
-        await storage.updateRelatedTripsAvailability(trip.id, -passengerCount);
-      } else {
-        console.log(`[POST /reservations] Reservación pendiente de aprobación, NO se actualizan asientos aún`);
-        
-        // Enviar notificación a usuarios con permisos de aprobación (dueños, administradores y call center)
-        try {
-          // Obtener usuarios con permisos de aprobación en la misma compañía
-          const users = await storage.getUsers();
-          
-          // Filtrar usuarios con permisos de aprobación de la misma compañía
-          const approvers = users.filter(u => 
-            (u.role === UserRole.OWNER || u.role === UserRole.ADMIN || u.role === UserRole.CALL_CENTER) && 
-            (u.companyId === companyId || u.company === companyId)
-          );
-          
-          for (const approver of approvers) {
-            // Crear notificación para cada aprobador
-            await storage.createNotification({
-              userId: approver.id,
-              type: "reservation_pending_approval",
-              title: "Nueva reservación pendiente de aprobación",
-              message: `El comisionista ha creado una reservación que requiere tu aprobación.`,
-              relatedId: reservation.id,
-              read: false,
-              createdAt: new Date(),
-              updatedAt: new Date()
-            });
-          }
-          
-          console.log(`[POST /reservations] Notificaciones enviadas a ${approvers.length} aprobadores`);
-        } catch (error) {
-          console.error(`Error al crear notificaciones:`, error);
-        }
-      }
+      // Actualizar asientos disponibles en el viaje
+      await storage.updateTrip(trip.id, {
+        availableSeats: trip.availableSeats - passengerCount
+      });
+      
+      // Actualizar disponibilidad en viajes relacionados
+      await storage.updateRelatedTripsAvailability(trip.id, -passengerCount);
       
       res.status(201).json({
         ...reservation,
@@ -2253,174 +2190,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error(`[PUT /commissions/pay] Error: ${error}`);
       res.status(500).json({ error: "Error al marcar las comisiones como pagadas" });
-    }
-  });
-  
-  // Nuevo endpoint para aprobar o rechazar reservaciones pendientes
-  app.patch(apiRouter('/reservations/:id/approve'), isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id, 10);
-      const { approved, notes } = req.body;
-      
-      // Obtener el usuario autenticado
-      const { user } = req as any;
-      
-      if (!user) {
-        return res.status(401).json({ message: "No autenticado" });
-      }
-      
-      console.log(`[PATCH /reservations/${id}/approve] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
-      
-      // Verificar permisos - solo dueños, administradores y call center pueden aprobar
-      if (![UserRole.OWNER, UserRole.ADMIN, UserRole.CALL_CENTER, UserRole.SUPER_ADMIN, UserRole.DEVELOPER].includes(user.role)) {
-        console.log(`[PATCH /reservations/${id}/approve] ACCESO DENEGADO: El rol ${user.role} no puede aprobar reservaciones`);
-        return res.status(403).json({ message: "No tienes permisos para aprobar reservaciones" });
-      }
-      
-      // Obtener la reservación
-      const reservation = await storage.getReservation(id);
-      
-      if (!reservation) {
-        return res.status(404).json({ message: "Reservación no encontrada" });
-      }
-      
-      // Verificar que la reservación esté pendiente de aprobación
-      if (reservation.isApproved !== false) {
-        return res.status(400).json({ message: "Esta reservación ya está procesada o no requiere aprobación" });
-      }
-      
-      // SEGURIDAD: Verificar que pertenece a la compañía del usuario (excepto superAdmin y desarrollador)
-      if (![UserRole.SUPER_ADMIN, UserRole.DEVELOPER].includes(user.role)) {
-        const userCompanyId = user.companyId || user.company;
-        if (reservation.companyId && reservation.companyId !== userCompanyId) {
-          console.log(`[PATCH /reservations/${id}/approve] ACCESO DENEGADO: La reservación pertenece a la compañía ${reservation.companyId} pero el usuario es de ${userCompanyId}`);
-          return res.status(403).json({ message: "No tienes permisos para aprobar reservaciones de otra compañía" });
-        }
-      }
-      
-      // Si el usuario decide aprobar la reservación
-      if (approved) {
-        console.log(`[PATCH /reservations/${id}/approve] Aprobando reservación ${id}`);
-        
-        // 1. Actualizar la reservación
-        const updatedReservation = await storage.updateReservation(id, {
-          isApproved: true,
-          reviewedBy: user.id,
-          reviewNotes: notes || null,
-          updatedAt: new Date()
-        });
-        
-        if (!updatedReservation) {
-          return res.status(500).json({ message: "Error al actualizar la reservación" });
-        }
-        
-        // 2. Obtener información completa para actualizar asientos
-        const reservationWithDetails = await storage.getReservationWithDetails(id, reservation.companyId || undefined);
-        
-        if (!reservationWithDetails) {
-          return res.status(500).json({ message: "Error al obtener detalles de la reservación" });
-        }
-        
-        // 3. Obtener el viaje asociado
-        const trip = await storage.getTrip(reservation.tripId);
-        
-        if (!trip) {
-          return res.status(500).json({ message: "Error al obtener el viaje asociado" });
-        }
-        
-        // 4. Contar pasajeros
-        const passengerCount = reservationWithDetails.passengers.length;
-        
-        if (passengerCount > 0) {
-          // Verificar si hay asientos suficientes
-          if (trip.availableSeats < passengerCount) {
-            // Rechazar la aprobación si no hay asientos suficientes
-            await storage.updateReservation(id, {
-              isApproved: false,
-              reviewedBy: user.id,
-              reviewNotes: `Rechazada automáticamente: No hay suficientes asientos disponibles (${trip.availableSeats} disponibles, ${passengerCount} requeridos)`,
-              updatedAt: new Date()
-            });
-            
-            return res.status(400).json({ 
-              message: "No hay suficientes asientos disponibles para aprobar esta reservación", 
-              availableSeats: trip.availableSeats,
-              requiredSeats: passengerCount
-            });
-          }
-          
-          // 5. Actualizar asientos disponibles en el viaje
-          await storage.updateTrip(trip.id, {
-            availableSeats: trip.availableSeats - passengerCount
-          });
-          
-          console.log(`[PATCH /reservations/${id}/approve] Actualizados ${passengerCount} asientos en el viaje ${trip.id}. Quedan ${trip.availableSeats - passengerCount} asientos disponibles.`);
-          
-          // 6. Actualizar disponibilidad en viajes relacionados
-          await storage.updateRelatedTripsAvailability(trip.id, -passengerCount);
-        }
-        
-        // 7. Notificar al comisionista que su reservación fue aprobada
-        if (reservationWithDetails.createdByUser) {
-          await storage.createNotification({
-            userId: reservationWithDetails.createdByUser.id,
-            type: "reservation_approved",
-            title: "Reservación aprobada",
-            message: `Tu reservación #${id} ha sido aprobada.${notes ? ` Nota: ${notes}` : ''}`,
-            relatedId: id,
-            read: false,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          });
-        }
-        
-        return res.status(200).json({ 
-          message: "Reservación aprobada correctamente",
-          reservation: updatedReservation
-        });
-      } 
-      // Si el usuario rechaza la reservación
-      else {
-        console.log(`[PATCH /reservations/${id}/approve] Rechazando reservación ${id}`);
-        
-        // Actualizar la reservación como rechazada (mantenemos isApproved=false)
-        const updatedReservation = await storage.updateReservation(id, {
-          reviewedBy: user.id,
-          reviewNotes: notes || "Rechazada sin motivo especificado",
-          status: "cancelled", // También marcamos como cancelada
-          updatedAt: new Date()
-        });
-        
-        if (!updatedReservation) {
-          return res.status(500).json({ message: "Error al actualizar la reservación" });
-        }
-        
-        // Notificar al comisionista que su reservación fue rechazada
-        if (reservation.createdBy) {
-          const creator = await storage.getUserById(reservation.createdBy);
-          
-          if (creator) {
-            await storage.createNotification({
-              userId: creator.id,
-              type: "reservation_rejected",
-              title: "Reservación rechazada",
-              message: `Tu reservación #${id} ha sido rechazada.${notes ? ` Motivo: ${notes}` : ''}`,
-              relatedId: id,
-              read: false,
-              createdAt: new Date(),
-              updatedAt: new Date()
-            });
-          }
-        }
-        
-        return res.status(200).json({ 
-          message: "Reservación rechazada correctamente",
-          reservation: updatedReservation
-        });
-      }
-    } catch (error) {
-      console.error(`[PATCH /reservations/:id/approve] Error:`, error);
-      res.status(500).json({ message: "Error al procesar la aprobación de reservación" });
     }
   });
   
