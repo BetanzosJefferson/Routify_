@@ -18,13 +18,15 @@ export const ALL_SECTIONS: Section[] = [
   { id: "users", name: "Usuarios", description: "Gestión de usuarios del sistema" },
   { id: "vehicles", name: "Unidades", description: "Gestión de vehículos y flota" },
   { id: "commissions", name: "Comisiones", description: "Configuración de comisiones" },
+  { id: "reservation-requests", name: "Solicitudes", description: "Gestión de solicitudes de reservación" },
+  { id: "notifications", name: "Notificaciones", description: "Centro de notificaciones del sistema" },
   { id: "settings", name: "Configuración", description: "Ajustes generales del sistema" }
 ];
 
 // Mapa de permisos por rol
 export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
   [UserRole.SUPER_ADMIN]: ALL_SECTIONS.map(section => section.id), // Acceso total
-  [UserRole.ADMIN]: ALL_SECTIONS.map(section => section.id), // Acceso total
+  [UserRole.DEVELOPER]: ALL_SECTIONS.map(section => section.id), // Acceso total para desarrollo
   [UserRole.OWNER]: [
     "routes",
     "trips",
@@ -34,32 +36,53 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "boarding-list",
     "users",
     "vehicles",
-    "commissions"
+    "commissions",
+    "reservation-requests",
+    "notifications"
+  ],
+  [UserRole.ADMIN]: [
+    "routes",
+    "trips",
+    "publish-trip",
+    "reservations",
+    "trip-summary",
+    "boarding-list",
+    "users",
+    "vehicles",
+    "commissions",
+    "reservation-requests", 
+    "notifications"
   ],
   [UserRole.CALL_CENTER]: [
     "trips",
     "reservations",
-    "boarding-list"
+    "boarding-list",
+    "reservation-requests",
+    "notifications"
   ],
   [UserRole.CHECKER]: [
-    "boarding-list" 
+    "boarding-list",
+    "notifications"
   ],
   // Permisos para rol DRIVER (conductor) - ya incluye el alias español 'chofer'
   [UserRole.DRIVER]: [
     "dashboard",
-    "boarding-list"
+    "boarding-list",
+    "notifications"
     // Quitamos acceso a "trips" y "reservations" para conductor
   ],
   [UserRole.TICKET_OFFICE]: [
     "trips",
-    "reservations"
+    "reservations",
+    "notifications"
   ],
   // Permisos para el nuevo rol COMISIONISTA
   [UserRole.COMMISSIONER]: [
     "trips",
-    "commissions"
-  ],
-  [UserRole.DEVELOPER]: ALL_SECTIONS.map(section => section.id) // Acceso total para desarrollo
+    "commissions",
+    "reservation-requests",
+    "notifications"
+  ]
 };
 
 // Función para verificar si un usuario tiene acceso a una sección
