@@ -88,20 +88,7 @@ interface SearchParams {
   seats?: number;
 }
 
-import { normalizeToStartOfDay } from "@/lib/utils";
-
-// Función para formatear fecha en formato ISO (YYYY-MM-DD) respetando la zona horaria local
-function formatDateForInput(date: Date): string {
-  // Normalizar al inicio del día en hora local
-  const localDate = normalizeToStartOfDay(date);
-  
-  // Formatear como YYYY-MM-DD preservando la zona horaria local
-  const year = localDate.getFullYear();
-  const month = String(localDate.getMonth() + 1).padStart(2, '0');
-  const day = String(localDate.getDate()).padStart(2, '0');
-  
-  return `${year}-${month}-${day}`;
-}
+import { normalizeToStartOfDay, formatDateForInput, formatDateForApiQuery } from "@/lib/utils";
 
 export function TripList() {
   // Obtener la fecha actual formateada como YYYY-MM-DD en hora local
