@@ -7,7 +7,8 @@ import {
   isSameLocalDay, 
   formatDate, 
   formatDateForInput, 
-  dateToLocalISOString
+  dateToLocalISOString,
+  formatDateForApiQuery
 } from "@/lib/utils";
 import { 
   PencilIcon, 
@@ -341,8 +342,21 @@ export default function TripList({ onEditTrip }: TripListProps) {
     if (dateFilter) {
       // Usar isSameLocalDay para comparar las fechas correctamente
       try {
+        // Se utiliza la función isSameLocalDay que maneja correctamente zonas horarias
         matchesDate = isSameLocalDay(trip.departureDate, dateFilter);
-        console.log(`Comparando fechas: ${trip.departureDate} con ${dateFilter.toISOString()} - Resultado: ${matchesDate}`);
+        
+        if (process.env.NODE_ENV === 'development') {
+          // Solo registrar en consola en desarrollo
+          const formattedOriginal = typeof trip.departureDate === 'string' 
+            ? trip.departureDate 
+            : formatDateForApiQuery(trip.departureDate);
+            
+          const formattedFilter = formatDateForApiQuery(dateFilter);
+          
+          console.log(
+            `Comparando fechas: ${formattedOriginal} con ${formattedFilter} - Resultado: ${matchesDate}`
+          );
+        }
       } catch (error) {
         console.error(`Error al comparar fechas: ${error}`);
         matchesDate = false;
