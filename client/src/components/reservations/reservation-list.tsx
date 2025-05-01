@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId, normalizeToStartOfDay, isSameLocalDay } from "@/lib/utils";
@@ -12,7 +13,8 @@ import {
   MailIcon, 
   CalendarIcon, 
   ArchiveIcon,
-  FilterIcon
+  FilterIcon,
+  ExternalLink
 } from "lucide-react";
 import { useReservations } from "@/hooks/use-reservations";
 
