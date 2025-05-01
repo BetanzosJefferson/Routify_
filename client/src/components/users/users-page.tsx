@@ -28,7 +28,10 @@ import { z } from "zod";
 // Esquema de validación para la edición de usuario
 const userEditSchema = z.object({
   email: z.string().email("Correo electrónico inválido").optional(),
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres").optional(),
+  password: z.union([
+    z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+    z.string().length(0) // Permite cadena vacía
+  ]).optional(),
   commissionPercentage: z.number().min(0, "El porcentaje no puede ser negativo").max(100, "El porcentaje no puede superar 100").optional(),
 });
 
@@ -149,7 +152,7 @@ export function UsersPage() {
     // Filtrar campos vacíos o indefinidos
     const filteredData: UserEditFormValues = {};
     if (data.email && data.email !== userToEdit.email) filteredData.email = data.email;
-    if (data.password) filteredData.password = data.password;
+    if (data.password && data.password.trim() !== '') filteredData.password = data.password;
     if (data.commissionPercentage !== undefined) filteredData.commissionPercentage = data.commissionPercentage;
     
     // Solo enviar si hay datos a actualizar
@@ -526,6 +529,9 @@ export function UsersPage() {
                         {...field} 
                       />
                     </FormControl>
+                    <FormDescription className="text-xs italic">
+                      Opcional: Solo llena este campo si deseas cambiar la contraseña
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
