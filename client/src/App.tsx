@@ -14,6 +14,7 @@ import AuthPage from "@/pages/auth-page";
 import RegisterPage from "@/pages/register-page";
 import PassengerListPage from "@/pages/passenger-list-page";
 import ReservationDetails from "@/pages/reservation-details";
+import CommissionsPage from "@/pages/commissions-page";
 import { UsersPage } from "@/components/users/users-page";
 
 function Router() {
@@ -22,6 +23,7 @@ function Router() {
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/dashboard" component={Dashboard} />
       <ProtectedRoute path="/trip/:tripId/passengers" component={PassengerListPage} />
+      <ProtectedRoute path="/commissions" component={CommissionsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register/:token" component={RegisterPage} />
       <Route path="/reservation-details" component={ReservationDetails} />
