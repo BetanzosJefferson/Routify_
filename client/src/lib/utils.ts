@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { format, addDays, eachDayOfInterval, parseISO, startOfDay, endOfDay, isEqual, isSameDay } from "date-fns";
+import es from "date-fns/locale/es";
 import { RouteWithSegments, SegmentPrice } from "@shared/schema";
  
 export function cn(...inputs: ClassValue[]) {

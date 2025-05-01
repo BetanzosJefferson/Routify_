@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Trip, TripWithRouteInfo } from "@shared/schema";
 import { useAuth } from "./use-auth";
+import { formatDateForApiQuery } from "@/lib/utils";
 
 type UseTripsOptions = {
   enabled?: boolean;
@@ -34,7 +35,21 @@ export function useTrips(options: UseTripsOptions = {}) {
         }
         
         if (departureDate) {
-          params.append("departureDate", departureDate);
+          // Asegurarnos de que la fecha esté en el formato correcto usando nuestras utilidades
+          // Esto evita problemas de zona horaria al enviar la fecha al servidor
+          try {
+            // Si la fecha ya está en formato YYYY-MM-DD, usarla directamente
+            // De lo contrario, normalizarla para asegurar consistencia
+            const normalizedDate = departureDate.includes('-') && departureDate.split('-').length === 3
+              ? departureDate
+              : formatDateForApiQuery(new Date(departureDate));
+              
+            console.log(`[useTrips] Fecha normalizada para API: ${normalizedDate} (original: ${departureDate})`);
+            params.append("date", normalizedDate);
+          } catch (e) {
+            console.warn(`[useTrips] Error al formatear fecha: ${e}. Usando fecha original.`);
+            params.append("date", departureDate);
+          }
         }
         
         if (searchTerm) {
