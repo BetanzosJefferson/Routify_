@@ -192,7 +192,11 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
         {/* Logo/Avatar de la empresa */}
         <div className="flex flex-col items-center mb-6">
           <Avatar className="h-20 w-20 mb-4 border-2 border-gray-200">
-            <AvatarImage src={reservation.trip?.companyLogo} alt={reservation.trip?.companyName || "Empresa"} />
+            {reservation.trip?.companyId === "bamo-456" ? (
+              <AvatarImage src="/bamo-logo.svg" alt="BAMO" />
+            ) : (
+              <AvatarImage src={reservation.trip?.companyLogo} alt={reservation.trip?.companyName || "Empresa"} />
+            )}
             <AvatarFallback className="bg-primary text-white text-xl">
               {getCompanyInitials()}
             </AvatarFallback>
