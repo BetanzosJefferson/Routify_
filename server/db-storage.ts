@@ -1023,7 +1023,7 @@ export class DatabaseStorage implements IStorage {
   async checkTicket(id: number, userId: number): Promise<Reservation | undefined> {
     try {
       // Primero obtenemos la reservación para ver si ya ha sido escaneada
-      const reservation = await this.getReservationById(id);
+      const reservation = await this.getReservation(id);
       
       if (!reservation) {
         throw new Error("Reservación no encontrada");
