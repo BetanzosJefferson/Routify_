@@ -4,7 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { formatDate, formatPrice } from "@/lib/utils";
-import { TripWithRouteInfo } from "@shared/schema";
+import { TripWithRouteInfo, UserRole } from "@shared/schema";
 import QRCode from "qrcode";
 import { openPrintWindow } from "./enhanced-ticket";
 
@@ -177,7 +177,13 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
   // Reservation mutation
   const createReservationMutation = useMutation({
     mutationFn: async (data: ReservationFormData) => {
-      const response = await apiRequest("POST", "/api/reservations", data);
+      // Determinar el endpoint según el rol del usuario
+      const isCommissioner = user?.role === UserRole.COMMISSIONER;
+      const endpoint = isCommissioner ? "/api/reservation-requests" : "/api/reservations";
+      
+      console.log(`Usuario con rol ${user?.role} enviando solicitud a ${endpoint}`);
+      
+      const response = await apiRequest("POST", endpoint, data);
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to create reservation");
@@ -185,6 +191,25 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       return response.json();
     },
     onSuccess: (data) => {
+      // Verificamos si el usuario es comisionista para mostrar un mensaje diferente
+      if (user?.role === UserRole.COMMISSIONER) {
+        toast({
+          title: "Solicitud enviada",
+          description: "Tu solicitud de reservación ha sido enviada y está pendiente de aprobación",
+          variant: "default",
+        });
+        
+        // Invalidar las consultas relevantes
+        queryClient.invalidateQueries({ queryKey: ["/api/reservation-requests"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
+        
+        // Cerrar el modal y regresar al paso inicial
+        setCurrentStep(0);
+        onClose();
+        return;
+      }
+      
+      // Para otros roles, continuar con el flujo normal
       // Generate QR code for the reservation with public endpoint
       const reservationUrl = `${window.location.origin}/reservation-details?id=${data.id}`;
       console.log(`Generando código QR para URL: ${reservationUrl}`);
@@ -205,7 +230,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
     },
     onError: (error: Error) => {
       toast({
-        title: "Error creating reservation",
+        title: "Error al procesar la solicitud",
         description: error.message,
         variant: "destructive",
       });
