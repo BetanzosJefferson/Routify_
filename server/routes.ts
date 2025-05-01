@@ -2060,6 +2060,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para obtener reservaciones creadas por comisionistas
+  app.get(apiRouter("/commissioner-reservations"), async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User | undefined;
+      
+      // SEGURIDAD: Verificar autenticación
+      if (!user) {
+        console.log(`[GET /commissioner-reservations] Intento de acceso sin autenticación`);
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      // Verificar permisos (solo los superAdmin, admin y dueños pueden ver las comisiones)
+      if (![UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.OWNER].includes(user.role as UserRole)) {
+        console.log(`[GET /commissioner-reservations] ACCESO DENEGADO: El rol ${user.role} no tiene permisos para ver reservaciones por comisionistas`);
+        return res.status(403).json({ 
+          error: "Acceso denegado", 
+          details: "No tiene permisos para ver reservaciones por comisionistas" 
+        });
+      }
+      
+      // Determinar filtro de compañía según el rol
+      let companyId: string | undefined = undefined;
+      
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        companyId = user.companyId || user.company || undefined;
+        
+        if (!companyId) {
+          console.log(`[GET /commissioner-reservations] ADVERTENCIA: Usuario sin compañía asignada`);
+          return res.json([]); // Si no tiene compañía asignada, devolver lista vacía por seguridad
+        }
+        
+        console.log(`[GET /commissioner-reservations] Aplicando filtro por compañía: ${companyId}`);
+      } else {
+        console.log(`[GET /commissioner-reservations] Usuario SuperAdmin accediendo a todas las reservaciones de comisionistas`);
+      }
+      
+      // Obtener reservaciones creadas por comisionistas
+      const reservations = await storage.getCommissionerReservations(companyId);
+      
+      console.log(`[GET /commissioner-reservations] Encontradas ${reservations.length} reservaciones de comisionistas`);
+      res.json(reservations);
+    } catch (error) {
+      console.error(`[GET /commissioner-reservations] Error: ${error}`);
+      res.status(500).json({ error: "Error al obtener reservaciones de comisionistas" });
+    }
+  });
+
   // Nuevo endpoint público para acceder a los detalles de una reservación (para escaneo de QR)
   app.get(apiRouter("/public/reservations/:id"), async (req: Request, res: Response) => {
     try {
