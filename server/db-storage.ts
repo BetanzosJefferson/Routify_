@@ -647,10 +647,14 @@ export class DatabaseStorage implements IStorage {
       const mainTrip = await this.getTrip(trip.parentTripId);
       if (!mainTrip) return;
       
+      // Calcular asientos disponibles sin exceder la capacidad máxima
+      const newAvailableSeats = Math.min(mainTrip.availableSeats + seatChange, mainTrip.capacity);
+      console.log(`[updateRelatedTripsAvailability] Actualizando viaje principal ${mainTrip.id}: asientos ${mainTrip.availableSeats} a ${newAvailableSeats} (capacidad máxima: ${mainTrip.capacity})`);
+      
       // Actualizar el viaje principal
       await db
         .update(schema.trips)
-        .set({ availableSeats: sql`available_seats + ${seatChange}` })
+        .set({ availableSeats: newAvailableSeats })
         .where(eq(schema.trips.id, mainTrip.id));
       
       // Obtener información de la ruta principal para determinar todas las paradas
@@ -698,18 +702,33 @@ export class DatabaseStorage implements IStorage {
         );
         
         if (hasOverlap) {
+          // Calcular asientos disponibles sin exceder la capacidad máxima para este sub-viaje
+          const newSubAvailableSeats = Math.min(subTrip.availableSeats + seatChange, subTrip.capacity);
+          console.log(`[updateRelatedTripsAvailability] Actualizando sub-viaje ${subTrip.id}: asientos ${subTrip.availableSeats} a ${newSubAvailableSeats} (capacidad máxima: ${subTrip.capacity})`);
+          
           await db
             .update(schema.trips)
-            .set({ availableSeats: sql`available_seats + ${seatChange}` })
+            .set({ availableSeats: newSubAvailableSeats })
             .where(eq(schema.trips.id, subTrip.id));
         }
       }
     } else {
       // Es un viaje principal, actualizar todos sus sub-viajes
-      await db
-        .update(schema.trips)
-        .set({ availableSeats: sql`available_seats + ${seatChange}` })
+      const subTrips = await db
+        .select()
+        .from(schema.trips)
         .where(eq(schema.trips.parentTripId, tripId));
+        
+      for (const subTrip of subTrips) {
+        // Calcular asientos disponibles sin exceder la capacidad máxima para cada sub-viaje
+        const newSubAvailableSeats = Math.min(subTrip.availableSeats + seatChange, subTrip.capacity);
+        console.log(`[updateRelatedTripsAvailability] Actualizando sub-viaje ${subTrip.id} del viaje principal ${tripId}: asientos ${subTrip.availableSeats} a ${newSubAvailableSeats} (capacidad máxima: ${subTrip.capacity})`);
+        
+        await db
+          .update(schema.trips)
+          .set({ availableSeats: newSubAvailableSeats })
+          .where(eq(schema.trips.id, subTrip.id));
+      }
     }
   }
   
