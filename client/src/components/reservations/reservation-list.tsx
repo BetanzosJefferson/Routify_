@@ -55,6 +55,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function ReservationList() {
   const { toast } = useToast();
+  const [_, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("");
@@ -230,6 +231,11 @@ export function ReservationList() {
       });
     },
   });
+  
+  // Navegar a la página de detalles de la reservación
+  const navigateToReservationDetails = (reservation: ReservationWithDetails) => {
+    setLocation(`/reservations?id=${reservation.id}`);
+  };
   
   // Edit handlers
   const openEditModal = (reservation: ReservationWithDetails) => {
@@ -408,7 +414,7 @@ export function ReservationList() {
                   <tr 
                     key={reservation.id} 
                     className="cursor-pointer hover:bg-gray-50"
-                    onClick={() => openEditModal(reservation)}
+                    onClick={() => navigateToReservationDetails(reservation)}
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       #{generateReservationId(reservation.id)}
@@ -496,13 +502,24 @@ export function ReservationList() {
                       <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                         <Button 
                           variant="link" 
-                          className="text-blue-600 hover:text-blue-800 p-0"
+                          className="text-blue-600 hover:text-blue-800 p-0 flex items-center gap-1"
                           onClick={(e) => {
                             e.stopPropagation();
                             openEditModal(reservation);
                           }}
                         >
                           Editar
+                        </Button>
+                        <Button 
+                          variant="link" 
+                          className="text-green-600 hover:text-green-800 p-0 flex items-center gap-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigateToReservationDetails(reservation);
+                          }}
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Ver
                         </Button>
                         <Button 
                           variant="link" 
@@ -546,7 +563,7 @@ export function ReservationList() {
                 <div 
                   key={reservation.id} 
                   className="p-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors duration-150"
-                  onClick={() => openEditModal(reservation)}
+                  onClick={() => navigateToReservationDetails(reservation)}
                 >
                   <div className="flex justify-between items-start mb-3">
                     <div>
@@ -574,6 +591,18 @@ export function ReservationList() {
                         }}
                       >
                         Editar
+                      </Button>
+                      <Button 
+                        size="sm"
+                        variant="link" 
+                        className="text-green-600 hover:text-green-800 p-0 flex items-center gap-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigateToReservationDetails(reservation);
+                        }}
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Ver
                       </Button>
                       <Button 
                         size="sm"
