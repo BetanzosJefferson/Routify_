@@ -201,8 +201,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("commissions") && (
                 <NavItem 
                   icon={<PercentIcon className="h-5 w-5" />} 
-                  active={activeTab === "commissions"}
-                  onClick={() => handleTabClick("commissions")}
+                  active={window.location.pathname === "/commissions"}
+                  onClick={() => setLocation("/commissions")}
                 >
                   Gestión de comisiones
                 </NavItem>

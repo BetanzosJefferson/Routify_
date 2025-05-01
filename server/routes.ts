@@ -2045,5 +2045,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  // Endpoint para obtener reservaciones creadas por comisionistas
+  app.get(apiRouter("/commissions/reservations"), async (req: Request, res: Response) => {
+    try {
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      console.log(`[GET /commissions/reservations] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
+      if (user) {
+        console.log(`[GET /commissions/reservations] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
+      }
+      
+      // SEGURIDAD: Verificar que solo los roles autorizados puedan acceder
+      if (!user) {
+        return res.status(401).json({ error: "No autorizado" });
+      }
+      
+      // Solo los roles Dueño y Administrador pueden acceder a esta sección
+      if (user.role !== UserRole.OWNER && user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.DEVELOPER) {
+        console.log(`[GET /commissions/reservations] ACCESO DENEGADO: El rol ${user.role} no tiene permiso para acceder a esta sección`);
+        return res.status(403).json({ error: "Acceso denegado" });
+      }
+      
+      // SEGURIDAD: Filtrado de datos por compañía
+      let companyId: string | null = null;
+      
+      // Aplicar filtro de compañía para todos excepto superAdmin
+      if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.DEVELOPER) {
+        companyId = user.companyId || user.company;
+        
+        if (!companyId) {
+          console.log(`[GET /commissions/reservations] ADVERTENCIA: Usuario sin compañía asignada`);
+          // Si el usuario no tiene compañía asignada, devolver lista vacía por seguridad
+          return res.json([]);
+        }
+      }
+      
+      // Obtener todas las reservaciones con sus detalles
+      const allReservations = await storage.getReservations(companyId);
+      
+      // Filtrar solo aquellas creadas por usuarios comisionistas
+      const comissionerReservations = allReservations.filter(
+        reservation => reservation.createdByUser && reservation.createdByUser.role === UserRole.COMMISSIONER
+      );
+      
+      console.log(`[GET /commissions/reservations] Encontradas ${comissionerReservations.length} reservaciones creadas por comisionistas`);
+      
+      res.json(comissionerReservations);
+    } catch (error) {
+      console.error(`[GET /commissions/reservations] Error: ${error}`);
+      res.status(500).json({ error: "Error al obtener las reservaciones de comisionistas" });
+    }
+  });
+
   return httpServer;
 }
