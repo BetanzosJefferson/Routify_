@@ -1306,7 +1306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const allReservations = [];
                 
                 for (const id of relatedTripIds) {
-                  const tripReservations = await storage.getReservations(undefined, id);
+                  const tripReservations = await storage.getReservations(undefined, id, undefined);
                   allReservations.push(...tripReservations);
                   console.log(`[GET /reservations] Encontradas ${tripReservations.length} reservaciones para viaje relacionado ${id}`);
                 }
@@ -1320,7 +1320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             // Comportamiento original: solo reservaciones del viaje específico
-            const tripReservations = await storage.getReservations(undefined, tripId);
+            const tripReservations = await storage.getReservations(undefined, tripId, undefined);
             return res.json(tripReservations);
           } else {
             console.log(`[GET /reservations] ACCESO DENEGADO: El viaje ${tripId} no está asignado al conductor ${user.id}`);
@@ -1387,7 +1387,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Aplicar filtro de compañía solo si es necesario para este rol
             const tripReservations = await storage.getReservations(
               (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN) ? undefined : (companyId || undefined),
-              id
+              id,
+              undefined
             );
             allReservations.push(...tripReservations);
             console.log(`[GET /reservations] Encontradas ${tripReservations.length} reservaciones para viaje relacionado ${id}`);
@@ -1398,11 +1399,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (error) {
           console.error('[GET /reservations] Error al obtener viajes relacionados:', error);
           // Si hay error, caer al comportamiento normal (solo el viaje solicitado)
-          reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
+          reservations = await storage.getReservations(companyId || undefined, tripId || undefined, pendingApproval);
         }
       } else {
         // Ejecutar la consulta normal con el filtro de compañía si aplica
-        reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
+        reservations = await storage.getReservations(companyId || undefined, tripId || undefined, pendingApproval);
       }
       
       console.log(`[GET /reservations] Encontradas ${reservations.length} reservaciones`);
@@ -2284,8 +2285,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verificar que la reservación esté pendiente de aprobación
-      if (reservation.isApproved) {
-        return res.status(400).json({ message: "Esta reservación ya está aprobada" });
+      if (reservation.isApproved !== false) {
+        return res.status(400).json({ message: "Esta reservación ya está procesada o no requiere aprobación" });
       }
       
       // SEGURIDAD: Verificar que pertenece a la compañía del usuario (excepto superAdmin y desarrollador)
