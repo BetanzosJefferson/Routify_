@@ -47,7 +47,14 @@ export default function CommissionsPage() {
 
   // Maneja el cambio de pestaña en la navegación principal
   const handleTabChange = (tab: TabType) => {
-    setActiveTab(tab);
+    // En lugar de solo cambiar el estado local, redirigir a la URL correcta
+    if (tab === "commissions") {
+      // Si estamos ya en comisiones, no hacer nada
+      return;
+    }
+    
+    // Redirigir al dashboard con la pestaña seleccionada utilizando wouter
+    setLocation(`/?tab=${tab}`);
   };
 
   // Verificar si el usuario tiene acceso a esta sección
