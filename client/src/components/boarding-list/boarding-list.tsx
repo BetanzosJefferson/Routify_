@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { format, isSameDay } from "date-fns";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useLocation } from "wouter";
 import { 
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
+import { normalizeToStartOfDay, isSameLocalDay } from "@/lib/utils";
 
 // Importamos nuestros nuevos hooks especializados para conductores
 import { useDriverTrips, Trip } from "@/hooks/use-driver-trips";
@@ -80,17 +81,10 @@ export function BoardingList() {
       dateFilteredTrips = noSubTripsFiltered;
       console.log(`Mostrando todos los viajes asignados al chofer (${noSubTripsFiltered.length}) sin filtro de fecha`);
     } else {
-      // Filtrar por fecha seleccionada
+      // Filtrar por fecha seleccionada usando nuestra nueva función de utilidad
       dateFilteredTrips = noSubTripsFiltered.filter(trip => {
-        // Convertir cadena de fecha a objeto Date y obtener solo la parte de la fecha
-        const tripDate = typeof trip.departureDate === 'string' 
-          ? trip.departureDate.split('T')[0] 
-          : format(new Date(trip.departureDate), 'yyyy-MM-dd');
-          
-        const currentDateStr = format(currentDate, 'yyyy-MM-dd');
-        
-        // Comparar las cadenas de fecha directamente
-        return tripDate === currentDateStr;
+        // Utilizar la función isSameLocalDay para comparar las fechas correctamente
+        return isSameLocalDay(trip.departureDate, currentDate);
       });
       
       console.log(`Filtrando viajes por fecha: ${format(currentDate, 'yyyy-MM-dd')}`);
@@ -105,30 +99,9 @@ export function BoardingList() {
 
   // Función para formatear fecha para su visualización con ajuste para zona horaria
   const formatDisplayDate = (dateString: string | Date) => {
-    // Si es string, parseamos asegurándonos que la fecha se interprete correctamente
-    let date;
-    if (typeof dateString === 'string') {
-      // Si es formato ISO, extraemos solo la parte de fecha y creamos un objeto Date
-      // con la hora establecida al mediodía para evitar problemas de zona horaria
-      if (dateString.includes('T')) {
-        const datePart = dateString.split('T')[0];
-        const [year, month, day] = datePart.split('-').map(Number);
-        date = new Date(year, month - 1, day, 12, 0, 0);
-      } else {
-        // Para otros formatos, intentamos el constructor normal
-        const parts = dateString.split('-');
-        if (parts.length === 3) {
-          const [year, month, day] = parts.map(Number);
-          date = new Date(year, month - 1, day, 12, 0, 0);
-        } else {
-          date = new Date(dateString);
-        }
-      }
-    } else {
-      date = dateString;
-    }
-    
-    return format(date, "d 'de' MMMM, yyyy", { locale: es });
+    // Usar nuestra función de utilidad para normalizar la fecha
+    const normalizedDate = normalizeToStartOfDay(dateString);
+    return format(normalizedDate, "d 'de' MMMM, yyyy", { locale: es });
   };
 
   // Función para formatear fecha para input date
