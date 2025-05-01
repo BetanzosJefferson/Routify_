@@ -470,10 +470,26 @@ export class DatabaseStorage implements IStorage {
     
     // Aplicar filtro de fecha
     if (params.date) {
-      console.log(`[searchTrips-v2] Filtro de fecha: ${params.date}`);
+      console.log(`[searchTrips-v2] Filtro de fecha original: ${params.date}`);
       
-      // Filtrado directo por SQL para máxima seguridad en el formato de fecha
-      condiciones.push(sql`DATE(departure_date) = ${params.date}`);
+      try {
+        // Asegurarnos de que la fecha está en el formato YYYY-MM-DD para la consulta SQL
+        let formattedDate = params.date;
+        
+        // Si la fecha incluye tiempo (T o espacio), extraer solo la parte de la fecha
+        if (params.date.includes('T') || params.date.includes(' ')) {
+          formattedDate = params.date.split(/[T ]/)[0];
+        }
+        
+        console.log(`[searchTrips-v2] Fecha formateada para SQL: ${formattedDate}`);
+        
+        // Filtrado directo por SQL para máxima seguridad en el formato de fecha
+        condiciones.push(sql`DATE(departure_date) = ${formattedDate}`);
+      } catch (error) {
+        console.error(`[searchTrips-v2] Error al formatear fecha para consulta: ${error}`);
+        // En caso de error, usar la fecha original
+        condiciones.push(sql`DATE(departure_date) = ${params.date}`);
+      }
     }
     
     // Aplicar filtro por conductor (driverId)
