@@ -1,20 +1,30 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
-import { Loader2, CheckCircle, XCircle, ArrowLeft } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, ArrowLeft, Ticket, Bell, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
+import TicketCheckedModal from "@/components/reservations/ticket-checked-modal";
 
 export default function ReservationDetails() {
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [reservationId, setReservationId] = useState<number | null>(null);
   const [isMarkingAsPaid, setIsMarkingAsPaid] = useState(false);
+  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
+  const [ticketCheckResult, setTicketCheckResult] = useState<{
+    isFirstScan: boolean;
+    reservation?: any;
+  } | null>(null);
 
   // Extraer el ID de la reservación de la URL
   useEffect(() => {
@@ -38,6 +48,64 @@ export default function ReservationDetails() {
     },
     enabled: !!reservationId,
   });
+
+  // Mutación para verificar tickets
+  const checkTicketMutation = useMutation({
+    mutationFn: async () => {
+      if (!reservationId) throw new Error("ID de reservación no válido");
+      const response = await apiRequest("POST", `/api/reservations/${reservationId}/check`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Error al verificar el ticket");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setTicketCheckResult({
+        isFirstScan: data.isFirstScan,
+        reservation: data.reservation
+      });
+      setIsTicketModalOpen(true);
+      
+      // Si fue la primera vez o un re-escaneo, refrescamos los datos
+      refetch();
+      
+      toast({
+        title: data.isFirstScan ? "Ticket Verificado" : "Ticket Re-escaneado",
+        description: data.isFirstScan 
+          ? "El ticket ha sido marcado como verificado correctamente." 
+          : "Este ticket ya había sido verificado anteriormente.",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error al verificar ticket",
+        description: error instanceof Error 
+          ? error.message 
+          : "No se pudo verificar el ticket. Verifica que estés autenticado con los permisos correctos.",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      setIsChecking(false);
+    }
+  });
+  
+  // Función para verificar ticket
+  const handleCheckTicket = () => {
+    if (!user) {
+      toast({
+        title: "Autenticación requerida",
+        description: "Para verificar un ticket necesita iniciar sesión con una cuenta autorizada.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsChecking(true);
+    checkTicketMutation.mutate();
+  };
 
   // Función para marcar como pagado
   const markAsPaid = async () => {
@@ -230,9 +298,39 @@ export default function ReservationDetails() {
           </div>
         </div>
 
-        {/* Botón para marcar como pagado */}
-        {reservation.paymentStatus !== 'pagado' && (
-          <div className="mt-4">
+        {/* Botones de acción */}
+        <div className="mt-4 space-y-3">
+          {/* Botón para verificar ticket */}
+          <Button 
+            onClick={handleCheckTicket} 
+            disabled={isChecking}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            {isChecking ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                Verificando...
+              </>
+            ) : (
+              <>
+                <Ticket className="mr-2 h-4 w-4" />
+                {reservation.checkedBy ? 'Re-verificar Ticket' : 'Verificar Ticket'}
+              </>
+            )}
+          </Button>
+          
+          {/* Información de verificación (si ya se verificó) */}
+          {reservation.checkedBy && (
+            <div className="text-center text-sm text-green-600 bg-green-50 p-2 rounded-md flex items-center justify-center">
+              <CheckCircle className="w-4 h-4 mr-1" />
+              {reservation.checkCount > 1 
+                ? `Ticket verificado ${reservation.checkCount} veces`
+                : 'Ticket ya verificado'}
+            </div>
+          )}
+          
+          {/* Botón para marcar como pagado */}
+          {reservation.paymentStatus !== 'pagado' && (
             <Button 
               onClick={markAsPaid} 
               disabled={isMarkingAsPaid}
@@ -250,8 +348,8 @@ export default function ReservationDetails() {
                 </>
               )}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Información del creador */}
         {reservation.createdByUser && (
@@ -286,6 +384,16 @@ export default function ReservationDetails() {
           </div>
         )}
       </Card>
+      
+      {/* Modal de confirmación de ticket escaneado */}
+      {ticketCheckResult && (
+        <TicketCheckedModal
+          isOpen={isTicketModalOpen}
+          onClose={() => setIsTicketModalOpen(false)}
+          reservation={ticketCheckResult.reservation}
+          isFirstScan={ticketCheckResult.isFirstScan}
+        />
+      )}
     </div>
   );
 }
