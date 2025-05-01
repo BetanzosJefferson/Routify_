@@ -257,49 +257,47 @@ export default function ReservationDetailsModal({
                 {/* Información de pago */}
                 <div className="space-y-4">
                   <h3 className="font-medium text-lg">Información de pago</h3>
-                  <div className="bg-gray-50 p-4 rounded-md space-y-4">
-                    <div>
-                      <div className="text-sm text-gray-500 mb-1">ESTADO DE PAGO</div>
-                      <Badge 
-                        className={reservation.paymentStatus === 'pagado' 
-                          ? 'bg-green-100 text-green-800 border-green-200' 
-                          : 'bg-yellow-100 text-yellow-800 border-yellow-200'}
-                      >
-                        {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
-                      </Badge>
+                  <div className="bg-gray-50 p-4 rounded-md space-y-3">
+                    <div className="grid grid-cols-2 items-center">
+                      <div className="text-sm text-gray-500">ESTADO DE PAGO</div>
+                      <div className="text-right">
+                        <Badge 
+                          className={reservation.paymentStatus === 'pagado' 
+                            ? 'bg-green-100 text-green-800 border-green-200' 
+                            : 'bg-yellow-100 text-yellow-800 border-yellow-200'}
+                        >
+                          {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+                        </Badge>
+                      </div>
                     </div>
                     
-                    <Separator />
-                    
-                    <div>
-                      <div className="text-sm text-gray-500 mb-1">MONTO TOTAL</div>
-                      <div className="text-lg font-bold">{formatPrice(reservation.totalAmount)}</div>
+                    <div className="grid grid-cols-2 items-center">
+                      <div className="text-sm text-gray-500">MONTO TOTAL</div>
+                      <div className="text-right font-medium">{formatPrice(reservation.totalAmount)}</div>
                     </div>
                     
                     {(reservation.advanceAmount && reservation.advanceAmount > 0) && (
                       <>
-                        <Separator />
-                        <div>
-                          <div className="text-sm text-gray-500 mb-1">ANTICIPO</div>
-                          <div className="font-medium">{formatPrice(reservation.advanceAmount)}</div>
+                        <div className="grid grid-cols-2 items-center">
+                          <div className="text-sm text-gray-500">ANTICIPO</div>
+                          <div className="text-right font-medium">{formatPrice(reservation.advanceAmount)}</div>
                         </div>
                         
-                        <div>
-                          <div className="text-sm text-gray-500 mb-1">MÉTODO ANTICIPO</div>
-                          <div>{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                        <div className="grid grid-cols-2 items-center">
+                          <div className="text-sm text-gray-500">MÉTODO ANTICIPO</div>
+                          <div className="text-right">{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
                         </div>
                         
                         {reservation.advanceAmount < reservation.totalAmount && (
                           <>
-                            <Separator />
-                            <div>
-                              <div className="text-sm text-gray-500 mb-1">PENDIENTE DE PAGO</div>
-                              <div className="font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</div>
+                            <div className="grid grid-cols-2 items-center">
+                              <div className="text-sm text-gray-500">PENDIENTE DE PAGO</div>
+                              <div className="text-right font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</div>
                             </div>
                             
-                            <div>
-                              <div className="text-sm text-gray-500 mb-1">MÉTODO PAGO FINAL</div>
-                              <div>{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                            <div className="grid grid-cols-2 items-center">
+                              <div className="text-sm text-gray-500">MÉTODO PAGO FINAL</div>
+                              <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
                             </div>
                           </>
                         )}
@@ -307,13 +305,31 @@ export default function ReservationDetailsModal({
                     )}
                     
                     {(!reservation.advanceAmount || reservation.advanceAmount <= 0) && (
-                      <>
-                        <Separator />
-                        <div>
-                          <div className="text-sm text-gray-500 mb-1">MÉTODO DE PAGO</div>
-                          <div>{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-                        </div>
-                      </>
+                      <div className="grid grid-cols-2 items-center">
+                        <div className="text-sm text-gray-500">MÉTODO DE PAGO</div>
+                        <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                      </div>
+                    )}
+                    
+                    {user && reservation.paymentStatus !== 'pagado' && (
+                      <Button 
+                        onClick={markAsPaid}
+                        disabled={isMarkingAsPaid}
+                        variant="default"
+                        className="w-full mt-3 bg-green-600 hover:bg-green-700 border-green-700 border-2"
+                      >
+                        {isMarkingAsPaid ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Procesando...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            Marcar como pagado
+                          </>
+                        )}
+                      </Button>
                     )}
                   </div>
                   
@@ -344,26 +360,6 @@ export default function ReservationDetailsModal({
                   
                   {/* Botones de acción */}
                   <div className="space-y-2 mt-4">
-                    {reservation.paymentStatus !== 'pagado' && (
-                      <Button 
-                        className="w-full bg-green-600 hover:bg-green-700"
-                        onClick={markAsPaid}
-                        disabled={isMarkingAsPaid}
-                      >
-                        {isMarkingAsPaid ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Procesando...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Marcar como pagado
-                          </>
-                        )}
-                      </Button>
-                    )}
-                    
                     <Button
                       variant="secondary"
                       className="w-full"
