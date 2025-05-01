@@ -8,6 +8,7 @@ import {
   LogOutIcon,
   X
 } from "lucide-react";
+import { NotificationBadge } from "@/components/notifications/notification-badge";
 import {
   Dialog,
   DialogContent,
@@ -74,8 +75,14 @@ export function Topbar() {
           {/* Acciones del lado derecho */}
           <div className="flex items-center space-x-4">
             {/* Botón de notificaciones */}
-            <Button variant="ghost" size="icon" className="text-gray-500">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-gray-500 relative"
+              onClick={() => setLocation('/notifications')}
+            >
               <BellIcon className="h-5 w-5" />
+              <NotificationBadge />
             </Button>
 
             {/* Menú de usuario */}
