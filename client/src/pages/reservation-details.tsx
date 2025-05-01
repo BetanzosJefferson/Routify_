@@ -69,11 +69,19 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
         reservation: data.reservation
       });
       
+      // Siempre mostrar el modal, tanto para primera verificación como para re-verificación
+      setIsTicketModalOpen(true);
+      
       if (data.isFirstScan) {
-        setIsTicketModalOpen(true);
         toast({
           title: "Ticket Verificado",
           description: "El ticket ha sido marcado como verificado correctamente.",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Ticket Ya Verificado",
+          description: `Este ticket ya fue verificado previamente por ${data.reservation.checkedByUser?.firstName || 'otro usuario'}.`,
           variant: "default",
         });
       }
@@ -123,7 +131,9 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
 
   // Intentar verificar automáticamente al cargar la página si el usuario está autenticado
   useEffect(() => {
-    if (user && reservation && !reservation.checkedBy) {
+    if (user && reservation) {
+      // Siempre intentamos verificar, para o bien marcar como verificado (primera vez)
+      // o para mostrar el modal informando que ya fue verificado anteriormente
       checkTicketMutation.mutate();
     }
   }, [user, reservation]);
@@ -155,6 +165,11 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
 
   // Obtener iniciales de la empresa para el avatar
   const getCompanyInitials = () => {
+    // Si tenemos la compañía BAMO, devolver BA
+    if (reservation.trip?.companyId === "bamo-456") {
+      return "BA";
+    }
+    // Obtener el nombre de la compañía o usar TR como valor por defecto
     const companyName = reservation.trip?.companyName || "TR";
     return companyName.substring(0, 2).toUpperCase();
   };
