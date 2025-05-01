@@ -153,7 +153,7 @@ export default function ReservationRequestsPage() {
   // Componente de contenido de solicitudes de reservación
   function ReservationRequestsContent() {
     return (
-      <div className="container mx-auto py-6">
+      <div className="container mx-auto py-6 px-4 md:px-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Solicitudes de Reservación</h1>
         </div>
@@ -174,7 +174,7 @@ export default function ReservationRequestsPage() {
           <TabsContent value="pending">
             {isLoading ? (
               <div className="flex justify-center my-12">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                <Spinner size="md" />
               </div>
             ) : pendingRequests.length === 0 ? (
               <Card>
@@ -198,7 +198,7 @@ export default function ReservationRequestsPage() {
           <TabsContent value="processed">
             {isLoading ? (
               <div className="flex justify-center my-12">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                <Spinner size="md" />
               </div>
             ) : processedRequests.length === 0 ? (
               <Card>
@@ -343,34 +343,34 @@ function RequestCard({ request, isProcessed, onReview }: RequestCardProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center text-sm">
-              <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
-              <span>{request.tripOrigin} → {request.tripDestination}</span>
+              <MapPin className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+              <span className="truncate">{request.tripOrigin} → {request.tripDestination}</span>
             </div>
             <div className="flex items-center text-sm">
-              <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+              <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
               <span>
                 {request.tripDate} • {request.tripDepartureTime}
               </span>
             </div>
             <div className="flex items-center text-sm">
-              <User className="mr-2 h-4 w-4 text-muted-foreground" />
+              <User className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
               <span>{request.passengersData?.length || 0} pasajeros</span>
             </div>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center text-sm">
-              <CreditCard className="mr-2 h-4 w-4 text-muted-foreground" />
+              <CreditCard className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
               <span>Total: <strong>{formatPrice(request.totalAmount)}</strong></span>
             </div>
             <div className="flex items-center text-sm">
-              <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
-              <span>{request.phone}</span>
+              <Phone className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+              <span className="truncate">{request.phone}</span>
             </div>
             <div className="flex items-center text-sm">
-              <span className="mr-2">📧</span>
-              <span>{request.email}</span>
+              <span className="mr-2 flex-shrink-0">📧</span>
+              <span className="truncate">{request.email}</span>
             </div>
           </div>
         </div>
