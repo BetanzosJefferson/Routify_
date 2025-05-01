@@ -1546,8 +1546,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Si el frontend no envió createdBy pero hay un usuario autenticado, usamos su ID
       const createdByUserId = reservationData.createdBy || (user ? user.id : null);
       
+      // Verificar si es un comisionista
+      let needsApproval = false;
+      let creatorRole = "";
+      
       if (createdByUserId) {
         console.log(`Registrando usuario creador de la reservación: ID ${createdByUserId}`);
+        
+        // Buscar el usuario para verificar su rol
+        try {
+          const creator = await storage.getUserById(createdByUserId);
+          if (creator) {
+            creatorRole = creator.role;
+            console.log(`Usuario creador tiene rol: ${creatorRole}`);
+            
+            // Solo los comisionistas necesitan aprobación
+            if (creator.role === UserRole.COMMISSIONER) {
+              needsApproval = true;
+              console.log(`[POST /reservations] Creada por comisionista ${creator.firstName} ${creator.lastName} - Requiere aprobación`);
+            }
+          }
+        } catch (error) {
+          console.error(`Error al obtener datos del usuario creador:`, error);
+        }
       }
       
       const reservation = await storage.createReservation({
@@ -1563,7 +1584,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         advanceAmount: reservationData.advanceAmount || 0, // Añadir campo de anticipo
         advancePaymentMethod: reservationData.advancePaymentMethod || "efectivo", // Añadir método de pago del anticipo
         paymentStatus: paymentStatus, // Estado del pago basado en el anticipo
-        createdBy: createdByUserId // ID del usuario que crea la reservación (para comisiones)
+        createdBy: createdByUserId, // ID del usuario que crea la reservación (para comisiones)
+        isApproved: !needsApproval, // Solo las reservaciones de comisionistas necesitan aprobación
       });
       
       // Create the passengers
@@ -1577,13 +1599,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         passengers.push(passenger);
       }
       
-      // Actualizar asientos disponibles en el viaje
-      await storage.updateTrip(trip.id, {
-        availableSeats: trip.availableSeats - passengerCount
-      });
-      
-      // Actualizar disponibilidad en viajes relacionados
-      await storage.updateRelatedTripsAvailability(trip.id, -passengerCount);
+      // Solo actualizar asientos disponibles en el viaje si la reservación NO necesita aprobación
+      if (!needsApproval) {
+        console.log(`[POST /reservations] Reservación aprobada automáticamente, actualizando ${passengerCount} asientos en viaje ${trip.id}`);
+        
+        // Actualizar asientos disponibles en el viaje
+        await storage.updateTrip(trip.id, {
+          availableSeats: trip.availableSeats - passengerCount
+        });
+        
+        // Actualizar disponibilidad en viajes relacionados
+        await storage.updateRelatedTripsAvailability(trip.id, -passengerCount);
+      } else {
+        console.log(`[POST /reservations] Reservación pendiente de aprobación, NO se actualizan asientos aún`);
+        
+        // Enviar notificación a usuarios con permisos de aprobación (dueños, administradores y call center)
+        try {
+          // Obtener usuarios con permisos de aprobación en la misma compañía
+          const users = await storage.getUsers();
+          
+          // Filtrar usuarios con permisos de aprobación de la misma compañía
+          const approvers = users.filter(u => 
+            (u.role === UserRole.OWNER || u.role === UserRole.ADMIN || u.role === UserRole.CALL_CENTER) && 
+            (u.companyId === companyId || u.company === companyId)
+          );
+          
+          for (const approver of approvers) {
+            // Crear notificación para cada aprobador
+            await storage.createNotification({
+              userId: approver.id,
+              type: "reservation_pending_approval",
+              title: "Nueva reservación pendiente de aprobación",
+              message: `El comisionista ha creado una reservación que requiere tu aprobación.`,
+              relatedId: reservation.id,
+              read: false,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            });
+          }
+          
+          console.log(`[POST /reservations] Notificaciones enviadas a ${approvers.length} aprobadores`);
+        } catch (error) {
+          console.error(`Error al crear notificaciones:`, error);
+        }
+      }
       
       res.status(201).json({
         ...reservation,
