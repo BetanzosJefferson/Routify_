@@ -40,14 +40,15 @@ export function NotificationsMenu() {
   const { toast } = useToast();
 
   // Consulta para obtener notificaciones
-  const { data: notifications, isLoading } = useQuery<Notification[]>({
+  const { data: notifications, isLoading, refetch: refetchNotifications } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/notifications");
       return await response.json();
     },
-    enabled: open, // Solo consultar cuando el menú está abierto
-    staleTime: 30000, // 30 segundos
+    // Siempre mantener las notificaciones actualizadas
+    staleTime: 15000, // 15 segundos
+    refetchInterval: 20000, // Refrescar cada 20 segundos
   });
 
   // Mutación para marcar como leída
@@ -78,15 +79,29 @@ export function NotificationsMenu() {
     
     const unreadNotifications = notifications.filter(notification => !notification.read);
     
-    for (const notification of unreadNotifications) {
-      await markAsReadMutation.mutateAsync(notification.id);
-    }
+    if (unreadNotifications.length === 0) return;
     
-    toast({
-      title: "Notificaciones actualizadas",
-      description: "Todas las notificaciones han sido marcadas como leídas.",
-      variant: "default",
-    });
+    try {
+      // Marcar todas las notificaciones como leídas
+      for (const notification of unreadNotifications) {
+        await markAsReadMutation.mutateAsync(notification.id);
+      }
+      
+      // Forzar una actualización inmediata
+      refetchNotifications();
+      
+      toast({
+        title: "Notificaciones actualizadas",
+        description: "Todas las notificaciones han sido marcadas como leídas.",
+        variant: "default",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Hubo un problema al marcar las notificaciones como leídas.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Ver todas las notificaciones
@@ -147,7 +162,13 @@ export function NotificationsMenu() {
                 <NotificationItem 
                   key={notification.id} 
                   notification={notification} 
-                  onMarkAsRead={() => markAsReadMutation.mutate(notification.id)} 
+                  onMarkAsRead={() => {
+                    markAsReadMutation.mutate(notification.id, {
+                      onSuccess: () => {
+                        refetchNotifications();
+                      }
+                    });
+                  }} 
                 />
               ))}
             </DropdownMenuGroup>
