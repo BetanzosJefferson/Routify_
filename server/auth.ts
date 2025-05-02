@@ -430,24 +430,22 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
       let profilePictureToUse = profilePicture || "";
       let companyToUse = company || ""; // Variable para guardar el nombre de la empresa a utilizar
       
-      if (inviter.length > 0 && inviter[0].role === UserRole.OWNER) {
+      // El companyId se hereda del invitador tanto si es Owner o Admin
+      if (inviter.length > 0) {
+        // Para todos los roles, tomar el companyId del invitador
         companyId = inviter[0].companyId || inviter[0].company; // Usar companyId si existe, si no, usar el valor de company
         companyName = inviter[0].company || ""; // Guardar el nombre de la empresa explícitamente
         
-        // Si el usuario que se está registrando NO es un dueño, asignarle la foto de perfil del dueño invitador
-        // y asignarle la empresa del invitador
+        console.log(`[REGISTER] Invitador role: ${inviter[0].role}, companyId: ${companyId}`);
+        
+        // Si el usuario que se está registrando NO es un dueño o superadmin
         if (invitation[0].role !== UserRole.OWNER && invitation[0].role !== UserRole.SUPER_ADMIN) {
+          // Heredar la foto de perfil del invitador
           profilePictureToUse = inviter[0].profilePicture || "";
           
-          // Para roles como admin, call center, checador, chofer y comisionista, heredan la empresa del dueño
-          if (invitation[0].role === UserRole.ADMIN ||
-              invitation[0].role === UserRole.CALL_CENTER || 
-              invitation[0].role === UserRole.CHECKER ||
-              invitation[0].role === UserRole.DRIVER ||
-              invitation[0].role === UserRole.TICKET_OFFICE ||
-              invitation[0].role === UserRole.COMMISSIONER) {
-            companyToUse = companyName;
-          }
+          // Para todos los roles excepto dueño y superadmin, heredan la empresa del invitador
+          companyToUse = companyName;
+          console.log(`[REGISTER] Asignando companyId ${companyId} y empresa ${companyName} al nuevo usuario con rol ${invitation[0].role}`);
         }
       }
       

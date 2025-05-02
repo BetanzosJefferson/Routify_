@@ -36,17 +36,12 @@ function getFilteredRoles(userRole?: string): string[] {
     ];
   }
   
-  // Si el usuario es admin, puede invitar a todos excepto superadmin
+  // Si el usuario es admin, solo puede invitar a call center, checador y chofer
   if (userRole === UserRole.ADMIN) {
     return [
-      UserRole.ADMIN,
-      UserRole.OWNER, 
       UserRole.CALL_CENTER,
       UserRole.CHECKER,
-      UserRole.DRIVER,
-      UserRole.TICKET_OFFICE,
-      UserRole.DEVELOPER,
-      UserRole.COMMISSIONER
+      UserRole.DRIVER
     ];
   }
   
@@ -71,9 +66,9 @@ function getDefaultRole(userRole?: string): string {
     return UserRole.CALL_CENTER;
   }
   
-  // Para admin, el rol por defecto sería admin
+  // Para admin, el rol por defecto sería call center
   if (userRole === UserRole.ADMIN) {
-    return UserRole.ADMIN;
+    return UserRole.CALL_CENTER;
   }
   
   // Para otros roles (superadmin), el rol por defecto es admin
