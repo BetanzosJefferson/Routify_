@@ -1208,15 +1208,31 @@ export class DatabaseStorage implements IStorage {
   
   async getUsersByCompany(companyId: string): Promise<schema.User[]> {
     console.log(`[getUsersByCompany] Obteniendo usuarios para compañía: ${companyId}`);
-    // Filtrar por companyId o si el campo company es igual al companyId (compatibilidad con datos antiguos)
-    return await db.select()
-      .from(schema.users)
-      .where(
-        or(
-          eq(schema.users.companyId, companyId),
-          eq(schema.users.company, companyId)
-        )
-      );
+    
+    if (!companyId) {
+      console.warn(`[getUsersByCompany] Se llamó con companyId vacío o nulo: "${companyId}"`);
+      return [];
+    }
+    
+    try {
+      // Filtrar por companyId o si el campo company es igual al companyId (compatibilidad con datos antiguos)
+      const users = await db.select()
+        .from(schema.users)
+        .where(
+          or(
+            eq(schema.users.companyId, companyId),
+            eq(schema.users.company, companyId)
+          )
+        );
+      
+      console.log(`[getUsersByCompany] Encontrados ${users.length} usuarios para compañía ${companyId}`);
+      console.log(`[getUsersByCompany] IDs de usuarios encontrados: ${users.map(u => u.id).join(', ')}`);
+      
+      return users;
+    } catch (error) {
+      console.error(`[getUsersByCompany] Error al obtener usuarios para compañía ${companyId}:`, error);
+      return [];
+    }
   }
 
   async getUserById(id: number): Promise<schema.User | undefined> {

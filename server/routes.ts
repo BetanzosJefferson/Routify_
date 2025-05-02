@@ -2480,12 +2480,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as Express.User;
       let users;
       
+      console.log(`[GET /api/users] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}, CompanyId: ${user.companyId || 'N/A'}, Company: ${user.company || 'N/A'}`);
+      
       if (user.role === UserRole.SUPER_ADMIN) {
+        console.log(`[GET /api/users] Usuario con rol superadmin: obteniendo TODOS los usuarios`);
         users = await storage.getUsers();
       } else {
-        // Para Owner y Admin, filtramos por companyId
-        users = await storage.getUsersByCompany(user.companyId || '');
+        // Para Owner y Admin, filtramos por companyId o company
+        const companyFilter = user.companyId || user.company || '';
+        console.log(`[GET /api/users] Usuario con rol ${user.role}: filtrando por compañía: ${companyFilter}`);
+        users = await storage.getUsersByCompany(companyFilter);
       }
+      
+      console.log(`[GET /api/users] Encontrados ${users.length} usuarios. IDs: ${users.map(u => u.id).join(', ')}`);
       
       res.json(users);
     } catch (error) {
@@ -2640,7 +2647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Si el usuario no es superAdmin o dueño, verificar que pertenece a la misma compañía
-      if (![UserRole.SUPER_ADMIN, UserRole.OWNER].includes(req.user.role as schema.UserRoleType)) {
+      if (![UserRole.SUPER_ADMIN, UserRole.OWNER].includes(req.user.role)) {
         const userCompany = req.user.company || (req.user as any).companyId;
         if (reservation.companyId && reservation.companyId !== userCompany) {
           return res.status(403).json({ 
