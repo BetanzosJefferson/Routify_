@@ -29,7 +29,6 @@ interface GroupedReservation {
   phone: string;
   paymentMethod: string;
   paymentStatus: string;
-  rawPaymentStatus: string; // El valor directo de la base de datos: "PAGADO" o "PENDIENTE"
   amount: number;
   tripSegment: string;
   passengers: {
@@ -76,9 +75,6 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
   const groupedReservations: GroupedReservation[] = (() => {
     if (!tripId || !reservations) return [];
     
-    // Imprimir estructura para depurar
-    console.log("[PassengerSidebar] Datos de reservaciones recibidas:", JSON.stringify(reservations, null, 2));
-    
     try {
       // Filtrar solo reservaciones que tienen pasajeros
       const relevantReservations = reservations.map(res => {
@@ -111,22 +107,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           email: reservation.email || '',
           phone: reservation.phone || '',
           paymentMethod: reservation.paymentMethod || 'unknown',
-          // Para determinar el estado del pago, usamos cualquiera de los dos campos disponibles
-          // Guardamos tanto el valor interno (paid/pending) como el valor de la base de datos (PAGADO/PENDIENTE)
-          paymentStatus: (() => {
-            // Si existe el campo paidStatus, lo usamos, si no, usamos paymentStatus
-            if ('paidStatus' in reservation) {
-              console.log(`[PaymentStatus] Usando paidStatus: ${(reservation as any).paidStatus}`);
-              return (reservation as any).paidStatus === 'PAGADO' ? 'paid' : 'pending';
-            } else {
-              // Compatibilidad con versiones anteriores
-              console.log(`[PaymentStatus] Usando paymentStatus: ${reservation.paymentStatus}`);
-              return reservation.paymentStatus === 'pagado' ? 'paid' : 'pending';
-            }
-          })(),
-          rawPaymentStatus: 'paidStatus' in reservation 
-            ? (reservation as any).paidStatus 
-            : (reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'),
+          paymentStatus: reservation.status === 'confirmed' ? 'paid' : 'pending',
           amount: reservation.totalAmount || 0,
           tripSegment: 'Viaje completo',
           passengers: []
@@ -386,10 +367,10 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                       </Badge>
                     )}
                     <Badge 
-                      variant={reservation.rawPaymentStatus === 'PAGADO' ? 'default' : 'secondary'} 
-                      className={reservation.rawPaymentStatus === 'PAGADO' ? 'bg-green-500 text-white' : ''}
+                      variant={reservation.paymentStatus === 'paid' ? 'default' : 'secondary'} 
+                      className={reservation.paymentStatus === 'paid' ? 'bg-green-500 text-white' : ''}
                     >
-                      {reservation.rawPaymentStatus}
+                      {reservation.paymentStatus === 'paid' ? 'PAGADO' : 'PENDIENTE'}
                     </Badge>
                   </div>
                 </div>

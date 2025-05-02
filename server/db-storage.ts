@@ -963,21 +963,6 @@ export class DatabaseStorage implements IStorage {
       reservationData.notes = null;
     }
     
-    // Asegurarnos de que se inicialice correctamente el campo paidStatus
-    // De acuerdo con el valor de paymentStatus
-    if (reservationData.paymentStatus) {
-      if (reservationData.paymentStatus === 'pagado') {
-        reservationData.paidStatus = 'PAGADO';
-      } else if (reservationData.paymentStatus === 'pendiente') {
-        reservationData.paidStatus = 'PENDIENTE';
-      }
-      console.log(`[createReservation] Inicializando paidStatus a '${reservationData.paidStatus}' basado en paymentStatus '${reservationData.paymentStatus}'`);
-    } else if (!reservationData.paidStatus) {
-      // Si no hay paymentStatus ni paidStatus, inicializar paidStatus como PENDIENTE por defecto
-      reservationData.paidStatus = 'PENDIENTE';
-      console.log(`[createReservation] Inicializando paidStatus a 'PENDIENTE' por defecto`);
-    }
-    
     // Crear la reservación en la base de datos
     const [newReservation] = await db.insert(schema.reservations).values(reservationData).returning();
 
@@ -1048,27 +1033,13 @@ export class DatabaseStorage implements IStorage {
       if (!reservation.checkedBy) {
         console.log(`[checkTicket] Primera vez que se escanea el ticket #${id} por el usuario ${userId}`);
         
-        // Al escanear un ticket por primera vez, actualizamos el estado de pago y paidStatus para asegurar consistencia
-        const updateData: any = {
-          checkedBy: userId,
-          checkedAt: new Date(),
-          checkCount: 1
-        };
-        
-        // Si no está explícitamente marcado como pagado, lo actualizamos
-        if (reservation.paymentStatus !== 'pagado') {
-          updateData.paymentStatus = 'pagado';
-          updateData.paidStatus = 'PAGADO';
-          console.log(`[checkTicket] Actualizando estado de pago a 'pagado' y paidStatus a 'PAGADO' para ticket #${id}`);
-        } else if (!reservation.paidStatus || reservation.paidStatus !== 'PAGADO') {
-          // Si el paymentStatus es 'pagado' pero paidStatus no, actualizamos paidStatus para mantener consistencia
-          updateData.paidStatus = 'PAGADO';
-          console.log(`[checkTicket] Sincronizando paidStatus a 'PAGADO' para ticket #${id} (ya estaba marcado como pagado)`);
-        }
-        
         const [updatedReservation] = await db
           .update(schema.reservations)
-          .set(updateData)
+          .set({
+            checkedBy: userId,
+            checkedAt: new Date(),
+            checkCount: 1
+          })
           .where(eq(schema.reservations.id, id))
           .returning();
           
@@ -1077,20 +1048,11 @@ export class DatabaseStorage implements IStorage {
         // Si ya ha sido escaneado, solo incrementamos el contador
         console.log(`[checkTicket] Ticket #${id} ya fue escaneado por el usuario ${reservation.checkedBy}. Incrementando contador.`);
         
-        // Verificamos y sincronizamos los estados de pago
-        const updateData: any = {
-          checkCount: (reservation.checkCount || 0) + 1
-        };
-        
-        // Asegurar la consistencia entre paymentStatus y paidStatus en cada escaneo
-        if (reservation.paymentStatus === 'pagado' && (!reservation.paidStatus || reservation.paidStatus !== 'PAGADO')) {
-          updateData.paidStatus = 'PAGADO';
-          console.log(`[checkTicket] Sincronizando paidStatus a 'PAGADO' para ticket #${id} (ya estaba marcado como pagado)`);
-        }
-        
         const [updatedReservation] = await db
           .update(schema.reservations)
-          .set(updateData)
+          .set({
+            checkCount: (reservation.checkCount || 0) + 1
+          })
           .where(eq(schema.reservations.id, id))
           .returning();
           
@@ -1361,16 +1323,11 @@ export class DatabaseStorage implements IStorage {
     affectedCount: number;
   }> {
     try {
-      console.log(`[markCommissionsAsPaid] Marcando ${reservationIds.length} comisiones como pagadas`);
-      
       // Actualizar todas las reservaciones en la lista para marcarlas como pagadas
-      // También establecer paymentStatus a 'pagado' y paidStatus a 'PAGADO' para mantener consistencia
       const results = await db
         .update(schema.reservations)
         .set({ 
           commissionPaid: true,
-          paymentStatus: 'pagado',        // Asegurar que el pago está marcado como completado
-          paidStatus: 'PAGADO',           // Actualizar también el nuevo campo paidStatus
           updatedAt: new Date()
         })
         .where(
@@ -1383,8 +1340,6 @@ export class DatabaseStorage implements IStorage {
       
       // Número de reservaciones actualizadas
       const affectedCount = results.length;
-      
-      console.log(`[markCommissionsAsPaid] ${affectedCount} comisiones actualizadas con paymentStatus='pagado' y paidStatus='PAGADO'`);
       
       if (affectedCount > 0) {
         return {
