@@ -20,6 +20,11 @@ export interface Trip {
   segmentOrigin?: string;
   segmentDestination?: string;
   companyId?: string;
+  vehicle?: {
+    id: number;
+    name: string;
+    licensePlate?: string;
+  };
   route?: {
     id: number;
     name: string;

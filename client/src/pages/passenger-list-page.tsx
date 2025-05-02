@@ -46,6 +46,11 @@ interface Trip {
   parentTripId?: number;
   segmentOrigin?: string;
   segmentDestination?: string;
+  vehicle?: {
+    id: number;
+    name: string;
+    licensePlate?: string;
+  };
   route: {
     id: number;
     name: string;
@@ -463,12 +468,12 @@ export default function PassengerListPage() {
                 <span>{tripInfo.departureTime} - {tripInfo.arrivalTime}</span>
               </div>
               
-              {tripInfo.vehicleType && (
-                <div className="flex items-center">
-                  <Bus className="h-4 w-4 mr-2 text-gray-500" />
-                  <span className="capitalize">{tripInfo.vehicleType}</span>
-                </div>
-              )}
+              <div className="flex items-center">
+                <Bus className="h-4 w-4 mr-2 text-gray-500" />
+                <span className="capitalize">
+                  {tripInfo.vehicle?.name || "Sin unidad asignada"}
+                </span>
+              </div>
               
               <div className="flex items-center">
                 <Users className="h-4 w-4 mr-2 text-gray-500" />

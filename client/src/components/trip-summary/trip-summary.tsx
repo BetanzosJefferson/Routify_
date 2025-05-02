@@ -317,8 +317,10 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               </div>
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                  <Label className="text-gray-500">Tipo de Vehículo</Label>
-                                  <div className="font-medium capitalize">{trips.find(t => t.id === selectedTrip)?.vehicleType}</div>
+                                  <Label className="text-gray-500">Vehículo</Label>
+                                  <div className="font-medium capitalize">
+                                    {trips.find(t => t.id === selectedTrip)?.vehicle?.name || "Sin unidad asignada"}
+                                  </div>
                                 </div>
                                 <div>
                                   <Label className="text-gray-500">Ocupación Total</Label>
