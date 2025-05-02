@@ -602,8 +602,21 @@ export default function PassengerListPage() {
                         </div>
                         <div className="col-span-2 md:col-span-3 text-right">
                           <div className="font-semibold">${reservation.amount}</div>
-                          <Badge variant={reservation.paymentStatus === 'paid' ? 'default' : 'outline'}>
-                            {reservation.paymentStatus === 'paid' ? 'Pagado' : 'Pendiente'}
+                          {/* Mostrar anticipo solo si existe */}
+                          {reservation.advanceAmount > 0 && (
+                            <div className="text-sm text-gray-600">Anticipo: ${reservation.advanceAmount}</div>
+                          )}
+                          {/* Mostrar monto pendiente solo si la reservación no está pagada completamente */}
+                          {reservation.paymentStatus !== 'paid' && reservation.advanceAmount > 0 && (
+                            <div className="text-sm text-gray-600">Resta: ${reservation.amount - reservation.advanceAmount}</div>
+                          )}
+                          <Badge 
+                            className={reservation.paymentStatus === 'paid' 
+                              ? 'bg-green-100 text-green-800 hover:bg-green-100' 
+                              : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
+                            }
+                          >
+                            {reservation.paymentStatus === 'paid' ? 'PAGADO' : 'PENDIENTE'}
                           </Badge>
                         </div>
                       </div>
