@@ -110,17 +110,10 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           email: reservation.email || '',
           phone: reservation.phone || '',
           paymentMethod: reservation.paymentMethod || 'unknown',
-          // Imprime todos los campos posibles para ver cuál necesitamos
+          // Usamos el nuevo campo paidStatus para determinar el estado del pago
           paymentStatus: (() => {
-            console.log('[PaymentStatus Debug] Valores de reservación:', {
-              id: reservation.id,
-              status: reservation.status,
-              paymentStatus: reservation.paymentStatus,
-              confirmed: reservation.confirmed,
-              fullJson: reservation
-            });
-            // En las pantallas, vemos que debe ser 'paid' cuando está pagado
-            return reservation.status === 'confirmed' ? 'paid' : 'pending';
+            // Usamos el campo paidStatus para mostrar el estado correcto
+            return reservation.paidStatus === 'PAGADO' ? 'paid' : 'pending';
           })(),
           amount: reservation.totalAmount || 0,
           tripSegment: 'Viaje completo',
