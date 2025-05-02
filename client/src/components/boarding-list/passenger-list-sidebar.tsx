@@ -367,10 +367,10 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                       </Badge>
                     )}
                     <Badge 
-                      variant={reservation.paymentStatus === 'paid' ? 'default' : 'secondary'} 
-                      className={reservation.paymentStatus === 'paid' ? 'bg-green-500 text-white' : ''}
+                      variant={reservation.paymentStatus === 'pagado' ? 'default' : 'secondary'} 
+                      className={reservation.paymentStatus === 'pagado' ? 'bg-green-500 text-white' : ''}
                     >
-                      {reservation.paymentStatus === 'paid' ? 'PAGADO' : 'PENDIENTE'}
+                      {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
                     </Badge>
                   </div>
                 </div>
