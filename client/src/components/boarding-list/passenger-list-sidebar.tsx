@@ -248,17 +248,17 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
               </div>
             </div>
             
-            {tripDetails.vehicleType && (
-              <div className="flex items-center bg-gray-50 p-3 rounded-lg">
-                <div className="rounded-full bg-green-100 p-2 mr-3">
-                  <Bus className="h-4 w-4 text-green-600" />
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Vehículo</div>
-                  <div className="text-sm font-medium capitalize">{tripDetails.vehicleType}</div>
+            <div className="flex items-center bg-gray-50 p-3 rounded-lg">
+              <div className="rounded-full bg-green-100 p-2 mr-3">
+                <Bus className="h-4 w-4 text-green-600" />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500">Vehículo</div>
+                <div className="text-sm font-medium capitalize">
+                  {tripDetails.vehicle?.name || "Sin unidad asignada"}
                 </div>
               </div>
-            )}
+            </div>
           </div>
           
           <div className="flex items-center bg-blue-50 p-4 rounded-lg border border-blue-100">
