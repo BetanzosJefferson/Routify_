@@ -122,6 +122,7 @@ export const reservations = pgTable("reservations", {
   paymentMethod: text("payment_method").notNull().default(PaymentMethod.CASH), // 'efectivo' o 'transferencia'
   status: text("status").notNull().default("confirmed"), // Estado de la reservación (confirmed, cancelled)
   paymentStatus: text("payment_status").notNull().default(PaymentStatus.PENDING), // Estado del pago (pendiente, pagado, cancelado)
+  paidStatus: text("paid_status").notNull().default("PENDIENTE"), // Nuevo campo específico para mostrar el estado de pago (PAGADO/PENDIENTE)
   advanceAmount: doublePrecision("advance_amount").default(0), // Monto del anticipo
   advancePaymentMethod: text("advance_payment_method").default(PaymentMethod.CASH), // Método del anticipo
   createdBy: integer("created_by"), // ID del usuario que crea la reservación
