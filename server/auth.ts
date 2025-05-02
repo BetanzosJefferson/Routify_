@@ -3,7 +3,7 @@ import { promisify } from "util";
 import { Express, Request, Response, NextFunction } from "express";
 import { db } from "./db";
 import { users, insertUserSchema, insertInvitationSchema, invitations, UserRole } from "@shared/schema";
-import { eq, and, isNull, ne } from "drizzle-orm";
+import { eq, and, isNull, ne, or, inArray } from "drizzle-orm";
 import { add } from "date-fns";
 
 const scryptAsync = promisify(scrypt);
@@ -109,8 +109,24 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
           query = query.where(eq(users.invitedById, user.id));
         }
       } else if (user.role === UserRole.ADMIN) {
-        // Los administradores ven a todos los usuarios excepto los superadmin
-        query = query.where(ne(users.role, UserRole.SUPER_ADMIN));
+        // Los administradores solo deben ver a los usuarios de su misma compañía, excepto los superadmin
+        const userCompany = user.companyId || user.company;
+        console.log(`[GET /api/users] Admin: ${user.firstName} ${user.lastName}, filtrando por compañía: ${userCompany}`);
+        
+        if (userCompany) {
+          query = query.where(
+            and(
+              ne(users.role, UserRole.SUPER_ADMIN),
+              or(
+                eq(users.companyId, userCompany),
+                eq(users.company, userCompany)
+              )
+            )
+          );
+        } else {
+          console.warn(`[GET /api/users] El administrador ${user.id} no tiene companyId o company definido`);
+          query = query.where(ne(users.role, UserRole.SUPER_ADMIN));
+        }
       } else if (user.role !== UserRole.SUPER_ADMIN) {
         // Otros roles solo se ven a sí mismos
         query = query.where(eq(users.id, user.id));
@@ -293,8 +309,30 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
         // Los "Dueños" solo ven las invitaciones que ellos han creado
         query = query.where(eq(invitations.createdById, user.id));
       } else if (user.role === UserRole.ADMIN) {
-        // Los administradores ven todas las invitaciones
-        // No necesitamos filtro adicional
+        // Los administradores solo deben ver invitaciones de su misma compañía
+        const userCompany = user.companyId || user.company;
+        console.log(`[GET /api/invitations] Admin: ${user.firstName} ${user.lastName}, filtrando por compañía`);
+        
+        if (userCompany) {
+          // Buscar los IDs de los usuarios de la misma compañía
+          const usersFromSameCompany = await db
+            .select()
+            .from(users)
+            .where(
+              or(
+                eq(users.companyId, userCompany),
+                eq(users.company, userCompany)
+              )
+            );
+          
+          const userIds = usersFromSameCompany.map(u => u.id);
+          console.log(`[GET /api/invitations] Filtrando por ${userIds.length} usuarios de la misma compañía`);
+          
+          // Filtrar invitaciones creadas por usuarios de la misma compañía
+          if (userIds.length > 0) {
+            query = query.where(inArray(invitations.createdById, userIds));
+          }
+        }
       } else if (user.role !== UserRole.SUPER_ADMIN) {
         // Otros roles no ven ninguna invitación (lista vacía)
         return res.json([]);
