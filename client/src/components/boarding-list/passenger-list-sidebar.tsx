@@ -257,19 +257,14 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
             )}
           </div>
           
-          <div className="flex items-center justify-between bg-blue-50 p-4 rounded-lg border border-blue-100">
-            <div className="flex items-center">
-              <div className="rounded-full bg-blue-100 p-2 mr-3">
-                <Users className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <div className="text-xs text-blue-600">Total de pasajeros</div>
-                <div className="text-lg font-bold text-blue-700">{totalPassengers}</div>
-              </div>
+          <div className="flex items-center bg-blue-50 p-4 rounded-lg border border-blue-100">
+            <div className="rounded-full bg-blue-100 p-2 mr-3">
+              <Users className="h-5 w-5 text-blue-600" />
             </div>
-            <Badge variant="outline" className="bg-blue-500 text-white border-0 px-3 py-1">
-              {Math.round(((tripDetails.capacity - tripDetails.availableSeats) / tripDetails.capacity) * 100)}% ocupación
-            </Badge>
+            <div>
+              <div className="text-xs text-blue-600">Total de pasajeros</div>
+              <div className="text-lg font-bold text-blue-700">{totalPassengers}</div>
+            </div>
           </div>
         </div>
         
