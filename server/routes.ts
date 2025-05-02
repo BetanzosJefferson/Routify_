@@ -78,12 +78,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user) {
         console.log(`[GET /routes] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}, CompanyId: ${user.companyId}, Company: ${user.company}`);
         
-        // ACCESO TOTAL para superAdmin, admin y developer - sin restricciones
+        // ACCESO TOTAL solo para superAdmin y developer - sin restricciones
         if (user.role === UserRole.SUPER_ADMIN || 
-            user.role === UserRole.ADMIN || 
             user.role === UserRole.DEVELOPER) {
           console.log(`[GET /routes] Usuario con rol ${user.role}: ACCESO TOTAL - mostrando todas las rutas`);
           // No establecer companyId para estos roles para ver TODAS las rutas
+        } 
+        // ACCESO PARA ADMIN - solo ver rutas de su compañía
+        else if (user.role === UserRole.ADMIN) {
+          console.log(`[GET /routes] Admin: ${user.firstName} ${user.lastName}, filtrando por compañía: ${user.companyId || user.company}`);
+          if (user.companyId || user.company) {
+            companyId = user.companyId || user.company;
+          } else {
+            console.warn(`[GET /routes] Administrador sin companyId o company definido`);
+          }
         } else {
           // USUARIOS NORMALES - Filtrar por su compañía
           companyId = user.companyId || user.company;
@@ -128,10 +136,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         companyId = user.companyId || user.company;
       }
       
-      // Verificar acceso a la ruta (solo para roles que no son admin)
+      // Verificar acceso a la ruta
+      // Los usuarios ADMIN también deben tener restricción por compañía
       if (companyId && 
           user.role !== UserRole.SUPER_ADMIN && 
-          user.role !== UserRole.ADMIN && 
           user.role !== UserRole.DEVELOPER &&
           route.companyId !== companyId) {
         return res.status(403).json({ error: "No tiene permiso para acceder a esta ruta" });
@@ -1381,9 +1389,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const allReservations = [];
           
           for (const id of relatedTripIds) {
-            // Aplicar filtro de compañía solo si es necesario para este rol
+            // Aplicar filtro de compañía para todos los roles excepto superAdmin
             const tripReservations = await storage.getReservations(
-              (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN) ? undefined : (companyId || undefined),
+              (user.role === UserRole.SUPER_ADMIN) ? undefined : (companyId || undefined),
               id
             );
             allReservations.push(...tripReservations);
