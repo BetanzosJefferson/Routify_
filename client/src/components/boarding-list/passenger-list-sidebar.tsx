@@ -30,8 +30,6 @@ interface GroupedReservation {
   paymentMethod: string;
   paymentStatus: string;
   amount: number;
-  advancePayment: number | null;
-  remainingBalance: number | null;
   tripSegment: string;
   passengers: {
     id: number;
@@ -111,8 +109,6 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           paymentMethod: reservation.paymentMethod || 'unknown',
           paymentStatus: reservation.paymentStatus || 'pendiente',
           amount: reservation.totalAmount || 0,
-          advancePayment: reservation.advancePayment || null,
-          remainingBalance: reservation.remainingBalance || null,
           tripSegment: 'Viaje completo',
           passengers: []
         };
@@ -135,12 +131,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
         groupedResult.push(groupedReservation);
       }
       
-      // Log de datos financieros de las reservaciones
-      if (reservations[0]) {
-        console.log("Estructura completa de reservación:", reservations[0]);
-      }
+      // Log del estado de pago de las reservaciones
       groupedResult.forEach(reservation => {
-        console.log(`Reservación ${reservation.id} (${reservation.code}): Estado = "${reservation.paymentStatus}", Monto = ${reservation.amount}, Anticipo = ${reservation.advancePayment}, Saldo = ${reservation.remainingBalance}`);
+        console.log(`Reservación ${reservation.id} (${reservation.code}): Estado de pago = "${reservation.paymentStatus}"`);
       });
       
       return groupedResult;
@@ -264,14 +257,19 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
             )}
           </div>
           
-          <div className="flex items-center bg-blue-50 p-4 rounded-lg border border-blue-100">
-            <div className="rounded-full bg-blue-100 p-2 mr-3">
-              <Users className="h-5 w-5 text-blue-600" />
+          <div className="flex items-center justify-between bg-blue-50 p-4 rounded-lg border border-blue-100">
+            <div className="flex items-center">
+              <div className="rounded-full bg-blue-100 p-2 mr-3">
+                <Users className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <div className="text-xs text-blue-600">Total de pasajeros</div>
+                <div className="text-lg font-bold text-blue-700">{totalPassengers}</div>
+              </div>
             </div>
-            <div>
-              <div className="text-xs text-blue-600">Total de pasajeros</div>
-              <div className="text-lg font-bold text-blue-700">{totalPassengers}</div>
-            </div>
+            <Badge variant="outline" className="bg-blue-500 text-white border-0 px-3 py-1">
+              {Math.round(((tripDetails.capacity - tripDetails.availableSeats) / tripDetails.capacity) * 100)}% ocupación
+            </Badge>
           </div>
         </div>
         
@@ -362,28 +360,6 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                       <div className="text-xs text-gray-500">Teléfono</div>
                       <div className="font-medium">{reservation.phone || '-'}</div>
                     </div>
-                  </div>
-                  
-                  {/* Información de pago */}
-                  <div className="border-t border-gray-100 pt-3 mt-3 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Total:</span>
-                      <span className="font-medium">${reservation.amount.toFixed(2)}</span>
-                    </div>
-                    
-                    {reservation.advancePayment && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Anticipo:</span>
-                        <span className="font-medium text-green-600">${reservation.advancePayment.toFixed(2)}</span>
-                      </div>
-                    )}
-                    
-                    {reservation.remainingBalance && reservation.remainingBalance > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Pendiente:</span>
-                        <span className="font-medium text-yellow-600">${reservation.remainingBalance.toFixed(2)}</span>
-                      </div>
-                    )}
                   </div>
                   
                   {/* Etiquetas de pago */}
