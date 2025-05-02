@@ -143,15 +143,21 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
 
   if (isLoadingTripDetails || isLoadingReservations) {
     return (
-      <div className="absolute inset-y-0 right-0 w-full md:w-1/2 lg:w-1/3 bg-white shadow-xl">
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-lg font-semibold">Cargando...</h2>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+      <div 
+        className="fixed inset-y-0 right-0 w-full md:w-[500px] lg:w-[550px] bg-white shadow-2xl overflow-y-auto transition-all duration-300 ease-in-out z-50 border-l border-gray-200 max-w-[95%]"
+        style={{ 
+          boxShadow: "-10px 0 15px -3px rgba(0, 0, 0, 0.1), -4px 0 6px -2px rgba(0, 0, 0, 0.05)",
+        }}
+      >
+        <div className="flex justify-between items-center p-5 border-b sticky top-0 bg-white z-10">
+          <h2 className="text-xl font-semibold text-gray-800">Cargando...</h2>
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-gray-100">
             <X className="h-5 w-5" />
           </Button>
         </div>
-        <div className="flex justify-center items-center h-full">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="flex flex-col justify-center items-center h-[calc(100vh-80px)]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+          <p className="text-gray-500">Cargando datos del viaje...</p>
         </div>
       </div>
     );
@@ -159,68 +165,117 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
 
   if (tripError || !tripDetails) {
     return (
-      <div className="absolute inset-y-0 right-0 w-full md:w-1/2 lg:w-1/3 bg-white shadow-xl">
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-lg font-semibold">Error</h2>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+      <div 
+        className="fixed inset-y-0 right-0 w-full md:w-[500px] lg:w-[550px] bg-white shadow-2xl overflow-y-auto transition-all duration-300 ease-in-out z-50 border-l border-gray-200 max-w-[95%]"
+        style={{ 
+          boxShadow: "-10px 0 15px -3px rgba(0, 0, 0, 0.1), -4px 0 6px -2px rgba(0, 0, 0, 0.05)",
+        }}
+      >
+        <div className="flex justify-between items-center p-5 border-b sticky top-0 bg-white z-10">
+          <h2 className="text-xl font-semibold text-gray-800">Error</h2>
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-gray-100">
             <X className="h-5 w-5" />
           </Button>
         </div>
-        <div className="p-4">
-          <p className="text-red-500">
+        <div className="p-8 flex flex-col items-center justify-center">
+          <div className="rounded-full bg-red-100 p-3 mb-4">
+            <X className="h-6 w-6 text-red-500" />
+          </div>
+          <h3 className="text-lg font-medium mb-2 text-gray-800">No se pudo cargar la información</h3>
+          <p className="text-red-500 text-center mb-4">
             {tripError instanceof Error 
               ? tripError.message 
               : "No se pudo cargar la información del viaje"}
           </p>
+          <Button variant="outline" onClick={onClose}>
+            Cerrar
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="absolute inset-y-0 right-0 w-full md:w-1/2 lg:w-1/3 bg-white shadow-xl overflow-y-auto">
-      <div className="flex justify-between items-center p-4 border-b sticky top-0 bg-white z-10">
-        <h2 className="text-lg font-semibold">Lista de Pasajeros</h2>
-        <Button variant="ghost" size="icon" onClick={onClose}>
+    <div 
+      className="fixed inset-y-0 right-0 w-full md:w-[500px] lg:w-[550px] bg-white shadow-2xl overflow-y-auto transition-all duration-300 ease-in-out z-50 border-l border-gray-200 max-w-[95%]"
+      style={{ 
+        boxShadow: "-10px 0 15px -3px rgba(0, 0, 0, 0.1), -4px 0 6px -2px rgba(0, 0, 0, 0.05)",
+      }}
+    >
+      <div className="flex justify-between items-center p-5 border-b sticky top-0 bg-white z-10">
+        <h2 className="text-xl font-semibold text-gray-800">Lista de Pasajeros</h2>
+        <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-gray-100">
           <X className="h-5 w-5" />
         </Button>
       </div>
       
-      <div className="p-4">
+      <div className="p-6">
         {/* Información del viaje */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold">{tripDetails.route?.name}</h3>
-          <p className="text-gray-500">
+        <div className="mb-6 bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+          <h3 className="text-xl font-semibold mb-1">{tripDetails.route?.name}</h3>
+          <p className="text-gray-600 font-medium mb-3">
             {tripDetails.segmentOrigin || (tripDetails.route?.origin || 'Origen')} → 
             {tripDetails.segmentDestination || (tripDetails.route?.destination || 'Destino')}
           </p>
           
-          <div className="mt-3 space-y-2 text-sm">
-            <div className="flex items-center text-gray-600">
-              <Calendar className="h-4 w-4 mr-2" />
-              {formatDisplayDate(tripDetails.departureDate)}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+            <div className="flex items-center bg-gray-50 p-3 rounded-lg">
+              <div className="rounded-full bg-blue-100 p-2 mr-3">
+                <Calendar className="h-4 w-4 text-blue-600" />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500">Fecha</div>
+                <div className="text-sm font-medium">{formatDisplayDate(tripDetails.departureDate)}</div>
+              </div>
             </div>
             
-            <div className="flex items-center text-gray-600">
-              <Clock className="h-4 w-4 mr-2" />
-              {tripDetails.departureTime} - {tripDetails.arrivalTime}
+            <div className="flex items-center bg-gray-50 p-3 rounded-lg">
+              <div className="rounded-full bg-purple-100 p-2 mr-3">
+                <Clock className="h-4 w-4 text-purple-600" />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500">Horario</div>
+                <div className="text-sm font-medium">{tripDetails.departureTime} - {tripDetails.arrivalTime}</div>
+              </div>
             </div>
             
             {tripDetails.vehicleType && (
-              <div className="flex items-center text-gray-600">
-                <Bus className="h-4 w-4 mr-2" />
-                <span className="capitalize">{tripDetails.vehicleType}</span>
+              <div className="flex items-center bg-gray-50 p-3 rounded-lg">
+                <div className="rounded-full bg-green-100 p-2 mr-3">
+                  <Bus className="h-4 w-4 text-green-600" />
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Vehículo</div>
+                  <div className="text-sm font-medium capitalize">{tripDetails.vehicleType}</div>
+                </div>
               </div>
             )}
           </div>
           
-          <div className="mt-4 p-3 bg-blue-50 rounded-md flex items-center">
-            <Users className="h-5 w-5 text-blue-500 mr-2" />
-            <span className="font-medium text-blue-700">{totalPassengers} pasajeros</span>
+          <div className="flex items-center justify-between bg-blue-50 p-4 rounded-lg border border-blue-100">
+            <div className="flex items-center">
+              <div className="rounded-full bg-blue-100 p-2 mr-3">
+                <Users className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <div className="text-xs text-blue-600">Total de pasajeros</div>
+                <div className="text-lg font-bold text-blue-700">{totalPassengers}</div>
+              </div>
+            </div>
+            <Badge variant="outline" className="bg-blue-500 text-white border-0 px-3 py-1">
+              {Math.round(((tripDetails.capacity - tripDetails.availableSeats) / tripDetails.capacity) * 100)}% ocupación
+            </Badge>
           </div>
         </div>
         
-        <Separator className="my-4" />
+        <div className="flex items-center mb-5">
+          <h3 className="text-lg font-semibold text-gray-800">Lista de Pasajeros</h3>
+          <div className="ml-auto flex items-center">
+            <Badge variant="outline" className="ml-2 bg-gray-100">
+              {groupedReservations.length} {groupedReservations.length === 1 ? 'Reserva' : 'Reservas'}
+            </Badge>
+          </div>
+        </div>
         
         {/* Lista de pasajeros */}
         {groupedReservations.length > 0 ? (
@@ -228,81 +283,109 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
             {groupedReservations.map((reservation, index) => (
               <div 
                 key={`reservation-${reservation.id}`} 
-                className={`p-4 border rounded-md ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
+                className="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow"
               >
-                <div className="md:flex items-start">
-                  <div className="flex-1 mb-3 md:mb-0">
-                    <div className="flex items-center mb-2">
-                      <div className="flex -space-x-2 mr-3">
-                        {reservation.passengers.length > 0 ? (
-                          <>
-                            {reservation.passengers.slice(0, 3).map((passenger) => (
-                              <Avatar key={passenger.id} className="border-2 border-background">
-                                <AvatarFallback className="bg-primary/10 text-primary">
-                                  {passenger.initials}
-                                </AvatarFallback>
-                              </Avatar>
-                            ))}
-                            {reservation.passengers.length > 3 && (
-                              <Avatar className="border-2 border-background">
-                                <AvatarFallback className="bg-primary/10 text-primary">
-                                  +{reservation.passengers.length - 3}
-                                </AvatarFallback>
-                              </Avatar>
-                            )}
-                          </>
-                        ) : (
-                          <Avatar className="border-2 border-background">
-                            <AvatarFallback className="bg-gray-200 text-gray-500">
-                              0
+                <div className="border-b border-gray-100 bg-gray-50 px-4 py-2.5 flex justify-between items-center">
+                  <div className="flex items-center">
+                    <div className="flex -space-x-2 mr-3">
+                      {reservation.passengers.length > 0 ? (
+                        <>
+                          {reservation.passengers.slice(0, 3).map((passenger) => (
+                            <Avatar key={passenger.id} className="border-2 border-white">
+                              <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                                {passenger.initials}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                          {reservation.passengers.length > 3 && (
+                            <Avatar className="border-2 border-white">
+                              <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                                +{reservation.passengers.length - 3}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                        </>
+                      ) : (
+                        <Avatar className="border-2 border-white">
+                          <AvatarFallback className="bg-gray-200 text-gray-500">
+                            0
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-medium">
+                        {reservation.passengers.length} {reservation.passengers.length === 1 ? 'pasajero' : 'pasajeros'}
+                      </div>
+                      <div className="text-xs text-gray-500">{reservation.code}</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-primary">
+                      ${reservation.amount}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4">
+                  {/* Datos de pasajeros */}
+                  <div className="mb-3">
+                    <h4 className="text-xs uppercase text-gray-500 font-medium mb-2">Pasajeros</h4>
+                    <div className="space-y-1.5">
+                      {reservation.passengers.map((passenger) => (
+                        <div key={passenger.id} className="flex items-center">
+                          <Avatar className="h-6 w-6 mr-2">
+                            <AvatarFallback className="text-xs bg-gray-100 text-gray-700">
+                              {passenger.initials}
                             </AvatarFallback>
                           </Avatar>
-                        )}
-                      </div>
-                      <div>
-                        <div className="font-medium">
-                          {reservation.passengers.length} {reservation.passengers.length === 1 ? 'pasajero' : 'pasajeros'}
-                        </div>
-                        <div className="text-sm text-gray-500">{reservation.code}</div>
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      {reservation.passengers.map((passenger) => (
-                        <div key={passenger.id} className="mb-1">
-                          <span className="font-medium">{passenger.firstName} {passenger.lastName}</span>
+                          <span className="font-medium text-gray-800">{passenger.firstName} {passenger.lastName}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {reservation.paymentMethod && (
-                        <Badge variant="outline" className="capitalize">
-                          {reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 
-                          reservation.paymentMethod === 'transferencia' ? 'Transferencia' : 
-                          reservation.paymentMethod}
-                        </Badge>
-                      )}
-                      <Badge variant={reservation.paymentStatus === 'paid' ? 'default' : 'secondary'} 
-                        className={reservation.paymentStatus === 'paid' ? 'bg-green-500' : ''}>
-                        {reservation.paymentStatus === 'paid' ? 'PAGADO' : 'PENDIENTE'}
-                      </Badge>
+                  </div>
+                  
+                  {/* Datos de contacto */}
+                  <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                    <div>
+                      <div className="text-xs text-gray-500">Email</div>
+                      <div className="font-medium truncate">{reservation.email || '-'}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Teléfono</div>
+                      <div className="font-medium">{reservation.phone || '-'}</div>
                     </div>
                   </div>
-                  <div className="md:text-right">
-                    <div className="text-lg font-bold">
-                      ${reservation.amount}
-                    </div>
-                    <div className="text-sm text-gray-500 mt-1">{reservation.email}</div>
-                    <div className="text-sm text-gray-500">{reservation.phone}</div>
+                  
+                  {/* Etiquetas de pago */}
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {reservation.paymentMethod && (
+                      <Badge variant="outline" className="capitalize">
+                        {reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 
+                        reservation.paymentMethod === 'transferencia' ? 'Transferencia' : 
+                        reservation.paymentMethod}
+                      </Badge>
+                    )}
+                    <Badge 
+                      variant={reservation.paymentStatus === 'paid' ? 'default' : 'secondary'} 
+                      className={reservation.paymentStatus === 'paid' ? 'bg-green-500 text-white' : ''}
+                    >
+                      {reservation.paymentStatus === 'paid' ? 'PAGADO' : 'PENDIENTE'}
+                    </Badge>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 text-gray-500">
-            <UserIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <h3 className="text-lg font-medium mb-2">No hay pasajeros registrados</h3>
-            <p>Este viaje no tiene reservaciones o pasajeros.</p>
+          <div className="text-center py-16 bg-gray-50 rounded-xl border border-gray-200">
+            <div className="rounded-full bg-gray-100 p-4 mx-auto w-16 h-16 mb-4 flex items-center justify-center">
+              <UserIcon className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium mb-2 text-gray-800">No hay pasajeros registrados</h3>
+            <p className="text-gray-500 max-w-sm mx-auto">
+              Este viaje no tiene reservaciones o pasajeros registrados en el sistema.
+            </p>
           </div>
         )}
       </div>
