@@ -107,7 +107,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           email: reservation.email || '',
           phone: reservation.phone || '',
           paymentMethod: reservation.paymentMethod || 'unknown',
-          paymentStatus: reservation.status === 'confirmed' ? 'paid' : 'pending',
+          paymentStatus: reservation.paymentStatus || 'pendiente',
           amount: reservation.totalAmount || 0,
           tripSegment: 'Viaje completo',
           passengers: []
@@ -130,6 +130,11 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
         
         groupedResult.push(groupedReservation);
       }
+      
+      // Log del estado de pago de las reservaciones
+      groupedResult.forEach(reservation => {
+        console.log(`Reservación ${reservation.id} (${reservation.code}): Estado de pago = "${reservation.paymentStatus}"`);
+      });
       
       return groupedResult;
     } catch (error) {
