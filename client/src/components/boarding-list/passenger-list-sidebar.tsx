@@ -107,7 +107,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           email: reservation.email || '',
           phone: reservation.phone || '',
           paymentMethod: reservation.paymentMethod || 'unknown',
-          paymentStatus: reservation.status === 'confirmed' ? 'paid' : 'pending',
+          paymentStatus: reservation.paymentStatus === 'paid' ? 'paid' : 'pending',
           amount: reservation.totalAmount || 0,
           tripSegment: 'Viaje completo',
           passengers: []
