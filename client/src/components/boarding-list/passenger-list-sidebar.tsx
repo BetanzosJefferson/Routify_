@@ -75,6 +75,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
   const groupedReservations: GroupedReservation[] = (() => {
     if (!tripId || !reservations) return [];
     
+    // Imprimir estructura para depurar
+    console.log("[PassengerSidebar] Datos de reservaciones recibidas:", JSON.stringify(reservations, null, 2));
+    
     try {
       // Filtrar solo reservaciones que tienen pasajeros
       const relevantReservations = reservations.map(res => {
