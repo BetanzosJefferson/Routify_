@@ -463,7 +463,7 @@ export function ReservationList() {
                             
                             {reservation.advanceAmount < reservation.totalAmount && (
                               <div className="text-xs">
-                                <span className="text-gray-500">Resta:</span>{" "}
+                                <span className="text-gray-500">{reservation.paymentStatus === 'pagado' ? 'Pagó:' : 'Resta:'}</span>{" "}
                                 <span className="font-medium">
                                   {formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}{" "}
                                   <span className="font-normal">({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
@@ -673,7 +673,7 @@ export function ReservationList() {
                             
                             {reservation.advanceAmount < reservation.totalAmount && (
                               <div className="col-span-2">
-                                <div className="text-gray-500">Resta</div>
+                                <div className="text-gray-500">{reservation.paymentStatus === 'pagado' ? 'Pagó' : 'Resta'}</div>
                                 <div className="font-medium">
                                   {formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}{" "}
                                   <span className="font-normal">({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
