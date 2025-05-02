@@ -1736,6 +1736,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const reservationData = validationResult.data;
+      
+      // Sincronizar los campos paymentStatus y paidStatus para mantener consistencia
+      if (reservationData.paymentStatus) {
+        // Si se está actualizando el estado de pago, actualizar también paidStatus
+        if (reservationData.paymentStatus === 'pagado') {
+          reservationData.paidStatus = 'PAGADO';
+        } else if (reservationData.paymentStatus === 'pendiente') {
+          reservationData.paidStatus = 'PENDIENTE';
+        }
+        console.log(`[PUT /reservations/${id}] Sincronizando estado de pago: ${reservationData.paymentStatus} -> ${reservationData.paidStatus}`);
+      }
+      
       const updatedReservation = await storage.updateReservation(id, reservationData);
       
       if (!updatedReservation) {
@@ -1744,6 +1756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(updatedReservation);
     } catch (error) {
+      console.error(`[PUT /reservations/:id] Error:`, error);
       res.status(500).json({ error: "Failed to update reservation" });
     }
   });
