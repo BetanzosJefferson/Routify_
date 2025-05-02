@@ -47,10 +47,13 @@ interface PassengerListSidebarProps {
 export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarProps) {
   // Cargar detalles del viaje
   const { 
-    data: tripDetails, 
+    data: trips, 
     isLoading: isLoadingTripDetails, 
     error: tripError 
-  } = useDriverTripDetails(tripId);
+  } = useDriverTrips();
+  
+  // Buscar el viaje específico en la lista de viajes
+  const tripDetails = trips?.find(trip => trip.id === tripId);
   
   // Cargar reservaciones del viaje
   const { 
@@ -106,9 +109,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           paymentMethod: reservation.paymentMethod || 'unknown',
           paymentStatus: reservation.status === 'confirmed' ? 'paid' : 'pending',
           amount: reservation.totalAmount || 0,
-          tripSegment: reservation.segmentOrigin && reservation.segmentDestination ? 
-            `${reservation.segmentOrigin} → ${reservation.segmentDestination}` : 
-            'Viaje completo',
+          tripSegment: 'Viaje completo',
           passengers: []
         };
         
@@ -280,7 +281,8 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           reservation.paymentMethod}
                         </Badge>
                       )}
-                      <Badge variant={reservation.paymentStatus === 'paid' ? 'success' : 'secondary'}>
+                      <Badge variant={reservation.paymentStatus === 'paid' ? 'default' : 'secondary'} 
+                        className={reservation.paymentStatus === 'paid' ? 'bg-green-500' : ''}>
                         {reservation.paymentStatus === 'paid' ? 'PAGADO' : 'PENDIENTE'}
                       </Badge>
                     </div>

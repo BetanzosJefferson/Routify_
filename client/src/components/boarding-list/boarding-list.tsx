@@ -25,6 +25,7 @@ import { PassengerListSidebar } from "./passenger-list-sidebar";
 export function BoardingList() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [showAllTrips, setShowAllTrips] = useState<boolean>(true);
+  const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
   const [, navigate] = useLocation();
   const { user } = useAuth();
   
@@ -151,7 +152,7 @@ export function BoardingList() {
   };
 
   return (
-    <div className="py-6">
+    <div className="py-6 relative">
       <div className="flex items-center mb-4">
         <div className="rounded-full bg-primary bg-opacity-10 p-2 mr-3">
           <ClipboardListIcon className="h-6 w-6 text-primary" />
@@ -223,7 +224,7 @@ export function BoardingList() {
                 key={trip.id} 
                 className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => {
-                  navigate(`/trip/${trip.id}/passengers`);
+                  setSelectedTripId(trip.id);
                 }}
               >
                 <CardContent className="p-0">
@@ -293,6 +294,14 @@ export function BoardingList() {
             <p>No se encontraron viajes para la fecha seleccionada.</p>
           )}
         </div>
+      )}
+
+      {/* Panel lateral de pasajeros */}
+      {selectedTripId && (
+        <PassengerListSidebar 
+          tripId={selectedTripId} 
+          onClose={() => setSelectedTripId(null)} 
+        />
       )}
     </div>
   );
