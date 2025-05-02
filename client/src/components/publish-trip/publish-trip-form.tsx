@@ -536,7 +536,6 @@ export function PublishTripForm() {
       startDate: format(new Date(), "yyyy-MM-dd"),
       endDate: format(new Date(), "yyyy-MM-dd"),
       capacity: 18,
-      vehicleType: "standard",
       segmentPrices: [],
       vehicleId: null,
       driverId: null,
@@ -788,7 +787,6 @@ export function PublishTripForm() {
             endDate: endDate,
             capacity: trip.capacity,
             // price ya no es necesario, se calcula automáticamente en onSubmit
-            vehicleType: trip.vehicleType || "standard",
             segmentPrices: segmentPricesFromTrip,
             stopTimes: ensureValidStopTimes(allStopTimes),
             // Incluir IDs de vehículo y conductor si existen
@@ -814,7 +812,6 @@ export function PublishTripForm() {
               endDate, 
               capacity: trip.capacity,
               price: trip.price,
-              vehicleType: trip.vehicleType,
               segmentPrices: segmentPricesFromTrip,
               stopTimes: allStopTimes,
               vehicleId: trip.vehicleId,
@@ -827,7 +824,7 @@ export function PublishTripForm() {
             form.setValue("endDate", endDate, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("capacity", trip.capacity, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             // Ya no se establecer precio manualmente, se calcula automáticamente
-            form.setValue("vehicleType", trip.vehicleType || "standard", { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+
             form.setValue("segmentPrices", segmentPricesFromTrip, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             form.setValue("stopTimes", ensureValidStopTimes(allStopTimes), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
             
@@ -939,29 +936,7 @@ export function PublishTripForm() {
                       )}
                     />
                     
-                    {/* Tipo de vehículo */}
-                    <FormField
-                      control={form.control}
-                      name="vehicleType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tipo de Vehículo</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Seleccionar tipo" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="standard">Estándar</SelectItem>
-                              <SelectItem value="vip">VIP</SelectItem>
-                              <SelectItem value="economy">Económico</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+
                   </div>
                   
                   {/* Segunda columna */}
