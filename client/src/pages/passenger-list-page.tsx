@@ -81,6 +81,7 @@ interface Reservation {
   paymentStatus?: string;
   notes?: string;
   totalAmount: number;
+  advanceAmount?: number;
   passengers: Passenger[];
 }
 
@@ -149,6 +150,7 @@ export default function PassengerListPage() {
     paymentMethod: string;
     paymentStatus: string;
     amount: number;
+    advanceAmount?: number;
     tripSegment: string;
     passengers: {
       id: number;
@@ -244,6 +246,7 @@ export default function PassengerListPage() {
             paymentMethod: reservation.paymentMethod || 'unknown',
             paymentStatus: reservation.status === 'confirmed' ? 'paid' : 'pending',
             amount: reservation.totalAmount || 0,
+            advanceAmount: reservation.advanceAmount || 0,
             tripSegment: `Viaje Relacionado #${reservation.tripId}`,
             passengers: (reservation.passengers || []).map(p => ({
               id: p.id || 0,
@@ -269,6 +272,7 @@ export default function PassengerListPage() {
           paymentMethod: reservation.paymentMethod || 'unknown',
           paymentStatus: reservation.status === 'confirmed' ? 'paid' : 'pending',
           amount: reservation.totalAmount || 0,
+          advanceAmount: reservation.advanceAmount || 0,
           tripSegment: `${
             reservationTrip.segmentOrigin || 
             (reservationTrip.route ? reservationTrip.route.origin : 'Origen') || 'Origen'
