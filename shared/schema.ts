@@ -195,7 +195,6 @@ export const publishTripValidationSchema = z.object({
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
   capacity: z.number().min(1, "Capacity is required"),
-  vehicleType: z.string().min(1, "Vehicle type is required"),
   price: z.number().optional(),
   segmentPrices: z.array(
     z.object({
