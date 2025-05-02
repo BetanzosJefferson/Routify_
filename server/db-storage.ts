@@ -1205,6 +1205,19 @@ export class DatabaseStorage implements IStorage {
     console.log("[getUsers] Obteniendo todos los usuarios");
     return await db.select().from(schema.users);
   }
+  
+  async getUsersByCompany(companyId: string): Promise<schema.User[]> {
+    console.log(`[getUsersByCompany] Obteniendo usuarios para compañía: ${companyId}`);
+    // Filtrar por companyId o si el campo company es igual al companyId (compatibilidad con datos antiguos)
+    return await db.select()
+      .from(schema.users)
+      .where(
+        or(
+          eq(schema.users.companyId, companyId),
+          eq(schema.users.company, companyId)
+        )
+      );
+  }
 
   async getUserById(id: number): Promise<schema.User | undefined> {
     const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id));

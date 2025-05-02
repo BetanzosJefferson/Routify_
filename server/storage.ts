@@ -73,6 +73,7 @@ export interface IStorage {
   
   // User methods
   getUsers(): Promise<User[]>;
+  getUsersByCompany(companyId: string): Promise<User[]>;
   getUserById(id: number): Promise<User | undefined>;
   updateUser(id: number, userData: { 
     email?: string; 
@@ -725,6 +726,12 @@ export class MemStorage implements IStorage {
   // User methods
   async getUsers(): Promise<User[]> {
     return Array.from(this.users.values());
+  }
+  
+  async getUsersByCompany(companyId: string): Promise<User[]> {
+    return Array.from(this.users.values()).filter(user => 
+      user.companyId === companyId || user.company === companyId
+    );
   }
   
   async getUserById(id: number): Promise<User | undefined> {
