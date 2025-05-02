@@ -29,6 +29,7 @@ interface GroupedReservation {
   phone: string;
   paymentMethod: string;
   paymentStatus: string;
+  rawPaymentStatus: string; // El valor directo de la base de datos: "PAGADO" o "PENDIENTE"
   amount: number;
   tripSegment: string;
   passengers: {
@@ -111,6 +112,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           phone: reservation.phone || '',
           paymentMethod: reservation.paymentMethod || 'unknown',
           // Para determinar el estado del pago, usamos cualquiera de los dos campos disponibles
+          // Guardamos tanto el valor interno (paid/pending) como el valor de la base de datos (PAGADO/PENDIENTE)
           paymentStatus: (() => {
             // Si existe el campo paidStatus, lo usamos, si no, usamos paymentStatus
             if ('paidStatus' in reservation) {
@@ -122,6 +124,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
               return reservation.paymentStatus === 'pagado' ? 'paid' : 'pending';
             }
           })(),
+          rawPaymentStatus: 'paidStatus' in reservation 
+            ? (reservation as any).paidStatus 
+            : (reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'),
           amount: reservation.totalAmount || 0,
           tripSegment: 'Viaje completo',
           passengers: []
@@ -384,7 +389,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                       variant={reservation.paymentStatus === 'paid' ? 'default' : 'secondary'} 
                       className={reservation.paymentStatus === 'paid' ? 'bg-green-500 text-white' : ''}
                     >
-                      {reservation.paymentStatus === 'paid' ? 'PAGADO' : 'PENDIENTE'}
+                      {reservation.rawPaymentStatus}
                     </Badge>
                   </div>
                 </div>
