@@ -265,12 +265,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const routeData = validationResult.data;
-      const updatedRoute = await storage.updateRoute(id, routeData);
+      // Obtener el usuario autenticado
+      const { user } = req as any;
       
-      if (!updatedRoute) {
+      // SEGURIDAD: Verificar que el usuario tiene permisos para editar esta ruta
+      // Primero, obtener la ruta para verificar la compañía
+      const existingRoute = await storage.getRoute(id);
+      
+      if (!existingRoute) {
         return res.status(404).json({ error: "Route not found" });
       }
+      
+      // Si no es superAdmin, verificar que la ruta pertenece a su compañía
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        const userCompany = user.companyId || user.company;
+        
+        if (existingRoute.companyId && existingRoute.companyId !== userCompany) {
+          console.log(`[PUT /routes/${id}] ACCESO DENEGADO: La ruta pertenece a compañía ${existingRoute.companyId} pero el usuario es de ${userCompany}`);
+          return res.status(403).json({ 
+            error: "Acceso denegado", 
+            details: "No tiene permiso para editar rutas de otra compañía" 
+          });
+        }
+      }
+      
+      // Preservar el ID de compañía original si el usuario no es superAdmin
+      const routeData = validationResult.data;
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        routeData.companyId = existingRoute.companyId;
+      }
+      
+      const updatedRoute = await storage.updateRoute(id, routeData);
       
       res.json(updatedRoute);
     } catch (error) {
@@ -281,10 +306,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete(apiRouter("/routes/:id"), isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
+      
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      // SEGURIDAD: Verificar que el usuario tiene permisos para eliminar esta ruta
+      // Primero, obtener la ruta para verificar la compañía
+      const existingRoute = await storage.getRoute(id);
+      
+      if (!existingRoute) {
+        return res.status(404).json({ error: "Route not found" });
+      }
+      
+      // Si no es superAdmin, verificar que la ruta pertenece a su compañía
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        const userCompany = user.companyId || user.company;
+        
+        if (existingRoute.companyId && existingRoute.companyId !== userCompany) {
+          console.log(`[DELETE /routes/${id}] ACCESO DENEGADO: La ruta pertenece a compañía ${existingRoute.companyId} pero el usuario es de ${userCompany}`);
+          return res.status(403).json({ 
+            error: "Acceso denegado", 
+            details: "No tiene permiso para eliminar rutas de otra compañía" 
+          });
+        }
+      }
+      
       const success = await storage.deleteRoute(id);
       
       if (!success) {
-        return res.status(404).json({ error: "Route not found" });
+        return res.status(500).json({ error: "Failed to delete route" });
       }
       
       res.status(204).end();
@@ -384,7 +434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // CAPA ADICIONAL DE SEGURIDAD - FILTRO POST-CONSULTA
       // Si el usuario no tiene permisos para ver todos los viajes,
       // realizamos una verificación adicional de seguridad y FILTRAMOS los resultados
-      if (user && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
+      if (user && user.role !== UserRole.SUPER_ADMIN) {
         // Caso especial para conductores - verificar que solo vean sus viajes asignados
         if (user.role === UserRole.DRIVER || user.role === 'CHOFER') {
           console.log(`[GET /trips] VERIFICACIÓN CONDUCTOR: Asegurando que el chofer solo vea sus viajes`);
@@ -2655,8 +2705,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Si el usuario no es superAdmin o dueño, verificar que pertenece a la misma compañía
-      if (![UserRole.SUPER_ADMIN, UserRole.OWNER].includes(req.user.role)) {
+      // Si el usuario no es superAdmin, verificar que pertenece a la misma compañía
+      if (req.user.role !== UserRole.SUPER_ADMIN) {
         const userCompany = req.user.company || (req.user as any).companyId;
         if (reservation.companyId && reservation.companyId !== userCompany) {
           return res.status(403).json({ 
