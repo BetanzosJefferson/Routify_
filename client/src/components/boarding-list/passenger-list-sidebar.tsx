@@ -384,7 +384,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         
                         {reservation.advanceAmount < reservation.amount && (
                           <div className="text-xs">
-                            <span className="text-gray-500">Resta: </span>
+                            <span className="text-gray-500">{reservation.paymentStatus === 'pagado' ? 'Pagó: ' : 'Resta: '}</span>
                             <span className="font-medium">{formatPrice(reservation.amount - reservation.advanceAmount)} </span>
                             <span className="font-normal">({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
                           </div>
