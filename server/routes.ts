@@ -2475,7 +2475,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/users - Obtener todos los usuarios
   app.get(apiRouter('/users'), isAuthenticated, hasRole([UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN]), async (req, res) => {
     try {
-      const users = await storage.getUsers();
+      // Si es superAdmin, puede ver todos los usuarios
+      // Si es OWNER o ADMIN, solo ve los de su compañía
+      const user = req.user as Express.User;
+      let users;
+      
+      if (user.role === UserRole.SUPER_ADMIN) {
+        users = await storage.getUsers();
+      } else {
+        // Para Owner y Admin, filtramos por companyId
+        users = await storage.getUsersByCompany(user.companyId || '');
+      }
+      
       res.json(users);
     } catch (error) {
       console.error('Error al obtener usuarios:', error);
@@ -2621,7 +2632,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         UserRole.TICKET_OFFICE
       ];
       
-      if (!allowedRoles.includes(req.user.role as schema.UserRoleType)) {
+      if (!allowedRoles.includes(req.user.role)) {
         return res.status(403).json({ 
           success: false, 
           message: 'No tienes permiso para escanear tickets' 
