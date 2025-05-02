@@ -606,9 +606,9 @@ export default function PassengerListPage() {
                           {reservation.advanceAmount > 0 && (
                             <div className="text-sm text-gray-600">Anticipo: ${reservation.advanceAmount}</div>
                           )}
-                          {/* Mostrar monto pendiente solo si la reservación no está pagada completamente */}
-                          {reservation.paymentStatus !== 'paid' && reservation.advanceAmount > 0 && (
-                            <div className="text-sm text-gray-600">Resta: ${reservation.amount - reservation.advanceAmount}</div>
+                          {/* Mostrar monto pendiente siempre que la reservación no esté pagada completamente */}
+                          {reservation.paymentStatus !== 'paid' && (
+                            <div className="text-sm text-gray-600">Resta: ${reservation.amount - (reservation.advanceAmount || 0)}</div>
                           )}
                           <Badge 
                             className={reservation.paymentStatus === 'paid' 
