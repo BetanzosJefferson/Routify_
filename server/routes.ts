@@ -1459,10 +1459,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let companyId: string | null = null;
       
       // REGLAS DE ACCESO:
-      // 1. superAdmin y admin pueden ver TODAS las reservaciones
-      // 2. El resto de roles solo pueden ver reservaciones de SU COMPAÑÍA
+      // 1. Solo superAdmin puede ver TODAS las reservaciones (sin filtro)
+      // 2. Todos los demás roles (incluyendo admin) solo pueden ver reservaciones de SU COMPAÑÍA
       if (user) {
-        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+        if (user.role !== UserRole.SUPER_ADMIN) {
           // Obtener la compañía del usuario
           companyId = user.companyId || user.company;
           
@@ -1711,11 +1711,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let companyId: string | null = null;
       
       // REGLAS DE ACCESO:
-      // 1. superAdmin y admin pueden ver TODOS los vehículos
-      // 2. El resto de roles solo pueden ver vehículos de SU COMPAÑÍA
+      // 1. Solo superAdmin puede ver TODOS los vehículos
+      // 2. El resto de roles (incluyendo admin) solo pueden ver vehículos de SU COMPAÑÍA
       if (user) {
-        // Los roles que NO son superAdmin o admin tienen acceso restringido
-        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+        // Los roles que NO son superAdmin tienen acceso restringido
+        if (user.role !== UserRole.SUPER_ADMIN) {
           // Obtener la compañía del usuario
           companyId = user.companyId || user.company;
           
@@ -1786,10 +1786,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let companyId: string | null = null;
       
       // REGLAS DE ACCESO:
-      // 1. superAdmin y admin pueden ver TODOS los vehículos
-      // 2. El resto de roles solo pueden ver vehículos de SU COMPAÑÍA
+      // 1. Solo superAdmin puede ver TODOS los vehículos
+      // 2. El resto de roles (incluyendo admin) solo pueden ver vehículos de SU COMPAÑÍA
       if (user) {
-        if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+        if (user.role !== UserRole.SUPER_ADMIN) {
           // Obtener la compañía del usuario
           companyId = user.companyId || user.company;
           
@@ -1819,7 +1819,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // VERIFICACIÓN DE SEGURIDAD: Comprobar que el usuario tiene acceso a este vehículo
-      if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+      // Los administradores también deben tener restricciones por compañía
+      if (user.role !== UserRole.SUPER_ADMIN) {
         // Si el vehículo tiene companyId y no coincide con la del usuario
         if (vehicle.companyId && vehicle.companyId !== companyId) {
           console.log(`[GET /vehicles/${id}] ACCESO DENEGADO: El vehículo pertenece a compañía ${vehicle.companyId} pero el usuario es de ${companyId}`);
