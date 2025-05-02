@@ -321,7 +321,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                   </div>
                   <div className="text-right">
                     <div className="text-lg font-bold text-primary">
-                      ${reservation.amount}
+                      {formatPrice(reservation.amount)}
                     </div>
                   </div>
                 </div>
@@ -378,14 +378,14 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                       <div className="space-y-2">
                         <div className="text-xs">
                           <span className="text-gray-500">Anticipo: </span>
-                          <span className="font-medium">${reservation.advanceAmount} </span>
+                          <span className="font-medium">{formatPrice(reservation.advanceAmount)} </span>
                           <span className="font-normal">({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
                         </div>
                         
                         {reservation.advanceAmount < reservation.amount && (
                           <div className="text-xs">
                             <span className="text-gray-500">Resta: </span>
-                            <span className="font-medium">${reservation.amount - reservation.advanceAmount} </span>
+                            <span className="font-medium">{formatPrice(reservation.amount - reservation.advanceAmount)} </span>
                             <span className="font-normal">({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
                           </div>
                         )}
