@@ -463,7 +463,7 @@ export function TripList() {
                 
                 <div className="mt-4 flex items-center justify-between">
                   <div className="text-sm">
-                    <span className="capitalize">{trip.vehicleType}</span> • 
+                    <span className="capitalize">{trip.vehicle?.name || "Sin unidad asignada"}</span> • 
                     <span className="ml-1 font-medium">
                       {Math.round(((trip.capacity - trip.availableSeats) / trip.capacity) * 100)}%
                     </span>
