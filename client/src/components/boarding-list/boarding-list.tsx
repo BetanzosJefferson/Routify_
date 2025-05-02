@@ -249,12 +249,12 @@ export function BoardingList() {
                         {trip.departureTime} - {trip.arrivalTime}
                       </div>
                       
-                      {trip.vehicleType && (
-                        <div className="flex items-center text-gray-600">
-                          <Bus className="h-4 w-4 mr-2" />
-                          <span className="capitalize">{trip.vehicleType}</span>
-                        </div>
-                      )}
+                      <div className="flex items-center text-gray-600">
+                        <Bus className="h-4 w-4 mr-2" />
+                        <span className="capitalize">
+                          {trip.vehicle?.name || "Sin unidad asignada"}
+                        </span>
+                      </div>
                       
                       {trip.driverId && user?.role === 'chofer' && (
                         <div className="flex items-center text-green-600">
