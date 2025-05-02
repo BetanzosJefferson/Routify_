@@ -81,7 +81,6 @@ interface Reservation {
   paymentStatus?: string;
   notes?: string;
   totalAmount: number;
-  advanceAmount?: number;
   passengers: Passenger[];
 }
 
@@ -150,7 +149,6 @@ export default function PassengerListPage() {
     paymentMethod: string;
     paymentStatus: string;
     amount: number;
-    advanceAmount?: number;
     tripSegment: string;
     passengers: {
       id: number;
@@ -246,7 +244,6 @@ export default function PassengerListPage() {
             paymentMethod: reservation.paymentMethod || 'unknown',
             paymentStatus: reservation.status === 'confirmed' ? 'paid' : 'pending',
             amount: reservation.totalAmount || 0,
-            advanceAmount: reservation.advanceAmount || 0,
             tripSegment: `Viaje Relacionado #${reservation.tripId}`,
             passengers: (reservation.passengers || []).map(p => ({
               id: p.id || 0,
@@ -272,7 +269,6 @@ export default function PassengerListPage() {
           paymentMethod: reservation.paymentMethod || 'unknown',
           paymentStatus: reservation.status === 'confirmed' ? 'paid' : 'pending',
           amount: reservation.totalAmount || 0,
-          advanceAmount: reservation.advanceAmount || 0,
           tripSegment: `${
             reservationTrip.segmentOrigin || 
             (reservationTrip.route ? reservationTrip.route.origin : 'Origen') || 'Origen'
@@ -602,21 +598,8 @@ export default function PassengerListPage() {
                         </div>
                         <div className="col-span-2 md:col-span-3 text-right">
                           <div className="font-semibold">${reservation.amount}</div>
-                          {/* Mostrar anticipo solo si existe */}
-                          {reservation.advanceAmount > 0 && (
-                            <div className="text-sm text-gray-600">Anticipo: ${reservation.advanceAmount}</div>
-                          )}
-                          {/* Mostrar monto pendiente siempre que la reservación no esté pagada completamente */}
-                          {reservation.paymentStatus !== 'paid' && (
-                            <div className="text-sm text-gray-600">Resta: ${reservation.amount - (reservation.advanceAmount || 0)}</div>
-                          )}
-                          <Badge 
-                            className={reservation.paymentStatus === 'paid' 
-                              ? 'bg-green-100 text-green-800 hover:bg-green-100' 
-                              : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
-                            }
-                          >
-                            {reservation.paymentStatus === 'paid' ? 'PAGADO' : 'PENDIENTE'}
+                          <Badge variant={reservation.paymentStatus === 'paid' ? 'default' : 'outline'}>
+                            {reservation.paymentStatus === 'paid' ? 'Pagado' : 'Pendiente'}
                           </Badge>
                         </div>
                       </div>
