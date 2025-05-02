@@ -1413,7 +1413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[GET /reservations] Encontradas ${reservations.length} reservaciones`);
       
       // CAPA ADICIONAL DE SEGURIDAD - FILTRO POST-CONSULTA
-      if (user && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+      if (user && user.role !== UserRole.SUPER_ADMIN) {
         // Obtener la compañía del usuario
         const userCompany = user.companyId || user.company || null;
         
@@ -1740,7 +1740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[GET /vehicles] Encontrados ${vehicles.length} vehículos`);
       
       // CAPA ADICIONAL DE SEGURIDAD - FILTRO POST-CONSULTA
-      if (user && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+      if (user && user.role !== UserRole.SUPER_ADMIN) {
         // Obtener la compañía del usuario
         const userCompany = user.companyId || user.company || null;
         
