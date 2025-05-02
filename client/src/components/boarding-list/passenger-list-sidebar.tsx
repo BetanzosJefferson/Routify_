@@ -352,15 +352,8 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                     </div>
                   </div>
                   
-                  {/* Etiquetas de pago */}
+                  {/* Etiqueta de estado de pago */}
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {reservation.paymentMethod && (
-                      <Badge variant="outline" className="capitalize">
-                        {reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 
-                        reservation.paymentMethod === 'transferencia' ? 'Transferencia' : 
-                        reservation.paymentMethod}
-                      </Badge>
-                    )}
                     <Badge 
                       variant="outline"
                       className={reservation.paymentStatus === 'pagado' 
