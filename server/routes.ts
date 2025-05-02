@@ -1097,7 +1097,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return Math.round(exactPrice / 25) * 25;
   }
 
-  app.put(apiRouter("/trips/:id"), async (req: Request, res: Response) => {
+  app.put(apiRouter("/trips/:id"), isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
       const validationResult = insertTripSchema.partial().safeParse(req.body);
@@ -1109,10 +1109,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      console.log(`[PUT /trips/${id}] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
+      if (user) {
+        console.log(`[PUT /trips/${id}] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
+      }
+      
       // Obtener viaje actual antes de actualizar
       const currentTrip = await storage.getTrip(id);
       if (!currentTrip) {
         return res.status(404).json({ error: "Trip not found" });
+      }
+      
+      // SEGURIDAD: Si no es superAdmin, verificar que el viaje pertenece a su compañía
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        const userCompany = user.companyId || user.company;
+        
+        if (currentTrip.companyId && currentTrip.companyId !== userCompany) {
+          console.log(`[PUT /trips/${id}] ACCESO DENEGADO: El viaje pertenece a compañía ${currentTrip.companyId} pero el usuario es de ${userCompany}`);
+          return res.status(403).json({ 
+            error: "Acceso denegado", 
+            details: "No tiene permiso para editar viajes de otra compañía" 
+          });
+        }
       }
       
       const tripData = validationResult.data;
@@ -1203,13 +1224,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete(apiRouter("/trips/:id"), async (req: Request, res: Response) => {
+  app.delete(apiRouter("/trips/:id"), isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
+      
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      console.log(`[DELETE /trips/${id}] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
+      if (user) {
+        console.log(`[DELETE /trips/${id}] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
+      }
+      
+      // Primero verificar que el viaje existe
+      const currentTrip = await storage.getTrip(id);
+      if (!currentTrip) {
+        return res.status(404).json({ error: "Trip not found" });
+      }
+      
+      // SEGURIDAD: Si no es superAdmin, verificar que el viaje pertenece a su compañía
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        const userCompany = user.companyId || user.company;
+        
+        if (currentTrip.companyId && currentTrip.companyId !== userCompany) {
+          console.log(`[DELETE /trips/${id}] ACCESO DENEGADO: El viaje pertenece a compañía ${currentTrip.companyId} pero el usuario es de ${userCompany}`);
+          return res.status(403).json({ 
+            error: "Acceso denegado", 
+            details: "No tiene permiso para eliminar viajes de otra compañía" 
+          });
+        }
+      }
+      
       const success = await storage.deleteTrip(id);
       
       if (!success) {
-        return res.status(404).json({ error: "Trip not found" });
+        return res.status(500).json({ error: "Failed to delete trip" });
       }
       
       res.status(204).end();
@@ -1234,11 +1283,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      console.log(`[PATCH /trips/${id}] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
+      if (user) {
+        console.log(`[PATCH /trips/${id}] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
+      }
+      
       // Obtener viaje actual
       const currentTrip = await storage.getTrip(id);
       if (!currentTrip) {
         console.error(`Viaje no encontrado para PATCH /trips/${id}`);
         return res.status(404).json({ error: "Trip not found" });
+      }
+      
+      // SEGURIDAD: Si no es superAdmin, verificar que el viaje pertenece a su compañía
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        const userCompany = user.companyId || user.company;
+        
+        if (currentTrip.companyId && currentTrip.companyId !== userCompany) {
+          console.log(`[PATCH /trips/${id}] ACCESO DENEGADO: El viaje pertenece a compañía ${currentTrip.companyId} pero el usuario es de ${userCompany}`);
+          return res.status(403).json({ 
+            error: "Acceso denegado", 
+            details: "No tiene permiso para modificar viajes de otra compañía" 
+          });
+        }
       }
       
       // Datos a actualizar - solo permitir vehicleId y driverId en PATCH
