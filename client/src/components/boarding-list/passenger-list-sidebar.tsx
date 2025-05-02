@@ -19,7 +19,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useDriverTrips, Trip } from "@/hooks/use-driver-trips";
 import { useDriverReservations, Reservation, Passenger } from "@/hooks/use-driver-reservations";
-import { normalizeToStartOfDay } from "@/lib/utils";
+import { normalizeToStartOfDay, formatPrice } from "@/lib/utils";
 
 interface GroupedReservation {
   id: number;
@@ -30,6 +30,8 @@ interface GroupedReservation {
   paymentMethod: string;
   paymentStatus: string;
   amount: number;
+  advanceAmount?: number;
+  advancePaymentMethod?: string;
   tripSegment: string;
   passengers: {
     id: number;
@@ -109,6 +111,8 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           paymentMethod: reservation.paymentMethod || 'unknown',
           paymentStatus: reservation.paymentStatus || 'pendiente',
           amount: reservation.totalAmount || 0,
+          advanceAmount: (reservation as any).advanceAmount || 0,
+          advancePaymentMethod: (reservation as any).advancePaymentMethod || 'efectivo',
           tripSegment: 'Viaje completo',
           passengers: []
         };
@@ -352,16 +356,52 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                     </div>
                   </div>
                   
-                  {/* Etiqueta de estado de pago */}
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    <Badge 
-                      variant="outline"
-                      className={reservation.paymentStatus === 'pagado' 
-                        ? 'bg-green-100 text-green-800 border-green-200' 
-                        : 'bg-yellow-100 text-yellow-800 border-yellow-200'}
-                    >
-                      {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
-                    </Badge>
+                  {/* Información de pago con métodos */}
+                  <div className="mt-3 bg-gray-50 p-2 rounded border border-gray-200">
+                    {(!reservation.advanceAmount || reservation.advanceAmount <= 0) ? (
+                      <div className="grid grid-cols-2 gap-1">
+                        <div className="text-xs text-gray-500">Método de pago:</div>
+                        <div className="text-xs text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                        <div className="text-xs text-gray-500">Estado:</div>
+                        <div className="text-xs text-right font-medium">
+                          <Badge 
+                            variant="outline"
+                            className={reservation.paymentStatus === 'pagado' 
+                              ? 'bg-green-100 text-green-800 border-green-200' 
+                              : 'bg-yellow-100 text-yellow-800 border-yellow-200'}
+                          >
+                            {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+                          </Badge>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="text-xs">
+                          <span className="text-gray-500">Anticipo: </span>
+                          <span className="font-medium">${reservation.advanceAmount} </span>
+                          <span className="font-normal">({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
+                        </div>
+                        
+                        {reservation.advanceAmount < reservation.amount && (
+                          <div className="text-xs">
+                            <span className="text-gray-500">Resta: </span>
+                            <span className="font-medium">${reservation.amount - reservation.advanceAmount} </span>
+                            <span className="font-normal">({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-end mt-1">
+                          <Badge 
+                            variant="outline"
+                            className={reservation.paymentStatus === 'pagado' 
+                              ? 'bg-green-100 text-green-800 border-green-200' 
+                              : 'bg-yellow-100 text-yellow-800 border-yellow-200'}
+                          >
+                            {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+                          </Badge>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
