@@ -20,6 +20,7 @@ import { normalizeToStartOfDay, isSameLocalDay } from "@/lib/utils";
 // Importamos nuestros nuevos hooks especializados para conductores
 import { useDriverTrips, Trip } from "@/hooks/use-driver-trips";
 import { useAllDriverReservations, Reservation, Passenger } from "@/hooks/use-driver-reservations";
+import { PassengerListSidebar } from "./passenger-list-sidebar";
 
 export function BoardingList() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
