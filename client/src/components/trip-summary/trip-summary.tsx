@@ -252,9 +252,6 @@ export default function TripSummary({ className }: TripSummaryProps) {
                           <span className={selectedTrip === trip.id ? 'text-white' : 'text-gray-500'}>
                             {trip.departureTime}
                           </span>
-                          <Badge variant={selectedTrip === trip.id ? "outline" : "secondary"}>
-                            {Math.round(((trip.capacity - trip.availableSeats) / trip.capacity) * 100)}% ocupación
-                          </Badge>
                         </div>
                       </div>
                     ))}
@@ -315,25 +312,10 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                   <div className="font-medium">{trips.find(t => t.id === selectedTrip)?.arrivalTime}</div>
                                 </div>
                               </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <Label className="text-gray-500">Vehículo</Label>
-                                  <div className="font-medium capitalize">
-                                    {trips.find(t => t.id === selectedTrip)?.vehicle?.name || "Sin unidad asignada"}
-                                  </div>
-                                </div>
-                                <div>
-                                  <Label className="text-gray-500">Ocupación Total</Label>
-                                  <div className="font-medium">
-                                    {(() => {
-                                      const selectedTripData = trips.find(t => t.id === selectedTrip);
-                                      if (!selectedTripData) return '0%';
-                                      const occupancyPercentage = Math.round(
-                                        ((selectedTripData.capacity - selectedTripData.availableSeats) / selectedTripData.capacity) * 100
-                                      );
-                                      return `${occupancyPercentage}%`;
-                                    })()}
-                                  </div>
+                              <div>
+                                <Label className="text-gray-500">Vehículo</Label>
+                                <div className="font-medium capitalize">
+                                  {trips.find(t => t.id === selectedTrip)?.vehicle?.name}
                                 </div>
                               </div>
                             </div>

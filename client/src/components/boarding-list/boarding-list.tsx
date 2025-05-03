@@ -252,7 +252,7 @@ export function BoardingList() {
                       <div className="flex items-center text-gray-600">
                         <Bus className="h-4 w-4 mr-2" />
                         <span className="capitalize">
-                          {trip.vehicle?.name || "Sin unidad asignada"}
+                          {trip.vehicle?.name}
                         </span>
                       </div>
                       
@@ -265,19 +265,11 @@ export function BoardingList() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-between border-t p-3 bg-gray-50">
+                  <div className="flex items-center border-t p-3 bg-gray-50">
                     <div className="flex items-center">
                       <Users className="h-4 w-4 mr-2 text-gray-500" />
                       <span className="text-sm font-medium">{passengerCount} pasajeros</span>
                     </div>
-                    
-                    <Badge variant={
-                      occupancyRate < 50 ? "outline" : 
-                      occupancyRate < 80 ? "secondary" : 
-                      "default"
-                    }>
-                      {occupancyRate}% ocupación
-                    </Badge>
                   </div>
                 </CardContent>
               </Card>
