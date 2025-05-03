@@ -148,7 +148,7 @@ export default function ReservationDetailsModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
@@ -170,11 +170,11 @@ export default function ReservationDetailsModal({
                 </p>
               </DialogHeader>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                <div className="space-y-4">
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <h3 className="font-medium text-base border-b pb-2 mb-4">Información del pasajero</h3>
-                    <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-3 sm:mt-4">
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="bg-gray-50 p-3 sm:p-4 rounded-md">
+                    <h3 className="font-medium text-sm sm:text-base border-b pb-2 mb-3 sm:mb-4">Información del pasajero</h3>
+                    <div className="space-y-3 sm:space-y-4">
                       <div>
                         <div className="text-sm text-gray-500 font-medium">NOMBRE</div>
                         <div>
@@ -202,9 +202,9 @@ export default function ReservationDetailsModal({
                   </div>
                   
                   {/* Detalles del viaje */}
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <h3 className="font-medium text-base border-b pb-2 mb-4">Detalles del viaje</h3>
-                    <div className="space-y-4">
+                  <div className="bg-gray-50 p-3 sm:p-4 rounded-md">
+                    <h3 className="font-medium text-sm sm:text-base border-b pb-2 mb-3 sm:mb-4">Detalles del viaje</h3>
+                    <div className="space-y-3 sm:space-y-4">
                       <div>
                         <div className="text-sm text-gray-500 font-medium">RUTA</div>
                         <div>
@@ -242,10 +242,10 @@ export default function ReservationDetailsModal({
                 </div>
                 
                 {/* Información de pago */}
-                <div className="space-y-4">
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <h3 className="font-medium text-base border-b pb-2 mb-4">Información de pago</h3>
-                    <div className="space-y-3">
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="bg-gray-50 p-3 sm:p-4 rounded-md">
+                    <h3 className="font-medium text-sm sm:text-base border-b pb-2 mb-3 sm:mb-4">Información de pago</h3>
+                    <div className="space-y-2 sm:space-y-3">
                       <div className="grid grid-cols-2 items-center">
                         <div className="text-sm text-gray-500 font-medium">ESTADO DE PAGO</div>
                         <div className="text-right">
