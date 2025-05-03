@@ -1735,15 +1735,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const reservationData = validationResult.data;
+      // Extraer posibles actualizaciones de fecha y hora del viaje
+      const { departureDate, departureTime, ...reservationData } = req.body;
+      
+      // Primero actualizamos la reservación básica
       const updatedReservation = await storage.updateReservation(id, reservationData);
       
       if (!updatedReservation) {
         return res.status(404).json({ error: "Reservation not found" });
       }
       
+      // Si se proporcionaron actualizaciones de fecha/hora, actualizar el viaje
+      if (departureDate || departureTime) {
+        try {
+          // Obtener la reserva con detalles para acceder al ID del viaje
+          const reservationWithDetails = await storage.getReservationWithDetails(id);
+          
+          if (reservationWithDetails && reservationWithDetails.trip) {
+            const tripId = reservationWithDetails.trip.id;
+            
+            // Preparar datos de actualización del viaje
+            const tripUpdateData: Partial<Trip> = {};
+            
+            if (departureDate) {
+              tripUpdateData.departureDate = new Date(departureDate);
+            }
+            
+            if (departureTime) {
+              tripUpdateData.departureTime = departureTime;
+            }
+            
+            // Actualizar el viaje si hay cambios
+            if (Object.keys(tripUpdateData).length > 0) {
+              await storage.updateTrip(tripId, tripUpdateData);
+              console.log(`Actualizada fecha/hora del viaje ${tripId} para la reservación ${id}`);
+            }
+          }
+        } catch (tripUpdateError) {
+          console.error(`Error al actualizar fecha/hora del viaje para reservación ${id}:`, tripUpdateError);
+          // No fallamos la operación principal si falla la actualización del viaje
+        }
+      }
+      
       res.json(updatedReservation);
     } catch (error) {
+      console.error("Error al actualizar reservación:", error);
       res.status(500).json({ error: "Failed to update reservation" });
     }
   });

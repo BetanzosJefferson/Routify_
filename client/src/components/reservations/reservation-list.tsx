@@ -267,7 +267,8 @@ export function ReservationList() {
   const handleSaveEdit = () => {
     if (!editingReservation) return;
     
-    const updates: Partial<Reservation> = {
+    // Crear un objeto de actualizaciones con los campos básicos
+    const updates: any = {
       paymentMethod,
       notes,
       email,
@@ -275,13 +276,12 @@ export function ReservationList() {
       status
     };
     
-    // Si se han cambiado la fecha o la hora, incluirlos en la actualización
+    // Si se han cambiado la fecha o la hora, incluirlos como propiedades separadas
+    // El backend determinará cómo manejar estos campos
     if (tripDate && tripDate !== new Date(editingReservation.trip.departureDate).toISOString().split('T')[0] ||
         tripTime && tripTime !== editingReservation.trip.departureTime) {
-      updates.tripUpdates = {
-        departureDate: tripDate,
-        departureTime: tripTime
-      };
+      updates.departureDate = tripDate;
+      updates.departureTime = tripTime;
     }
     
     editReservationMutation.mutate({
@@ -765,7 +765,7 @@ export function ReservationList() {
       
       {/* Edit Reservation Dialog */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Reservación</DialogTitle>
             <DialogDescription>
