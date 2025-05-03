@@ -35,6 +35,8 @@ interface GroupedReservation {
   advanceAmount?: number;
   advancePaymentMethod?: string;
   tripSegment: string;
+  origin?: string;
+  destination?: string;
   passengers: {
     id: number;
     firstName: string;
@@ -106,6 +108,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           reservation.passengers = [];
         }
         
+        // Obtener información del viaje asociado
+        const trip = trips?.find(trip => trip.id === reservation.tripId);
+        
         // Crear el objeto de reservación agrupada
         const groupedReservation: GroupedReservation = {
           id: reservation.id,
@@ -119,6 +124,8 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           advanceAmount: (reservation as any).advanceAmount || 0,
           advancePaymentMethod: (reservation as any).advancePaymentMethod || 'efectivo',
           tripSegment: 'Viaje completo',
+          origin: trip?.segmentOrigin || trip?.route?.origin || "Origen no especificado",
+          destination: trip?.segmentDestination || trip?.route?.destination || "Destino no especificado",
           passengers: []
         };
         
@@ -339,44 +346,59 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                     key={`reservation-${reservation.id}`} 
                     className="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow"
                   >
-                    <div className="border-b border-gray-100 bg-gray-50 px-4 py-2.5 flex justify-between items-center">
-                      <div className="flex items-center">
-                        <div className="flex -space-x-2 mr-3">
-                          {reservation.passengers.length > 0 ? (
-                            <>
-                              {reservation.passengers.slice(0, 3).map((passenger) => (
-                                <Avatar key={passenger.id} className="border-2 border-white">
-                                  <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                                    {passenger.initials}
-                                  </AvatarFallback>
-                                </Avatar>
-                              ))}
-                              {reservation.passengers.length > 3 && (
-                                <Avatar className="border-2 border-white">
-                                  <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                                    +{reservation.passengers.length - 3}
-                                  </AvatarFallback>
-                                </Avatar>
-                              )}
-                            </>
-                          ) : (
-                            <Avatar className="border-2 border-white">
-                              <AvatarFallback className="bg-gray-200 text-gray-500">
-                                0
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
-                        </div>
-                        <div>
-                          <div className="font-medium">
-                            {reservation.passengers.length} {reservation.passengers.length === 1 ? 'pasajero' : 'pasajeros'}
+                    <div className="border-b border-gray-100 bg-gray-50 px-4 py-2.5">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <div className="flex items-center">
+                          <div className="flex -space-x-2 mr-3">
+                            {reservation.passengers.length > 0 ? (
+                              <>
+                                {reservation.passengers.slice(0, 3).map((passenger) => (
+                                  <Avatar key={passenger.id} className="border-2 border-white">
+                                    <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                                      {passenger.initials}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                ))}
+                                {reservation.passengers.length > 3 && (
+                                  <Avatar className="border-2 border-white">
+                                    <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                                      +{reservation.passengers.length - 3}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                )}
+                              </>
+                            ) : (
+                              <Avatar className="border-2 border-white">
+                                <AvatarFallback className="bg-gray-200 text-gray-500">
+                                  0
+                                </AvatarFallback>
+                              </Avatar>
+                            )}
                           </div>
-                          <div className="text-xs text-gray-500">{reservation.code}</div>
+                          <div>
+                            <div className="font-medium">
+                              {reservation.passengers.length} {reservation.passengers.length === 1 ? 'pasajero' : 'pasajeros'}
+                            </div>
+                            <div className="text-xs text-gray-500">{reservation.code}</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-primary">
+                            {formatPrice(reservation.amount)}
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-primary">
-                          {formatPrice(reservation.amount)}
+                      
+                      {/* Información de origen y destino */}
+                      <div className="flex items-center mt-2 text-xs text-gray-600 border-t border-gray-100 pt-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <div className="flex-1 truncate">
+                          <span className="font-medium">{reservation.origin}</span>
+                          <span className="mx-1">→</span>
+                          <span className="font-medium">{reservation.destination}</span>
                         </div>
                       </div>
                     </div>
