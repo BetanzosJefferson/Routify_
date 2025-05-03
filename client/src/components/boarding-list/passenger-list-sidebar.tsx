@@ -10,13 +10,15 @@ import {
   Bus,
   User,
   X,
-  UserIcon
+  UserIcon,
+  Search
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input"; 
 import { useDriverTrips, Trip } from "@/hooks/use-driver-trips";
 import { useDriverReservations, Reservation, Passenger } from "@/hooks/use-driver-reservations";
 import { normalizeToStartOfDay, formatPrice } from "@/lib/utils";
@@ -47,6 +49,9 @@ interface PassengerListSidebarProps {
 }
 
 export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarProps) {
+  // Estado para la búsqueda de pasajeros
+  const [searchQuery, setSearchQuery] = useState("");
+  
   // Cargar detalles del viaje
   const { 
     data: trips, 
@@ -135,11 +140,6 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
         groupedResult.push(groupedReservation);
       }
       
-      // Log del estado de pago de las reservaciones
-      groupedResult.forEach(reservation => {
-        console.log(`Reservación ${reservation.id} (${reservation.code}): Estado de pago = "${reservation.paymentStatus}"`);
-      });
-      
       return groupedResult;
     } catch (error) {
       console.error("Error al procesar reservaciones:", error);
@@ -147,7 +147,38 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
     }
   })();
 
-  // Total de pasajeros
+  // Filtrar reservaciones basadas en el término de búsqueda
+  const filteredReservations = searchQuery.trim() 
+    ? groupedReservations.filter(reservation => {
+        const query = searchQuery.toLowerCase();
+        
+        // Buscar en nombres de pasajeros
+        const matchesPassenger = reservation.passengers.some(
+          passenger => `${passenger.firstName} ${passenger.lastName}`.toLowerCase().includes(query)
+        );
+        
+        // Buscar en código de reservación
+        const matchesCode = reservation.code.toLowerCase().includes(query);
+        
+        // Buscar en email
+        const matchesEmail = reservation.email.toLowerCase().includes(query);
+        
+        // Buscar en teléfono
+        const matchesPhone = reservation.phone.toLowerCase().includes(query);
+        
+        // Buscar en origen/destino
+        const matchesOriginDestination = tripDetails ? (
+          (tripDetails.segmentOrigin || '').toLowerCase().includes(query) || 
+          (tripDetails.segmentDestination || '').toLowerCase().includes(query) ||
+          (tripDetails.route?.origin || '').toLowerCase().includes(query) || 
+          (tripDetails.route?.destination || '').toLowerCase().includes(query)
+        ) : false;
+        
+        return matchesPassenger || matchesCode || matchesEmail || matchesPhone || matchesOriginDestination;
+      })
+    : groupedReservations;
+  
+  // Total de pasajeros (solo muestra total de todos los pasajeros, no de los filtrados)
   const totalPassengers = groupedReservations.reduce((total, res) => total + res.passengers.length, 0);
 
   if (isLoadingTripDetails || isLoadingReservations) {
@@ -272,141 +303,187 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           </div>
         </div>
         
-        <div className="mb-5">
-          <h3 className="text-lg font-semibold text-gray-800">Lista de Pasajeros</h3>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Lista de Pasajeros</h3>
+          
+          {/* Campo de búsqueda */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Buscar por nombre, número, origen, destino o email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 pl-10 pr-4 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+            />
+            <div className="absolute left-3 top-2.5 text-gray-400">
+              <Search className="h-4 w-4" />
+            </div>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
         
         {/* Lista de pasajeros */}
         {groupedReservations.length > 0 ? (
-          <div className="space-y-4">
-            {groupedReservations.map((reservation, index) => (
-              <div 
-                key={`reservation-${reservation.id}`} 
-                className="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow"
-              >
-                <div className="border-b border-gray-100 bg-gray-50 px-4 py-2.5 flex justify-between items-center">
-                  <div className="flex items-center">
-                    <div className="flex -space-x-2 mr-3">
-                      {reservation.passengers.length > 0 ? (
-                        <>
-                          {reservation.passengers.slice(0, 3).map((passenger) => (
-                            <Avatar key={passenger.id} className="border-2 border-white">
-                              <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                                {passenger.initials}
-                              </AvatarFallback>
-                            </Avatar>
-                          ))}
-                          {reservation.passengers.length > 3 && (
+          <>
+            {filteredReservations.length > 0 ? (
+              <div className="space-y-4">
+                {filteredReservations.map((reservation, index) => (
+                  <div 
+                    key={`reservation-${reservation.id}`} 
+                    className="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow"
+                  >
+                    <div className="border-b border-gray-100 bg-gray-50 px-4 py-2.5 flex justify-between items-center">
+                      <div className="flex items-center">
+                        <div className="flex -space-x-2 mr-3">
+                          {reservation.passengers.length > 0 ? (
+                            <>
+                              {reservation.passengers.slice(0, 3).map((passenger) => (
+                                <Avatar key={passenger.id} className="border-2 border-white">
+                                  <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                                    {passenger.initials}
+                                  </AvatarFallback>
+                                </Avatar>
+                              ))}
+                              {reservation.passengers.length > 3 && (
+                                <Avatar className="border-2 border-white">
+                                  <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                                    +{reservation.passengers.length - 3}
+                                  </AvatarFallback>
+                                </Avatar>
+                              )}
+                            </>
+                          ) : (
                             <Avatar className="border-2 border-white">
-                              <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                                +{reservation.passengers.length - 3}
+                              <AvatarFallback className="bg-gray-200 text-gray-500">
+                                0
                               </AvatarFallback>
                             </Avatar>
                           )}
-                        </>
-                      ) : (
-                        <Avatar className="border-2 border-white">
-                          <AvatarFallback className="bg-gray-200 text-gray-500">
-                            0
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
-                    </div>
-                    <div>
-                      <div className="font-medium">
-                        {reservation.passengers.length} {reservation.passengers.length === 1 ? 'pasajero' : 'pasajeros'}
+                        </div>
+                        <div>
+                          <div className="font-medium">
+                            {reservation.passengers.length} {reservation.passengers.length === 1 ? 'pasajero' : 'pasajeros'}
+                          </div>
+                          <div className="text-xs text-gray-500">{reservation.code}</div>
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500">{reservation.code}</div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-primary">
+                          {formatPrice(reservation.amount)}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-primary">
-                      {formatPrice(reservation.amount)}
-                    </div>
-                  </div>
-                </div>
 
-                <div className="p-4">
-                  {/* Datos de pasajeros */}
-                  <div className="mb-3">
-                    <h4 className="text-xs uppercase text-gray-500 font-medium mb-2">Pasajeros</h4>
-                    <div className="space-y-1.5">
-                      {reservation.passengers.map((passenger) => (
-                        <div key={passenger.id} className="flex items-center">
-                          <Avatar className="h-6 w-6 mr-2">
-                            <AvatarFallback className="text-xs bg-gray-100 text-gray-700">
-                              {passenger.initials}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium text-gray-800">{passenger.firstName} {passenger.lastName}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* Datos de contacto */}
-                  <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                    <div>
-                      <div className="text-xs text-gray-500">Email</div>
-                      <div className="font-medium truncate">{reservation.email || '-'}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Teléfono</div>
-                      <div className="font-medium">{reservation.phone || '-'}</div>
-                    </div>
-                  </div>
-                  
-                  {/* Información de pago con métodos */}
-                  <div className="mt-3 bg-gray-50 p-2 rounded border border-gray-200">
-                    {(!reservation.advanceAmount || reservation.advanceAmount <= 0) ? (
-                      <div className="grid grid-cols-2 gap-1">
-                        <div className="text-xs text-gray-500">Método de pago:</div>
-                        <div className="text-xs text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-                        <div className="text-xs text-gray-500">Estado:</div>
-                        <div className="text-xs text-right font-medium">
-                          <Badge 
-                            variant="outline"
-                            className={reservation.paymentStatus === 'pagado' 
-                              ? 'bg-green-100 text-green-800 border-green-200' 
-                              : 'bg-yellow-100 text-yellow-800 border-yellow-200'}
-                          >
-                            {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
-                          </Badge>
+                    <div className="p-4">
+                      {/* Datos de pasajeros */}
+                      <div className="mb-3">
+                        <h4 className="text-xs uppercase text-gray-500 font-medium mb-2">Pasajeros</h4>
+                        <div className="space-y-1.5">
+                          {reservation.passengers.map((passenger) => (
+                            <div key={passenger.id} className="flex items-center">
+                              <Avatar className="h-6 w-6 mr-2">
+                                <AvatarFallback className="text-xs bg-gray-100 text-gray-700">
+                                  {passenger.initials}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="font-medium text-gray-800">{passenger.firstName} {passenger.lastName}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="text-xs">
-                          <span className="text-gray-500">Anticipo: </span>
-                          <span className="font-medium">{formatPrice(reservation.advanceAmount)} </span>
-                          <span className="font-normal">({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
+                      
+                      {/* Datos de contacto */}
+                      <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                        <div>
+                          <div className="text-xs text-gray-500">Email</div>
+                          <div className="font-medium truncate">{reservation.email || '-'}</div>
                         </div>
-                        
-                        {reservation.advanceAmount < reservation.amount && (
-                          <div className="text-xs">
-                            <span className="text-gray-500">{reservation.paymentStatus === 'pagado' ? 'Pagó: ' : 'Resta: '}</span>
-                            <span className="font-medium">{formatPrice(reservation.amount - reservation.advanceAmount)} </span>
-                            <span className="font-normal">({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
+                        <div>
+                          <div className="text-xs text-gray-500">Teléfono</div>
+                          <div className="font-medium">{reservation.phone || '-'}</div>
+                        </div>
+                      </div>
+                      
+                      {/* Información de pago con métodos */}
+                      <div className="mt-3 bg-gray-50 p-2 rounded border border-gray-200">
+                        {(!reservation.advanceAmount || reservation.advanceAmount <= 0) ? (
+                          <div className="grid grid-cols-2 gap-1">
+                            <div className="text-xs text-gray-500">Método de pago:</div>
+                            <div className="text-xs text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                            <div className="text-xs text-gray-500">Estado:</div>
+                            <div className="text-xs text-right font-medium">
+                              <Badge 
+                                variant="outline"
+                                className={reservation.paymentStatus === 'pagado' 
+                                  ? 'bg-green-100 text-green-800 border-green-200' 
+                                  : 'bg-yellow-100 text-yellow-800 border-yellow-200'}
+                              >
+                                {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+                              </Badge>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="text-xs">
+                              <span className="text-gray-500">Anticipo: </span>
+                              <span className="font-medium">{formatPrice(reservation.advanceAmount)} </span>
+                              <span className="font-normal">({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
+                            </div>
+                            
+                            {reservation.advanceAmount < reservation.amount && (
+                              <div className="text-xs">
+                                <span className="text-gray-500">{reservation.paymentStatus === 'pagado' ? 'Pagó: ' : 'Resta: '}</span>
+                                <span className="font-medium">{formatPrice(reservation.amount - reservation.advanceAmount)} </span>
+                                <span className="font-normal">({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
+                              </div>
+                            )}
+                            
+                            <div className="flex justify-end mt-1">
+                              <Badge 
+                                variant="outline"
+                                className={reservation.paymentStatus === 'pagado' 
+                                  ? 'bg-green-100 text-green-800 border-green-200' 
+                                  : 'bg-yellow-100 text-yellow-800 border-yellow-200'}
+                              >
+                                {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+                              </Badge>
+                            </div>
                           </div>
                         )}
-                        
-                        <div className="flex justify-end mt-1">
-                          <Badge 
-                            variant="outline"
-                            className={reservation.paymentStatus === 'pagado' 
-                              ? 'bg-green-100 text-green-800 border-green-200' 
-                              : 'bg-yellow-100 text-yellow-800 border-yellow-200'}
-                          >
-                            {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
-                          </Badge>
-                        </div>
                       </div>
-                    )}
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            ) : (
+              <div className="text-center py-10 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="rounded-full bg-gray-100 p-3 mx-auto w-14 h-14 mb-3 flex items-center justify-center">
+                  <Search className="h-6 w-6 text-gray-400" />
+                </div>
+                <h3 className="text-base font-medium mb-1 text-gray-800">No se encontraron resultados</h3>
+                <p className="text-gray-500 text-sm max-w-sm mx-auto">
+                  No hay pasajeros que coincidan con tu búsqueda. Intenta con otros términos.
+                </p>
+                {searchQuery && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setSearchQuery("")}
+                    className="mt-3"
+                  >
+                    Limpiar búsqueda
+                  </Button>
+                )}
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-16 bg-gray-50 rounded-xl border border-gray-200">
             <div className="rounded-full bg-gray-100 p-4 mx-auto w-16 h-16 mb-4 flex items-center justify-center">
