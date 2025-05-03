@@ -2,7 +2,10 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { Express, Request, Response, NextFunction } from "express";
 import { db } from "./db";
-import { users, insertUserSchema, insertInvitationSchema, invitations, UserRole } from "@shared/schema";
+import { 
+  users, insertUserSchema, insertInvitationSchema, invitations, UserRole,
+  companies, insertCompanySchema 
+} from "@shared/schema";
 import { eq, and, isNull, ne, or, inArray } from "drizzle-orm";
 import { add } from "date-fns";
 
@@ -407,7 +410,17 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
   app.post("/api/register/:token", async (req: Request, res: Response) => {
     try {
       const { token } = req.params;
-      const { firstName, lastName, email, password, company, profilePicture } = req.body;
+      const { 
+        firstName, lastName, email, password, company, profilePicture, 
+        companyData  // Nuevo campo para los datos de la compañía
+      } = req.body;
+
+      console.log("[REGISTER] Solicitud de registro recibida:", {
+        firstName, lastName, email, company,
+        role: req.body.role,
+        hasCompanyData: !!companyData,
+        companyDataFields: companyData ? Object.keys(companyData) : []
+      });
 
       // Verificar si los datos requeridos están presentes
       if (!firstName || !lastName || !email || !password) {
@@ -447,12 +460,17 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
       }
 
       // Validaciones específicas para roles que requieren campos adicionales
-      if (invitation[0].role === UserRole.OWNER && !company) {
-        return res.status(400).json({ message: "El nombre de la empresa es obligatorio para usuarios con rol Dueño" });
-      }
-      
-      if (invitation[0].role === UserRole.DEVELOPER && !company) {
-        return res.status(400).json({ message: "El nombre de la empresa/proyecto es obligatorio para usuarios con rol Desarrollador" });
+      if (invitation[0].role === UserRole.OWNER) {
+        // Para usuarios Dueño, verificar si tenemos los datos de la empresa
+        if (!company && (!companyData || !companyData.name)) {
+          return res.status(400).json({ 
+            message: "El nombre de la empresa es obligatorio para usuarios con rol Dueño" 
+          });
+        }
+      } else if (invitation[0].role === UserRole.DEVELOPER && !company) {
+        return res.status(400).json({ 
+          message: "El nombre de la empresa/proyecto es obligatorio para usuarios con rol Desarrollador" 
+        });
       }
 
       // Obtener el usuario invitador
@@ -494,16 +512,59 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
         email,
         password: await hashPassword(password),
         role: invitation[0].role,
-        company: (invitation[0].role === UserRole.OWNER || invitation[0].role === UserRole.DEVELOPER) ? company : companyToUse,
+        company: (invitation[0].role === UserRole.OWNER || invitation[0].role === UserRole.DEVELOPER) ? 
+          (companyData?.name || company) : companyToUse,
         profilePicture: profilePictureToUse,
         invitedById: invitation[0].createdById, // Guardar referencia al usuario que invitó
-        companyId: companyId, // Guardar referencia a la compañía
+        companyId: companyId, // Guardar referencia a la compañía (se actualizará después si es OWNER)
       };
 
+      // Insertar el usuario
       const [user] = await db
         .insert(users)
         .values(userData)
         .returning();
+
+      // Si es un dueño y tenemos datos de compañía, crear la compañía
+      if (invitation[0].role === UserRole.OWNER && companyData) {
+        try {
+          // Generar un identificador único para la compañía
+          const companyIdentifier = `${companyData.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now().toString().slice(-6)}`;
+          
+          console.log(`[REGISTER] Creando compañía con identificador: ${companyIdentifier}`);
+          
+          // Insertar la compañía en la tabla companies
+          const [newCompany] = await db
+            .insert(companies)
+            .values({
+              name: companyData.name,
+              identifier: companyIdentifier,
+              logo: companyData.logo || '',
+              createdBy: user.id // El usuario recién creado es el creador de la compañía
+            })
+            .returning();
+          
+          console.log(`[REGISTER] Compañía creada con ID: ${newCompany.id}, Identifier: ${newCompany.identifier}`);
+          
+          // Actualizar el usuario con el identificador de la compañía
+          await db
+            .update(users)
+            .set({ 
+              companyId: newCompany.identifier,
+              company: newCompany.name
+            })
+            .where(eq(users.id, user.id));
+          
+          // Actualizar el objeto de usuario para la respuesta
+          user.companyId = newCompany.identifier;
+          user.company = newCompany.name;
+          
+          console.log(`[REGISTER] Usuario actualizado con companyId: ${newCompany.identifier}`);
+        } catch (companyError) {
+          console.error("[REGISTER] Error al crear la compañía:", companyError);
+          // No fallar el registro si falla la creación de la compañía
+        }
+      }
 
       // Marcar la invitación como utilizada
       await db
