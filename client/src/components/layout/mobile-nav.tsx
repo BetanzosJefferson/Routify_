@@ -127,6 +127,17 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
                 Gestión de comisiones
               </NavLink>
             )}
+            {canAccess("my-commissions") && (
+              <NavLink 
+                active={window.location.pathname === "/my-commissions"}
+                onClick={() => {
+                  setLocation("/my-commissions");
+                  setOpen(false);
+                }}
+              >
+                Mis comisiones
+              </NavLink>
+            )}
           </nav>
         </SheetContent>
       </Sheet>
