@@ -371,6 +371,21 @@ export const passengerRelations = relations(passengers, ({ one }) => ({
   })
 }));
 
+// COMPANIES SCHEMA
+export const companies = pgTable("companies", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  identifier: text("identifier").notNull().unique(), // un identificador único para la compañía (e.g. bamo-456)
+  logo: text("logo").default(""),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+});
+
+export const insertCompanySchema = createInsertSchema(companies);
+export type InsertCompany = z.infer<typeof insertCompanySchema>;
+export type Company = typeof companies.$inferSelect;
+
 // USER SCHEMA
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -379,7 +394,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   role: text("role").notNull().default(UserRole.TICKET_OFFICE),
-  company: text("company").default(""),
+  company: text("company").default(""), // Este campo se mantiene para compatibilidad con el código existente
   profilePicture: text("profile_picture").default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -436,6 +451,16 @@ export const userRelations = relations(users, ({ many, one }) => ({
   checkedReservations: many(reservations, {
     fields: [users.id],
     references: [reservations.checkedBy]
+  }),
+  // Relación con la compañía a la que pertenece el usuario
+  company: one(companies, {
+    fields: [users.companyId],
+    references: [companies.identifier]
+  }),
+  // Relación para las compañías creadas por este usuario
+  companiesCreated: many(companies, {
+    fields: [users.id],
+    references: [companies.createdBy]
   })
 }));
 
@@ -446,9 +471,24 @@ export const invitationRelations = relations(invitations, ({ one }) => ({
   })
 }));
 
+// COMPANY RELATIONS
+export const companyRelations = relations(companies, ({ many, one }) => ({
+  users: many(users),
+  trips: many(trips),
+  vehicles: many(vehicles),
+  createdByUser: one(users, {
+    fields: [companies.createdBy],
+    references: [users.id]
+  })
+}));
+
 // VEHICLE RELATIONS
-export const vehicleRelations = relations(vehicles, ({ many }) => ({
+export const vehicleRelations = relations(vehicles, ({ many, one }) => ({
   // Podemos agregar relaciones en el futuro según se necesite
+  company: one(companies, {
+    fields: [vehicles.companyId],
+    references: [companies.identifier]
+  })
 }));
 
 // COMMISSION RELATIONS
