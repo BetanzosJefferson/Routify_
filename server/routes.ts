@@ -2242,6 +2242,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint para que los comisionistas vean sus propias reservaciones aprobadas
+  app.get(apiRouter("/commissions/my-commissions"), async (req: Request, res: Response) => {
+    try {
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      console.log(`[GET /commissions/my-commissions] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
+      if (user) {
+        console.log(`[GET /commissions/my-commissions] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
+      }
+      
+      // SEGURIDAD: Verificar que solo los comisionistas puedan acceder
+      if (!user) {
+        return res.status(401).json({ error: "No autorizado" });
+      }
+      
+      // Solo los comisionistas pueden acceder a sus propias comisiones
+      if (user.role !== UserRole.COMMISSIONER) {
+        console.log(`[GET /commissions/my-commissions] ACCESO DENEGADO: El rol ${user.role} no tiene permiso para acceder a esta sección`);
+        return res.status(403).json({ error: "Acceso denegado" });
+      }
+      
+      // Obtener la compañía del usuario
+      const companyId = user.companyId || user.company;
+      
+      if (!companyId) {
+        console.log(`[GET /commissions/my-commissions] ADVERTENCIA: Usuario sin compañía asignada`);
+        // Si el usuario no tiene compañía asignada, devolver lista vacía por seguridad
+        return res.json([]);
+      }
+      
+      // Obtener todas las reservaciones con sus detalles
+      const allReservations = await storage.getReservations(companyId);
+      
+      // Filtrar solo las creadas por este comisionista y que estén aprobadas
+      const myApprovedReservations = allReservations.filter(
+        reservation => reservation.createdBy === user.id && 
+                        reservation.status === "approved"
+      );
+      
+      console.log(`[GET /commissions/my-commissions] Encontradas ${myApprovedReservations.length} reservaciones aprobadas del comisionista`);
+      
+      // Transformar datos para incluir más detalles
+      const myCommissions = myApprovedReservations.map(reservation => {
+        const commissionPercentage = user.commissionPercentage || 10; // Porcentaje predeterminado si no está definido
+        const commissionAmount = (reservation.totalPrice * commissionPercentage) / 100;
+        
+        return {
+          id: reservation.id,
+          passengerName: reservation.passengers?.[0]?.name || "Sin nombre",
+          routeName: reservation.trip?.route?.name || "Ruta desconocida",
+          tripId: reservation.tripId,
+          departureDate: reservation.trip?.departureDate,
+          totalPrice: reservation.totalPrice,
+          commissionPercentage: commissionPercentage,
+          commissionAmount: commissionAmount,
+          commissionPaid: reservation.commissionPaid || false
+        };
+      });
+      
+      res.json(myCommissions);
+    } catch (error) {
+      console.error(`[GET /commissions/my-commissions] Error: ${error}`);
+      res.status(500).json({ error: "Error al obtener tus comisiones" });
+    }
+  });
+  
   // Endpoint para marcar comisiones como pagadas
   app.put(apiRouter("/commissions/pay"), async (req: Request, res: Response) => {
     try {
