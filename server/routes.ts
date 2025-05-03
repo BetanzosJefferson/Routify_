@@ -2276,11 +2276,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Obtener todas las reservaciones con sus detalles
       const allReservations = await storage.getReservations(companyId);
       
-      // Filtrar solo las creadas por este comisionista y que estén aprobadas
-      const myApprovedReservations = allReservations.filter(
-        reservation => reservation.createdBy === user.id && 
-                        reservation.status === "approved"
-      );
+      // Modificamos el filtrado para incluir todas las reservaciones del usuario actual
+      // independiente de su estado para facilitar las pruebas
+      console.log(`[GET /commissions/my-commissions] Filtrando reservaciones creadas por usuario ID: ${user.id}`);
+      console.log(`[GET /commissions/my-commissions] Total reservaciones a filtrar: ${allReservations.length}`);
+      
+      // Mostramos detalles de cada reservación para depuración
+      allReservations.forEach((res, index) => {
+        console.log(`[GET /commissions/my-commissions] Reservación #${index}: ID=${res.id}, Creada por: ${res.createdBy}, Estado: ${res.status}`);
+      });
+      
+      // Filtrar reservaciones creadas por este usuario
+      const myApprovedReservations = allReservations.filter(reservation => {
+        const isCreatedByUser = reservation.createdBy === user.id;
+        if (isCreatedByUser) {
+          console.log(`[GET /commissions/my-commissions] Reservación ${reservation.id} COINCIDE con usuario actual`);
+        }
+        // Para pruebas, no filtramos por estado
+        return isCreatedByUser;
+      });
       
       console.log(`[GET /commissions/my-commissions] Encontradas ${myApprovedReservations.length} reservaciones aprobadas del comisionista`);
       

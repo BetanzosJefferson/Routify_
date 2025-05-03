@@ -34,11 +34,22 @@ export default function MyCommissionsPage() {
   const { data: myCommissions, isLoading, error } = useQuery({
     queryKey: ['/api/commissions/my-commissions'],
     queryFn: async () => {
-      const response = await fetch('/api/commissions/my-commissions');
-      if (!response.ok) {
-        throw new Error('Error al obtener mis comisiones');
+      try {
+        console.log('Consultando mis comisiones...');
+        const response = await fetch('/api/commissions/my-commissions');
+        console.log('Respuesta recibida:', response.status);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Error obteniendo comisiones:', errorText);
+          throw new Error(`Error al obtener comisiones: ${response.status} ${errorText}`);
+        }
+        const data = await response.json();
+        console.log('Datos de comisiones recibidos:', data);
+        return data;
+      } catch (err) {
+        console.error('Error en la consulta de comisiones:', err);
+        throw err;
       }
-      return response.json();
     },
     enabled: !!user, // Solo ejecutar si el usuario está autenticado
   });
