@@ -171,6 +171,15 @@ function EmptyState({ message }: { message: string }) {
 
 // Componente para mostrar la lista de comisiones
 function CommissionsList({ commissions }: { commissions: any[] }) {
+  // Función para formatear moneda
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN',
+      minimumFractionDigits: 2
+    }).format(amount);
+  };
+  
   return (
     <div className="space-y-4">
       {commissions.map((commission) => (
