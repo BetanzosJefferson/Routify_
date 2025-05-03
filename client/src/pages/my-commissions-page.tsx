@@ -98,8 +98,8 @@ export default function MyCommissionsPage() {
             </div>
 
             <Card>
-              <CardHeader className="pb-0">
-                <Tabs value={commissionTab} onValueChange={setCommissionTab}>
+              <Tabs value={commissionTab} onValueChange={setCommissionTab}>
+                <CardHeader className="pb-0">
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="pendientes">
                       Pendientes ({isLoading ? "..." : pendingCommissions.length})
@@ -108,47 +108,50 @@ export default function MyCommissionsPage() {
                       Pagadas ({isLoading ? "..." : paidCommissions.length})
                     </TabsTrigger>
                   </TabsList>
-                </Tabs>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {isLoading ? (
-                  // Estado de carga
-                  <div className="space-y-4">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className="flex flex-col space-y-2">
-                        <Skeleton className="h-6 w-3/4" />
-                        <Skeleton className="h-10 w-full" />
-                      </div>
-                    ))}
-                  </div>
-                ) : error ? (
-                  // Mostrar error
-                  <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Error</AlertTitle>
-                    <AlertDescription>
-                      {error instanceof Error ? error.message : 'Error al cargar las comisiones'}
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  // Mostrar contenido según la pestaña seleccionada
-                  <TabsContent value={commissionTab} className="mt-0">
-                    {commissionTab === "pendientes" ? (
-                      pendingCommissions.length === 0 ? (
+                </CardHeader>
+                <CardContent className="pt-6">
+                  {isLoading ? (
+                    // Estado de carga
+                    <div className="space-y-4">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="flex flex-col space-y-2">
+                          <Skeleton className="h-6 w-3/4" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : error ? (
+                    // Mostrar error
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Error</AlertTitle>
+                      <AlertDescription>
+                        {error instanceof Error ? error.message : 'Error al cargar las comisiones'}
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    // Contenido para pestaña pendientes
+                    <TabsContent value="pendientes">
+                      {pendingCommissions.length === 0 ? (
                         <EmptyState message="No tienes comisiones pendientes de pago" />
                       ) : (
                         <CommissionsList commissions={pendingCommissions} />
-                      )
-                    ) : (
-                      paidCommissions.length === 0 ? (
+                      )}
+                    </TabsContent>
+                  )}
+
+                  {/* Contenido para pestaña pagadas (solo se muestra si hay datos) */}
+                  {!isLoading && !error && (
+                    <TabsContent value="pagadas">
+                      {paidCommissions.length === 0 ? (
                         <EmptyState message="No tienes comisiones pagadas" />
                       ) : (
                         <CommissionsList commissions={paidCommissions} />
-                      )
-                    )}
-                  </TabsContent>
-                )}
-              </CardContent>
+                      )}
+                    </TabsContent>
+                  )}
+                </CardContent>
+              </Tabs>
             </Card>
           </main>
         </div>
