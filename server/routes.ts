@@ -1744,7 +1744,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(updatedReservation);
     } catch (error) {
-      console.error("Error al actualizar reservación:", error);
       res.status(500).json({ error: "Failed to update reservation" });
     }
   });
