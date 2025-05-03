@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -481,6 +481,45 @@ export default function RegisterPage() {
         logo: formData.company.logo || "",
       },
     });
+    
+    // Estado para la previsualización del logo
+    const [logoPreview, setLogoPreview] = useState<string | null>(
+      formData.company.logo || null
+    );
+    
+    // Referencia para el input de archivo
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    
+    // Función para convertir archivo a base64
+    const convertToBase64 = (file: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+      });
+    };
+    
+    // Manejar carga de archivos
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        try {
+          const base64 = await convertToBase64(files[0]);
+          setLogoPreview(base64);
+          companyStepForm.setValue("logo", base64);
+        } catch (error) {
+          console.error("Error al convertir la imagen:", error);
+        }
+      }
+    };
+    
+    // Función para abrir el selector de archivos
+    const handleSelectFile = () => {
+      if (fileInputRef.current) {
+        fileInputRef.current.click();
+      }
+    };
 
     return (
       <div className="space-y-4">
@@ -511,21 +550,63 @@ export default function RegisterPage() {
             <FormField
               control={companyStepForm.control}
               name="logo"
-              render={({ field }) => (
+              render={({ field: { value, onChange, ...fieldProps } }) => (
                 <FormItem>
-                  <FormLabel>Logo de la Empresa (URL)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="https://ejemplo.com/logo.png" 
-                      {...field}
+                  <FormLabel>Logo de la Empresa</FormLabel>
+                  <div className="flex flex-col items-center space-y-4">
+                    {/* Previsualización del logo */}
+                    <div 
+                      className="relative w-32 h-32 border rounded-full overflow-hidden flex items-center justify-center bg-muted cursor-pointer"
+                      onClick={handleSelectFile}
+                    >
+                      {logoPreview ? (
+                        <>
+                          <img 
+                            src={logoPreview} 
+                            alt="Logo de la empresa" 
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute bottom-0 right-0 p-1 bg-white border border-gray-200 rounded-tl-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-upload">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="17 8 12 3 7 8" />
+                              <line x1="12" x2="12" y1="3" y2="15" />
+                            </svg>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-gray-500">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-image mb-2">
+                            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                            <circle cx="9" cy="9" r="2" />
+                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                          </svg>
+                          <span className="text-xs">Subir logo</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Mensaje de ayuda */}
+                    <p className="text-xs text-muted-foreground text-center">
+                      Haz clic para seleccionar una imagen
+                    </p>
+                    
+                    {/* Input de archivo oculto */}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      // Omitimos fieldProps para evitar conflicto con ref
                     />
-                  </FormControl>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <div className="flex space-x-2">
+            <div className="flex space-x-2 mt-6">
               <Button 
                 type="button" 
                 variant="outline" 
@@ -583,22 +664,29 @@ export default function RegisterPage() {
 
           <div className="border-t pt-3">
             <h3 className="text-sm font-medium text-muted-foreground">Información de Empresa</h3>
-            <p className="mt-1 font-medium">{formData.company.name}</p>
-            {formData.company.logo && (
-              <div className="mt-2">
-                <p className="text-sm text-muted-foreground mb-1">Logo:</p>
-                <div className="w-16 h-16 rounded overflow-hidden bg-muted">
+            <div className="flex items-center gap-4 mt-2">
+              {formData.company.logo && (
+                <div className="w-16 h-16 rounded-full overflow-hidden bg-muted border flex-shrink-0">
                   <img 
                     src={formData.company.logo} 
                     alt="Logo de empresa"
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-cover"
                     onError={(e) => {
                       e.currentTarget.src = "https://placehold.co/100x100?text=Logo";
                     }}
                   />
                 </div>
+              )}
+              <div>
+                <p className="font-medium">{formData.company.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {formData.company.logo 
+                    ? "Logo personalizado" 
+                    : "Sin logo personalizado"}
+                </p>
               </div>
-            )}
+            </div>
+            
           </div>
         </div>
 
