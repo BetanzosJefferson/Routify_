@@ -744,7 +744,7 @@ export function ReservationList() {
       
       {/* Edit Reservation Dialog */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Reservación</DialogTitle>
             <DialogDescription>
@@ -753,8 +753,8 @@ export function ReservationList() {
           </DialogHeader>
           
           {editingReservation && (
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-2">
+            <div className="grid gap-3 sm:gap-4 py-2 sm:py-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div>
                   <Label htmlFor="reservation-id" className="text-gray-500 text-xs">CÓDIGO DE RESERVACIÓN</Label>
                   <div id="reservation-id" className="text-sm font-medium">#{generateReservationId(editingReservation?.id || 0)}</div>
@@ -776,8 +776,8 @@ export function ReservationList() {
               </div>
               
               {/* Información de contacto */}
-              <div className="space-y-3 mt-2">
-                <h3 className="text-sm font-medium border-b pb-1">Información de contacto</h3>
+              <div className="space-y-2 sm:space-y-3 mt-1 sm:mt-2">
+                <h3 className="text-xs sm:text-sm font-medium border-b pb-1">Información de contacto</h3>
                 
                 <div className="grid grid-cols-1 gap-2">
                   <Label htmlFor="passenger-name" className="text-gray-500 text-xs">PASAJEROS</Label>
@@ -817,8 +817,8 @@ export function ReservationList() {
               </div>
               
               {/* Información del viaje */}
-              <div className="space-y-3 mt-2">
-                <h3 className="text-sm font-medium border-b pb-1">Información del viaje</h3>
+              <div className="space-y-2 sm:space-y-3 mt-1 sm:mt-2">
+                <h3 className="text-xs sm:text-sm font-medium border-b pb-1">Información del viaje</h3>
                 
                 <div className="grid grid-cols-1 gap-2">
                   <Label htmlFor="route-info" className="text-gray-500 text-xs">RUTA</Label>
@@ -841,8 +841,8 @@ export function ReservationList() {
               </div>
               
               {/* Información de pago */}
-              <div className="space-y-3 mt-2">
-                <h3 className="text-sm font-medium border-b pb-1">Información de pago</h3>
+              <div className="space-y-2 sm:space-y-3 mt-1 sm:mt-2">
+                <h3 className="text-xs sm:text-sm font-medium border-b pb-1">Información de pago</h3>
                 
                 <div className="grid grid-cols-1 gap-2">
                   <Label htmlFor="payment-method" className="text-gray-500 text-xs">MÉTODO DE PAGO</Label>
@@ -879,22 +879,23 @@ export function ReservationList() {
               </div>
               
               {/* Notas adicionales */}
-              <div className="grid grid-cols-1 gap-2 mt-2">
+              <div className="grid grid-cols-1 gap-2 mt-1 sm:mt-2">
                 <Label htmlFor="notes" className="text-gray-500 text-xs">NOTAS ADICIONALES</Label>
                 <Textarea
                   id="notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Instrucciones especiales o detalles adicionales"
-                  className="min-h-[80px]"
+                  className="min-h-[60px] sm:min-h-[80px] text-sm"
                 />
               </div>
             </div>
           )}
           
-          <DialogFooter>
-            <Button variant="outline" onClick={closeEditModal}>Cancelar</Button>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button className="w-full sm:w-auto order-2 sm:order-1" variant="outline" onClick={closeEditModal}>Cancelar</Button>
             <Button 
+              className="w-full sm:w-auto order-1 sm:order-2"
               onClick={handleSaveEdit}
               disabled={editReservationMutation.isPending}
             >
