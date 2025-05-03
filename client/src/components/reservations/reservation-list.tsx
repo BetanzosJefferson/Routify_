@@ -15,7 +15,8 @@ import {
   ArchiveIcon,
   FilterIcon,
   QrCode,
-  ExternalLink
+  ExternalLink,
+  Clock as ClockIcon
 } from "lucide-react";
 import { useReservations } from "@/hooks/use-reservations";
 import ReservationDetailsModal from "@/components/reservations/reservation-details-modal";
@@ -66,6 +67,8 @@ export function ReservationList() {
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [notes, setNotes] = useState<string>("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [tripDate, setTripDate] = useState<string>("");
+  const [tripTime, setTripTime] = useState<string>("");
   // Modal de detalles de reservación
   const [selectedReservationId, setSelectedReservationId] = useState<number | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -246,6 +249,13 @@ export function ReservationList() {
     setEmail(reservation.email || "");
     setPhone(reservation.phone || "");
     setStatus(reservation.status || "confirmed");
+    
+    // Inicializar fecha y hora del viaje
+    const departureDate = new Date(reservation.trip.departureDate);
+    const formattedDate = departureDate.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+    setTripDate(formattedDate);
+    setTripTime(reservation.trip.departureTime);
+    
     setIsEditModalOpen(true);
   };
   
@@ -257,15 +267,26 @@ export function ReservationList() {
   const handleSaveEdit = () => {
     if (!editingReservation) return;
     
+    const updates: Partial<Reservation> = {
+      paymentMethod,
+      notes,
+      email,
+      phone,
+      status
+    };
+    
+    // Si se han cambiado la fecha o la hora, incluirlos en la actualización
+    if (tripDate && tripDate !== new Date(editingReservation.trip.departureDate).toISOString().split('T')[0] ||
+        tripTime && tripTime !== editingReservation.trip.departureTime) {
+      updates.tripUpdates = {
+        departureDate: tripDate,
+        departureTime: tripTime
+      };
+    }
+    
     editReservationMutation.mutate({
       id: editingReservation.id,
-      updates: {
-        paymentMethod,
-        notes,
-        email,
-        phone,
-        status
-      }
+      updates
     });
   };
   
@@ -831,11 +852,35 @@ export function ReservationList() {
                   <div className="text-sm">
                     <span className="text-gray-500">Destino:</span> {editingReservation.trip.segmentDestination || editingReservation.trip.route.destination}
                   </div>
-                  <div className="text-sm">
-                    <span className="text-gray-500">Fecha:</span> {formatDate(editingReservation.trip.departureDate)}
+                  
+                  {/* Fecha editable */}
+                  <div className="grid grid-cols-1 gap-2 mt-2">
+                    <Label htmlFor="trip-date" className="text-gray-500 text-xs">FECHA DE SALIDA</Label>
+                    <div className="relative">
+                      <CalendarIcon className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="trip-date"
+                        type="date"
+                        value={tripDate}
+                        onChange={(e) => setTripDate(e.target.value)}
+                        className="pl-8"
+                      />
+                    </div>
                   </div>
-                  <div className="text-sm">
-                    <span className="text-gray-500">Hora de salida:</span> {editingReservation.trip.departureTime}
+                  
+                  {/* Hora editable */}
+                  <div className="grid grid-cols-1 gap-2 mt-2">
+                    <Label htmlFor="trip-time" className="text-gray-500 text-xs">HORA DE SALIDA</Label>
+                    <div className="relative">
+                      <ClockIcon className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="trip-time"
+                        type="time"
+                        value={tripTime}
+                        onChange={(e) => setTripTime(e.target.value)}
+                        className="pl-8"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
