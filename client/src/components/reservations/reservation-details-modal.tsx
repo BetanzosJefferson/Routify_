@@ -374,8 +374,8 @@ export default function ReservationDetailsModal({
                 </div>
               </div>
               
-              <DialogFooter>
-                <Button className="w-full sm:w-auto" onClick={handleClose}>Cerrar</Button>
+              <DialogFooter className="mt-2 sm:mt-4">
+                <Button className="w-full sm:w-auto text-sm" onClick={handleClose}>Cerrar</Button>
               </DialogFooter>
             </>
           )}
