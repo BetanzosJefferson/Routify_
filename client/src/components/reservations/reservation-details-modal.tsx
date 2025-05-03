@@ -323,26 +323,26 @@ export default function ReservationDetailsModal({
                   </div>
                   
                   {/* Código QR */}
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <h3 className="font-medium text-base border-b pb-2 mb-4">Código QR</h3>
+                  <div className="bg-gray-50 p-3 sm:p-4 rounded-md">
+                    <h3 className="font-medium text-sm sm:text-base border-b pb-2 mb-3 sm:mb-4">Código QR</h3>
                     <div className="text-center">
                       <img 
                         src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/reservation-details?id=${reservation.id}`} 
                         alt="QR Code"
-                        className="mx-auto my-4 w-48 h-48"
+                        className="mx-auto my-2 sm:my-4 w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48"
                       />
-                      <p className="text-sm text-gray-500 mb-2">
+                      <p className="text-xs sm:text-sm text-gray-500 mb-1 sm:mb-2">
                         Este código QR contiene los detalles de la reservación.
                       </p>
-                      <p className="text-sm text-gray-500">
-                        Escanea el código para ver o compartir el boleto completo.
+                      <p className="text-xs sm:text-sm text-gray-500">
+                        Escanea para ver o compartir el boleto.
                       </p>
                       
                       <a 
                         href={`/reservation-details?id=${reservation.id}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="mt-4 inline-block text-blue-600 hover:underline"
+                        className="mt-2 sm:mt-4 inline-block text-xs sm:text-sm text-blue-600 hover:underline"
                       >
                         Ver boleto completo
                       </a>
@@ -350,11 +350,11 @@ export default function ReservationDetailsModal({
                   </div>
                   
                   {/* Verificación de ticket */}
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <h3 className="font-medium text-base border-b pb-2 mb-4">Verificación de ticket</h3>
+                  <div className="bg-gray-50 p-3 sm:p-4 rounded-md">
+                    <h3 className="font-medium text-sm sm:text-base border-b pb-2 mb-3 sm:mb-4">Verificación de ticket</h3>
                     <Button
                       variant="secondary"
-                      className="w-full"
+                      className="w-full text-sm"
                       onClick={handleCheckTicket}
                       disabled={isChecking}
                     >
