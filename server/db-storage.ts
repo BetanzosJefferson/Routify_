@@ -377,19 +377,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createTrip(trip: InsertTrip): Promise<Trip> {
-    // Garantizar que el companyId se incluya en la inserción
-    console.log("Creando viaje con datos:", JSON.stringify({
-      ...trip,
-      companyId: trip.companyId || 'No especificado'
-    }));
-    
-    // Asegurarse de que companyId esté presente
-    if (!trip.companyId) {
-      console.warn("ALERTA: Intentando crear un viaje sin companyId");
-    }
-    
     const [newTrip] = await db.insert(schema.trips).values(trip).returning();
-    console.log("Viaje creado con ID:", newTrip.id, "CompanyId:", newTrip.companyId);
     return newTrip;
   }
   
