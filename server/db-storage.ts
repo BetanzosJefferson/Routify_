@@ -84,6 +84,7 @@ export class DatabaseStorage implements IStorage {
         origin: route.origin,
         destination: route.destination,
         stops: safeStops,
+        companyId: route.companyId, // Incluir el companyId para la creación de rutas
       };
       
       console.log("Datos procesados para inserción:", safeRoute);
