@@ -51,6 +51,7 @@ type FormValues = {
   capacity: number;
   availableSeats?: number;
   price: number;
+  vehicleType: string; // Campo requerido por el esquema de la base de datos
   segmentPrices: SegmentTimePrice[];
   stopTimes?: StopTime[];
   // Nuevos campos para vehículo y conductor
@@ -154,6 +155,7 @@ export function PublishTripForm() {
       startDate: format(new Date(), "yyyy-MM-dd"),
       endDate: format(new Date(), "yyyy-MM-dd"),
       capacity: 18,
+      vehicleType: "standard", // Valor predeterminado requerido
       // Eliminado el precio base, ahora se calcula automáticamente de los segmentos
       segmentPrices: [],
       stopTimes: [], // Añadimos stopTimes para que no sea undefined
