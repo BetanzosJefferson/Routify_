@@ -14,7 +14,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -206,7 +205,6 @@ export default function CouponsPage() {
 
   // Función para abrir el formulario de creación
   const handleCreate = () => {
-    console.log("Botón Crear Cupón presionado");
     setIsEditing(false);
     setSelectedCoupon(null);
     form.reset({
@@ -219,7 +217,6 @@ export default function CouponsPage() {
       generateRandomCode: false,
     });
     setIsOpen(true);
-    console.log("Estado isOpen después de cambio:", true);
   };
 
   // Función para abrir el formulario de edición
@@ -246,15 +243,6 @@ export default function CouponsPage() {
 
   // Función que se ejecuta al enviar el formulario
   const onSubmit = (values: CouponFormValues) => {
-    // Validación adicional para porcentajes
-    if (values.discountType === "percentage" && (values.discountValue < 1 || values.discountValue > 100)) {
-      form.setError("discountValue", {
-        type: "manual",
-        message: "Para descuentos porcentuales, el valor debe estar entre 1 y 100"
-      });
-      return;
-    }
-    
     mutation.mutate(values);
   };
 
@@ -316,239 +304,10 @@ export default function CouponsPage() {
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold tracking-tight">Cupones</h1>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button 
-              className="gap-2"
-              onClick={() => {
-                console.log("DialogTrigger clicked");
-                setIsEditing(false);
-                setSelectedCoupon(null);
-                form.reset({
-                  code: "",
-                  usageLimit: 1,
-                  expirationHours: 24,
-                  discountType: "percentage",
-                  discountValue: 10,
-                  isActive: true,
-                  generateRandomCode: false,
-                });
-              }}
-            >
-              <Plus size={16} />
-              Crear Cupón
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Crear Nuevo Cupón</DialogTitle>
-              <DialogDescription>
-                Completa los campos para crear un nuevo cupón de descuento.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="generateRandomCode"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">
-                          Generar código aleatorio
-                        </FormLabel>
-                        <FormDescription>
-                          Activar para generar un código aleatorio de 5 caracteres
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={(checked) => {
-                            field.onChange(checked);
-                            // Si se activa, desactivar el campo code
-                            if (checked) {
-                              form.setValue("code", "");
-                            }
-                          }}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                
-                {!form.watch("generateRandomCode") && (
-                  <FormField
-                    control={form.control}
-                    name="code"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Código</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="Ej: DESC5"
-                            maxLength={5}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Máximo 5 caracteres. 
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="discountType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tipo de Descuento</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            // Validar valor del descuento cuando cambia el tipo
-                            const currentValue = form.getValues("discountValue");
-                            if (value === "percentage" && currentValue > 100) {
-                              form.setValue("discountValue", 100);
-                            }
-                          }}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleccionar tipo de descuento" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="percentage">Porcentaje (%)</SelectItem>
-                            <SelectItem value="fixed">Monto Fijo ($)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="discountValue"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Valor del Descuento</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step={form.watch("discountType") === "percentage" ? "1" : "0.01"}
-                            min={form.watch("discountType") === "percentage" ? 1 : 0.01}
-                            max={form.watch("discountType") === "percentage" ? 100 : undefined}
-                            {...field}
-                            value={field.value || ""}
-                            onChange={(e) => {
-                              if (e.target.value === "") {
-                                field.onChange(undefined);
-                              } else {
-                                const value = parseFloat(e.target.value);
-                                if (!isNaN(value)) {
-                                  field.onChange(value);
-                                }
-                              }
-                            }}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          {form.watch("discountType") === "percentage" 
-                            ? "El porcentaje debe estar entre 1% y 100%" 
-                            : "El valor debe ser mayor a 0"}
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="usageLimit"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Límite de Usos</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min={1}
-                            {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="expirationHours"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Caducidad (horas)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min={1}
-                            {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <FormField
-                  control={form.control}
-                  name="isActive"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">
-                          Activar Cupón
-                        </FormLabel>
-                        <FormDescription>
-                          El cupón estará disponible para ser utilizado
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                
-                <DialogFooter>
-                  <Button 
-                    type="submit"
-                    disabled={mutation.isPending}
-                  >
-                    {mutation.isPending 
-                      ? "Guardando..." 
-                      : "Crear Cupón"
-                    }
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={handleCreate} className="gap-2">
+          <Plus size={16} />
+          Crear Cupón
+        </Button>
       </div>
       
       <Card>
@@ -571,13 +330,7 @@ export default function CouponsPage() {
                 Empieza creando un nuevo cupón de descuento.
               </p>
               <div className="mt-6">
-                <Button 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    console.log("Botón en estado vacío presionado");
-                    handleCreate();
-                  }}
-                >
+                <Button onClick={handleCreate}>
                   <Plus className="mr-2 h-4 w-4" />
                   Crear nuevo cupón
                 </Button>
@@ -649,13 +402,7 @@ export default function CouponsPage() {
       </Card>
 
       {/* Dialog para crear/editar cupones */}
-      <Dialog 
-        open={isOpen} 
-        onOpenChange={(open) => {
-          console.log("Dialog onOpenChange:", open);
-          setIsOpen(open);
-        }}
-      >
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>
@@ -734,14 +481,7 @@ export default function CouponsPage() {
                     <FormItem>
                       <FormLabel>Tipo de Descuento</FormLabel>
                       <Select
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                          // Validar valor del descuento cuando cambia el tipo
-                          const currentValue = form.getValues("discountValue");
-                          if (value === "percentage" && currentValue > 100) {
-                            form.setValue("discountValue", 100);
-                          }
-                        }}
+                        onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -769,27 +509,12 @@ export default function CouponsPage() {
                         <Input
                           type="number"
                           step={form.watch("discountType") === "percentage" ? "1" : "0.01"}
-                          min={form.watch("discountType") === "percentage" ? 1 : 0.01}
+                          min={0.01}
                           max={form.watch("discountType") === "percentage" ? 100 : undefined}
                           {...field}
-                          value={field.value || ""}
-                          onChange={(e) => {
-                            if (e.target.value === "") {
-                              field.onChange(undefined);
-                            } else {
-                              const value = parseFloat(e.target.value);
-                              if (!isNaN(value)) {
-                                field.onChange(value);
-                              }
-                            }
-                          }}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value))}
                         />
                       </FormControl>
-                      <FormDescription>
-                        {form.watch("discountType") === "percentage" 
-                          ? "El porcentaje debe estar entre 1% y 100%" 
-                          : "El valor debe ser mayor a 0"}
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

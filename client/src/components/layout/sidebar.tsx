@@ -17,8 +17,7 @@ import {
   PercentIcon,
   UsersIcon,
   BellIcon,
-  FileTextIcon,
-  TicketIcon
+  FileTextIcon
 } from "lucide-react";
 
 interface SidebarProps {
@@ -203,7 +202,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           )}
           
           {/* Sección de Flota y Finanzas */}
-          {(canAccess("vehicles") || canAccess("commissions") || canAccess("my-commissions") || canAccess("coupons")) && (
+          {(canAccess("vehicles") || canAccess("commissions") || canAccess("my-commissions")) && (
             <NavSection title="Flota y Finanzas">
               {canAccess("vehicles") && (
                 <NavItem 
@@ -230,15 +229,6 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   onClick={() => setLocation("/my-commissions")}
                 >
                   Mis comisiones
-                </NavItem>
-              )}
-              {canAccess("coupons") && (
-                <NavItem 
-                  icon={<TicketIcon className="h-5 w-5" />} 
-                  active={window.location.pathname === "/coupons"}
-                  onClick={() => setLocation("/coupons")}
-                >
-                  Cupones
                 </NavItem>
               )}
             </NavSection>
