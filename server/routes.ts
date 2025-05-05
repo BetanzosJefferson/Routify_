@@ -3170,6 +3170,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/coupons/validate/:code - Endpoint para validar cupón por GET (usado por el frontend)
+  app.get(apiRouter('/coupons/validate/:code'), async (req, res) => {
+    try {
+      const { code } = req.params;
+      
+      if (!code) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Debe proporcionar un código de cupón' 
+        });
+      }
+      
+      console.log(`Validando cupón con código: ${code}`);
+      
+      // Verificar la validez del cupón
+      const result = await storage.verifyCouponValidity(code);
+      
+      if (!result.valid) {
+        console.log(`Cupón ${code} inválido: ${result.message}`);
+        return res.status(400).json({ 
+          success: false, 
+          valid: false,
+          message: result.message || 'Cupón no válido' 
+        });
+      }
+      
+      console.log(`Cupón ${code} válido!`);
+      
+      // Devolver información del cupón para cálculo del descuento
+      res.json({ 
+        ...result.coupon,
+        success: true, 
+        valid: true,
+        message: 'Cupón válido' 
+      });
+    } catch (error) {
+      console.error('Error al validar cupón:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error al validar cupón' 
+      });
+    }
+  });
+
   // POST /api/coupons/verify - Verificar validez de un cupón
   app.post(apiRouter('/coupons/verify'), async (req, res) => {
     try {
