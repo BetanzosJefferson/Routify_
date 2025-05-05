@@ -81,8 +81,11 @@ const couponFormSchema = z.object({
   discountType: z.enum(["fixed", "percentage"], {
     required_error: "El tipo de descuento es requerido",
   }),
-  discountValue: z.number()
-    .min(0.01, "El valor del descuento debe ser mayor a 0"),
+  discountValue: z.preprocess(
+    (val) => (val === "" ? undefined : Number(val)),
+    z.number()
+      .min(0.01, "El valor del descuento debe ser mayor a 0")
+  ),
   isActive: z.boolean().default(true),
   generateRandomCode: z.boolean().default(false),
 });
@@ -509,10 +512,13 @@ export default function CouponsPage() {
                         <Input
                           type="number"
                           step={form.watch("discountType") === "percentage" ? "1" : "0.01"}
-                          min={0.01}
+                          min={form.watch("discountType") === "percentage" ? 1 : 0.01}
                           max={form.watch("discountType") === "percentage" ? 100 : undefined}
                           {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                          onChange={(e) => {
+                            const value = e.target.value === "" ? undefined : parseFloat(e.target.value);
+                            field.onChange(value);
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
