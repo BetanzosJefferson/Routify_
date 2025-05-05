@@ -307,8 +307,9 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
     }
     
     // Determine payment status based on advance amount
-    let currentPaymentStatus = PaymentStatus.PENDING;
-    if (advanceAmount === totalPrice) {
+    let currentPaymentStatus: PaymentStatusType = PaymentStatus.PENDING;
+    const finalPrice = couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice;
+    if (advanceAmount >= finalPrice) {
       currentPaymentStatus = PaymentStatus.PAID;
     }
     
@@ -498,7 +499,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
   };
   
   // Calculate total price
-  const totalPrice = numPassengers * trip.price;
+  const totalPrice = numPassengers * (trip.price || 0);
   
   // Format reservation ID
   const formatReservationId = (id: number) => {
@@ -1110,8 +1111,8 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                 {/* Estado de pago grande */}
                 <div className="text-center mb-6">
                   <h5 className="text-sm text-gray-500 mb-2">Estado:</h5>
-                  <div className="text-2xl font-bold text-amber-500">
-                    {advanceAmount === totalPrice ? 'PAGADO' : 'PENDIENTE'}
+                  <div className={`text-2xl font-bold ${advanceAmount >= (couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice) ? 'text-green-500' : 'text-amber-500'}`}>
+                    {advanceAmount >= (couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice) ? 'PAGADO' : 'PENDIENTE'}
                   </div>
                 </div>
                 
@@ -1127,7 +1128,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                 
                 <div className="border-t pt-4 text-xs text-center text-gray-500">
                   <p>Presente este boleto al abordar el vehículo</p>
-                  {advanceAmount > 0 && advanceAmount < totalPrice && (
+                  {advanceAmount > 0 && advanceAmount < (couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice) && (
                     <p className="mt-1 text-amber-600 font-semibold">
                       IMPORTANTE: Complete el pago antes de abordar
                     </p>
