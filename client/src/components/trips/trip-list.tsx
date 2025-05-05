@@ -462,20 +462,21 @@ export function TripList() {
                 </div>
                 
                 <div className="mt-4 flex items-center justify-between">
-                  {trip.vehicle?.name && (
-                    <div className="text-sm">
-                      <span className="capitalize">{trip.vehicle.name}</span>
-                    </div>
-                  )}
-                  
                   <Button
                     variant="default"
                     size="sm"
                     onClick={() => handleReserve(trip)}
                     disabled={trip.availableSeats <= 0}
+                    className="order-first"
                   >
                     Reservar
                   </Button>
+                  
+                  {trip.vehicle?.name && (
+                    <div className="text-sm">
+                      <span className="capitalize">{trip.vehicle.name}</span>
+                    </div>
+                  )}
                 </div>
                 
                 {trip.isSubTrip && (
