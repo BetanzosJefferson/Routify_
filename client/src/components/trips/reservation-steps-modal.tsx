@@ -641,73 +641,6 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                     />
                   </div>
                   
-                  {/* Sección de cupón */}
-                  <div className="border-t border-gray-200 pt-4 mt-2">
-                    <div className="flex items-center space-x-2">
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id="has-coupon"
-                          checked={hasCoupon}
-                          onChange={(e) => {
-                            setHasCoupon(e.target.checked);
-                            if (!e.target.checked) {
-                              setCouponCode("");
-                              setCouponVerified(false);
-                              setCouponDiscount(0);
-                            }
-                          }}
-                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                        />
-                        <Label htmlFor="has-coupon" className="cursor-pointer">Tengo un cupón</Label>
-                      </div>
-                    </div>
-                    
-                    {hasCoupon && (
-                      <div className="mt-3 space-y-2">
-                        <div className="flex gap-2">
-                          <div className="flex-1">
-                            <Input
-                              id="coupon-code"
-                              value={couponCode}
-                              onChange={(e) => {
-                                setCouponCode(e.target.value);
-                                // Si ya estaba verificado, al cambiar el código se invalida
-                                if (couponVerified) {
-                                  setCouponVerified(false);
-                                  setCouponDiscount(0);
-                                }
-                              }}
-                              placeholder="Ingrese código de cupón"
-                              className={couponVerified ? "border-green-500 bg-green-50" : ""}
-                              disabled={isVerifyingCoupon}
-                            />
-                          </div>
-                          <Button 
-                            onClick={verifyCoupon}
-                            disabled={!couponCode.trim() || isVerifyingCoupon || couponVerified}
-                            variant={couponVerified ? "outline" : "default"}
-                            className={couponVerified ? "border-green-500 text-green-600" : ""}
-                          >
-                            {isVerifyingCoupon ? (
-                              <>Verificando...</>
-                            ) : couponVerified ? (
-                              <>Verificado</>
-                            ) : (
-                              <>Verificar</>
-                            )}
-                          </Button>
-                        </div>
-                        
-                        {couponVerified && couponDiscount > 0 && (
-                          <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
-                            Descuento aplicado: {formatPrice(couponDiscount)}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  
                   <div className="border-t border-gray-200 pt-4 mt-2">
                     <h3 className="font-medium text-gray-800 mb-3">Información de Pago</h3>
                     
@@ -720,17 +653,20 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                             id="advance-amount"
                             type="number"
                             min="0"
-                            max={totalPrice}
+                            max={couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice}
                             step="0.01"
-                            className={`pl-8 ${advanceAmount > totalPrice ? 'border-red-500' : ''}`}
+                            className={`pl-8 ${advanceAmount > (couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice) ? 'border-red-500' : ''}`}
                             value={advanceAmount}
                             onChange={(e) => {
                               const value = parseFloat(e.target.value) || 0;
-                              // No permitir que el anticipo sea mayor al precio total
-                              if (value <= totalPrice) {
+                              // Calcular el precio final considerando el descuento
+                              const finalPrice = couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice;
+                              
+                              // No permitir que el anticipo sea mayor al precio total con descuento aplicado
+                              if (value <= finalPrice) {
                                 setAdvanceAmount(value);
                                 // Actualizar el estado de pago automáticamente
-                                if (value === totalPrice) {
+                                if (value === finalPrice) {
                                   setPaymentStatus(PaymentStatus.PAID);
                                 } else {
                                   setPaymentStatus(PaymentStatus.PENDING);
@@ -749,7 +685,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                         </div>
                         <div className="mt-1 text-xs text-gray-500 flex justify-between">
                           <span>Mínimo: $0</span>
-                          <span>Máximo: {formatPrice(totalPrice)}</span>
+                          <span>Máximo: {formatPrice(couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice)}</span>
                         </div>
                       </div>
                       
@@ -775,7 +711,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                         <Select
                           value={paymentMethod}
                           onValueChange={(value: typeof PaymentMethod.CASH | typeof PaymentMethod.TRANSFER) => setPaymentMethod(value)}
-                          disabled={advanceAmount >= totalPrice}
+                          disabled={advanceAmount >= (couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice)}
                         >
                           <SelectTrigger id="payment-method">
                             <SelectValue placeholder="Seleccione método de pago" />
@@ -785,20 +721,88 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                             <SelectItem value={PaymentMethod.TRANSFER}>Transferencia Bancaria</SelectItem>
                           </SelectContent>
                         </Select>
-                        {advanceAmount >= totalPrice && (
+                        {advanceAmount >= (couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice) && (
                           <p className="text-xs text-gray-500 mt-1">
                             No es necesario método de pago adicional ya que el anticipo cubre el monto total.
                           </p>
                         )}
                       </div>
                       
-                      <div className="p-3 bg-blue-50 rounded border border-blue-200 text-blue-800 text-sm">
-                        {advanceAmount === totalPrice ? (
+                      {/* Sección de cupón - Movida aquí después del método de pago */}
+                      <div className="border-t border-gray-200 pt-4 mt-2">
+                        <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="has-coupon"
+                              checked={hasCoupon}
+                              onChange={(e) => {
+                                setHasCoupon(e.target.checked);
+                                if (!e.target.checked) {
+                                  setCouponCode("");
+                                  setCouponVerified(false);
+                                  setCouponDiscount(0);
+                                }
+                              }}
+                              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                            />
+                            <Label htmlFor="has-coupon" className="cursor-pointer">Tengo un cupón</Label>
+                          </div>
+                        </div>
+                        
+                        {hasCoupon && (
+                          <div className="mt-3 space-y-2">
+                            <div className="flex gap-2">
+                              <div className="flex-1">
+                                <Input
+                                  id="coupon-code"
+                                  value={couponCode}
+                                  onChange={(e) => {
+                                    setCouponCode(e.target.value);
+                                    // Si ya estaba verificado, al cambiar el código se invalida
+                                    if (couponVerified) {
+                                      setCouponVerified(false);
+                                      setCouponDiscount(0);
+                                    }
+                                  }}
+                                  placeholder="Ingrese código de cupón"
+                                  className={couponVerified ? "border-green-500 bg-green-50" : ""}
+                                  disabled={isVerifyingCoupon}
+                                />
+                              </div>
+                              <Button 
+                                onClick={verifyCoupon}
+                                disabled={!couponCode.trim() || isVerifyingCoupon || couponVerified}
+                                variant={couponVerified ? "outline" : "default"}
+                                className={couponVerified ? "border-green-500 text-green-600" : ""}
+                              >
+                                {isVerifyingCoupon ? (
+                                  <>Verificando...</>
+                                ) : couponVerified ? (
+                                  <>Verificado</>
+                                ) : (
+                                  <>Verificar</>
+                                )}
+                              </Button>
+                            </div>
+                            
+                            {couponVerified && couponDiscount > 0 && (
+                              <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
+                                Descuento aplicado: {formatPrice(couponDiscount)}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="p-3 bg-blue-50 rounded border border-blue-200 text-blue-800 text-sm mt-4">
+                        {/* Calcular el precio final considerando el descuento del cupón */}
+                        {advanceAmount === (couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice) ? (
                           <p>El pago será registrado como <strong>PAGADO</strong> ya que el anticipo cubre el monto total.</p>
                         ) : advanceAmount > 0 ? (
-                          <p>El pago será registrado como <strong>PENDIENTE</strong> con un anticipo de {formatPrice(advanceAmount)}. Saldo restante: {formatPrice(totalPrice - advanceAmount)}.</p>
+                          <p>El pago será registrado como <strong>PENDIENTE</strong> con un anticipo de {formatPrice(advanceAmount)}. Saldo restante: {formatPrice((couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice) - advanceAmount)}.</p>
                         ) : (
-                          <p>El pago será registrado como <strong>PENDIENTE</strong> por un monto total de {formatPrice(totalPrice)}.</p>
+                          <p>El pago será registrado como <strong>PENDIENTE</strong> por un monto total de {formatPrice(couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice)}.</p>
                         )}
                       </div>
                     </div>
