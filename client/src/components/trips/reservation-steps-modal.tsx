@@ -66,6 +66,7 @@ interface ReservationFormData {
   advancePaymentMethod: typeof PaymentMethod.CASH | typeof PaymentMethod.TRANSFER;
   notes: string;
   createdBy?: number;
+  couponCode?: string; // Código de cupón opcional
 }
 
 export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStepsModalProps) {
