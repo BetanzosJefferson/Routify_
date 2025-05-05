@@ -147,16 +147,8 @@ export default function CouponsPage() {
       
       const method = isEditing ? "PATCH" : "POST";
       
-      // Generar código aleatorio si es necesario
-      if (!isEditing && values.generateRandomCode) {
-        // Generar código aleatorio de 5 caracteres
-        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        let randomCode = "";
-        for (let i = 0; i < 5; i++) {
-          randomCode += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        values.code = randomCode;
-      }
+      // Ya no generamos código aleatorio aquí porque ahora
+      // está visible en el campo 'code' gracias al switch
 
       // Quitar el campo generateRandomCode antes de enviar al servidor
       const { generateRandomCode, ...dataToSend } = values;
@@ -466,8 +458,16 @@ export default function CouponsPage() {
                           checked={field.value}
                           onCheckedChange={(checked) => {
                             field.onChange(checked);
-                            // Si se activa, desactivar el campo code
                             if (checked) {
+                              // Generar un código aleatorio y mostrarlo en el campo
+                              const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+                              let randomCode = "";
+                              for (let i = 0; i < 5; i++) {
+                                randomCode += chars.charAt(Math.floor(Math.random() * chars.length));
+                              }
+                              form.setValue("code", randomCode);
+                            } else {
+                              // Limpiar el campo si se desactiva
                               form.setValue("code", "");
                             }
                           }}
