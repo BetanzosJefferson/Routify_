@@ -138,6 +138,17 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
                 Mis comisiones
               </NavLink>
             )}
+            {canAccess("coupons") && (
+              <NavLink 
+                active={window.location.pathname === "/coupons"}
+                onClick={() => {
+                  setLocation("/coupons");
+                  setOpen(false);
+                }}
+              >
+                Cupones
+              </NavLink>
+            )}
           </nav>
         </SheetContent>
       </Sheet>
