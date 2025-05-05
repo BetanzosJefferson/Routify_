@@ -672,7 +672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           capacity: tripData.capacity,
           availableSeats: tripData.capacity,
           price: mainSegmentPrice?.price || 450, // Usar el precio del segmento principal o un valor por defecto
-          vehicleType: tripData.vehicleType,
+          // vehicleType: ya no se utiliza
           segmentPrices: tripData.segmentPrices,
           isSubTrip: false,
           parentTripId: null,
@@ -755,7 +755,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             capacity: tripData.capacity,
             availableSeats: tripData.capacity,
             price,
-            vehicleType: tripData.vehicleType,
+            // vehicleType: ya no se utiliza
             segmentPrices: [{ origin: segment.origin, destination: segment.destination, price }],
             isSubTrip: true,
             parentTripId: mainTrip.id,
