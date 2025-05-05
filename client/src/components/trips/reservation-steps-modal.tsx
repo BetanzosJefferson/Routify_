@@ -872,8 +872,21 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                 <div className="border border-gray-200 rounded-md p-4">
                   <h4 className="font-medium mb-2">Información de Pago</h4>
                   <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                    <div className="text-gray-500">Total:</div>
-                    <div className="font-bold">{formatPrice(totalPrice)}</div>
+                    <div className="text-gray-500">Subtotal:</div>
+                    <div className={`${couponVerified && couponDiscount > 0 ? '' : 'font-bold'}`}>{formatPrice(totalPrice)}</div>
+                    
+                    {couponVerified && couponDiscount > 0 && (
+                      <>
+                        <div className="text-gray-500">Cupón aplicado:</div>
+                        <div className="text-green-600 font-mono">{couponCode}</div>
+                        
+                        <div className="text-gray-500">Descuento:</div>
+                        <div className="text-green-600">-{formatPrice(couponDiscount)}</div>
+                        
+                        <div className="text-gray-500">Total con descuento:</div>
+                        <div className="font-bold">{formatPrice(totalPrice - couponDiscount)}</div>
+                      </>
+                    )}
                     
                     {advanceAmount > 0 && (
                       <>
@@ -884,11 +897,11 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                         <div>{advancePaymentMethod === PaymentMethod.CASH ? "Efectivo" : "Transferencia Bancaria"}</div>
                         
                         <div className="text-gray-500">Saldo pendiente:</div>
-                        <div>{formatPrice(totalPrice - advanceAmount)}</div>
+                        <div>{formatPrice((couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice) - advanceAmount)}</div>
                         
                         <div className="text-gray-500">Estado de pago:</div>
-                        <div className={advanceAmount === totalPrice ? "text-green-600 font-medium" : "text-amber-600 font-medium"}>
-                          {advanceAmount === totalPrice ? "PAGADO" : "PENDIENTE"}
+                        <div className={advanceAmount >= (couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice) ? "text-green-600 font-medium" : "text-amber-600 font-medium"}>
+                          {advanceAmount >= (couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice) ? "PAGADO" : "PENDIENTE"}
                         </div>
                       </>
                     )}
@@ -906,15 +919,32 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                 </div>
                 
                 <div className="bg-primary/10 p-4 rounded-md">
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm font-medium">Total ({numPassengers} pasajeros):</div>
-                    <div className="text-lg font-bold">{formatPrice(totalPrice)}</div>
-                  </div>
+                  {couponVerified && couponDiscount > 0 ? (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <div className="text-sm font-medium">Subtotal ({numPassengers} pasajeros):</div>
+                        <div className="text-md">{formatPrice(totalPrice)}</div>
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                        <div className="text-sm font-medium text-green-600">Descuento:</div>
+                        <div className="text-md text-green-600">-{formatPrice(couponDiscount)}</div>
+                      </div>
+                      <div className="flex justify-between items-center mt-1 pt-1 border-t border-primary/20">
+                        <div className="text-sm font-medium">Total con descuento:</div>
+                        <div className="text-lg font-bold text-green-600">{formatPrice(totalPrice - couponDiscount)}</div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm font-medium">Total ({numPassengers} pasajeros):</div>
+                      <div className="text-lg font-bold">{formatPrice(totalPrice)}</div>
+                    </div>
+                  )}
                   
-                  {advanceAmount > 0 && advanceAmount < totalPrice && (
+                  {advanceAmount > 0 && advanceAmount < (couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice) && (
                     <div className="flex justify-between items-center mt-2 pt-2 border-t border-primary/20">
                       <div className="text-sm font-medium">Saldo por pagar:</div>
-                      <div className="text-lg font-bold">{formatPrice(totalPrice - advanceAmount)}</div>
+                      <div className="text-lg font-bold">{formatPrice((couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice) - advanceAmount)}</div>
                     </div>
                   )}
                 </div>
@@ -1134,7 +1164,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                   <p>Presente este boleto al abordar el vehículo</p>
                   {advanceAmount > 0 && advanceAmount < (couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice) && (
                     <p className="mt-1 text-amber-600 font-semibold">
-                      IMPORTANTE: Complete el pago antes de abordar
+                      IMPORTANTE: Complete el pago restante de {formatPrice((couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice) - advanceAmount)} antes de abordar
                     </p>
                   )}
                   <p className="mt-1">TransRoute © {new Date().getFullYear()}</p>
