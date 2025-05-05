@@ -107,7 +107,7 @@ export function EditCouponModal({ open, coupon, onClose }: EditCouponModalProps)
       toast({
         title: "Cupón actualizado",
         description: "El cupón ha sido actualizado exitosamente.",
-        variant: "success",
+        variant: "default",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/coupons"] });
       onClose();

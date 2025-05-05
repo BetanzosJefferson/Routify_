@@ -108,7 +108,7 @@ export function CreateCouponModal({ open, onClose }: CreateCouponModalProps) {
       toast({
         title: "Cupón creado",
         description: "El cupón ha sido creado exitosamente.",
-        variant: "success",
+        variant: "default",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/coupons"] });
       onClose();
