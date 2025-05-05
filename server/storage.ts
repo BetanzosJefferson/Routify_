@@ -16,7 +16,15 @@ import {
   InsertVehicle,
   Commission,
   InsertCommission,
-  User
+  Coupon,
+  InsertCoupon,
+  CouponUse,
+  InsertCouponUse,
+  User,
+  ReservationRequest,
+  InsertReservationRequest,
+  Notification,
+  InsertNotification
 } from "@shared/schema";
 
 export interface IStorage {
@@ -70,6 +78,19 @@ export interface IStorage {
   createCommission(commission: InsertCommission): Promise<Commission>;
   updateCommission(id: number, commission: Partial<Commission>): Promise<Commission | undefined>;
   deleteCommission(id: number): Promise<boolean>;
+  
+  // Coupon methods
+  getCoupons(companyId?: string): Promise<Coupon[]>;
+  getCouponById(id: number): Promise<Coupon | undefined>;
+  getCouponByCode(code: string): Promise<Coupon | undefined>;
+  createCoupon(couponData: InsertCoupon): Promise<Coupon>;
+  updateCoupon(id: number, couponData: Partial<InsertCoupon>): Promise<Coupon | undefined>;
+  deleteCoupon(id: number): Promise<boolean>;
+  incrementCouponUses(id: number): Promise<Coupon | undefined>;
+  
+  // CouponUse methods
+  getCouponUses(couponId: number): Promise<CouponUse[]>;
+  createCouponUse(useData: InsertCouponUse): Promise<CouponUse>;
   
   // User methods
   getUsers(): Promise<User[]>;
