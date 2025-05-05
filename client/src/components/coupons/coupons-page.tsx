@@ -71,9 +71,9 @@ import { es } from "date-fns/locale";
 // Definir el esquema de validación para el formulario de cupones
 const couponFormSchema = z.object({
   code: z.string()
-    .min(1, "El código es requerido")
     .max(5, "El código no debe exceder 5 caracteres")
-    .optional(),
+    .optional()
+    .transform(val => val === "" ? undefined : val),
   usageLimit: z.number()
     .min(1, "El límite de usos debe ser al menos 1"),
   expirationHours: z.number()
@@ -94,6 +94,12 @@ const couponFormSchema = z.object({
 }, { 
   message: "El porcentaje debe estar entre 1% y 100%",
   path: ["discountValue"]  // Esto hace que el error se muestre en el campo discountValue
+}).refine((data) => {
+  // Si no se genera código aleatorio, el código es requerido
+  return data.generateRandomCode || data.code !== undefined;
+}, {
+  message: "El código es requerido si no se genera automáticamente",
+  path: ["code"]
 });
 
 type CouponFormValues = z.infer<typeof couponFormSchema>;
@@ -141,7 +147,22 @@ export default function CouponsPage() {
       
       const method = isEditing ? "PATCH" : "POST";
       
-      const response = await apiRequest(method, url, values);
+      // Generar código aleatorio si es necesario
+      if (!isEditing && values.generateRandomCode) {
+        // Generar código aleatorio de 5 caracteres
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let randomCode = "";
+        for (let i = 0; i < 5; i++) {
+          randomCode += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        values.code = randomCode;
+      }
+
+      // Quitar el campo generateRandomCode antes de enviar al servidor
+      const { generateRandomCode, ...dataToSend } = values;
+      
+      console.log("Enviando datos al servidor:", dataToSend);
+      const response = await apiRequest(method, url, dataToSend);
       
       if (!response.ok) {
         const error = await response.json();
@@ -457,30 +478,31 @@ export default function CouponsPage() {
                 />
               )}
               
-              {(!form.watch("generateRandomCode") || isEditing) && (
-                <FormField
-                  control={form.control}
-                  name="code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Código</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="Ej: DESC5"
-                          maxLength={5}
-                          disabled={isEditing || form.watch("generateRandomCode")}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Máximo 5 caracteres. 
-                        {isEditing && " No se puede editar el código de un cupón existente."}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
+              <FormField
+                control={form.control}
+                name="code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Código</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Ej: DESC5"
+                        maxLength={5}
+                        disabled={isEditing || form.watch("generateRandomCode")}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {form.watch("generateRandomCode") 
+                        ? "Se generará un código aleatorio al crear el cupón." 
+                        : "Máximo 5 caracteres."}
+                      {isEditing && " No se puede editar el código de un cupón existente."}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
               <div className="grid grid-cols-2 gap-4">
                 <FormField
