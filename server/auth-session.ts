@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 import createMemoryStore from "memorystore";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
+import bcrypt from "bcryptjs";
 
 const scryptAsync = promisify(scrypt);
 
@@ -28,10 +29,21 @@ declare global {
 }
 
 async function comparePasswords(supplied: string, stored: string) {
-  const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  // Verificar si la contraseña está en formato bcrypt
+  if (stored.startsWith('$2')) {
+    // Usar bcrypt para comparar
+    return bcrypt.compare(supplied, stored);
+  } else if (stored.includes('.')) {
+    // Usar el formato antiguo con scrypt si contiene un punto
+    const [hashed, salt] = stored.split(".");
+    const hashedBuf = Buffer.from(hashed, "hex");
+    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+    return timingSafeEqual(hashedBuf, suppliedBuf);
+  } else {
+    // Formato desconocido, rechazar
+    console.error("Formato de contraseña no soportado:", stored.substring(0, 5) + "...");
+    return false;
+  }
 }
 
 // Función para configurar la autenticación
