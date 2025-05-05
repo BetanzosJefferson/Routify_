@@ -31,7 +31,7 @@ export function DeleteCouponModal({ open, coupon, onClose }: DeleteCouponModalPr
       toast({
         title: "Cupón eliminado",
         description: "El cupón ha sido eliminado exitosamente.",
-        variant: "success",
+        variant: "default",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/coupons"] });
       onClose();
