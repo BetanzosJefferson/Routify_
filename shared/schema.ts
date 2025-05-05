@@ -319,9 +319,59 @@ export const insertCommissionSchema = createInsertSchema(commissions);
 export type InsertCommission = z.infer<typeof insertCommissionSchema>;
 export type Commission = typeof commissions.$inferSelect;
 
+// SCHEMA DE CUPONES
+export const coupons = pgTable("coupons", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  discountType: text("discount_type").notNull().default("percentage"), // "percentage", "fixed"
+  discountValue: doublePrecision("discount_value").notNull(),
+  maxUses: integer("max_uses").notNull(),
+  usesCount: integer("uses_count").notNull().default(0),
+  expiryDate: timestamp("expiry_date").notNull(),
+  active: boolean("active").notNull().default(true),
+  description: text("description"),
+  minPurchaseAmount: doublePrecision("min_purchase_amount").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  // Campo para aislamiento por compañía
+  companyId: text("company_id"),
+});
+
+export const insertCouponSchema = createInsertSchema(coupons);
+export type InsertCoupon = z.infer<typeof insertCouponSchema>;
+export type Coupon = typeof coupons.$inferSelect;
+
+// SCHEMA DE USO DE CUPONES
+export const couponUses = pgTable("coupon_uses", {
+  id: serial("id").primaryKey(),
+  couponId: integer("coupon_id").notNull().references(() => coupons.id),
+  reservationId: integer("reservation_id").notNull().references(() => reservations.id),
+  discountAmount: doublePrecision("discount_amount").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCouponUseSchema = createInsertSchema(couponUses);
+export type InsertCouponUse = z.infer<typeof insertCouponUseSchema>;
+export type CouponUse = typeof couponUses.$inferSelect;
+
 // RELACIONES ENTRE TABLAS
 export const routeRelations = relations(routes, ({ many }) => ({
   trips: many(trips),
+}));
+
+export const couponRelations = relations(coupons, ({ many }) => ({
+  uses: many(couponUses),
+}));
+
+export const couponUseRelations = relations(couponUses, ({ one }) => ({
+  coupon: one(coupons, {
+    fields: [couponUses.couponId],
+    references: [coupons.id]
+  }),
+  reservation: one(reservations, {
+    fields: [couponUses.reservationId],
+    references: [reservations.id]
+  })
 }));
 
 export const tripRelations = relations(trips, ({ one, many }) => ({
