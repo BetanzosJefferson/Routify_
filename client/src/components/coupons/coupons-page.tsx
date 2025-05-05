@@ -82,9 +82,18 @@ const couponFormSchema = z.object({
     required_error: "El tipo de descuento es requerido",
   }),
   discountValue: z.number()
-    .min(0.01, "El valor del descuento debe ser mayor a 0"),
+    .min(1, "El valor del descuento debe ser entre 1 y 100 para porcentajes, o mayor a 0 para montos fijos"),
   isActive: z.boolean().default(true),
   generateRandomCode: z.boolean().default(false),
+}).refine((data) => {
+  // Si es porcentaje, debe estar entre 1 y 100
+  if (data.discountType === "percentage") {
+    return data.discountValue >= 1 && data.discountValue <= 100;
+  }
+  return true;
+}, { 
+  message: "El porcentaje debe estar entre 1% y 100%",
+  path: ["discountValue"]  // Esto hace que el error se muestre en el campo discountValue
 });
 
 type CouponFormValues = z.infer<typeof couponFormSchema>;
@@ -507,14 +516,20 @@ export default function CouponsPage() {
                       <FormLabel>Valor del Descuento</FormLabel>
                       <FormControl>
                         <Input
-                          type="number"
-                          step={form.watch("discountType") === "percentage" ? "1" : "0.01"}
-                          min={0.01}
-                          max={form.watch("discountType") === "percentage" ? 100 : undefined}
                           {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                          type="number"
+                          min={form.watch("discountType") === "percentage" ? 1 : 0.01}
+                          max={form.watch("discountType") === "percentage" ? 100 : undefined}
+                          step={form.watch("discountType") === "percentage" ? 1 : 0.01}
+                          onChange={e => field.onChange(parseFloat(e.target.value))}
                         />
                       </FormControl>
+                      <FormDescription>
+                        {form.watch("discountType") === "percentage" 
+                          ? "Ingresa un valor entre 1 y 100"
+                          : "Ingresa el monto en pesos"
+                        }
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -530,12 +545,15 @@ export default function CouponsPage() {
                       <FormLabel>Límite de Usos</FormLabel>
                       <FormControl>
                         <Input
+                          {...field}
                           type="number"
                           min={1}
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value))}
+                          onChange={e => field.onChange(parseInt(e.target.value))}
                         />
                       </FormControl>
+                      <FormDescription>
+                        Cantidad máxima de veces que se puede usar
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -549,12 +567,15 @@ export default function CouponsPage() {
                       <FormLabel>Caducidad (horas)</FormLabel>
                       <FormControl>
                         <Input
+                          {...field}
                           type="number"
                           min={1}
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value))}
+                          onChange={e => field.onChange(parseInt(e.target.value))}
                         />
                       </FormControl>
+                      <FormDescription>
+                        Horas hasta que el cupón expire
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
