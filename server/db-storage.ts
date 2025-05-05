@@ -20,6 +20,10 @@ import {
   InsertReservationRequest,
   Notification,
   InsertNotification,
+  Coupon,
+  InsertCoupon,
+  CouponUse,
+  InsertCouponUse,
   UserRole
 } from "@shared/schema";
 import { IStorage } from "./storage";
@@ -1759,6 +1763,188 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error(`Error al contar notificaciones no leídas para usuario ${userId}:`, error);
       return 0;
+    }
+  }
+
+  // =================== MÉTODOS PARA CUPONES ===================
+  
+  async getCoupons(companyId?: string): Promise<Coupon[]> {
+    try {
+      if (companyId) {
+        console.log(`[getCoupons] Consultando cupones para la compañía: ${companyId}`);
+        const coupons = await db
+          .select()
+          .from(schema.coupons)
+          .where(eq(schema.coupons.companyId, companyId));
+        console.log(`[getCoupons] Encontrados ${coupons.length} cupones para la compañía ${companyId}`);
+        return coupons;
+      } else {
+        console.log(`[getCoupons] Consultando todos los cupones`);
+        const coupons = await db.select().from(schema.coupons);
+        console.log(`[getCoupons] Encontrados ${coupons.length} cupones en total`);
+        return coupons;
+      }
+    } catch (error) {
+      console.error("[getCoupons] Error al consultar cupones:", error);
+      return [];
+    }
+  }
+  
+  async getCouponById(id: number): Promise<Coupon | undefined> {
+    try {
+      const [coupon] = await db
+        .select()
+        .from(schema.coupons)
+        .where(eq(schema.coupons.id, id));
+      return coupon;
+    } catch (error) {
+      console.error(`[getCouponById] Error al consultar cupón con ID ${id}:`, error);
+      return undefined;
+    }
+  }
+  
+  async getCouponByCode(code: string): Promise<Coupon | undefined> {
+    try {
+      const [coupon] = await db
+        .select()
+        .from(schema.coupons)
+        .where(eq(schema.coupons.code, code));
+      return coupon;
+    } catch (error) {
+      console.error(`[getCouponByCode] Error al consultar cupón con código ${code}:`, error);
+      return undefined;
+    }
+  }
+  
+  async createCoupon(couponData: InsertCoupon): Promise<Coupon> {
+    try {
+      console.log(`[createCoupon] Creando nuevo cupón:`, JSON.stringify(couponData));
+      const [newCoupon] = await db
+        .insert(schema.coupons)
+        .values(couponData)
+        .returning();
+      console.log(`[createCoupon] Cupón creado exitosamente con ID ${newCoupon.id}`);
+      return newCoupon;
+    } catch (error) {
+      console.error(`[createCoupon] Error al crear cupón:`, error);
+      throw error;
+    }
+  }
+  
+  async updateCoupon(id: number, couponData: Partial<InsertCoupon>): Promise<Coupon | undefined> {
+    try {
+      const [updatedCoupon] = await db
+        .update(schema.coupons)
+        .set({
+          ...couponData,
+          updatedAt: new Date() // Actualizar la fecha de modificación
+        })
+        .where(eq(schema.coupons.id, id))
+        .returning();
+      console.log(`[updateCoupon] Cupón ${id} actualizado exitosamente`);
+      return updatedCoupon;
+    } catch (error) {
+      console.error(`[updateCoupon] Error al actualizar cupón ${id}:`, error);
+      return undefined;
+    }
+  }
+  
+  async deleteCoupon(id: number): Promise<boolean> {
+    try {
+      // Primero verificar si hay usos de este cupón
+      const couponUses = await db
+        .select()
+        .from(schema.couponUses)
+        .where(eq(schema.couponUses.couponId, id));
+      
+      if (couponUses.length > 0) {
+        console.log(`[deleteCoupon] El cupón ${id} tiene ${couponUses.length} usos registrados. Se desactivará en lugar de eliminarse.`);
+        // Desactivar el cupón en lugar de borrarlo
+        await db
+          .update(schema.coupons)
+          .set({ active: false })
+          .where(eq(schema.coupons.id, id));
+        return true;
+      }
+      
+      // Si no tiene usos, eliminar el cupón
+      const result = await db
+        .delete(schema.coupons)
+        .where(eq(schema.coupons.id, id))
+        .returning({ id: schema.coupons.id });
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error(`[deleteCoupon] Error al eliminar cupón ${id}:`, error);
+      return false;
+    }
+  }
+  
+  async incrementCouponUses(id: number): Promise<Coupon | undefined> {
+    try {
+      // Obtener el cupón actual
+      const [coupon] = await db
+        .select()
+        .from(schema.coupons)
+        .where(eq(schema.coupons.id, id));
+      
+      if (!coupon) {
+        console.error(`[incrementCouponUses] Cupón ${id} no encontrado`);
+        return undefined;
+      }
+      
+      // Incrementar el contador de usos
+      const newUsesCount = coupon.usesCount + 1;
+      
+      // Actualizar el cupón con el nuevo contador
+      const [updatedCoupon] = await db
+        .update(schema.coupons)
+        .set({ 
+          usesCount: newUsesCount,
+          // Si alcanzó el límite, desactivar el cupón
+          active: newUsesCount >= coupon.maxUses ? false : coupon.active
+        })
+        .where(eq(schema.coupons.id, id))
+        .returning();
+      
+      console.log(`[incrementCouponUses] Usos de cupón ${id} incrementados a ${newUsesCount}`);
+      return updatedCoupon;
+    } catch (error) {
+      console.error(`[incrementCouponUses] Error al incrementar usos del cupón ${id}:`, error);
+      return undefined;
+    }
+  }
+  
+  async getCouponUses(couponId: number): Promise<CouponUse[]> {
+    try {
+      const uses = await db
+        .select()
+        .from(schema.couponUses)
+        .where(eq(schema.couponUses.couponId, couponId));
+      
+      return uses;
+    } catch (error) {
+      console.error(`[getCouponUses] Error al obtener usos del cupón ${couponId}:`, error);
+      return [];
+    }
+  }
+  
+  async createCouponUse(useData: InsertCouponUse): Promise<CouponUse> {
+    try {
+      console.log(`[createCouponUse] Registrando uso de cupón:`, JSON.stringify(useData));
+      const [newUse] = await db
+        .insert(schema.couponUses)
+        .values(useData)
+        .returning();
+      
+      // Incrementar automáticamente el contador de usos del cupón
+      await this.incrementCouponUses(useData.couponId);
+      
+      console.log(`[createCouponUse] Uso de cupón registrado exitosamente con ID ${newUse.id}`);
+      return newUse;
+    } catch (error) {
+      console.error(`[createCouponUse] Error al registrar uso de cupón:`, error);
+      throw error;
     }
   }
 }
