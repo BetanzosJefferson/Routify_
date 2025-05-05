@@ -20,11 +20,13 @@ import {
   InsertReservationRequest,
   Notification,
   InsertNotification,
-  UserRole
+  UserRole,
+  Coupon,
+  InsertCoupon
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db } from "./db";
-import { eq, and, gte, lt, like, or, sql, desc, isNull, not } from "drizzle-orm";
+import { eq, and, gte, lt, like, or, sql, desc, isNull, not, inArray } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   async getRoutes(companyId?: string): Promise<Route[]> {
@@ -1759,6 +1761,244 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error(`Error al contar notificaciones no leídas para usuario ${userId}:`, error);
       return 0;
+    }
+  }
+  
+  // ======= Coupon Methods =======
+  
+  async getCoupons(companyId?: string): Promise<Coupon[]> {
+    try {
+      if (companyId) {
+        console.log(`DB Storage: Consultando cupones para la compañía: ${companyId}`);
+        return await db
+          .select()
+          .from(schema.coupons)
+          .where(eq(schema.coupons.companyId, companyId));
+      } else {
+        console.log("DB Storage: Consultando todos los cupones");
+        return await db.select().from(schema.coupons);
+      }
+    } catch (error) {
+      console.error("DB Storage: Error al consultar cupones:", error);
+      return [];
+    }
+  }
+  
+  async getCoupon(id: number): Promise<Coupon | undefined> {
+    try {
+      const [coupon] = await db
+        .select()
+        .from(schema.coupons)
+        .where(eq(schema.coupons.id, id));
+      return coupon;
+    } catch (error) {
+      console.error(`DB Storage: Error al obtener cupón ${id}:`, error);
+      return undefined;
+    }
+  }
+  
+  async getCouponByCode(code: string): Promise<Coupon | undefined> {
+    try {
+      const [coupon] = await db
+        .select()
+        .from(schema.coupons)
+        .where(eq(schema.coupons.code, code));
+      return coupon;
+    } catch (error) {
+      console.error(`DB Storage: Error al obtener cupón con código ${code}:`, error);
+      return undefined;
+    }
+  }
+  
+  async createCoupon(coupon: InsertCoupon): Promise<Coupon> {
+    try {
+      // Calcular la fecha de expiración basada en las horas de expiración
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + coupon.expirationHours);
+      
+      const couponData = {
+        ...coupon,
+        expiresAt,
+        usageCount: 0, // Asegurarse de que inicie en 0
+      };
+      
+      console.log(`Creando cupón con datos:`, couponData);
+      const [newCoupon] = await db.insert(schema.coupons).values(couponData).returning();
+      console.log(`Cupón creado:`, newCoupon);
+      return newCoupon;
+    } catch (error) {
+      console.error("DB Storage: Error al crear cupón:", error);
+      throw error;
+    }
+  }
+  
+  async updateCoupon(id: number, couponUpdate: Partial<Coupon>): Promise<Coupon | undefined> {
+    try {
+      // Si se actualiza expirationHours, recalcular la fecha de expiración
+      if (couponUpdate.expirationHours !== undefined) {
+        const currentCoupon = await this.getCoupon(id);
+        if (currentCoupon) {
+          // Usar la fecha de creación original y sumar las nuevas horas
+          const expiresAt = new Date(currentCoupon.createdAt);
+          expiresAt.setHours(expiresAt.getHours() + couponUpdate.expirationHours);
+          couponUpdate.expiresAt = expiresAt;
+        }
+      }
+      
+      const [updatedCoupon] = await db
+        .update(schema.coupons)
+        .set(couponUpdate)
+        .where(eq(schema.coupons.id, id))
+        .returning();
+      
+      return updatedCoupon;
+    } catch (error) {
+      console.error(`DB Storage: Error al actualizar cupón ${id}:`, error);
+      return undefined;
+    }
+  }
+  
+  async deleteCoupon(id: number): Promise<boolean> {
+    try {
+      const result = await db
+        .delete(schema.coupons)
+        .where(eq(schema.coupons.id, id))
+        .returning({ id: schema.coupons.id });
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error(`DB Storage: Error al eliminar cupón ${id}:`, error);
+      return false;
+    }
+  }
+  
+  async incrementCouponUsage(id: number): Promise<Coupon | undefined> {
+    try {
+      // Obtener el cupón actual para verificar el límite de uso
+      const currentCoupon = await this.getCoupon(id);
+      if (!currentCoupon) {
+        console.error(`DB Storage: Cupón ${id} no encontrado para incrementar uso`);
+        return undefined;
+      }
+      
+      // Incrementar el contador de uso
+      const newUsageCount = (currentCoupon.usageCount || 0) + 1;
+      
+      // Actualizar el contador
+      const [updatedCoupon] = await db
+        .update(schema.coupons)
+        .set({ usageCount: newUsageCount })
+        .where(eq(schema.coupons.id, id))
+        .returning();
+      
+      return updatedCoupon;
+    } catch (error) {
+      console.error(`DB Storage: Error al incrementar uso del cupón ${id}:`, error);
+      return undefined;
+    }
+  }
+  
+  async verifyCouponValidity(code: string): Promise<{
+    valid: boolean;
+    coupon?: Coupon;
+    message?: string;
+  }> {
+    try {
+      const coupon = await this.getCouponByCode(code);
+      
+      // Verificar si el cupón existe
+      if (!coupon) {
+        return {
+          valid: false,
+          message: 'El cupón no existe'
+        };
+      }
+      
+      // Verificar si el cupón está activo
+      if (!coupon.isActive) {
+        return {
+          valid: false,
+          coupon,
+          message: 'El cupón no está activo'
+        };
+      }
+      
+      // Verificar si el cupón ha alcanzado su límite de uso
+      if (coupon.usageCount >= coupon.usageLimit) {
+        return {
+          valid: false,
+          coupon,
+          message: 'El cupón ha alcanzado su límite de uso'
+        };
+      }
+      
+      // Verificar si el cupón ha expirado
+      const now = new Date();
+      const expiresAt = new Date(coupon.expiresAt);
+      
+      if (expiresAt < now) {
+        return {
+          valid: false,
+          coupon,
+          message: 'El cupón ha expirado'
+        };
+      }
+      
+      // Si pasa todas las verificaciones, el cupón es válido
+      return {
+        valid: true,
+        coupon
+      };
+    } catch (error) {
+      console.error(`DB Storage: Error al verificar validez del cupón ${code}:`, error);
+      return {
+        valid: false,
+        message: 'Error al verificar el cupón'
+      };
+    }
+  }
+  
+  // Método para pagar comisiones
+  async markCommissionsAsPaid(reservationIds: number[]): Promise<{
+    success: boolean;
+    message: string;
+    affectedCount: number;
+  }> {
+    try {
+      if (reservationIds.length === 0) {
+        return { 
+          success: false, 
+          message: 'No se proporcionaron IDs de reservaciones', 
+          affectedCount: 0 
+        };
+      }
+      
+      // Actualizar todas las reservaciones seleccionadas
+      const result = await db
+        .update(schema.reservations)
+        .set({ commissionPaid: true })
+        .where(
+          and(
+            // Asegurarse de que la reservación exista
+            inArray(schema.reservations.id, reservationIds),
+            // Asegurarse de que la comisión no esté ya pagada
+            eq(schema.reservations.commissionPaid, false)
+          )
+        )
+        .returning({ id: schema.reservations.id });
+      
+      return {
+        success: true,
+        message: `Se marcaron ${result.length} comisiones como pagadas`,
+        affectedCount: result.length
+      };
+    } catch (error) {
+      console.error('DB Storage: Error al marcar comisiones como pagadas:', error);
+      return {
+        success: false,
+        message: 'Error al procesar el pago de comisiones',
+        affectedCount: 0
+      };
     }
   }
 }
