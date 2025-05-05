@@ -65,16 +65,21 @@ function NavSection({ title, children }: NavSectionProps) {
 }
 
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user } = useAuth();
   
   const handleTabClick = (tab: TabType) => {
-    onTabChange(tab);
-    
-    // Actualizar el URL pero sin hacer una redirección completa
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', tab);
-    window.history.pushState({}, '', url.toString());
+    // Verificar si estamos en una URL distinta a '/' y volver al dashboard
+    if (location !== '/' && location !== '/dashboard') {
+      setLocation('/?tab=' + tab);
+    } else {
+      onTabChange(tab);
+      
+      // Actualizar el URL pero sin hacer una redirección completa
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tab);
+      window.history.pushState({}, '', url.toString());
+    }
   };
 
   // Función para verificar si el usuario tiene acceso a una sección
@@ -116,7 +121,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("routes") && (
                 <NavItem 
                   icon={<MapIcon className="h-5 w-5" />} 
-                  active={activeTab === "create-route"}
+                  active={(location === '/' || location === '/dashboard') && activeTab === "create-route"}
                   onClick={() => handleTabClick("create-route")}
                 >
                   Rutas
@@ -125,7 +130,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("publish-trip") && (
                 <NavItem 
                   icon={<ClockIcon className="h-5 w-5" />} 
-                  active={activeTab === "publish-trip"}
+                  active={(location === '/' || location === '/dashboard') && activeTab === "publish-trip"}
                   onClick={() => handleTabClick("publish-trip")}
                 >
                   Publicar Viajes
@@ -134,7 +139,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("trips") && (
                 <NavItem 
                   icon={<BuildingIcon className="h-5 w-5" />} 
-                  active={activeTab === "trips"}
+                  active={(location === '/' || location === '/dashboard') && activeTab === "trips"}
                   onClick={() => handleTabClick("trips")}
                 >
                   Viajes
@@ -149,7 +154,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("reservations") && (
                 <NavItem 
                   icon={<UserIcon className="h-5 w-5" />} 
-                  active={activeTab === "reservations"}
+                  active={(location === '/' || location === '/dashboard') && activeTab === "reservations"}
                   onClick={() => handleTabClick("reservations")}
                 >
                   Reservaciones
@@ -158,7 +163,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("trip-summary") && (
                 <NavItem 
                   icon={<ClipboardListIcon className="h-5 w-5" />} 
-                  active={activeTab === "trip-summary"}
+                  active={(location === '/' || location === '/dashboard') && activeTab === "trip-summary"}
                   onClick={() => handleTabClick("trip-summary")}
                 >
                   Resumen de Viajes
@@ -167,7 +172,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("boarding-list") && (
                 <NavItem 
                   icon={<UsersIcon className="h-5 w-5" />} 
-                  active={activeTab === "boarding-list"}
+                  active={(location === '/' || location === '/dashboard') && activeTab === "boarding-list"}
                   onClick={() => handleTabClick("boarding-list")}
                 >
                   Lista de Abordaje
@@ -181,7 +186,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             <NavSection title="Usuarios">
               <NavItem 
                 icon={<UserIcon className="h-5 w-5" />} 
-                active={activeTab === "users"}
+                active={(location === '/' || location === '/dashboard') && activeTab === "users"}
                 onClick={() => handleTabClick("users")}
               >
                 Usuarios
@@ -194,7 +199,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             <NavSection title="Solicitudes">
               <NavItem 
                 icon={<FileTextIcon className="h-5 w-5" />} 
-                active={window.location.pathname === "/reservation-requests"}
+                active={location === "/reservation-requests"}
                 onClick={() => setLocation("/reservation-requests")}
               >
                 Solicitudes de Reservación
@@ -208,7 +213,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("vehicles") && (
                 <NavItem 
                   icon={<TruckIcon className="h-5 w-5" />} 
-                  active={activeTab === "vehicles"}
+                  active={(location === '/' || location === '/dashboard') && activeTab === "vehicles"}
                   onClick={() => handleTabClick("vehicles")}
                 >
                   Unidades
@@ -217,7 +222,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("commissions") && (
                 <NavItem 
                   icon={<PercentIcon className="h-5 w-5" />} 
-                  active={window.location.pathname === "/commissions"}
+                  active={location === "/commissions"}
                   onClick={() => setLocation("/commissions")}
                 >
                   Gestión de comisiones
@@ -226,7 +231,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("my-commissions") && (
                 <NavItem 
                   icon={<PercentIcon className="h-5 w-5" />} 
-                  active={window.location.pathname === "/my-commissions"}
+                  active={location === "/my-commissions"}
                   onClick={() => setLocation("/my-commissions")}
                 >
                   Mis comisiones
@@ -235,7 +240,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("coupons") && (
                 <NavItem 
                   icon={<TagIcon className="h-5 w-5" />} 
-                  active={window.location.pathname === "/coupons"}
+                  active={location === "/coupons"}
                   onClick={() => setLocation("/coupons")}
                 >
                   Cupones
