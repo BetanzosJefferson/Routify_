@@ -81,11 +81,8 @@ const couponFormSchema = z.object({
   discountType: z.enum(["fixed", "percentage"], {
     required_error: "El tipo de descuento es requerido",
   }),
-  discountValue: z.preprocess(
-    (val) => (val === "" ? undefined : Number(val)),
-    z.number()
-      .min(0.01, "El valor del descuento debe ser mayor a 0")
-  ),
+  discountValue: z.number()
+    .min(0.01, "El valor del descuento debe ser mayor a 0"),
   isActive: z.boolean().default(true),
   generateRandomCode: z.boolean().default(false),
 });
@@ -246,6 +243,15 @@ export default function CouponsPage() {
 
   // Función que se ejecuta al enviar el formulario
   const onSubmit = (values: CouponFormValues) => {
+    // Validación adicional para porcentajes
+    if (values.discountType === "percentage" && (values.discountValue < 1 || values.discountValue > 100)) {
+      form.setError("discountValue", {
+        type: "manual",
+        message: "Para descuentos porcentuales, el valor debe estar entre 1 y 100"
+      });
+      return;
+    }
+    
     mutation.mutate(values);
   };
 
@@ -484,7 +490,14 @@ export default function CouponsPage() {
                     <FormItem>
                       <FormLabel>Tipo de Descuento</FormLabel>
                       <Select
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          // Validar valor del descuento cuando cambia el tipo
+                          const currentValue = form.getValues("discountValue");
+                          if (value === "percentage" && currentValue > 100) {
+                            form.setValue("discountValue", 100);
+                          }
+                        }}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -515,12 +528,24 @@ export default function CouponsPage() {
                           min={form.watch("discountType") === "percentage" ? 1 : 0.01}
                           max={form.watch("discountType") === "percentage" ? 100 : undefined}
                           {...field}
+                          value={field.value || ""}
                           onChange={(e) => {
-                            const value = e.target.value === "" ? undefined : parseFloat(e.target.value);
-                            field.onChange(value);
+                            if (e.target.value === "") {
+                              field.onChange(undefined);
+                            } else {
+                              const value = parseFloat(e.target.value);
+                              if (!isNaN(value)) {
+                                field.onChange(value);
+                              }
+                            }
                           }}
                         />
                       </FormControl>
+                      <FormDescription>
+                        {form.watch("discountType") === "percentage" 
+                          ? "El porcentaje debe estar entre 1% y 100%" 
+                          : "El valor debe ser mayor a 0"}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
