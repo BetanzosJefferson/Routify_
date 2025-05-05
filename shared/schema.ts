@@ -319,6 +319,26 @@ export const insertCommissionSchema = createInsertSchema(commissions);
 export type InsertCommission = z.infer<typeof insertCommissionSchema>;
 export type Commission = typeof commissions.$inferSelect;
 
+// CUPONES SCHEMA
+export const coupons = pgTable("coupons", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  usageLimit: integer("usage_limit").notNull(), // Cantidad máxima de usos
+  usageCount: integer("usage_count").default(0), // Contador de usos actuales
+  expirationHours: integer("expiration_hours").notNull(), // Caducidad en horas
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(), // Fecha calculada de expiración
+  discountType: text("discount_type").notNull(), // "fixed" o "percentage"
+  discountValue: doublePrecision("discount_value").notNull(), // Valor del descuento
+  isActive: boolean("is_active").default(true),
+  // Campo para aislamiento de datos por compañía
+  companyId: text("company_id"),
+});
+
+export const insertCouponSchema = createInsertSchema(coupons);
+export type InsertCoupon = z.infer<typeof insertCouponSchema>;
+export type Coupon = typeof coupons.$inferSelect;
+
 // RELACIONES ENTRE TABLAS
 export const routeRelations = relations(routes, ({ many }) => ({
   trips: many(trips),
@@ -570,5 +590,13 @@ export const notificationRelations = relations(notifications, ({ one }) => ({
   user: one(users, {
     fields: [notifications.userId],
     references: [users.id]
+  })
+}));
+
+// COUPON RELATIONS
+export const couponRelations = relations(coupons, ({ one }) => ({
+  company: one(companies, {
+    fields: [coupons.companyId],
+    references: [companies.identifier]
   })
 }));

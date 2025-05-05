@@ -16,7 +16,12 @@ import {
   InsertVehicle,
   Commission,
   InsertCommission,
-  User
+  User,
+  Coupon,
+  InsertCoupon,
+  InsertNotification,
+  Notification,
+  ReservationRequest
 } from "@shared/schema";
 
 export interface IStorage {
@@ -108,6 +113,20 @@ export interface IStorage {
     success: boolean;
     message: string;
     affectedCount: number;
+  }>;
+  
+  // Cupones methods
+  getCoupons(companyId?: string): Promise<Coupon[]>;
+  getCoupon(id: number): Promise<Coupon | undefined>;
+  getCouponByCode(code: string): Promise<Coupon | undefined>;
+  createCoupon(coupon: InsertCoupon): Promise<Coupon>;
+  updateCoupon(id: number, coupon: Partial<Coupon>): Promise<Coupon | undefined>;
+  deleteCoupon(id: number): Promise<boolean>;
+  incrementCouponUsage(id: number): Promise<Coupon | undefined>;
+  verifyCouponValidity(code: string): Promise<{
+    valid: boolean;
+    coupon?: Coupon;
+    message?: string;
   }>;
 }
 
