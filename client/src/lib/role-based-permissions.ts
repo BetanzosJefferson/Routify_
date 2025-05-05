@@ -21,7 +21,6 @@ export const ALL_SECTIONS: Section[] = [
   { id: "my-commissions", name: "Mis Comisiones", description: "Historial de comisiones personales" },
   { id: "reservation-requests", name: "Solicitudes", description: "Gestión de solicitudes de reservación" },
   { id: "notifications", name: "Notificaciones", description: "Centro de notificaciones del sistema" },
-  { id: "coupons", name: "Cupones", description: "Gestión de cupones promocionales" },
   { id: "settings", name: "Configuración", description: "Ajustes generales del sistema" }
 ];
 
@@ -40,8 +39,7 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "vehicles",
     "commissions",
     "reservation-requests",
-    "notifications",
-    "coupons"
+    "notifications"
   ],
   [UserRole.ADMIN]: [
     "routes",
@@ -54,8 +52,7 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "vehicles",
     "commissions",
     "reservation-requests", 
-    "notifications",
-    "coupons"
+    "notifications"
   ],
   [UserRole.CALL_CENTER]: [
     "trips",
@@ -103,10 +100,4 @@ export function getAllowedSections(userRole: string): Section[] {
   
   const allowedSectionIds = ROLE_SECTION_PERMISSIONS[userRole] || [];
   return ALL_SECTIONS.filter(section => allowedSectionIds.includes(section.id));
-}
-
-// Función para verificar si un usuario con un rol específico tiene permiso para una acción
-export function userHasPermission(userRole: string | undefined, allowedRoles: string[]): boolean {
-  if (!userRole) return false;
-  return allowedRoles.includes(userRole.toLowerCase());
 }
