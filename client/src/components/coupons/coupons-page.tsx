@@ -205,6 +205,7 @@ export default function CouponsPage() {
 
   // Función para abrir el formulario de creación
   const handleCreate = () => {
+    console.log("Botón Crear Cupón presionado");
     setIsEditing(false);
     setSelectedCoupon(null);
     form.reset({
@@ -217,6 +218,7 @@ export default function CouponsPage() {
       generateRandomCode: false,
     });
     setIsOpen(true);
+    console.log("Estado isOpen después de cambio:", true);
   };
 
   // Función para abrir el formulario de edición
@@ -313,7 +315,15 @@ export default function CouponsPage() {
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold tracking-tight">Cupones</h1>
-        <Button onClick={handleCreate} className="gap-2">
+        <Button 
+          onClick={(e) => {
+            e.preventDefault();
+            console.log("Botón principal de crear presionado");
+            handleCreate();
+          }} 
+          className="gap-2"
+          type="button"
+        >
           <Plus size={16} />
           Crear Cupón
         </Button>
@@ -339,7 +349,13 @@ export default function CouponsPage() {
                 Empieza creando un nuevo cupón de descuento.
               </p>
               <div className="mt-6">
-                <Button onClick={handleCreate}>
+                <Button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    console.log("Botón en estado vacío presionado");
+                    handleCreate();
+                  }}
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Crear nuevo cupón
                 </Button>
@@ -411,7 +427,13 @@ export default function CouponsPage() {
       </Card>
 
       {/* Dialog para crear/editar cupones */}
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog 
+        open={isOpen} 
+        onOpenChange={(open) => {
+          console.log("Dialog onOpenChange:", open);
+          setIsOpen(open);
+        }}
+      >
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>
