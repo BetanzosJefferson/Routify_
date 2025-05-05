@@ -51,7 +51,7 @@ interface Passenger {
   lastName: string;
 }
 
-import { PaymentMethod, PaymentStatus } from "@shared/schema";
+import { PaymentMethod, PaymentStatus, PaymentStatusType } from "@shared/schema";
 
 interface ReservationFormData {
   tripId: number;
@@ -307,7 +307,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
     }
     
     // Determine payment status based on advance amount
-    let currentPaymentStatus: PaymentStatusType = PaymentStatus.PENDING;
+    let currentPaymentStatus: typeof PaymentStatus.PENDING | typeof PaymentStatus.PAID = PaymentStatus.PENDING;
     const finalPrice = couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice;
     if (advanceAmount >= finalPrice) {
       currentPaymentStatus = PaymentStatus.PAID;
