@@ -121,14 +121,33 @@ export default function TripSummary({ className }: TripSummaryProps) {
       const passengers = allReservations.reduce((acc, res) => acc + (res.passengers?.length || 0), 0);
       const sales = allReservations.reduce((acc, res) => acc + (res.totalAmount || 0), 0);
       
-      // Calcular ventas por método de pago
-      const cashSales = allReservations
-        .filter(res => res.paymentMethod === 'efectivo')
-        .reduce((acc, res) => acc + (res.totalAmount || 0), 0);
+      // Calcular ventas por método de pago considerando tanto anticipos como pagos finales
+      let cashSales = 0;
+      let transferSales = 0;
+      
+      // Recorrer cada reserva para calcular correctamente las ventas
+      allReservations.forEach(res => {
+        // Agregar anticipos según su método de pago
+        if (res.advanceAmount && res.advanceAmount > 0) {
+          if (res.advancePaymentMethod === 'efectivo') {
+            cashSales += res.advanceAmount;
+          } else if (res.advancePaymentMethod === 'transferencia') {
+            transferSales += res.advanceAmount;
+          }
+        }
         
-      const transferSales = allReservations
-        .filter(res => res.paymentMethod === 'transferencia')
-        .reduce((acc, res) => acc + (res.totalAmount || 0), 0);
+        // Calcular el monto restante
+        const remainingAmount = res.totalAmount - (res.advanceAmount || 0);
+        
+        // Agregar pagos restantes según su método de pago
+        if (remainingAmount > 0) {
+          if (res.paymentMethod === 'efectivo') {
+            cashSales += remainingAmount;
+          } else if (res.paymentMethod === 'transferencia') {
+            transferSales += remainingAmount;
+          }
+        }
+      });
       
       setTripReservations(allReservations);
       setTotalPassengers(passengers);
