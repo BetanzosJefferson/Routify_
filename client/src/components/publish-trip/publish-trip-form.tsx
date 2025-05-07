@@ -1046,8 +1046,8 @@ export function PublishTripForm() {
                                 <FormLabel>Vehículo</FormLabel>
                                 <Select
                                   disabled={vehiclesQuery.isLoading}
-                                  onValueChange={(value) => field.onChange(Number(value) || null)}
-                                  value={field.value ? String(field.value) : ""}
+                                  onValueChange={(value) => field.onChange(value === "0" ? null : Number(value))}
+                                  value={field.value ? String(field.value) : "0"}
                                 >
                                   <FormControl>
                                     <SelectTrigger>
@@ -1055,10 +1055,10 @@ export function PublishTripForm() {
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    <SelectItem value="">Sin asignar</SelectItem>
-                                    {vehiclesQuery.data?.map((vehicle) => (
+                                    <SelectItem value="0">Sin asignar</SelectItem>
+                                    {vehiclesQuery.data?.map((vehicle: { id: number, model: string, plates: string }) => (
                                       <SelectItem key={vehicle.id} value={String(vehicle.id)}>
-                                        {vehicle.model} - {vehicle.licensePlate}
+                                        {vehicle.model} - {vehicle.plates}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
@@ -1077,8 +1077,8 @@ export function PublishTripForm() {
                                 <FormLabel>Conductor</FormLabel>
                                 <Select
                                   disabled={driversQuery.isLoading}
-                                  onValueChange={(value) => field.onChange(Number(value) || null)}
-                                  value={field.value ? String(field.value) : ""}
+                                  onValueChange={(value) => field.onChange(value === "0" ? null : Number(value))}
+                                  value={field.value ? String(field.value) : "0"}
                                 >
                                   <FormControl>
                                     <SelectTrigger>
@@ -1086,8 +1086,8 @@ export function PublishTripForm() {
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    <SelectItem value="">Sin asignar</SelectItem>
-                                    {driversQuery.data?.map((driver) => (
+                                    <SelectItem value="0">Sin asignar</SelectItem>
+                                    {driversQuery.data?.map((driver: { id: number, firstName: string, lastName: string }) => (
                                       <SelectItem key={driver.id} value={String(driver.id)}>
                                         {driver.firstName} {driver.lastName}
                                       </SelectItem>
