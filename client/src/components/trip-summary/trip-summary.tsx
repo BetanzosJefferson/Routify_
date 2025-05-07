@@ -344,7 +344,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
 
                         <Separator className="my-6" />
                         
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <Card className="bg-blue-50 border-blue-100">
                             <CardContent className="pt-6">
                               <div className="flex items-center space-x-2">
@@ -363,54 +363,21 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                 <div className="p-2 bg-green-100 rounded-full">
                                   <DollarSignIcon className="h-5 w-5 text-green-600" />
                                 </div>
-                                <div className="text-green-600 font-medium">Ventas Totales</div>
+                                <div className="text-green-600 font-medium">Ventas</div>
                               </div>
-                              <div className="mt-4 text-3xl font-bold text-green-700">
-                                ${totalSales.toLocaleString('es-MX')}
-                              </div>
-                            </CardContent>
-                          </Card>
-                          
-                          <Card className="bg-purple-50 border-purple-100">
-                            <CardContent className="pt-6">
-                              <div className="flex items-center space-x-2">
-                                <div className="p-2 bg-purple-100 rounded-full">
-                                  <PackageIcon className="h-5 w-5 text-purple-600" />
+                              <div className="mt-2 space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <div className="text-sm text-green-600">Total ventas Efectivo:</div>
+                                  <div className="font-semibold">${totalCashSales.toLocaleString('es-MX')}</div>
                                 </div>
-                                <div className="text-purple-600 font-medium">Reservaciones</div>
-                              </div>
-                              <div className="mt-4 text-3xl font-bold text-purple-700">
-                                {tripReservations.length}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </div>
-                        
-                        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <Card className="bg-yellow-50 border-yellow-100">
-                            <CardContent className="pt-6">
-                              <div className="flex items-center space-x-2">
-                                <div className="p-2 bg-yellow-100 rounded-full">
-                                  <DollarSignIcon className="h-5 w-5 text-yellow-600" />
+                                <div className="flex justify-between items-center">
+                                  <div className="text-sm text-green-600">Total ventas Transferencia:</div>
+                                  <div className="font-semibold">${totalTransferSales.toLocaleString('es-MX')}</div>
                                 </div>
-                                <div className="text-yellow-600 font-medium">Ventas en Efectivo</div>
-                              </div>
-                              <div className="mt-4 text-3xl font-bold text-yellow-700">
-                                ${totalCashSales.toLocaleString('es-MX')}
-                              </div>
-                            </CardContent>
-                          </Card>
-                          
-                          <Card className="bg-indigo-50 border-indigo-100">
-                            <CardContent className="pt-6">
-                              <div className="flex items-center space-x-2">
-                                <div className="p-2 bg-indigo-100 rounded-full">
-                                  <DollarSignIcon className="h-5 w-5 text-indigo-600" />
+                                <div className="pt-2 mt-2 border-t border-green-200 flex justify-between items-center">
+                                  <div className="text-sm font-medium text-green-600">Total de ventas:</div>
+                                  <div className="text-xl font-bold text-green-700">${totalSales.toLocaleString('es-MX')}</div>
                                 </div>
-                                <div className="text-indigo-600 font-medium">Ventas por Transferencia</div>
-                              </div>
-                              <div className="mt-4 text-3xl font-bold text-indigo-700">
-                                ${totalTransferSales.toLocaleString('es-MX')}
                               </div>
                             </CardContent>
                           </Card>
