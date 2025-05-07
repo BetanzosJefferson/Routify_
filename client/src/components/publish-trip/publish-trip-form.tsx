@@ -694,8 +694,69 @@ export function PublishTripForm() {
                         </TooltipProvider>
                       </div>
 
-                      {/* Versión móvil - tarjetas */}
+                      {/* Vista móvil - Configuración por ciudades */}
+                      <div className="md:hidden space-y-4 mb-6">
+                        <h3 className="text-sm font-semibold mb-2">Configuración por ciudades</h3>
+                        <p className="text-xs text-gray-500 mb-3">
+                          Configure el precio entre ciudades principales. Este precio se aplicará automáticamente
+                          a todas las combinaciones de paradas entre las mismas ciudades.
+                        </p>
+                        
+                        {(() => {
+                          const { cityGroups, cityPairs } = groupSegmentsByCity(segmentPrices);
+                          
+                          return cityPairs.map((cityPair: {origin: string, destination: string}, idx: number) => {
+                            const key = `${cityPair.origin}||${cityPair.destination}`;
+                            const groupSegments = cityGroups[key] || [];
+                            const firstSegment = groupSegments[0] || { price: 0 };
+                            
+                            return (
+                              <div key={`city-card-${idx}`} className="border rounded-md p-3 bg-primary/5 shadow-sm">
+                                <div className="font-medium text-sm text-primary mb-2">
+                                  {cityPair.origin} → {cityPair.destination}
+                                </div>
+                                <div className="grid grid-cols-1 gap-2">
+                                  <div>
+                                    <div className="text-xs text-gray-500 mb-1">Precio</div>
+                                    <PriceInput
+                                      value={firstSegment.price}
+                                      onChange={(e) => {
+                                        // Convertir el valor a número, con manejo especial para cadenas vacías
+                                        const inputValue = e.target.value;
+                                        let newPrice = 0;
+                                        
+                                        if (inputValue.trim() !== '') {
+                                          const parsedValue = parseInt(inputValue, 10);
+                                          if (!isNaN(parsedValue)) {
+                                            newPrice = parsedValue;
+                                          }
+                                        }
+                                        
+                                        console.log("Actualizando precio de ciudad (móvil):", inputValue, "->", newPrice);
+                                        
+                                        // Usar la nueva función para actualizar todos los precios entre estas ciudades
+                                        updateCityGroupPrices(cityPair.origin, cityPair.destination, newPrice);
+                                      }}
+                                      className="w-full"
+                                    />
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    Afecta a {groupSegments.length} combinaciones de paradas
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                      
+                      {/* Versión móvil - tarjetas de segmentos específicos */}
                       <div className="md:hidden space-y-4">
+                        <h3 className="text-sm font-semibold mb-2">Detalles por parada específica</h3>
+                        <p className="text-xs text-gray-500 mb-3">
+                          Aquí puede ver los precios aplicados a cada combinación de paradas específicas.
+                        </p>
+                        
                         {segmentPrices.map((segment, index) => (
                           <div key={`segment-card-${index}`} className="border rounded-md p-3 bg-white shadow-sm">
                             <div className="font-medium text-sm text-primary mb-1">
