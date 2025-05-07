@@ -68,6 +68,8 @@ export function PublishTripForm() {
   
   // Estado para controlar si mostrar campos de vehículo/conductor solo en modo edición
   const [showAssignmentFields, setShowAssignmentFields] = useState(false);
+  // Estado para controlar la carga de datos
+  const [isLoadingTripData, setIsLoadingTripData] = useState(false);
   // Helper para validar y asegurar formato correcto de stopTimes
   const ensureValidStopTimes = (times: any[]): StopTime[] => {
     return times.map(time => {
@@ -476,7 +478,10 @@ export function PublishTripForm() {
   // Load trip data for editing
   const loadTripForEditing = async (tripId: number) => {
     try {
+      // Activar indicador de carga
+      setIsLoadingTripData(true);
       setEditingTripId(tripId);
+      
       const response = await fetch(`/api/trips/${tripId}`);
       
       if (!response.ok) {
@@ -538,7 +543,17 @@ export function PublishTripForm() {
               // Intentar reconstruir los tiempos de parada a partir de los tiempos de segmentos
               reconstructStopTimesFromSegments(tripData.segmentPrices);
             }
+            
+            // Esperar un poco para asegurar que todos los estados se han actualizado
+            setTimeout(() => {
+              setIsLoadingTripData(false);
+            }, 300);
+          } else {
+            setIsLoadingTripData(false);
           }
+        } else {
+          // Si no hay datos de segmentos o precios, desactivar el indicador de carga
+          setIsLoadingTripData(false);
         }
       };
       
@@ -552,6 +567,7 @@ export function PublishTripForm() {
         title: "Error al cargar viaje",
         description: "No se pudo cargar la información del viaje para editar."
       });
+      setIsLoadingTripData(false);
     }
   };
   
@@ -639,7 +655,16 @@ export function PublishTripForm() {
 
       {/* Form section */}
       {showForm && (
-        <div className="bg-card rounded-lg border shadow-sm p-6">
+        <div className="bg-card rounded-lg border shadow-sm p-6 relative">
+          {isLoadingTripData && (
+            <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-50 rounded-lg">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                <p className="text-sm font-medium">Cargando datos del viaje...</p>
+              </div>
+            </div>
+          )}
+          
           <h3 className="text-lg font-semibold mb-4">
             {editingTripId ? "Editar Viaje" : "Publicar Nuevo Viaje"}
           </h3>
