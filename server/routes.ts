@@ -2914,9 +2914,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // Verificar que las compañías coincidan
-        if (userCompanyId !== tripCompanyId) {
-          console.log(`[CHECK TICKET] DENEGADO: Las compañías no coinciden - Usuario: ${userCompanyId}, Viaje: ${tripCompanyId}`);
+        // Normalizar IDs de compañía para la comparación
+        // Extraer el nombre base de la compañía sin el sufijo (ej. "bamo-456" => "bamo")
+        const normalizeCompanyId = (companyId: string) => {
+          const companyIdLower = companyId.toLowerCase();
+          // Si tiene formato "compañía-XXX", extraer solo la parte de la compañía
+          const match = companyIdLower.match(/^([a-z]+)(?:-\d+)?$/);
+          return match ? match[1] : companyIdLower;
+        };
+        
+        const normalizedUserCompany = normalizeCompanyId(userCompanyId);
+        const normalizedTripCompany = normalizeCompanyId(tripCompanyId);
+        
+        console.log(`[CHECK TICKET] Compañías normalizadas - Usuario: ${normalizedUserCompany}, Viaje: ${normalizedTripCompany}`);
+        
+        // Verificar que las compañías coincidan después de normalizarlas
+        if (normalizedUserCompany !== normalizedTripCompany) {
+          console.log(`[CHECK TICKET] DENEGADO: Las compañías no coinciden después de normalizar - Usuario: ${normalizedUserCompany}, Viaje: ${normalizedTripCompany}`);
           return res.status(403).json({ 
             success: false, 
             message: 'No puedes escanear tickets de viajes que no pertenecen a tu compañía' 
