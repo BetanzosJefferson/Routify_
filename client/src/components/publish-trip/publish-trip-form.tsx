@@ -1241,7 +1241,6 @@ export function PublishTripForm() {
       {/* Trip list */}
       <TripList 
         onEditTrip={loadTripForEditing} 
-        editMode={!!editingTripId}
       />
     </div>
   );
