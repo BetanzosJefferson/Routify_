@@ -291,6 +291,46 @@ export function isSameCity(location1: string, location2: string): boolean {
   return city1 === city2;
 }
 
+// Función para extraer el nombre de la ciudad de una ubicación completa
+export function getCityName(location: string): string {
+  try {
+    if (!location) return "";
+    // Formato esperado: "Ciudad, Estado - Ubicación"
+    return location.split(' - ')[0].trim();
+  } catch (error) {
+    console.error(`Error extrayendo ciudad de ${location}:`, error);
+    return location || "";
+  }
+}
+
+// Función para agrupar segmentos por ciudades
+export function groupSegmentsByCity(segments: any[]): { 
+  cityGroups: {[key: string]: any[]}, 
+  cityPairs: {origin: string, destination: string}[] 
+} {
+  const cityGroups: {[key: string]: any[]} = {};
+  const cityPairs: {origin: string, destination: string}[] = [];
+  
+  // Primera pasada: agrupar segmentos por pares de ciudades
+  segments.forEach(segment => {
+    const originCity = getCityName(segment.origin);
+    const destCity = getCityName(segment.destination);
+    const key = `${originCity}||${destCity}`;
+    
+    if (!cityGroups[key]) {
+      cityGroups[key] = [];
+      cityPairs.push({
+        origin: originCity,
+        destination: destCity
+      });
+    }
+    
+    cityGroups[key].push(segment);
+  });
+  
+  return { cityGroups, cityPairs };
+}
+
 /**
  * Convierte un objeto Date a una cadena ISO para ser usada en inputs tipo date YYYY-MM-DD
  * Este método está diseñado para evitar los problemas de zona horaria
