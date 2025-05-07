@@ -203,11 +203,22 @@ export function PublishTripForm() {
 
   // Handle segment price updates
   const updateSegmentPrice = (index: number, price: number) => {
+    console.log(`Actualizando precio para segmento índice ${index} a ${price}`);
     const updatedPrices = [...segmentPrices];
-    updatedPrices[index] = {
-      ...updatedPrices[index],
-      price,
-    };
+    
+    // Verificar que el segmento exista
+    if (index >= 0 && index < updatedPrices.length) {
+      console.log("Segmento antes de actualizar:", updatedPrices[index]);
+      updatedPrices[index] = {
+        ...updatedPrices[index],
+        price,
+      };
+      console.log("Segmento después de actualizar:", updatedPrices[index]);
+    } else {
+      console.warn(`Intento de actualizar un segmento inexistente con índice ${index}, array tiene ${updatedPrices.length} elementos`);
+    }
+    
+    console.log("Array de precios actualizado:", updatedPrices);
     setSegmentPrices(updatedPrices);
     form.setValue("segmentPrices", updatedPrices);
   };
@@ -538,18 +549,7 @@ export function PublishTripForm() {
         if (routeSegmentsQuery.data) {
           console.log("Datos de segmentos disponibles, configurando precios y horarios");
           
-          // Cargar los precios por segmento si existen
-          if (tripData.segmentPrices && Array.isArray(tripData.segmentPrices)) {
-            console.log("Estableciendo precios por segmento en el estado:", tripData.segmentPrices.length, "segmentos");
-            // Importante: actualizar el estado local
-            setSegmentPrices(tripData.segmentPrices);
-            // Y también actualizar el formulario
-            form.setValue("segmentPrices", tripData.segmentPrices);
-          } else {
-            console.log("No hay precios por segmento disponibles en los datos del viaje");
-          }
-          
-          // Cargar los horarios de parada si existen
+          // Obtener las ubicaciones de la ruta
           const allLocations = [
             routeSegmentsQuery.data.origin,
             ...(routeSegmentsQuery.data.stops || []),
@@ -597,9 +597,76 @@ export function PublishTripForm() {
               location: allLocations[allLocations.length - 1]
             });
             
+            // Validar los tiempos de parada
             const validStopTimes = ensureValidStopTimes(stopTimesNew);
             console.log("Estableciendo tiempos de parada:", validStopTimes);
             setStopTimes(validStopTimes);
+            
+            // Importante: Manualmente crear combinaciones de segmentos antes de establecer precios
+            // Esto es crucial para que el formulario muestre correctamente los campos de precio
+            const segmentCombos = [];
+            
+            // Para cada origen, conectamos con cada destino posterior
+            for (let i = 0; i < allLocations.length - 1; i++) {
+              for (let j = i + 1; j < allLocations.length; j++) {
+                segmentCombos.push({
+                  origin: allLocations[i],
+                  destination: allLocations[j]
+                });
+              }
+            }
+            
+            console.log("Combinaciones de segmentos creadas:", segmentCombos.length);
+            
+            // Ahora que tenemos todas las combinaciones posibles, cargamos los precios del viaje
+            if (tripData.segmentPrices && Array.isArray(tripData.segmentPrices)) {
+              console.log("Aplicando precios existentes a los segmentos");
+              
+              // Creamos un nuevo array con todas las combinaciones, pero con precios predeterminados
+              const updatedSegmentPrices = segmentCombos.map(combo => {
+                // Buscar si existe un precio para este segmento específico
+                const existingPrice = tripData.segmentPrices.find(
+                  sp => sp.origin === combo.origin && sp.destination === combo.destination
+                );
+                
+                if (existingPrice) {
+                  console.log(`Encontrado precio para ${combo.origin} -> ${combo.destination}: ${existingPrice.price}`);
+                  return {
+                    ...combo,
+                    price: existingPrice.price,
+                    departureTime: existingPrice.departureTime,
+                    arrivalTime: existingPrice.arrivalTime
+                  };
+                } else {
+                  // Si no hay precio, usamos el precio base del viaje o 0
+                  console.log(`No se encontró precio para ${combo.origin} -> ${combo.destination}, usando precio base: ${tripData.price || 0}`);
+                  return {
+                    ...combo,
+                    price: tripData.price || 0,
+                    departureTime: tripData.departureTime,
+                    arrivalTime: tripData.arrivalTime
+                  };
+                }
+              });
+              
+              console.log("Precios de segmentos completos:", updatedSegmentPrices);
+              // Importante: actualizar el estado local
+              setSegmentPrices(updatedSegmentPrices);
+              // Y también actualizar el formulario
+              form.setValue("segmentPrices", updatedSegmentPrices);
+            } else {
+              console.log("No hay precios por segmento disponibles, usando precio base para todos los segmentos");
+              // Si no hay precios por segmento, establecer el precio base para todos
+              const defaultSegmentPrices = segmentCombos.map(combo => ({
+                ...combo,
+                price: tripData.price || 0,
+                departureTime: tripData.departureTime,
+                arrivalTime: tripData.arrivalTime
+              }));
+              
+              setSegmentPrices(defaultSegmentPrices);
+              form.setValue("segmentPrices", defaultSegmentPrices);
+            }
           }
           
           return true;
