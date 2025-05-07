@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { HelpCircleIcon, Loader2 } from "lucide-react";
+import { HelpCircleIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import {
@@ -473,16 +473,10 @@ export function PublishTripForm() {
     }
   };
 
-  // Estado para controlar cuando se está cargando datos para edición
-  const [isLoadingTripData, setIsLoadingTripData] = useState(false);
-
   // Load trip data for editing
   const loadTripForEditing = async (tripId: number) => {
     try {
-      // Activar indicador de carga
-      setIsLoadingTripData(true);
       setEditingTripId(tripId);
-      
       const response = await fetch(`/api/trips/${tripId}`);
       
       if (!response.ok) {
@@ -546,17 +540,12 @@ export function PublishTripForm() {
             }
           }
         }
-        
-        // Desactivar el indicador de carga cuando todo esté listo
-        setIsLoadingTripData(false);
       };
       
       // Iniciar el proceso de espera
       waitForRouteSegments();
       
     } catch (error) {
-      // Desactivar el indicador de carga en caso de error
-      setIsLoadingTripData(false);
       console.error("Error al cargar viaje para edición:", error);
       toast({
         variant: "destructive",
@@ -651,18 +640,9 @@ export function PublishTripForm() {
       {/* Form section */}
       {showForm && (
         <div className="bg-card rounded-lg border shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">
-              {editingTripId ? "Editar Viaje" : "Publicar Nuevo Viaje"}
-            </h3>
-            
-            {isLoadingTripData && (
-              <div className="flex items-center text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                <span>Cargando datos...</span>
-              </div>
-            )}
-          </div>
+          <h3 className="text-lg font-semibold mb-4">
+            {editingTripId ? "Editar Viaje" : "Publicar Nuevo Viaje"}
+          </h3>
           
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -1220,16 +1200,12 @@ export function PublishTripForm() {
                 <Button 
                   type="submit" 
                   className="w-full md:w-auto"
-                  disabled={publishTripMutation.isPending || updateTripMutation.isPending || isLoadingTripData}
+                  disabled={publishTripMutation.isPending || updateTripMutation.isPending}
                 >
-                  {(publishTripMutation.isPending || updateTripMutation.isPending) ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {editingTripId ? "Guardando..." : "Publicando..."}
-                    </>
-                  ) : (
-                    editingTripId ? "Actualizar Viaje" : "Publicar Viaje"
+                  {(publishTripMutation.isPending || updateTripMutation.isPending) && (
+                    <span className="mr-2 animate-spin">⏳</span>
                   )}
+                  {editingTripId ? "Actualizar Viaje" : "Publicar Viaje"}
                 </Button>
               </div>
             </form>
