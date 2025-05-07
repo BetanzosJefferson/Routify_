@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { useAuth } from "@/hooks/use-auth";
-import { InfoIcon, Loader2Icon, CalendarPlusIcon, XIcon, HelpCircleIcon } from "lucide-react";
+import { es } from "date-fns/locale";
+import { HelpCircleIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Select,
   SelectContent,
@@ -29,7 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TimeInput } from "@/components/ui/time-input";
 import { publishTripValidationSchema, type Route, type RouteWithSegments, type SegmentPrice } from "@shared/schema";
-import { generateSegmentsFromRoute, isSameCity } from "@/lib/utils";
+import { generateSegmentsFromRoute, isSameCity, getCityName, groupSegmentsByCity } from "@/lib/utils";
 import TripList from "./trip-list";
 
 type StopTime = {
@@ -366,135 +367,34 @@ export function PublishTripForm() {
       // Reset form to default state but keep the selected route
       form.reset({
         ...form.getValues(),
-        segmentPrices: [...segmentPrices],
+        startDate: format(new Date(), "yyyy-MM-dd"),
+        endDate: format(new Date(), "yyyy-MM-dd"),
       });
       
-      // Invalidate trips cache
+      // Refresh queries
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
       
-      // Volver a la lista de viajes
-      setShowForm(false);
+      // Hide form if not editing
+      if (!editingTripId) {
+        setShowForm(false);
+      }
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
-        title: "Error al publicar el viaje",
-        description: error.message,
         variant: "destructive",
+        title: "Error al publicar viaje",
+        description: error.message || "Ocurrió un error al publicar el viaje."
       });
-    },
+    }
   });
 
-  // Handle form submission
-  const onSubmit = (data: FormValues) => {
-    const { capacity } = data;
-    
-    // Verificar que se ha seleccionado un ID de ruta
-    if (!selectedRouteId) {
-      toast({
-        title: "Error de validación",
-        description: "Debe seleccionar una ruta",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Verificar que todos los segmentos tienen precios
-    const hasInvalidPrices = segmentPrices.some(segment => segment.price <= 0);
-    if (hasInvalidPrices) {
-      toast({
-        title: "Error de validación",
-        description: "Todos los segmentos deben tener un precio válido",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Verificar que todos los tiempos de paradas están configurados
-    const hasInvalidStopTimes = stopTimes.some(stop => stop === null);
-    if (hasInvalidStopTimes) {
-      toast({
-        title: "Error de validación",
-        description: "Debe configurar el tiempo para todas las paradas",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Preparar los tiempos de las paradas
-    const formattedStopTimes = stopTimes
-      .filter(stop => stop !== null && stop.hour && stop.minute && stop.ampm)
-      .map(stop => {
-        return {
-          hour: stop!.hour,
-          minute: stop!.minute,
-          ampm: stop!.ampm,
-          location: stop!.location || ""
-        };
-      });
-    
-    // Obtener el primer y último tiempo para usar como tiempo de salida/llegada del viaje
-    const departureTime = formattedStopTimes.length > 0 ? 
-      `${formattedStopTimes[0].hour}:${formattedStopTimes[0].minute} ${formattedStopTimes[0].ampm}` : "";
-    const arrivalTime = formattedStopTimes.length > 0 ? 
-      `${formattedStopTimes[formattedStopTimes.length - 1].hour}:${formattedStopTimes[formattedStopTimes.length - 1].minute} ${formattedStopTimes[formattedStopTimes.length - 1].ampm}` : "";
-    
-    // Calcular el precio base usando el precio del segmento desde el origen principal 
-    // hasta el destino final de la ruta
-    const calculateBasePrice = () => {
-      const routeInfo = routeSegmentsQuery.data;
-      if (!routeInfo || !segmentPrices.length) return 0;
-      
-      // Buscar el segmento específico: desde origen principal hasta destino final
-      const mainSegment = segmentPrices.find(
-        segment => segment.origin === routeInfo.origin && segment.destination === routeInfo.destination
-      );
-      
-      // Si encontramos el segmento principal, usar su precio
-      if (mainSegment) {
-        return mainSegment.price;
-      }
-      
-      // Si no hay un segmento directo, usar el precio del primer segmento como respaldo
-      if (segmentPrices.length > 0) {
-        return segmentPrices[0].price;
-      }
-      
-      return 0;
-    };
-
-    // Preparar datos comunes para crear o actualizar
-    const tripData = {
-      ...data,
-      routeId: selectedRouteId,
-      capacity,
-      // Calcular el precio base automáticamente - ya no depende del input eliminado
-      price: calculateBasePrice(),
-      segmentPrices,
-      stopTimes: formattedStopTimes,
-      departureTime, // Añadido explícitamente
-      arrivalTime,   // Añadido explícitamente
-      availableSeats: capacity, // Inicializa availableSeats con la capacidad
-      // Incluir explícitamente los campos de asignación
-      vehicleId: data.vehicleId || null,
-      driverId: data.driverId || null
-    };
-    
-    console.log("Datos del viaje a enviar:", tripData);
-    
-    if (editingTripId) {
-      // Si estamos editando un viaje, usar PUT
-      updateTripMutation.mutate(tripData);
-    } else {
-      // Si estamos creando un nuevo viaje, usar POST
-      publishTripMutation.mutate(tripData);
-    }
-  };
-  
-  // Mutation para actualizar un viaje existente
+  // Mutation for updating existing trips
   const updateTripMutation = useMutation({
     mutationFn: async (data: FormValues) => {
+      if (!editingTripId) throw new Error("No hay ID de viaje para actualizar");
+      
       const response = await fetch(`/api/trips/${editingTripId}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json"
         },
@@ -502,588 +402,385 @@ export function PublishTripForm() {
       });
       
       if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error);
+        const errorText = await response.text();
+        throw new Error(errorText || "Error al actualizar viaje");
       }
       
-      return response.json();
+      return await response.json();
     },
     onSuccess: () => {
       toast({
-        title: "Viaje actualizado",
-        description: "El viaje ha sido actualizado exitosamente.",
+        title: "Viaje actualizado exitosamente",
+        description: "Los cambios en el viaje han sido guardados.",
       });
       
-      // Invalidar caché y volver a la lista
-      queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
-      setShowForm(false);
+      // Reset form and state
+      form.reset();
       setEditingTripId(null);
+      setShowForm(false);
+      setShowAssignmentFields(false);
+      
+      // Refresh queries
+      queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
-        title: "Error al actualizar viaje",
-        description: error.message,
         variant: "destructive",
+        title: "Error al actualizar viaje",
+        description: error.message || "Ocurrió un error al guardar los cambios."
       });
     }
   });
-  
-  // Handle showing the form for a new trip
-  const handleNewTrip = () => {
-    // Reset the form
-    form.reset({
-      routeId: 0,
-      startDate: format(new Date(), "yyyy-MM-dd"),
-      endDate: format(new Date(), "yyyy-MM-dd"),
-      capacity: 18,
-      segmentPrices: [],
-      vehicleId: null,
-      driverId: null,
-    });
-    setSelectedRouteId(null);
-    setSegmentPrices([]);
-    setStopTimes([]);
-    setEditingTripId(null);
-    setShowAssignmentFields(false); // Ocultar la pestaña de asignación para nuevo viaje
-    setShowForm(true);
-  };
-  
-  // Handle editing an existing trip
-  const handleEditTrip = (tripId: number) => {
-    // Primero, cargar la ruta y sus segmentos para tener la información completa
-    fetch(`/api/trips/${tripId}`)
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`Error al obtener el viaje: ${res.status} ${res.statusText}`);
-        }
-        return res.json();
-      })
-      .then(async trip => {
-        console.log("Trip to edit:", trip);
-        
-        if (!trip || !trip.id) {
-          toast({
-            title: "Error",
-            description: "No se pudo cargar la información del viaje.",
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        // Establecemos el ID de la ruta primero para cargar sus segmentos
-        setSelectedRouteId(trip.routeId);
-        
-        try {
-          // Cargar la información de la ruta para obtener más detalles
-          const routeResponse = await fetch(`/api/routes/${trip.routeId}/segments`);
-          if (!routeResponse.ok) {
-            throw new Error("No se pudo cargar la información de la ruta");
-          }
-          
-          const routeData = await routeResponse.json();
-          console.log("Route data for selected trip:", routeData);
-          
-          // Ahora podemos procesar correctamente los tiempos de parada y precios de segmento
-          
-          // PASO 1: Configurar los tiempos de parada
-          const allLocations = [
-            routeData.origin,
-            ...(routeData.stops || []),
-            routeData.destination
-          ];
-          
-          // Crear un mapa de los tiempos de parada existentes si el viaje tiene stopTimes configurados
-          const existingStopTimes: Record<string, { hour: string, minute: string, ampm: "AM" | "PM" }> = {};
-          
-          // Si el viaje tiene stopTimes configurados, usarlos
-          if (trip.stopTimes && Array.isArray(trip.stopTimes) && trip.stopTimes.length > 0) {
-            console.log("El viaje tiene stopTimes configurados:", trip.stopTimes);
-            trip.stopTimes.forEach((stopTime: any) => {
-              if (stopTime && stopTime.location) {
-                // Asegurarse de que ampm sea "AM" o "PM"
-                let ampmValue = (stopTime.ampm || "AM").toUpperCase();
-                if (ampmValue !== "AM" && ampmValue !== "PM") {
-                  ampmValue = "AM";
-                }
-                
-                existingStopTimes[stopTime.location] = {
-                  hour: stopTime.hour || "00",
-                  minute: stopTime.minute || "00",
-                  ampm: ampmValue as "AM" | "PM"
-                };
-              }
-            });
-          }
-          
-          // Calcular tiempos de parada basados en departureTime y arrivalTime como respaldo
-          const departureParts = trip.departureTime.split(' ')[0].split(':');
-          const departureHour = departureParts[0];
-          const departureMinute = departureParts[1];
-          const departureAmPm = trip.departureTime.split(' ')[1];
-          
-          const arrivalParts = trip.arrivalTime.split(' ')[0].split(':');
-          const arrivalHour = arrivalParts[0];
-          const arrivalMinute = arrivalParts[1];
-          const arrivalAmPm = trip.arrivalTime.split(' ')[1];
-          
-          // Crear tiempos de parada para el formulario
-          const allStopTimes = allLocations.map((location, index) => {
-            // Primero verificar si hay un tiempo personalizado para esta ubicación
-            if (existingStopTimes[location]) {
-              return {
-                hour: existingStopTimes[location].hour,
-                minute: existingStopTimes[location].minute,
-                ampm: existingStopTimes[location].ampm,
-                location
-              };
-            } 
-            
-            // Si no hay un tiempo personalizado, calcular basado en posición
-            if (index === 0) {
-              // Primera parada (origen) - hora de salida
-              return {
-                hour: departureHour,
-                minute: departureMinute,
-                ampm: departureAmPm as "AM" | "PM",
-                location
-              };
-            } else if (index === allLocations.length - 1) {
-              // Última parada (destino) - hora de llegada
-              return {
-                hour: arrivalHour,
-                minute: arrivalMinute,
-                ampm: arrivalAmPm as "AM" | "PM",
-                location
-              };
-            } else {
-              // Paradas intermedias - intentamos recuperar los tiempos reales de los tiempos de segmento
-              // Buscamos en los segmentPrices para ubicaciones que podrían tener tiempos calculados
-              if (trip.segmentPrices && Array.isArray(trip.segmentPrices)) {
-                // Buscar un segmento donde esta ubicación sea el origen o destino
-                const segmentAsOrigin = trip.segmentPrices.find(
-                  (seg: any) => seg.origin === location && seg.departureTime
-                );
-                
-                if (segmentAsOrigin && segmentAsOrigin.departureTime) {
-                  try {
-                    const timeParts = segmentAsOrigin.departureTime.split(' ');
-                    if (timeParts.length === 2) {
-                      const hourMinute = timeParts[0].split(':');
-                      const ampm = timeParts[1].toUpperCase();
-                      if (hourMinute.length === 2 && (ampm === "AM" || ampm === "PM")) {
-                        return {
-                          hour: hourMinute[0],
-                          minute: hourMinute[1],
-                          ampm: ampm as "AM" | "PM",
-                          location
-                        };
-                      }
-                    }
-                  } catch (error) {
-                    console.warn("Error parsing departureTime:", error);
-                  }
-                }
-                
-                const segmentAsDestination = trip.segmentPrices.find(
-                  (seg: any) => seg.destination === location && seg.arrivalTime
-                );
-                
-                if (segmentAsDestination && segmentAsDestination.arrivalTime) {
-                  try {
-                    const timeParts = segmentAsDestination.arrivalTime.split(' ');
-                    if (timeParts.length === 2) {
-                      const hourMinute = timeParts[0].split(':');
-                      const ampm = timeParts[1].toUpperCase();
-                      if (hourMinute.length === 2 && (ampm === "AM" || ampm === "PM")) {
-                        return {
-                          hour: hourMinute[0],
-                          minute: hourMinute[1],
-                          ampm: ampm as "AM" | "PM",
-                          location
-                        };
-                      }
-                    }
-                  } catch (error) {
-                    console.warn("Error parsing arrivalTime:", error);
-                  }
-                }
-              }
-              
-              // Si no se encontró información específica, calculamos un tiempo proporcional 
-              // entre la salida y la llegada
-              const totalStops = allLocations.length - 1;
-              const position = index / totalStops; // Posición relativa (0 a 1)
-              
-              // Convertir tiempos a minutos desde medianoche para cálculos
-              const getMinutesSinceMidnight = (hour: string, minute: string, ampm: string) => {
-                let hours = parseInt(hour);
-                if (ampm === "PM" && hours < 12) hours += 12;
-                if (ampm === "AM" && hours === 12) hours = 0;
-                return hours * 60 + parseInt(minute);
-              };
-              
-              const departureMinutes = getMinutesSinceMidnight(departureHour, departureMinute, departureAmPm);
-              const arrivalMinutes = getMinutesSinceMidnight(arrivalHour, arrivalMinute, arrivalAmPm);
-              
-              // Calcular minutos intermedios basados en la posición
-              const interpolatedMinutes = Math.round(departureMinutes + position * (arrivalMinutes - departureMinutes));
-              
-              // Convertir minutos de vuelta a horas y minutos
-              const calculatedHours = Math.floor(interpolatedMinutes / 60);
-              const calculatedMinutes = interpolatedMinutes % 60;
-              
-              // Formato 12 horas
-              const isAM = calculatedHours < 12;
-              let hours12 = calculatedHours % 12;
-              if (hours12 === 0) hours12 = 12;
-              
-              return {
-                hour: hours12.toString().padStart(2, '0'),
-                minute: calculatedMinutes.toString().padStart(2, '0'),
-                ampm: isAM ? "AM" : "PM",
-                location
-              };
-            }
-          });
-          
-          // PASO 2: Configurar los precios por segmento
-          let segmentPricesFromTrip: any[] = [];
-          if (trip.segmentPrices && Array.isArray(trip.segmentPrices)) {
-            console.log("El viaje tiene segmentPrices configurados:", trip.segmentPrices);
-            // Usar directamente los segmentPrices del viaje y asegurarse de que los precios son números
-            segmentPricesFromTrip = trip.segmentPrices.map((sp: any) => ({
-              origin: sp.origin,
-              destination: sp.destination,
-              price: typeof sp.price === 'number' ? sp.price : 0, // Garantizar que price sea un número
-              departureTime: sp.departureTime,
-              arrivalTime: sp.arrivalTime
-            }));
-          } else {
-            // Si no hay precios de segmento, crear una estructura vacía
-            // basada en los segmentos de la ruta
-            segmentPricesFromTrip = routeData.segments.map((segment: any) => ({
-              origin: segment.origin,
-              destination: segment.destination,
-              price: 0 // Precio predeterminado
-            }));
-          }
-          
-          // Establecer los estados con los datos procesados
-          setEditingTripId(tripId);
-          setSegmentPrices(segmentPricesFromTrip);
-          setStopTimes(ensureValidStopTimes(allStopTimes));
-          
-          // Habilitar los campos de asignación para edición
-          setShowAssignmentFields(true);
-          
-          // Actualizar el formulario con todos los datos disponibles
-          const startDate = trip.departureDate?.split("T")[0] || format(new Date(), "yyyy-MM-dd");
-          const endDate = startDate; // Mismo día para edición
-          
-          // Primero hacemos un reset completo del formulario con los datos
-          form.reset({
-            routeId: trip.routeId,
-            startDate: startDate,
-            endDate: endDate,
-            capacity: trip.capacity,
-            // price ya no es necesario, se calcula automáticamente en onSubmit
-            segmentPrices: segmentPricesFromTrip,
-            stopTimes: ensureValidStopTimes(allStopTimes),
-            // Incluir IDs de vehículo y conductor si existen
-            vehicleId: trip.vehicleId || null,
-            driverId: trip.driverId || null,
-          }, { 
-            // Esta opción es clave para que los campos controlados se actualicen
-            keepDirtyValues: false, 
-            keepErrors: false,
-            keepDirty: false,
-            keepIsSubmitted: false,
-            keepTouched: false,
-            keepIsValid: false,
-            keepSubmitCount: false,
-          });
-          
-          // También actualizamos los valores directamente para asegurarnos que llegan a la UI
-          // Después del reset que reinicia el estado interno del formulario
-          setTimeout(() => {
-            console.log("Aplicando valores al formulario:", {
-              routeId: trip.routeId,
-              startDate,
-              endDate, 
-              capacity: trip.capacity,
-              price: trip.price,
-              segmentPrices: segmentPricesFromTrip,
-              stopTimes: allStopTimes,
-              vehicleId: trip.vehicleId,
-              driverId: trip.driverId
-            });
-            
-            // Forzar actualización de valores individuales
-            form.setValue("routeId", trip.routeId, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-            form.setValue("startDate", startDate, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-            form.setValue("endDate", endDate, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-            form.setValue("capacity", trip.capacity, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-            // Ya no se establecer precio manualmente, se calcula automáticamente
 
-            form.setValue("segmentPrices", segmentPricesFromTrip, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-            form.setValue("stopTimes", ensureValidStopTimes(allStopTimes), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-            
-            // Actualizar valores de vehículo y conductor si existen
-            if (trip.vehicleId) {
-              console.log(`Asignando vehículo ID: ${trip.vehicleId}`);
-              form.setValue("vehicleId", trip.vehicleId, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-            }
-            
-            if (trip.driverId) {
-              console.log(`Asignando conductor ID: ${trip.driverId}`);
-              form.setValue("driverId", trip.driverId, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-            }
-            
-            // Forzar revalidación completa
-            form.trigger();
-          }, 100);
-          
-          // Mostrar el formulario
-          setShowForm(true);
-          
-          // Notificar al usuario que se ha cargado el viaje correctamente
-          toast({
-            title: "Viaje cargado",
-            description: "La información del viaje se ha cargado correctamente.",
-          });
-          
-        } catch (routeError) {
-          console.error("Error loading route data:", routeError);
-          toast({
-            title: "Error",
-            description: "No se pudo cargar la información completa de la ruta. " + (routeError as Error).message,
-            variant: "destructive",
-          });
-        }
-      })
-      .catch(error => {
-        console.error("Error loading trip details", error);
-        toast({
-          title: "Error",
-          description: "No se pudo cargar la información del viaje. " + error.message,
-          variant: "destructive",
-        });
+  const onSubmit = (data: FormValues) => {
+    console.log("Datos de formulario enviados:", data);
+    // Incluir los tiempos de parada en los datos del formulario
+    data.stopTimes = stopTimes;
+    
+    // Llamar a la mutación para publicar o actualizar el viaje
+    if (editingTripId) {
+      updateTripMutation.mutate(data);
+    } else {
+      publishTripMutation.mutate(data);
+    }
+  };
+
+  // Load trip data for editing
+  const loadTripForEditing = async (tripId: number) => {
+    try {
+      setEditingTripId(tripId);
+      const response = await fetch(`/api/trips/${tripId}`);
+      
+      if (!response.ok) {
+        throw new Error("Error al cargar datos del viaje");
+      }
+      
+      const tripData = await response.json();
+      console.log("Datos de viaje cargados para edición:", tripData);
+      
+      // Activar modo edición y habilitar campos de asignación
+      setShowForm(true);
+      setShowAssignmentFields(true);
+      
+      // Extraer datos relevantes y establecer en el formulario
+      handleRouteChange(String(tripData.routeId));
+      
+      // Setear los valores en el formulario
+      form.setValue("routeId", tripData.routeId);
+      form.setValue("startDate", tripData.date);
+      form.setValue("endDate", tripData.date);
+      form.setValue("capacity", tripData.capacity);
+      
+      // Establecer vehículo y conductor si existen
+      if (tripData.vehicleId) {
+        form.setValue("vehicleId", tripData.vehicleId);
+      }
+      
+      if (tripData.driverId) {
+        form.setValue("driverId", tripData.driverId);
+      }
+      
+      // Los segmentos se cargarán automáticamente a través de la consulta de ruta
+      // cuando routeId cambie
+      
+    } catch (error) {
+      console.error("Error al cargar viaje para edición:", error);
+      toast({
+        variant: "destructive",
+        title: "Error al cargar viaje",
+        description: "No se pudo cargar la información del viaje para editar."
       });
+    }
+  };
+
+  // Toggle form visibility
+  const toggleForm = () => {
+    if (showForm) {
+      // Si estamos cerrando el formulario, resetear el estado
+      form.reset();
+      setEditingTripId(null);
+      setShowAssignmentFields(false);
+    }
+    setShowForm(!showForm);
   };
 
   return (
-    <div className="space-y-4">
-      {!showForm && (
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">Publicación de Viajes</h1>
-          <Button onClick={handleNewTrip} className="space-x-2">
-            <CalendarPlusIcon className="h-4 w-4" />
-            <span>Nuevo Viaje</span>
-          </Button>
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
+        <div>
+          <h2 className="text-2xl font-bold">Viajes Publicados</h2>
+          <p className="text-sm text-muted-foreground">
+            Vea y administre los viajes disponibles para reservación.
+          </p>
         </div>
-      )}
-      
-      {showForm ? (
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-bold">
-                {editingTripId ? "Editar Viaje" : "Publicar Nuevo Viaje"}
-              </h1>
-              <Button 
-                variant="ghost" 
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingTripId(null);
-                }}
-              >
-                <XIcon className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Primera columna */}
-                  <div className="space-y-6">
-                    {/* Selección de ruta */}
-                    <FormField
-                      control={form.control}
-                      name="routeId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Ruta</FormLabel>
-                          <Select 
-                            onValueChange={handleRouteChange}
-                            defaultValue={field.value.toString()}
-                            value={selectedRouteId?.toString() || undefined}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Seleccionar ruta" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {routesQuery.data?.map((route: Route) => (
-                                <SelectItem key={route.id} value={route.id.toString()}>
-                                  {route.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
+        <Button onClick={toggleForm} className="self-start">
+          {showForm ? "Cancelar" : editingTripId ? "Editar Viaje" : "Publicar Nuevo Viaje"}
+        </Button>
+      </div>
 
-                  </div>
-                  
-                  {/* Segunda columna */}
-                  <div className="space-y-6">
-                    {/* Fecha de inicio */}
-                    <FormField
-                      control={form.control}
-                      name="startDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Fecha de Inicio</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="date"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    {/* Fecha de fin */}
-                    <FormField
-                      control={form.control}
-                      name="endDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Fecha de Fin</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="date"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  {/* Tercera columna */}
-                  <div className="space-y-6">
-                    {/* Capacidad del vehículo */}
-                    <FormField
-                      control={form.control}
-                      name="capacity"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Capacidad</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    {/* Eliminamos el campo Precio Base ya que se determina automáticamente
-                        por los precios de segmentos */}
-                  </div>
-                </div>
+      {/* Form section */}
+      {showForm && (
+        <div className="bg-card rounded-lg border shadow-sm p-6">
+          <h3 className="text-lg font-semibold mb-4">
+            {editingTripId ? "Editar Viaje" : "Publicar Nuevo Viaje"}
+          </h3>
+          
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Sección básica del formulario */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Selector de ruta */}
+                <FormField
+                  control={form.control}
+                  name="routeId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ruta</FormLabel>
+                      <Select
+                        disabled={routesQuery.isLoading || editingTripId !== null}
+                        onValueChange={(value) => handleRouteChange(value)}
+                        value={String(field.value) || ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccione una ruta" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {routesQuery.data?.map((route: Route) => (
+                            <SelectItem key={route.id} value={String(route.id)}>
+                              {route.name} ({route.origin} → {route.destination})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Seleccione la ruta para este viaje.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 
-                {selectedRouteId && routeSegmentsQuery.data && (
-                  <Tabs defaultValue="stop-times">
-                    <TabsList className="mb-2 w-full flex flex-wrap justify-start">
-                      <TabsTrigger value="segments" className="flex-grow text-xs sm:text-sm">
-                        <span className="hidden xs:inline">Precios por </span>
-                        <span>Segmento</span>
+                {/* Capacidad del vehículo */}
+                <FormField
+                  control={form.control}
+                  name="capacity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Capacidad</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number"
+                          min="1"
+                          {...field} 
+                          onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Número máximo de pasajeros.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Fecha de inicio */}
+                <FormField
+                  control={form.control}
+                  name="startDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fecha de Inicio</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="date" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Primera fecha del rango para los viajes.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Fecha de fin */}
+                <FormField
+                  control={form.control}
+                  name="endDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fecha de Fin</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="date" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Última fecha del rango para los viajes.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              {/* Detalles de precios y tiempos (cuando se selecciona una ruta) */}
+              {selectedRouteId && routeSegmentsQuery.data && (
+                <Tabs defaultValue="stop-times">
+                  <TabsList className="mb-2 w-full flex flex-wrap justify-start">
+                    <TabsTrigger value="segments" className="flex-grow text-xs sm:text-sm">
+                      <span className="hidden xs:inline">Precios por </span>
+                      <span>Segmento</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="stop-times" className="flex-grow text-xs sm:text-sm">
+                      <span className="hidden xs:inline">Tiempos de </span>
+                      <span>Parada</span>
+                    </TabsTrigger>
+                    {showAssignmentFields && (
+                      <TabsTrigger value="assignment" className="flex-grow text-xs sm:text-sm">
+                        <span>Asignación</span>
                       </TabsTrigger>
-                      <TabsTrigger value="stop-times" className="flex-grow text-xs sm:text-sm">
-                        <span className="hidden xs:inline">Tiempos de </span>
-                        <span>Parada</span>
-                      </TabsTrigger>
-                      {/* Mostrar la pestaña de asignación solo en modo edición */}
-                      {showAssignmentFields && (
-                        <TabsTrigger value="assignment" className="flex-grow text-xs sm:text-sm">
-                          <span>Asignación</span>
-                        </TabsTrigger>
-                      )}
-                    </TabsList>
-                    
-                    <TabsContent value="segments">
-                      <div className="space-y-4">
-                        <div className="flex items-center mb-4">
-                          <p className="text-sm text-gray-500 mr-1">
-                            Configure el precio de cada segmento del viaje.
-                          </p>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <HelpCircleIcon className="h-4 w-4 text-primary/70 cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent className="w-80 p-4">
-                                <p>Los precios de cada tramo se configuran independientemente.</p>
-                                <p className="mt-2">Los horarios se establecen automáticamente basados en los tiempos de parada que configure en la pestaña "Tiempos de Parada".</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
+                    )}
+                  </TabsList>
+                  
+                  <TabsContent value="segments">
+                    <div className="space-y-4">
+                      <div className="flex items-center mb-4">
+                        <p className="text-sm text-gray-500 mr-1">
+                          Configure el precio de cada segmento del viaje.
+                        </p>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircleIcon className="h-4 w-4 text-primary/70 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent className="w-80 p-4">
+                              <p>Los precios de cada tramo se configuran independientemente.</p>
+                              <p className="mt-2">Los horarios se establecen automáticamente basados en los tiempos de parada que configure en la pestaña "Tiempos de Parada".</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
 
-                        {/* Versión móvil - tarjetas */}
-                        <div className="md:hidden space-y-4">
-                          {segmentPrices.map((segment, index) => (
-                            <div key={`segment-card-${index}`} className="border rounded-md p-3 bg-white shadow-sm">
-                              <div className="font-medium text-sm text-primary mb-1">
-                                {segment.origin} → {segment.destination}
+                      {/* Versión móvil - tarjetas */}
+                      <div className="md:hidden space-y-4">
+                        {segmentPrices.map((segment, index) => (
+                          <div key={`segment-card-${index}`} className="border rounded-md p-3 bg-white shadow-sm">
+                            <div className="font-medium text-sm text-primary mb-1">
+                              {segment.origin} → {segment.destination}
+                            </div>
+                            <div className="grid grid-cols-1 gap-2">
+                              <div>
+                                <div className="text-xs text-gray-500 mb-1">Precio</div>
+                                <Input
+                                  type="number"
+                                  value={segment.price}
+                                  onChange={(e) => updateSegmentPrice(index, parseInt(e.target.value) || 0)}
+                                  className="w-full"
+                                />
                               </div>
-                              <div className="grid grid-cols-1 gap-2">
+                              <div className="flex justify-between">
                                 <div>
-                                  <div className="text-xs text-gray-500 mb-1">Precio</div>
-                                  <Input
-                                    type="number"
-                                    value={segment.price}
-                                    onChange={(e) => updateSegmentPrice(index, parseInt(e.target.value) || 0)}
-                                    className="w-full"
-                                  />
+                                  <div className="text-xs text-gray-500">Salida</div>
+                                  <div className="text-sm">{segment.departureTime || "Pendiente"}</div>
                                 </div>
-                                <div className="flex justify-between">
-                                  <div>
-                                    <div className="text-xs text-gray-500">Salida</div>
-                                    <div className="text-sm">{segment.departureTime || "Pendiente"}</div>
-                                  </div>
-                                  <div>
-                                    <div className="text-xs text-gray-500">Llegada</div>
-                                    <div className="text-sm">{segment.arrivalTime || "Pendiente"}</div>
-                                  </div>
+                                <div>
+                                  <div className="text-xs text-gray-500">Llegada</div>
+                                  <div className="text-sm">{segment.arrivalTime || "Pendiente"}</div>
                                 </div>
                               </div>
                             </div>
-                          ))}
-                        </div>
+                          </div>
+                        ))}
+                      </div>
 
-                        {/* Versión escritorio - tabla */}
-                        <div className="overflow-x-auto hidden md:block">
+                      {/* Versión escritorio - precios por ciudad */}
+                      <div className="overflow-x-auto hidden md:block">
+                        <div className="mb-8">
+                          <h3 className="text-sm font-semibold mb-2">Configuración por ciudades</h3>
+                          <p className="text-sm text-gray-500 mb-4">
+                            Configure el precio entre ciudades principales. Este precio se aplicará automáticamente
+                            a todas las combinaciones de paradas entre las mismas ciudades.
+                          </p>
+                          
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ciudad Origen</th>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ciudad Destino</th>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paradas afectadas</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {(() => {
+                                const { cityGroups, cityPairs } = groupSegmentsByCity(segmentPrices);
+                                
+                                return cityPairs.map((cityPair: {origin: string, destination: string}, idx: number) => {
+                                  const key = `${cityPair.origin}||${cityPair.destination}`;
+                                  const groupSegments = cityGroups[key] || [];
+                                  const firstSegment = groupSegments[0] || { price: 0 };
+                                  
+                                  return (
+                                    <tr key={`city-${idx}`} className="hover:bg-gray-50 bg-gray-50">
+                                      <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        {cityPair.origin}
+                                      </td>
+                                      <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        {cityPair.destination}
+                                      </td>
+                                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                        <Input
+                                          type="number"
+                                          value={firstSegment.price}
+                                          onChange={(e) => {
+                                            const newPrice = parseInt(e.target.value) || 0;
+                                            
+                                            groupSegments.forEach((groupSegment: SegmentTimePrice) => {
+                                              const segmentIndex = segmentPrices.findIndex(s => 
+                                                s.origin === groupSegment.origin && 
+                                                s.destination === groupSegment.destination
+                                              );
+                                              
+                                              if (segmentIndex !== -1) {
+                                                updateSegmentPrice(segmentIndex, newPrice);
+                                              }
+                                            });
+                                          }}
+                                          className="w-24"
+                                        />
+                                      </td>
+                                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                        {groupSegments.length} combinaciones
+                                      </td>
+                                    </tr>
+                                  );
+                                });
+                              })()}
+                            </tbody>
+                          </table>
+                        </div>
+                        
+                        {/* Tabla de segmentos individuales */}
+                        <div className="mt-8">
+                          <h3 className="text-sm font-semibold mb-2">Detalles por parada específica</h3>
+                          <p className="text-sm text-gray-500 mb-4">
+                            Aquí puede ver los precios aplicados a cada combinación de paradas específicas.
+                            Estos precios se actualizan automáticamente al cambiar los precios por ciudad.
+                          </p>
+                          
                           <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                               <tr>
                                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origen</th>
                                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destino</th>
                                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
-                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario de Salida</th>
-                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario de Llegada</th>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario Salida</th>
+                                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario Llegada</th>
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
@@ -1111,224 +808,210 @@ export function PublishTripForm() {
                           </table>
                         </div>
                       </div>
-                    </TabsContent>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="stop-times">
+                    <p className="text-sm text-gray-500 mb-4">
+                      Configure los tiempos estimados de llegada a cada parada de la ruta. Estos tiempos se utilizarán en itinerarios y 
+                      para calcular estimaciones de tiempo para pasajeros.
+                    </p>
+                    <p className="text-sm text-primary-foreground bg-primary/10 p-3 rounded mb-4">
+                      Edite directamente los horarios haciendo clic en el campo de tiempo. Los cambios actualizarán automáticamente 
+                      los tiempos de salida y llegada para cada segmento de viaje.
+                    </p>
                     
-                    <TabsContent value="stop-times">
-                      <p className="text-sm text-gray-500 mb-4">
-                        Configure los tiempos estimados de llegada a cada parada de la ruta. Estos tiempos se utilizarán en itinerarios y 
-                        para calcular estimaciones de tiempo para pasajeros.
-                      </p>
-                      <p className="text-sm text-primary-foreground bg-primary/10 p-3 rounded mb-4">
-                        Edite directamente los horarios haciendo clic en el campo de tiempo. Los cambios actualizarán automáticamente 
-                        los tiempos de salida y llegada para cada segmento de viaje.
-                      </p>
-                      
-                      {/* Vista móvil */}
-                      <div className="md:hidden space-y-4">
-                        {routeSegmentsQuery.data && [
-                          routeSegmentsQuery.data.origin,
-                          ...(routeSegmentsQuery.data.stops || []),
-                          routeSegmentsQuery.data.destination
-                        ].map((location, index) => (
-                          <div key={`stop-card-${index}`} className="border rounded-md p-3 bg-white shadow-sm">
-                            <div className="font-medium text-sm mb-2">
-                              {index === 0 ? (
-                                <span className="text-primary">Origen: {location}</span>
-                              ) : routeSegmentsQuery.data?.origin && index === [
-                                  routeSegmentsQuery.data.origin, 
-                                  ...(routeSegmentsQuery.data.stops || []), 
-                                  routeSegmentsQuery.data.destination
-                                ].length - 1 ? (
-                                <span className="text-primary">Destino: {location}</span>
-                              ) : (
-                                <span>Parada {index}: {location}</span>
-                              )}
-                            </div>
-                            <div className="mt-2">
-                              <div className="text-xs text-gray-500 mb-1">Horario</div>
-                              <TimeInput
-                                key={`time-input-mobile-${index}-${stopTimes[index]?.hour || '08'}-${stopTimes[index]?.minute || '00'}-${stopTimes[index]?.ampm || 'AM'}`}
-                                value={stopTimes[index] ? `${stopTimes[index]?.hour}:${stopTimes[index]?.minute} ${stopTimes[index]?.ampm}` : "08:00 AM"}
-                                onChange={(timeString) => {
-                                  updateStopTime(index, timeString);
-                                }}
-                              />
-                            </div>
+                    {/* Vista móvil */}
+                    <div className="md:hidden space-y-4">
+                      {routeSegmentsQuery.data && [
+                        routeSegmentsQuery.data.origin,
+                        ...(routeSegmentsQuery.data.stops || []),
+                        routeSegmentsQuery.data.destination
+                      ].map((location, index) => (
+                        <div key={`stop-card-${index}`} className="border rounded-md p-3 bg-white shadow-sm">
+                          <div className="font-medium text-sm mb-2">
+                            {index === 0 ? (
+                              <span className="text-primary">Origen: {location}</span>
+                            ) : routeSegmentsQuery.data?.origin && index === [
+                                routeSegmentsQuery.data.origin, 
+                                ...(routeSegmentsQuery.data.stops || []), 
+                                routeSegmentsQuery.data.destination
+                              ].length - 1 ? (
+                              <span className="text-primary">Destino: {location}</span>
+                            ) : (
+                              <span>Parada {index}: {location}</span>
+                            )}
                           </div>
-                        ))}
-                      </div>
-                      
-                      {/* Vista escritorio */}
-                      <div className="overflow-x-auto hidden md:block">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
-                              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {routeSegmentsQuery.data && [
-                              routeSegmentsQuery.data.origin,
-                              ...(routeSegmentsQuery.data.stops || []),
-                              routeSegmentsQuery.data.destination
-                            ].map((location, index) => (
-                              <tr key={`stop-${index}`} className="hover:bg-gray-50">
-                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                                  {index === 0 ? (
-                                    <span className="text-primary">Origen: {location}</span>
-                                  ) : routeSegmentsQuery.data?.origin && index === [
-                                      routeSegmentsQuery.data.origin, 
-                                      ...(routeSegmentsQuery.data.stops || []), 
-                                      routeSegmentsQuery.data.destination
-                                    ].length - 1 ? (
-                                    <span className="text-primary">Destino: {location}</span>
-                                  ) : (
-                                    <span>Parada {index}: {location}</span>
-                                  )}
-                                </td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                  <TimeInput
-                                    key={`time-input-desktop-${index}-${stopTimes[index]?.hour || '08'}-${stopTimes[index]?.minute || '00'}-${stopTimes[index]?.ampm || 'AM'}`}
-                                    value={stopTimes[index] ? `${stopTimes[index]?.hour}:${stopTimes[index]?.minute} ${stopTimes[index]?.ampm}` : "08:00 AM"}
-                                    onChange={(timeString) => {
-                                      updateStopTime(index, timeString);
-                                    }}
-                                  />
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </TabsContent>
-                    
-                    {/* Pestaña de asignación de vehículo y conductor */}
-                    {showAssignmentFields && (
-                      <TabsContent value="assignment">
-                        <div className="space-y-6">
-                          <div className="flex items-center mb-4">
-                            <p className="text-sm text-gray-500 mr-1">
-                              Asigne un vehículo y un conductor a este viaje.
-                            </p>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <HelpCircleIcon className="h-4 w-4 text-primary/70 cursor-help" />
-                                </TooltipTrigger>
-                                <TooltipContent className="w-80 p-4">
-                                  <p>La asignación de vehículo y conductor permite controlar quién realizará este viaje.</p>
-                                  <p className="mt-2">El conductor podrá ver este viaje en su panel y gestionar el abordaje de pasajeros.</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Selección de vehículo */}
-                            <FormField
-                              control={form.control}
-                              name="vehicleId"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Vehículo</FormLabel>
-                                  <Select 
-                                    onValueChange={(value) => value === "none" ? field.onChange(null) : field.onChange(parseInt(value) || null)}
-                                    value={field.value?.toString() || "none"}
-                                  >
-                                    <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Seleccionar vehículo" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      <SelectItem value="none">Sin asignar</SelectItem>
-                                      {vehiclesQuery.data?.map((vehicle: any) => (
-                                        <SelectItem key={vehicle.id} value={vehicle.id.toString()}>
-                                          {vehicle.brand} {vehicle.model} ({vehicle.plates}) - {vehicle.capacity} asientos
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            
-                            {/* Selección de conductor */}
-                            <FormField
-                              control={form.control}
-                              name="driverId"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Conductor</FormLabel>
-                                  <Select 
-                                    onValueChange={(value) => value === "none" ? field.onChange(null) : field.onChange(parseInt(value) || null)}
-                                    value={field.value?.toString() || "none"}
-                                  >
-                                    <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Seleccionar conductor" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      <SelectItem value="none">Sin asignar</SelectItem>
-                                      {driversQuery.data?.map((driver: any) => (
-                                        <SelectItem key={driver.id} value={driver.id.toString()}>
-                                          {driver.firstName} {driver.lastName}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
+                          <div className="mt-2">
+                            <div className="text-xs text-gray-500 mb-1">Horario</div>
+                            <TimeInput
+                              key={`time-input-mobile-${index}-${stopTimes[index]?.hour || '08'}-${stopTimes[index]?.minute || '00'}-${stopTimes[index]?.ampm || 'AM'}`}
+                              value={stopTimes[index] ? `${stopTimes[index]?.hour}:${stopTimes[index]?.minute} ${stopTimes[index]?.ampm}` : "08:00 AM"}
+                              onChange={(timeString) => {
+                                updateStopTime(index, timeString);
+                              }}
                             />
                           </div>
                         </div>
-                      </TabsContent>
-                    )}
-                  </Tabs>
-                )}
-                
-                <div className="flex justify-end pt-4 border-t">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="mr-2"
-                    onClick={() => {
-                      setShowForm(false);
-                      setEditingTripId(null);
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={publishTripMutation.isPending || updateTripMutation.isPending}
-                    className="ml-2"
-                  >
-                    {(publishTripMutation.isPending || updateTripMutation.isPending) && (
-                      <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    {editingTripId ? "Actualizar Viaje" : "Publicar Viaje"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      ) : (
-        // Mostrar la lista de viajes cuando no se muestra el formulario
-        <TripList onEditTrip={handleEditTrip} />
+                      ))}
+                    </div>
+                    
+                    {/* Vista escritorio */}
+                    <div className="overflow-x-auto hidden md:block">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horario</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {routeSegmentsQuery.data && [
+                            routeSegmentsQuery.data.origin,
+                            ...(routeSegmentsQuery.data.stops || []),
+                            routeSegmentsQuery.data.destination
+                          ].map((location, index) => (
+                            <tr key={`stop-${index}`} className="hover:bg-gray-50">
+                              <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {index === 0 ? (
+                                  <span className="text-primary">Origen: {location}</span>
+                                ) : routeSegmentsQuery.data?.origin && index === [
+                                    routeSegmentsQuery.data.origin, 
+                                    ...(routeSegmentsQuery.data.stops || []), 
+                                    routeSegmentsQuery.data.destination
+                                  ].length - 1 ? (
+                                  <span className="text-primary">Destino: {location}</span>
+                                ) : (
+                                  <span>Parada {index}: {location}</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                <TimeInput
+                                  key={`time-input-desktop-${index}-${stopTimes[index]?.hour || '08'}-${stopTimes[index]?.minute || '00'}-${stopTimes[index]?.ampm || 'AM'}`}
+                                  value={stopTimes[index] ? `${stopTimes[index]?.hour}:${stopTimes[index]?.minute} ${stopTimes[index]?.ampm}` : "08:00 AM"}
+                                  onChange={(timeString) => {
+                                    updateStopTime(index, timeString);
+                                  }}
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </TabsContent>
+                  
+                  {showAssignmentFields && (
+                    <TabsContent value="assignment">
+                      <div className="space-y-6">
+                        <div className="flex items-center mb-4">
+                          <p className="text-sm text-gray-500 mr-1">
+                            Asigne un vehículo y un conductor a este viaje.
+                          </p>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircleIcon className="h-4 w-4 text-primary/70 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent className="w-80 p-4">
+                                <p>La asignación de vehículo y conductor permite controlar quién realizará este viaje.</p>
+                                <p className="mt-2">Puede cambiar estas asignaciones más tarde si es necesario.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Vehículo */}
+                          <FormField
+                            control={form.control}
+                            name="vehicleId"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Vehículo</FormLabel>
+                                <Select
+                                  disabled={vehiclesQuery.isLoading}
+                                  onValueChange={(value) => field.onChange(Number(value) || null)}
+                                  value={field.value ? String(field.value) : ""}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Seleccione un vehículo" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="">Sin asignar</SelectItem>
+                                    {vehiclesQuery.data?.map((vehicle) => (
+                                      <SelectItem key={vehicle.id} value={String(vehicle.id)}>
+                                        {vehicle.model} - {vehicle.licensePlate}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          {/* Conductor */}
+                          <FormField
+                            control={form.control}
+                            name="driverId"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Conductor</FormLabel>
+                                <Select
+                                  disabled={driversQuery.isLoading}
+                                  onValueChange={(value) => field.onChange(Number(value) || null)}
+                                  value={field.value ? String(field.value) : ""}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Seleccione un conductor" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="">Sin asignar</SelectItem>
+                                    {driversQuery.data?.map((driver) => (
+                                      <SelectItem key={driver.id} value={String(driver.id)}>
+                                        {driver.firstName} {driver.lastName}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+                  )}
+                </Tabs>
+              )}
+              
+              <div className="flex justify-end">
+                <Button 
+                  type="submit" 
+                  className="w-full md:w-auto"
+                  disabled={publishTripMutation.isPending || updateTripMutation.isPending}
+                >
+                  {(publishTripMutation.isPending || updateTripMutation.isPending) && (
+                    <span className="mr-2 animate-spin">⏳</span>
+                  )}
+                  {editingTripId ? "Actualizar Viaje" : "Publicar Viaje"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </div>
       )}
-      
-      <div className="text-sm text-gray-500 pt-4">
-        <p className="flex items-center">
-          <InfoIcon className="h-4 w-4 mr-2 text-primary" />
-          Los horarios de parada se utilizan para calcular tiempos estimados de llegada a cada ubicación.
-        </p>
-      </div>
+
+      {/* Trip list */}
+      <TripList 
+        onEditTrip={loadTripForEditing} 
+        editMode={!!editingTripId}
+      />
     </div>
   );
 }
