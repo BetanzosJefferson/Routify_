@@ -2855,6 +2855,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: 'Usuario no autenticado' 
         });
       }
+      
+      console.log(`[CHECK TICKET] Solicitud de escaneo de ticket ${id} por usuario ${req.user.firstName} ${req.user.lastName} (ID: ${req.user.id})`);
     
       // Verificar permisos: solo ciertos roles pueden escanear tickets
       const allowedRoles = [
@@ -2867,19 +2869,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
       
       if (!allowedRoles.includes(req.user.role)) {
+        console.log(`[CHECK TICKET] DENEGADO: Rol ${req.user.role} no autorizado para escanear tickets`);
         return res.status(403).json({ 
           success: false, 
           message: 'No tienes permiso para escanear tickets' 
         });
       }
       
-      // Si el usuario no es superAdmin, verificar que pertenece a la misma compañía
+      // Obtener los detalles del viaje asociado a la reservación
+      const trip = await storage.getTrip(reservation.tripId);
+      if (!trip) {
+        console.log(`[CHECK TICKET] DENEGADO: No se encontró el viaje ${reservation.tripId} asociado a la reservación ${id}`);
+        return res.status(404).json({ 
+          success: false, 
+          message: 'No se encontró el viaje asociado a esta reservación' 
+        });
+      }
+      
+      // Obtener la compañía del usuario
+      const userCompanyId = req.user.company || (req.user as any).companyId;
+      
+      // Obtener la compañía del viaje
+      const tripCompanyId = trip.companyId;
+      
+      console.log(`[CHECK TICKET] Verificando compañías - Usuario: ${userCompanyId || 'ninguna'}, Viaje: ${tripCompanyId || 'ninguna'}`);
+      
+      // Verificar si ambas compañías coinciden (solo si el usuario no es superAdmin)
       if (req.user.role !== UserRole.SUPER_ADMIN) {
-        const userCompany = req.user.company || (req.user as any).companyId;
-        if (reservation.companyId && reservation.companyId !== userCompany) {
+        // Si el usuario no tiene compañía asignada, no puede escanear tickets
+        if (!userCompanyId) {
+          console.log(`[CHECK TICKET] DENEGADO: Usuario sin compañía asignada`);
           return res.status(403).json({ 
             success: false, 
-            message: 'No puedes escanear tickets de otra compañía' 
+            message: 'No tienes una compañía asignada para escanear tickets' 
+          });
+        }
+        
+        // Si el viaje no tiene compañía asignada, aplicamos una restricción similar
+        if (!tripCompanyId) {
+          console.log(`[CHECK TICKET] DENEGADO: El viaje no tiene compañía asignada`);
+          return res.status(403).json({ 
+            success: false, 
+            message: 'El viaje asociado no tiene compañía asignada' 
+          });
+        }
+        
+        // Verificar que las compañías coincidan
+        if (userCompanyId !== tripCompanyId) {
+          console.log(`[CHECK TICKET] DENEGADO: Las compañías no coinciden - Usuario: ${userCompanyId}, Viaje: ${tripCompanyId}`);
+          return res.status(403).json({ 
+            success: false, 
+            message: 'No puedes escanear tickets de viajes que no pertenecen a tu compañía' 
           });
         }
       }
@@ -2889,6 +2929,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Determinar si es la primera vez que se escanea este ticket
       const isFirstScan = reservation.checkedBy === null || reservation.checkedBy === undefined;
+      
+      console.log(`[CHECK TICKET] Ticket ${id} ${isFirstScan ? 'escaneado por primera vez' : 're-escaneado'} por usuario ${req.user.id}`);
       
       res.json({ 
         success: true, 
