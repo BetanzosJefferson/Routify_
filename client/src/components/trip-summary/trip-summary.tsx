@@ -123,11 +123,11 @@ export default function TripSummary({ className }: TripSummaryProps) {
       
       // Calcular ventas por método de pago
       const cashSales = allReservations
-        .filter(res => res.paymentMethod === 'cash')
+        .filter(res => res.paymentMethod === 'efectivo')
         .reduce((acc, res) => acc + (res.totalAmount || 0), 0);
         
       const transferSales = allReservations
-        .filter(res => res.paymentMethod === 'transfer')
+        .filter(res => res.paymentMethod === 'transferencia')
         .reduce((acc, res) => acc + (res.totalAmount || 0), 0);
       
       setTripReservations(allReservations);
@@ -488,19 +488,19 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                           {reservation.advanceAmount && reservation.advanceAmount > 0 && (
                                             <div className="text-sm text-gray-700">
                                               <span className="font-medium">Anticipo:</span> ${reservation.advanceAmount.toLocaleString('es-MX')} 
-                                              ({reservation.advancePaymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'})
+                                              ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
                                             </div>
                                           )}
                                           
                                           {(reservation.paymentStatus === 'paid' || reservation.status === 'paid') ? (
                                             <div className="text-sm text-gray-700">
                                               <span className="font-medium">Pagó:</span> ${(reservation.totalAmount - (reservation.advanceAmount || 0)).toLocaleString('es-MX')} 
-                                              ({reservation.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'})
+                                              ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
                                             </div>
                                           ) : (
                                             <div className="text-sm text-gray-700">
                                               <span className="font-medium">Restó:</span> ${(reservation.totalAmount - (reservation.advanceAmount || 0)).toLocaleString('es-MX')}
-                                              {reservation.paymentMethod && ` (${reservation.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'})`}
+                                              {reservation.paymentMethod && ` (${reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})`}
                                             </div>
                                           )}
                                           
