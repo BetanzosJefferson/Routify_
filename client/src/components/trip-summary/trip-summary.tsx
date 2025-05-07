@@ -191,7 +191,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
         <div className="rounded-full bg-primary bg-opacity-10 p-2 mr-3">
           <ClipboardListIcon className="h-6 w-6 text-primary" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-800">Resumen de Viajes</h2>
+        <h2 className="text-xl font-semibold text-gray-800">Bitácora</h2>
       </div>
 
       {/* Selector de fecha */}
@@ -315,7 +315,15 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               <div>
                                 <Label className="text-gray-500">Vehículo</Label>
                                 <div className="font-medium capitalize">
-                                  {trips.find(t => t.id === selectedTrip)?.vehicle?.name}
+                                  {trips.find(t => t.id === selectedTrip)?.vehicle?.name || 'No asignado'}
+                                </div>
+                              </div>
+                              <div>
+                                <Label className="text-gray-500">Operador Asignado</Label>
+                                <div className="font-medium capitalize">
+                                  {trips.find(t => t.id === selectedTrip)?.assignedDriver 
+                                    ? `${trips.find(t => t.id === selectedTrip)?.assignedDriver?.firstName} ${trips.find(t => t.id === selectedTrip)?.assignedDriver?.lastName}`
+                                    : 'No asignado'}
                                 </div>
                               </div>
                             </div>
@@ -414,53 +422,105 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                       Ruta
                                     </th>
                                     <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                      Pago
+                                      Estado de Pago
                                     </th>
                                     <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                      Importe
+                                      Pagos
+                                    </th>
+                                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Creado Por
+                                    </th>
+                                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Ticket Escaneado
                                     </th>
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                  {tripReservations.flatMap(reservation => 
-                                    reservation.passengers.map((passenger, index) => (
-                                      <tr key={`${reservation.id}-${index}`} className="hover:bg-gray-50">
-                                        <td className="py-3 px-4 whitespace-nowrap">
-                                          <div className="text-sm font-medium text-gray-900">
-                                            {passenger.firstName} {passenger.lastName}
-                                          </div>
-                                        </td>
-                                        <td className="py-3 px-4 whitespace-nowrap">
-                                          <div className="text-sm text-gray-500">{reservation.email}</div>
-                                          <div className="text-sm text-gray-500">{reservation.phone}</div>
-                                        </td>
-                                        <td className="py-3 px-4 whitespace-nowrap">
+                                  {tripReservations.map((reservation, reservationIndex) => (
+                                    // Usando index del reservation como key principal
+                                    <tr key={reservation.id} className="hover:bg-gray-50">
+                                      <td className="py-3 px-4 whitespace-nowrap">
+                                        <div className="text-sm font-medium text-gray-900">
+                                          {reservation.passengers.map((p, i) => (
+                                            <div key={i} className={i > 0 ? "mt-1" : ""}>
+                                              {p.firstName} {p.lastName}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </td>
+                                      <td className="py-3 px-4 whitespace-nowrap">
+                                        <div className="text-sm text-gray-500">{reservation.email}</div>
+                                        <div className="text-sm text-gray-500">{reservation.phone}</div>
+                                      </td>
+                                      <td className="py-3 px-4 whitespace-nowrap">
+                                        <div className="text-sm text-gray-900">
+                                          {reservation.trip?.segmentOrigin || reservation.trip?.route.origin} → {' '}
+                                          {reservation.trip?.segmentDestination || reservation.trip?.route.destination}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                          {reservation.trip.departureTime} - {reservation.trip.arrivalTime}
+                                        </div>
+                                      </td>
+                                      <td className="py-3 px-4 whitespace-nowrap">
+                                        <div className="text-sm font-medium">
+                                          <Badge variant={reservation.paymentStatus === 'paid' ? 'outline' : 'default'} 
+                                            className={reservation.paymentStatus === 'paid' 
+                                              ? 'border-green-500 text-green-700 bg-green-50' 
+                                              : 'bg-yellow-100 text-yellow-700'}>
+                                            {reservation.paymentStatus === 'paid' ? 'PAGADO' : 'PENDIENTE'}
+                                          </Badge>
+                                        </div>
+                                      </td>
+                                      <td className="py-3 px-4 whitespace-nowrap">
+                                        <div className="space-y-1">
                                           <div className="text-sm text-gray-900">
-                                            {reservation.trip?.segmentOrigin || reservation.trip?.route.origin} → {' '}
-                                            {reservation.trip?.segmentDestination || reservation.trip?.route.destination}
+                                            <span className="font-medium">Total:</span> ${reservation.totalAmount.toLocaleString('es-MX')}
                                           </div>
-                                          <div className="text-xs text-gray-500">
-                                            {reservation.trip.departureTime} - {reservation.trip.arrivalTime}
+                                          {reservation.advanceAmount > 0 && (
+                                            <div className="text-sm text-gray-700">
+                                              <span className="font-medium">Anticipo:</span> ${reservation.advanceAmount.toLocaleString('es-MX')}
+                                              <Badge variant="outline" className="ml-1 text-xs" size="sm">
+                                                {reservation.advancePaymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
+                                              </Badge>
+                                            </div>
+                                          )}
+                                          {reservation.paymentStatus === 'paid' && (
+                                            <div className="text-sm text-gray-700">
+                                              <span className="font-medium">Pagó:</span> ${(reservation.totalAmount - (reservation.advanceAmount || 0)).toLocaleString('es-MX')}
+                                              <Badge variant="outline" className="ml-1 text-xs" size="sm">
+                                                {reservation.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
+                                              </Badge>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </td>
+                                      <td className="py-3 px-4 whitespace-nowrap">
+                                        {reservation.createdBy ? (
+                                          <div className="text-sm text-gray-700">
+                                            {reservation.createdByUser?.firstName} {reservation.createdByUser?.lastName}
                                           </div>
-                                        </td>
-                                        <td className="py-3 px-4 whitespace-nowrap">
-                                          <div className="text-sm font-medium">
-                                            <Badge variant={reservation.paymentMethod === 'cash' ? 'outline' : 'secondary'} 
-                                              className={reservation.paymentMethod === 'cash' 
-                                                ? 'border-yellow-500 text-yellow-700' 
-                                                : 'bg-indigo-100 text-indigo-700'}>
-                                              {reservation.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
+                                        ) : (
+                                          <div className="text-sm italic text-gray-500">No registrado</div>
+                                        )}
+                                      </td>
+                                      <td className="py-3 px-4 whitespace-nowrap">
+                                        {reservation.checkedBy ? (
+                                          <div className="flex items-center">
+                                            <Badge variant="outline" className="border-green-500 text-green-700 bg-green-50">
+                                              Escaneado
                                             </Badge>
+                                            <span className="ml-2 text-xs text-gray-500">
+                                              {reservation.checkedAt && new Date(reservation.checkedAt).toLocaleString('es-MX')}
+                                            </span>
                                           </div>
-                                        </td>
-                                        <td className="py-3 px-4 whitespace-nowrap">
-                                          <div className="text-sm font-medium text-gray-900">
-                                            ${reservation.totalAmount.toLocaleString('es-MX')}
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    ))
-                                  )}
+                                        ) : (
+                                          <Badge variant="outline" className="border-gray-300 text-gray-500">
+                                            Pendiente
+                                          </Badge>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  ))}
                                 </tbody>
                               </table>
                             </div>

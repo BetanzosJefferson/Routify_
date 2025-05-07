@@ -166,7 +166,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   active={(location === '/' || location === '/dashboard') && activeTab === "trip-summary"}
                   onClick={() => handleTabClick("trip-summary")}
                 >
-                  Resumen de Viajes
+                  Bitácora
                 </NavItem>
               )}
               {canAccess("boarding-list") && (
