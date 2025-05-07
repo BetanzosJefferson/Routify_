@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { 
@@ -109,6 +110,7 @@ type TripListProps = {
 export default function TripList({ onEditTrip }: TripListProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [showFilter, setShowFilter] = useState(false);
@@ -119,6 +121,11 @@ export default function TripList({ onEditTrip }: TripListProps) {
   const [assignDriverDialogOpen, setAssignDriverDialogOpen] = useState<number | null>(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  
+  // Función para redirigir a la página de edición de viajes
+  const redirectToTripEdit = (tripId: number) => {
+    setLocation(`/edit-trip/${tripId}`);
+  };
 
   // Consulta para obtener todos los viajes
   const { data: trips = [], isLoading, refetch } = useQuery({
@@ -673,7 +680,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => onEditTrip(trip.id)}
+                              onClick={() => redirectToTripEdit(trip.id)}
                               className="h-8 w-8"
                             >
                               <PencilIcon className="h-4 w-4" />
