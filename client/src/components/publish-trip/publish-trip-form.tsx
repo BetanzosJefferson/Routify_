@@ -17,6 +17,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PriceInput } from "@/components/ui/price-input";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -676,19 +677,11 @@ export function PublishTripForm() {
                             <div className="grid grid-cols-1 gap-2">
                               <div>
                                 <div className="text-xs text-gray-500 mb-1">Precio</div>
-                                <Input
-                                  type="number"
-                                  min="0"
+                                <PriceInput
                                   value={segment.price}
                                   onChange={(e) => {
                                     const inputValue = e.target.value;
-                                    let newPrice = 0;
-                                    if (inputValue !== '') {
-                                      const parsedValue = parseInt(inputValue);
-                                      if (!isNaN(parsedValue)) {
-                                        newPrice = parsedValue;
-                                      }
-                                    }
+                                    const newPrice = inputValue === '' ? 0 : parseInt(inputValue);
                                     updateSegmentPrice(index, newPrice);
                                   }}
                                   className="w-full"
@@ -745,22 +738,14 @@ export function PublishTripForm() {
                                         {cityPair.destination}
                                       </td>
                                       <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                        <Input
-                                          type="number"
-                                          min="0"
+                                        <PriceInput
                                           value={firstSegment.price}
                                           onChange={(e) => {
-                                            // Permitir valores vacíos temporalmente durante la edición
+                                            // Convertir el valor a número
                                             const inputValue = e.target.value;
-                                            // Si el valor está vacío o es inválido, usar 0 como fallback
-                                            let newPrice = 0;
-                                            if (inputValue !== '') {
-                                              const parsedValue = parseInt(inputValue);
-                                              if (!isNaN(parsedValue)) {
-                                                newPrice = parsedValue;
-                                              }
-                                            }
+                                            const newPrice = inputValue === '' ? 0 : parseInt(inputValue);
                                             
+                                            // Aplicar a todos los segmentos del grupo
                                             groupSegments.forEach((groupSegment: SegmentTimePrice) => {
                                               const segmentIndex = segmentPrices.findIndex(s => 
                                                 s.origin === groupSegment.origin && 
@@ -810,19 +795,11 @@ export function PublishTripForm() {
                                   <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{segment.origin}</td>
                                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{segment.destination}</td>
                                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                    <Input
-                                      type="number"
-                                      min="0"
+                                    <PriceInput
                                       value={segment.price}
                                       onChange={(e) => {
                                         const inputValue = e.target.value;
-                                        let newPrice = 0;
-                                        if (inputValue !== '') {
-                                          const parsedValue = parseInt(inputValue);
-                                          if (!isNaN(parsedValue)) {
-                                            newPrice = parsedValue;
-                                          }
-                                        }
+                                        const newPrice = inputValue === '' ? 0 : parseInt(inputValue);
                                         updateSegmentPrice(index, newPrice);
                                       }}
                                       className="w-24"
