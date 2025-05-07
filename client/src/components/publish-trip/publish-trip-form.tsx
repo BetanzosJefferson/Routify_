@@ -493,11 +493,18 @@ export function PublishTripForm() {
       // Extraer datos relevantes y establecer en el formulario
       handleRouteChange(String(tripData.routeId));
       
+      // Formateamos la fecha del viaje a formato YYYY-MM-DD para los campos date
+      let formattedDate = tripData.departureDate;
+      if (formattedDate && formattedDate.includes('T')) {
+        formattedDate = formattedDate.split('T')[0];
+      }
+      
       // Setear los valores en el formulario
       form.setValue("routeId", tripData.routeId);
-      form.setValue("startDate", tripData.date);
-      form.setValue("endDate", tripData.date);
+      form.setValue("startDate", formattedDate);
+      form.setValue("endDate", formattedDate);
       form.setValue("capacity", tripData.capacity);
+      form.setValue("price", tripData.price);
       
       // Establecer vehículo y conductor si existen
       if (tripData.vehicleId) {
@@ -508,8 +515,76 @@ export function PublishTripForm() {
         form.setValue("driverId", tripData.driverId);
       }
       
-      // Los segmentos se cargarán automáticamente a través de la consulta de ruta
-      // cuando routeId cambie
+      // Esperar a que se carguen los datos del segmento
+      const waitForSegmentsLoaded = async () => {
+        // Si ya tenemos los segmentos cargados, procedemos a configurar los precios
+        if (routeSegmentsQuery.data) {
+          // Cargar los precios por segmento si existen
+          if (tripData.segmentPrices && Array.isArray(tripData.segmentPrices)) {
+            console.log("Cargando precios por segmento:", tripData.segmentPrices);
+            setSegmentPrices(tripData.segmentPrices);
+            form.setValue("segmentPrices", tripData.segmentPrices);
+          }
+          
+          // Cargar los horarios de parada si existen
+          const allLocations = [
+            routeSegmentsQuery.data.origin,
+            ...(routeSegmentsQuery.data.stops || []),
+            routeSegmentsQuery.data.destination
+          ];
+          
+          // Inicializar tiempos de parada usando tiempos reales del viaje
+          if (allLocations.length > 0) {
+            const stopTimes: StopTime[] = [];
+            
+            // Agregar origen con hora de salida
+            const departureTimeParts = parseTimeString(tripData.departureTime);
+            stopTimes.push({
+              hour: departureTimeParts.hour,
+              minute: departureTimeParts.minute,
+              ampm: departureTimeParts.ampm,
+              location: allLocations[0]
+            });
+            
+            // Si hay paradas intermedias, establecer tiempos intermedios
+            if (allLocations.length > 2) {
+              for (let i = 1; i < allLocations.length - 1; i++) {
+                // Intentar encontrar tiempo para esta parada en los datos del viaje
+                const stopTime = {
+                  hour: "10",
+                  minute: "00",
+                  ampm: "AM",
+                  location: allLocations[i]
+                };
+                stopTimes.push(stopTime);
+              }
+            }
+            
+            // Agregar destino con hora de llegada
+            const arrivalTimeParts = parseTimeString(tripData.arrivalTime);
+            stopTimes.push({
+              hour: arrivalTimeParts.hour,
+              minute: arrivalTimeParts.minute,
+              ampm: arrivalTimeParts.ampm,
+              location: allLocations[allLocations.length - 1]
+            });
+            
+            setStopTimes(ensureValidStopTimes(stopTimes));
+          }
+          
+          return true;
+        }
+        
+        // Si los segmentos aún no están cargados, esperamos un poco y volvemos a intentarlo
+        return new Promise<boolean>(resolve => {
+          setTimeout(() => {
+            waitForSegmentsLoaded().then(resolve);
+          }, 300);
+        });
+      };
+      
+      // Iniciar la espera para que los segmentos se carguen
+      waitForSegmentsLoaded();
       
     } catch (error) {
       console.error("Error al cargar viaje para edición:", error);
@@ -519,6 +594,42 @@ export function PublishTripForm() {
         description: "No se pudo cargar la información del viaje para editar."
       });
     }
+  };
+  
+  // Función auxiliar para parsear un string de tiempo en formato "hh:mm AM/PM"
+  const parseTimeString = (timeString: string): { hour: string, minute: string, ampm: "AM" | "PM" } => {
+    if (!timeString) {
+      return { hour: "12", minute: "00", ampm: "PM" };
+    }
+    
+    try {
+      // Manejar formato "hh:mm AM/PM"
+      if (timeString.includes(" ")) {
+        const [time, period] = timeString.split(" ");
+        const [hour, minute] = time.split(":");
+        return {
+          hour: hour.padStart(2, "0"),
+          minute: minute.padStart(2, "0"),
+          ampm: (period.toUpperCase() === "PM" ? "PM" : "AM") as "AM" | "PM"
+        };
+      }
+      // Manejar formato 24 horas "hh:mm"
+      else if (timeString.includes(":")) {
+        const [hour, minute] = timeString.split(":");
+        const hourInt = parseInt(hour, 10);
+        const isPM = hourInt >= 12;
+        return {
+          hour: (isPM && hourInt > 12 ? hourInt - 12 : (hourInt === 0 ? 12 : hourInt)).toString().padStart(2, "0"),
+          minute: minute.padStart(2, "0"),
+          ampm: isPM ? "PM" : "AM"
+        };
+      }
+    } catch (error) {
+      console.error("Error al parsear tiempo:", timeString, error);
+    }
+    
+    // Valor predeterminado si hay errores
+    return { hour: "12", minute: "00", ampm: "PM" };
   };
 
   // Toggle form visibility
