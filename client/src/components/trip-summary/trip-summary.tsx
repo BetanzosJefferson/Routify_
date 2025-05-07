@@ -475,11 +475,11 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                       </td>
                                       <td className="py-3 px-4 whitespace-nowrap">
                                         <div className="text-sm font-medium">
-                                          <Badge variant={(reservation.paymentStatus === 'paid' || reservation.status === 'paid') ? 'outline' : 'default'} 
-                                            className={(reservation.paymentStatus === 'paid' || reservation.status === 'paid')
+                                          <Badge variant={(reservation.paymentStatus === 'paid' || reservation.paymentStatus === 'pagado' || reservation.status === 'paid' || reservation.status === 'pagado') ? 'outline' : 'default'} 
+                                            className={(reservation.paymentStatus === 'paid' || reservation.paymentStatus === 'pagado' || reservation.status === 'paid' || reservation.status === 'pagado')
                                               ? 'border-green-500 text-green-700 bg-green-50' 
                                               : 'bg-yellow-100 text-yellow-700'}>
-                                            {(reservation.paymentStatus === 'paid' || reservation.status === 'paid') ? 'PAGADO' : 'PENDIENTE'}
+                                            {(reservation.paymentStatus === 'paid' || reservation.paymentStatus === 'pagado' || reservation.status === 'paid' || reservation.status === 'pagado') ? 'PAGADO' : 'PENDIENTE'}
                                           </Badge>
                                         </div>
                                       </td>
@@ -492,7 +492,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                             </div>
                                           )}
                                           
-                                          {(reservation.paymentStatus === 'paid' || reservation.status === 'paid') ? (
+                                          {(reservation.paymentStatus === 'paid' || reservation.paymentStatus === 'pagado' || reservation.status === 'paid' || reservation.status === 'pagado') ? (
                                             <div className="text-sm text-gray-700">
                                               <span className="font-medium">Pagó:</span> ${(reservation.totalAmount - (reservation.advanceAmount || 0)).toLocaleString('es-MX')} 
                                               ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
