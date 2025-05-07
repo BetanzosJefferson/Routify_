@@ -100,12 +100,53 @@ export class DatabaseStorage implements IStorage {
   }
   
   async updateRoute(id: number, routeUpdate: Partial<Route>): Promise<Route | undefined> {
-    const [updatedRoute] = await db
-      .update(schema.routes)
-      .set(routeUpdate)
-      .where(eq(schema.routes.id, id))
-      .returning();
-    return updatedRoute;
+    try {
+      // Verificamos el formato de stops para asegurar que sea un array
+      let safeRoutUpdate = { ...routeUpdate };
+      if (routeUpdate.stops !== undefined) {
+        let safeStops: string[] = [];
+        
+        // Validar que stops sea un array o convertirlo apropiadamente
+        if (Array.isArray(routeUpdate.stops)) {
+          safeStops = routeUpdate.stops;
+          console.log("Actualizando stops como array:", safeStops);
+        }
+        // Si es un string JSON, intentar parsearlo
+        else if (typeof routeUpdate.stops === 'string') {
+          try {
+            const parsed = JSON.parse(routeUpdate.stops as string);
+            if (Array.isArray(parsed)) {
+              safeStops = parsed;
+              console.log("Actualizando stops desde string JSON:", safeStops);
+            }
+          } catch (e) {
+            console.error("Error al parsear stops como JSON en actualización:", e);
+            
+            // Si hay error, verificar si es un string simple y convertirlo a array de un elemento
+            if (typeof routeUpdate.stops === 'string') {
+              safeStops = [routeUpdate.stops as string];
+              console.log("Estableciendo stops como array de un solo elemento:", safeStops);
+            }
+          }
+        }
+        
+        // Actualizar el objeto routeUpdate con los stops validados
+        safeRoutUpdate.stops = safeStops;
+      }
+      
+      console.log("Datos procesados para actualización de ruta:", safeRoutUpdate);
+      const [updatedRoute] = await db
+        .update(schema.routes)
+        .set(safeRoutUpdate)
+        .where(eq(schema.routes.id, id))
+        .returning();
+      
+      console.log("Ruta actualizada exitosamente:", updatedRoute);
+      return updatedRoute;
+    } catch (error) {
+      console.error("Error al actualizar ruta en la base de datos:", error);
+      throw error;
+    }
   }
   
   async deleteRoute(id: number): Promise<boolean> {
