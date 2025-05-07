@@ -36,6 +36,11 @@ export default function ReservationDetailsModal({
   const [ticketCheckResult, setTicketCheckResult] = useState<{
     isFirstScan: boolean;
     reservation?: any;
+    checkedByUser?: {
+      id: number;
+      firstName: string;
+      lastName: string;
+    } | null;
   } | null>(null);
 
   // Cargar los detalles de la reservación usando el endpoint público
@@ -74,7 +79,8 @@ export default function ReservationDetailsModal({
       const data = await response.json();
       setTicketCheckResult({
         isFirstScan: data.isFirstScan,
-        reservation: data.reservation
+        reservation: data.reservation,
+        checkedByUser: data.checkedByUser
       });
       setIsTicketModalOpen(true);
       
@@ -389,6 +395,7 @@ export default function ReservationDetailsModal({
           onClose={() => setIsTicketModalOpen(false)}
           reservation={ticketCheckResult.reservation}
           isFirstScan={ticketCheckResult.isFirstScan}
+          checkedByUser={ticketCheckResult.checkedByUser}
         />
       )}
     </>
