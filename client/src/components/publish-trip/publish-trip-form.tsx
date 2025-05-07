@@ -212,6 +212,33 @@ export function PublishTripForm() {
     form.setValue("segmentPrices", updatedPrices);
   };
   
+  // Actualiza todos los precios para una ciudad origen y destino específicas
+  const updateCityGroupPrices = (originCity: string, destinationCity: string, price: number) => {
+    console.log(`Actualizando precios entre ciudades: ${originCity} -> ${destinationCity} = ${price}`);
+    
+    // Crear una copia del array de precios
+    const updatedPrices = [...segmentPrices];
+    
+    // Para cada segmento, verificar si pertenece al grupo ciudad origen - ciudad destino
+    updatedPrices.forEach((segment, index) => {
+      const segmentOriginCity = getCityName(segment.origin);
+      const segmentDestCity = getCityName(segment.destination);
+      
+      // Si el segmento está entre las mismas ciudades, actualizar su precio
+      if (segmentOriginCity === originCity && segmentDestCity === destinationCity) {
+        console.log(`Aplicando precio ${price} a segmento: ${segment.origin} -> ${segment.destination}`);
+        updatedPrices[index] = {
+          ...updatedPrices[index],
+          price
+        };
+      }
+    });
+    
+    // Actualizar estado y formulario con todos los precios actualizados
+    setSegmentPrices(updatedPrices);
+    form.setValue("segmentPrices", updatedPrices);
+  };
+  
   // Initialize the time arrays when the route is selected
   useEffect(() => {
     if (routeSegmentsQuery.data) {
@@ -763,17 +790,8 @@ export function PublishTripForm() {
                                             
                                             console.log("Actualizando precio de ciudad:", inputValue, "->", newPrice);
                                             
-                                            // Aplicar a todos los segmentos del grupo
-                                            groupSegments.forEach((groupSegment: SegmentTimePrice) => {
-                                              const segmentIndex = segmentPrices.findIndex(s => 
-                                                s.origin === groupSegment.origin && 
-                                                s.destination === groupSegment.destination
-                                              );
-                                              
-                                              if (segmentIndex !== -1) {
-                                                updateSegmentPrice(segmentIndex, newPrice);
-                                              }
-                                            });
+                                            // Usar la nueva función para actualizar todos los precios entre estas ciudades
+                                            updateCityGroupPrices(cityPair.origin, cityPair.destination, newPrice);
                                           }}
                                           className="w-24"
                                         />
