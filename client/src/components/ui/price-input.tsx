@@ -2,7 +2,15 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 const PriceInput = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, ...props }, ref) => {
+  ({ className, value, onChange, ...props }, ref) => {
+    // Estado interno para gestionar el valor que se muestra
+    const [displayValue, setDisplayValue] = React.useState<string>(value?.toString() || "");
+    
+    // Actualizar el estado interno cuando el valor externo cambia
+    React.useEffect(() => {
+      setDisplayValue(value?.toString() || "");
+    }, [value]);
+    
     // Crear una referencia interna al input si no se proporciona una
     const internalRef = React.useRef<HTMLInputElement>(null);
     const resolvedRef = ref || internalRef;
@@ -15,41 +23,30 @@ const PriceInput = React.forwardRef<HTMLInputElement, React.ComponentProps<"inpu
       if (!/^\d$/.test(e.key) && !allowedKeys.includes(e.key)) {
         e.preventDefault();
       }
-      
-      // Permitir el signo de menos solo al principio y solo una vez
-      if (e.key === '-' && e.currentTarget.selectionStart === 0 && !e.currentTarget.value.includes('-')) {
-        return;
-      }
     };
     
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const newValue = event.target.value;
+      
+      // Actualizar el estado interno siempre
+      setDisplayValue(newValue);
+      
       // Ejecutar el onChange proporcionado por las props, si existe
-      if (props.onChange) {
-        // Convertir el valor a número y luego de vuelta a string para eliminar ceros a la izquierda
-        let value = event.target.value;
-        
-        // Si value no está vacío y no es sólo un guión, normalizarlo
-        if (value !== '' && value !== '-') {
-          const numValue = parseInt(value, 10);
-          if (!isNaN(numValue)) {
-            // Solo reemplazar si es un número válido
-            event.target.value = numValue.toString();
-          }
-        }
-        
-        // Llamar al onChange original con el evento posiblemente modificado
-        props.onChange(event);
+      if (onChange) {
+        onChange(event);
       }
     };
 
     return (
       <input
-        type="number"
-        min="0"
+        type="text" // Cambiamos de number a text para mayor control
+        inputMode="numeric" // Para mostrar teclado numérico en dispositivos móviles
+        pattern="[0-9]*" // Para validación HTML5
         className={cn(
           "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
           className
         )}
+        value={displayValue}
         ref={resolvedRef}
         onKeyDown={handleKeyDown}
         onChange={handleChange}

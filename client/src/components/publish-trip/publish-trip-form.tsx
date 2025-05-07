@@ -681,7 +681,16 @@ export function PublishTripForm() {
                                   value={segment.price}
                                   onChange={(e) => {
                                     const inputValue = e.target.value;
-                                    const newPrice = inputValue === '' ? 0 : parseInt(inputValue);
+                                    let newPrice = 0;
+                                    
+                                    if (inputValue.trim() !== '') {
+                                      const parsedValue = parseInt(inputValue, 10);
+                                      if (!isNaN(parsedValue)) {
+                                        newPrice = parsedValue;
+                                      }
+                                    }
+                                    
+                                    console.log("Actualizando precio de segmento (móvil):", inputValue, "->", newPrice);
                                     updateSegmentPrice(index, newPrice);
                                   }}
                                   className="w-full"
@@ -741,9 +750,18 @@ export function PublishTripForm() {
                                         <PriceInput
                                           value={firstSegment.price}
                                           onChange={(e) => {
-                                            // Convertir el valor a número
+                                            // Convertir el valor a número, con manejo especial para cadenas vacías
                                             const inputValue = e.target.value;
-                                            const newPrice = inputValue === '' ? 0 : parseInt(inputValue);
+                                            let newPrice = 0;
+                                            
+                                            if (inputValue.trim() !== '') {
+                                              const parsedValue = parseInt(inputValue, 10);
+                                              if (!isNaN(parsedValue)) {
+                                                newPrice = parsedValue;
+                                              }
+                                            }
+                                            
+                                            console.log("Actualizando precio de ciudad:", inputValue, "->", newPrice);
                                             
                                             // Aplicar a todos los segmentos del grupo
                                             groupSegments.forEach((groupSegment: SegmentTimePrice) => {
@@ -799,7 +817,16 @@ export function PublishTripForm() {
                                       value={segment.price}
                                       onChange={(e) => {
                                         const inputValue = e.target.value;
-                                        const newPrice = inputValue === '' ? 0 : parseInt(inputValue);
+                                        let newPrice = 0;
+                                        
+                                        if (inputValue.trim() !== '') {
+                                          const parsedValue = parseInt(inputValue, 10);
+                                          if (!isNaN(parsedValue)) {
+                                            newPrice = parsedValue;
+                                          }
+                                        }
+                                        
+                                        console.log("Actualizando precio de segmento:", inputValue, "->", newPrice);
                                         updateSegmentPrice(index, newPrice);
                                       }}
                                       className="w-24"
