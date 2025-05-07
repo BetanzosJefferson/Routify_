@@ -678,8 +678,8 @@ export default function EditTripPage() {
                     <FormLabel>Vehículo</FormLabel>
                     <Select
                       disabled={vehiclesQuery.isLoading}
-                      value={field.value ? String(field.value) : ""}
-                      onValueChange={(value) => field.onChange(value ? parseInt(value, 10) : null)}
+                      value={field.value ? String(field.value) : "0"}
+                      onValueChange={(value) => field.onChange(value !== "0" ? parseInt(value, 10) : null)}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -712,8 +712,8 @@ export default function EditTripPage() {
                     <FormLabel>Conductor</FormLabel>
                     <Select
                       disabled={driversQuery.isLoading}
-                      value={field.value ? String(field.value) : ""}
-                      onValueChange={(value) => field.onChange(value ? parseInt(value, 10) : null)}
+                      value={field.value ? String(field.value) : "0"}
+                      onValueChange={(value) => field.onChange(value !== "0" ? parseInt(value, 10) : null)}
                     >
                       <FormControl>
                         <SelectTrigger>
