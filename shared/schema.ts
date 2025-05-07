@@ -165,6 +165,7 @@ export type ReservationWithDetails = Reservation & {
   trip: TripWithRouteInfo;
   passengers: Passenger[];
   createdByUser?: User;
+  checkedByUser?: User;
 };
 
 export type SegmentPrice = {
