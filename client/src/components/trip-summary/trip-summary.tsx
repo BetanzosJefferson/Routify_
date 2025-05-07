@@ -475,25 +475,27 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                       </td>
                                       <td className="py-3 px-4 whitespace-nowrap">
                                         <div className="space-y-1">
-                                          <div className="text-sm text-gray-900">
-                                            <span className="font-medium">Total:</span> ${reservation.totalAmount.toLocaleString('es-MX')}
-                                          </div>
                                           {reservation.advanceAmount && reservation.advanceAmount > 0 && (
                                             <div className="text-sm text-gray-700">
-                                              <span className="font-medium">Anticipo:</span> ${reservation.advanceAmount.toLocaleString('es-MX')}
-                                              <Badge variant="outline" className="ml-1 text-xs">
-                                                {reservation.advancePaymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
-                                              </Badge>
+                                              <span className="font-medium">Anticipo:</span> ${reservation.advanceAmount.toLocaleString('es-MX')} 
+                                              ({reservation.advancePaymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'})
                                             </div>
                                           )}
-                                          {reservation.paymentStatus === 'paid' && (
+                                          
+                                          {reservation.paymentStatus === 'paid' ? (
                                             <div className="text-sm text-gray-700">
-                                              <span className="font-medium">Pagó:</span> ${(reservation.totalAmount - (reservation.advanceAmount || 0)).toLocaleString('es-MX')}
-                                              <Badge variant="outline" className="ml-1 text-xs">
-                                                {reservation.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
-                                              </Badge>
+                                              <span className="font-medium">Pagó:</span> ${(reservation.totalAmount - (reservation.advanceAmount || 0)).toLocaleString('es-MX')} 
+                                              ({reservation.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'})
+                                            </div>
+                                          ) : (
+                                            <div className="text-sm text-gray-700">
+                                              <span className="font-medium">Restó:</span> ${(reservation.totalAmount - (reservation.advanceAmount || 0)).toLocaleString('es-MX')}
                                             </div>
                                           )}
+                                          
+                                          <div className="text-sm text-gray-900 font-medium border-t pt-1 mt-1">
+                                            Total: ${reservation.totalAmount.toLocaleString('es-MX')}
+                                          </div>
                                         </div>
                                       </td>
                                       <td className="py-3 px-4 whitespace-nowrap">
@@ -507,13 +509,20 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                       </td>
                                       <td className="py-3 px-4 whitespace-nowrap">
                                         {reservation.checkedBy ? (
-                                          <div className="flex items-center">
-                                            <Badge variant="outline" className="border-green-500 text-green-700 bg-green-50">
-                                              Escaneado
-                                            </Badge>
-                                            <span className="ml-2 text-xs text-gray-500">
-                                              {reservation.checkedAt && new Date(reservation.checkedAt).toLocaleString('es-MX')}
-                                            </span>
+                                          <div className="space-y-1">
+                                            <div className="flex items-center">
+                                              <Badge variant="outline" className="border-green-500 text-green-700 bg-green-50">
+                                                Escaneado
+                                              </Badge>
+                                              <span className="ml-2 text-xs text-gray-500">
+                                                {reservation.checkedAt && new Date(reservation.checkedAt).toLocaleString('es-MX')}
+                                              </span>
+                                            </div>
+                                            {reservation.checkedByUser && (
+                                              <div className="text-xs text-gray-700 mt-1">
+                                                <span className="font-medium">Por:</span> {reservation.checkedByUser.firstName} {reservation.checkedByUser.lastName}
+                                              </div>
+                                            )}
                                           </div>
                                         ) : (
                                           <Badge variant="outline" className="border-gray-300 text-gray-500">
