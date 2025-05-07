@@ -19,11 +19,6 @@ interface TicketCheckedModalProps {
   onClose: () => void;
   reservation: Reservation | undefined;
   isFirstScan: boolean;
-  checkedByUser?: {
-    id: number;
-    firstName: string;
-    lastName: string;
-  } | null;
 }
 
 const TicketCheckedModal: React.FC<TicketCheckedModalProps> = ({
@@ -31,7 +26,6 @@ const TicketCheckedModal: React.FC<TicketCheckedModalProps> = ({
   onClose,
   reservation,
   isFirstScan,
-  checkedByUser
 }) => {
   const { user } = useAuth();
   
@@ -51,15 +45,8 @@ const TicketCheckedModal: React.FC<TicketCheckedModalProps> = ({
           <DialogDescription className="text-center">
             {isFirstScan
               ? "Este ticket ha sido escaneado y verificado por primera vez."
-              : "Este ticket ya había sido verificado anteriormente."
-            }
+              : "Este ticket ya había sido verificado anteriormente."}
           </DialogDescription>
-          {!isFirstScan && checkedByUser && (
-            <div className="mt-2 bg-amber-100 p-3 rounded-lg border border-amber-200 text-center text-amber-800 font-medium">
-              Este ticket ya fue verificado por: <br />
-              <span className="text-lg font-bold">{checkedByUser.firstName} {checkedByUser.lastName}</span>
-            </div>
-          )}
         </DialogHeader>
 
         <div className="flex flex-col items-center justify-center p-4">
@@ -79,30 +66,22 @@ const TicketCheckedModal: React.FC<TicketCheckedModalProps> = ({
                 <span className="font-bold text-lg">Reservación #{reservation.id}</span>
               </div>
               <Badge 
-                variant={reservation.paymentStatus === "pagado" ? "outline" : "default"}
-                className={reservation.paymentStatus === "pagado" 
+                variant={reservation.paymentStatus === "paid" ? "outline" : "default"}
+                className={reservation.paymentStatus === "paid" 
                   ? "border-green-500 text-green-700 bg-green-50" 
                   : "bg-yellow-100 text-yellow-700"}
               >
-                {reservation.paymentStatus === "pagado" ? "PAGADO" : "PENDIENTE"}
+                {reservation.paymentStatus === "paid" ? "PAGADO" : "PENDIENTE"}
               </Badge>
             </div>
             
             <div className="space-y-3">
-              {isFirstScan ? (
+              {isFirstScan && (
                 <div className="bg-green-50 p-2 rounded-md border border-green-100">
                   <p className="text-sm text-green-700 flex items-center">
                     <UserCheck className="h-4 w-4 mr-2" />
                     <span className="font-medium">Verificado por:</span>{" "}
                     <span className="ml-1 font-semibold">{user?.firstName} {user?.lastName}</span>
-                  </p>
-                </div>
-              ) : checkedByUser && (
-                <div className="bg-amber-50 p-2 rounded-md border border-amber-100">
-                  <p className="text-sm text-amber-700 flex items-center">
-                    <UserCheck className="h-4 w-4 mr-2" />
-                    <span className="font-medium">Verificado originalmente por:</span>{" "}
-                    <span className="ml-1 font-semibold">{checkedByUser.firstName} {checkedByUser.lastName}</span>
                   </p>
                 </div>
               )}

@@ -2946,26 +2946,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[CHECK TICKET] Ticket ${id} ${isFirstScan ? 'escaneado por primera vez' : 're-escaneado'} por usuario ${req.user.id}`);
       
-      // Si no es la primera vez que se escanea, obtener información del usuario que lo escaneó originalmente
-      let checkedByUser = null;
-      if (!isFirstScan && reservation.checkedBy) {
-        try {
-          checkedByUser = await storage.getUserById(reservation.checkedBy);
-          console.log(`[CHECK TICKET] Ticket verificado originalmente por: ${checkedByUser?.firstName} ${checkedByUser?.lastName}`);
-        } catch (error) {
-          console.error(`[CHECK TICKET] Error al obtener información del usuario que verificó el ticket:`, error);
-        }
-      }
-      
       res.json({ 
         success: true, 
         isFirstScan,
         reservation: updatedReservation,
-        checkedByUser: checkedByUser ? {
-          id: checkedByUser.id,
-          firstName: checkedByUser.firstName,
-          lastName: checkedByUser.lastName
-        } : null,
         message: isFirstScan 
           ? 'Ticket escaneado por primera vez' 
           : 'Ticket escaneado nuevamente'
