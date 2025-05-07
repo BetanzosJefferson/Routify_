@@ -687,7 +687,7 @@ export default function EditTripPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Sin asignar</SelectItem>
+                        <SelectItem value="0">Sin asignar</SelectItem>
                         {vehiclesQuery.data?.map((vehicle) => (
                           <SelectItem key={vehicle.id} value={String(vehicle.id)}>
                             {vehicle.brand} {vehicle.model} ({vehicle.plates})
@@ -721,7 +721,7 @@ export default function EditTripPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Sin asignar</SelectItem>
+                        <SelectItem value="0">Sin asignar</SelectItem>
                         {driversQuery.data?.map((driver) => (
                           <SelectItem key={driver.id} value={String(driver.id)}>
                             {driver.firstName} {driver.lastName}
