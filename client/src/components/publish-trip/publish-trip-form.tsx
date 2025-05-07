@@ -203,22 +203,11 @@ export function PublishTripForm() {
 
   // Handle segment price updates
   const updateSegmentPrice = (index: number, price: number) => {
-    console.log(`Actualizando precio para segmento índice ${index} a ${price}`);
     const updatedPrices = [...segmentPrices];
-    
-    // Verificar que el segmento exista
-    if (index >= 0 && index < updatedPrices.length) {
-      console.log("Segmento antes de actualizar:", updatedPrices[index]);
-      updatedPrices[index] = {
-        ...updatedPrices[index],
-        price,
-      };
-      console.log("Segmento después de actualizar:", updatedPrices[index]);
-    } else {
-      console.warn(`Intento de actualizar un segmento inexistente con índice ${index}, array tiene ${updatedPrices.length} elementos`);
-    }
-    
-    console.log("Array de precios actualizado:", updatedPrices);
+    updatedPrices[index] = {
+      ...updatedPrices[index],
+      price,
+    };
     setSegmentPrices(updatedPrices);
     form.setValue("segmentPrices", updatedPrices);
   };
@@ -487,7 +476,6 @@ export function PublishTripForm() {
   // Load trip data for editing
   const loadTripForEditing = async (tripId: number) => {
     try {
-      console.log("Iniciando carga de viaje para edición, ID:", tripId);
       setEditingTripId(tripId);
       const response = await fetch(`/api/trips/${tripId}`);
       
@@ -497,194 +485,31 @@ export function PublishTripForm() {
       
       const tripData = await response.json();
       console.log("Datos de viaje cargados para edición:", tripData);
-      console.log("segmentPrices recibidos:", JSON.stringify(tripData.segmentPrices, null, 2));
       
       // Activar modo edición y habilitar campos de asignación
       setShowForm(true);
       setShowAssignmentFields(true);
       
       // Extraer datos relevantes y establecer en el formulario
-      console.log("Estableciendo routeId:", tripData.routeId);
-      
-      // Importante: handleRouteChange también actualiza el estado selectedRouteId
-      // que es necesario para mostrar los campos de segmentos y horarios
       handleRouteChange(String(tripData.routeId));
-      
-      // Formateamos la fecha del viaje a formato YYYY-MM-DD para los campos date
-      let formattedDate = tripData.departureDate;
-      if (formattedDate && formattedDate.includes('T')) {
-        formattedDate = formattedDate.split('T')[0];
-      }
-      console.log("Fecha formateada:", formattedDate);
       
       // Setear los valores en el formulario
       form.setValue("routeId", tripData.routeId);
-      form.setValue("startDate", formattedDate);
-      form.setValue("endDate", formattedDate);
+      form.setValue("startDate", tripData.date);
+      form.setValue("endDate", tripData.date);
       form.setValue("capacity", tripData.capacity);
-      form.setValue("price", tripData.price);
-      console.log("Valores básicos establecidos en el formulario");
       
       // Establecer vehículo y conductor si existen
       if (tripData.vehicleId) {
-        console.log("Estableciendo vehículo:", tripData.vehicleId);
         form.setValue("vehicleId", tripData.vehicleId);
       }
       
       if (tripData.driverId) {
-        console.log("Estableciendo conductor:", tripData.driverId);
         form.setValue("driverId", tripData.driverId);
       }
       
-      // Esperar a que se carguen los datos del segmento desde la consulta de ruta
-      // Esta espera es necesaria porque los segmentos se cargan después de cambiar la ruta
-      const waitForSegmentsLoaded = async () => {
-        console.log("Esperando a que los segmentos se carguen...");
-        console.log("Estado actual de routeSegmentsQuery:", 
-          routeSegmentsQuery.isLoading ? "cargando" : 
-          routeSegmentsQuery.isError ? "error" : 
-          routeSegmentsQuery.data ? "datos disponibles" : "sin datos");
-        
-        // Si ya tenemos los segmentos cargados, procedemos a configurar los precios
-        if (routeSegmentsQuery.data) {
-          console.log("Datos de segmentos disponibles, configurando precios y horarios");
-          
-          // Obtener las ubicaciones de la ruta
-          const allLocations = [
-            routeSegmentsQuery.data.origin,
-            ...(routeSegmentsQuery.data.stops || []),
-            routeSegmentsQuery.data.destination
-          ];
-          console.log("Ubicaciones de la ruta:", allLocations);
-          
-          // Inicializar tiempos de parada usando tiempos reales del viaje
-          if (allLocations.length > 0) {
-            console.log("Inicializando tiempos de parada");
-            const stopTimesNew: StopTime[] = [];
-            
-            // Agregar origen con hora de salida
-            const departureTimeParts = parseTimeString(tripData.departureTime);
-            console.log("Tiempo de salida parseado:", departureTimeParts);
-            stopTimesNew.push({
-              hour: departureTimeParts.hour,
-              minute: departureTimeParts.minute,
-              ampm: departureTimeParts.ampm,
-              location: allLocations[0]
-            });
-            
-            // Si hay paradas intermedias, establecer tiempos intermedios
-            if (allLocations.length > 2) {
-              for (let i = 1; i < allLocations.length - 1; i++) {
-                // Para simplificar, en las paradas intermedias usamos tiempos constantes
-                // En una implementación más completa, intentaríamos encontrar los tiempos reales
-                const stopTime: StopTime = {
-                  hour: "10",
-                  minute: "00",
-                  ampm: "AM",
-                  location: allLocations[i]
-                };
-                stopTimesNew.push(stopTime);
-              }
-            }
-            
-            // Agregar destino con hora de llegada
-            const arrivalTimeParts = parseTimeString(tripData.arrivalTime);
-            console.log("Tiempo de llegada parseado:", arrivalTimeParts);
-            stopTimesNew.push({
-              hour: arrivalTimeParts.hour,
-              minute: arrivalTimeParts.minute,
-              ampm: arrivalTimeParts.ampm,
-              location: allLocations[allLocations.length - 1]
-            });
-            
-            // Validar los tiempos de parada
-            const validStopTimes = ensureValidStopTimes(stopTimesNew);
-            console.log("Estableciendo tiempos de parada:", validStopTimes);
-            setStopTimes(validStopTimes);
-            
-            // Importante: Manualmente crear combinaciones de segmentos antes de establecer precios
-            // Esto es crucial para que el formulario muestre correctamente los campos de precio
-            const segmentCombos = [];
-            
-            // Para cada origen, conectamos con cada destino posterior
-            for (let i = 0; i < allLocations.length - 1; i++) {
-              for (let j = i + 1; j < allLocations.length; j++) {
-                segmentCombos.push({
-                  origin: allLocations[i],
-                  destination: allLocations[j]
-                });
-              }
-            }
-            
-            console.log("Combinaciones de segmentos creadas:", segmentCombos.length);
-            
-            // Ahora que tenemos todas las combinaciones posibles, cargamos los precios del viaje
-            if (tripData.segmentPrices && Array.isArray(tripData.segmentPrices)) {
-              console.log("Aplicando precios existentes a los segmentos");
-              
-              // Creamos un nuevo array con todas las combinaciones, pero con precios predeterminados
-              const updatedSegmentPrices = segmentCombos.map(combo => {
-                // Buscar si existe un precio para este segmento específico
-                const existingPrice = tripData.segmentPrices.find(
-                  sp => sp.origin === combo.origin && sp.destination === combo.destination
-                );
-                
-                if (existingPrice) {
-                  console.log(`Encontrado precio para ${combo.origin} -> ${combo.destination}: ${existingPrice.price}`);
-                  return {
-                    ...combo,
-                    price: existingPrice.price,
-                    departureTime: existingPrice.departureTime,
-                    arrivalTime: existingPrice.arrivalTime
-                  };
-                } else {
-                  // Si no hay precio, usamos el precio base del viaje o 0
-                  console.log(`No se encontró precio para ${combo.origin} -> ${combo.destination}, usando precio base: ${tripData.price || 0}`);
-                  return {
-                    ...combo,
-                    price: tripData.price || 0,
-                    departureTime: tripData.departureTime,
-                    arrivalTime: tripData.arrivalTime
-                  };
-                }
-              });
-              
-              console.log("Precios de segmentos completos:", updatedSegmentPrices);
-              // Importante: actualizar el estado local
-              setSegmentPrices(updatedSegmentPrices);
-              // Y también actualizar el formulario
-              form.setValue("segmentPrices", updatedSegmentPrices);
-            } else {
-              console.log("No hay precios por segmento disponibles, usando precio base para todos los segmentos");
-              // Si no hay precios por segmento, establecer el precio base para todos
-              const defaultSegmentPrices = segmentCombos.map(combo => ({
-                ...combo,
-                price: tripData.price || 0,
-                departureTime: tripData.departureTime,
-                arrivalTime: tripData.arrivalTime
-              }));
-              
-              setSegmentPrices(defaultSegmentPrices);
-              form.setValue("segmentPrices", defaultSegmentPrices);
-            }
-          }
-          
-          return true;
-        }
-        
-        // Si los segmentos aún no están cargados, esperamos un poco y volvemos a intentarlo
-        console.log("Segmentos aún no disponibles, esperando...");
-        return new Promise<boolean>(resolve => {
-          setTimeout(() => {
-            waitForSegmentsLoaded().then(resolve);
-          }, 300);
-        });
-      };
-      
-      // Iniciar la espera para que los segmentos se carguen
-      console.log("Iniciando proceso de espera para segmentos");
-      await waitForSegmentsLoaded();
-      console.log("Finalizada la carga de datos para edición");
+      // Los segmentos se cargarán automáticamente a través de la consulta de ruta
+      // cuando routeId cambie
       
     } catch (error) {
       console.error("Error al cargar viaje para edición:", error);
@@ -694,42 +519,6 @@ export function PublishTripForm() {
         description: "No se pudo cargar la información del viaje para editar."
       });
     }
-  };
-  
-  // Función auxiliar para parsear un string de tiempo en formato "hh:mm AM/PM"
-  const parseTimeString = (timeString: string): { hour: string, minute: string, ampm: "AM" | "PM" } => {
-    if (!timeString) {
-      return { hour: "12", minute: "00", ampm: "PM" };
-    }
-    
-    try {
-      // Manejar formato "hh:mm AM/PM"
-      if (timeString.includes(" ")) {
-        const [time, period] = timeString.split(" ");
-        const [hour, minute] = time.split(":");
-        return {
-          hour: hour.padStart(2, "0"),
-          minute: minute.padStart(2, "0"),
-          ampm: (period.toUpperCase() === "PM" ? "PM" : "AM") as "AM" | "PM"
-        };
-      }
-      // Manejar formato 24 horas "hh:mm"
-      else if (timeString.includes(":")) {
-        const [hour, minute] = timeString.split(":");
-        const hourInt = parseInt(hour, 10);
-        const isPM = hourInt >= 12;
-        return {
-          hour: (isPM && hourInt > 12 ? hourInt - 12 : (hourInt === 0 ? 12 : hourInt)).toString().padStart(2, "0"),
-          minute: minute.padStart(2, "0"),
-          ampm: isPM ? "PM" : "AM"
-        };
-      }
-    } catch (error) {
-      console.error("Error al parsear tiempo:", timeString, error);
-    }
-    
-    // Valor predeterminado si hay errores
-    return { hour: "12", minute: "00", ampm: "PM" };
   };
 
   // Toggle form visibility

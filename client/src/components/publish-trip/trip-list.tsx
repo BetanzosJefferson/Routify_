@@ -666,42 +666,26 @@ export default function TripList({ onEditTrip }: TripListProps) {
                         </div>
                         
                         <div className="p-4 lg:p-6 flex flex-row lg:flex-col items-center justify-between border-t lg:border-t-0 lg:border-l bg-muted/20">
-                          {/* Botones para gestionar el viaje */}
-                          <div className="flex flex-col space-y-2 w-full">
+                          {/* Botones para asignar vehículo/conductor han sido eliminados ya que esa funcionalidad 
+                          está disponible en la sección de editar viaje */}
+                          
+                          <div className="flex gap-2 mt-0 lg:mt-4">
                             <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                console.log("Solicitando edición de viaje con ID:", trip.id);
-                                onEditTrip(trip.id);
-                              }}
-                              className="w-full flex items-center justify-center"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onEditTrip(trip.id)}
+                              className="h-8 w-8"
                             >
-                              <PencilIcon className="h-4 w-4 mr-2" />
-                              Editar Viaje
+                              <PencilIcon className="h-4 w-4" />
                             </Button>
-                            
-                            <div className="flex gap-2 mt-2 justify-center">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  console.log("Solicitando edición de viaje con ID:", trip.id);
-                                  onEditTrip(trip.id);
-                                }}
-                                className="h-8 w-8"
-                              >
-                                <PencilIcon className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteClick(trip.id)}
-                                className="h-8 w-8 text-destructive hover:text-destructive/80"
-                              >
-                                <TrashIcon className="h-4 w-4" />
-                              </Button>
-                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteClick(trip.id)}
+                              className="h-8 w-8 text-destructive hover:text-destructive/80"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       </div>
