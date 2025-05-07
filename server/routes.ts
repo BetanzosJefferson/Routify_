@@ -294,6 +294,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.role !== UserRole.SUPER_ADMIN) {
         routeData.companyId = existingRoute.companyId;
       }
+
+      // Verificar si tenemos stops definidos en la solicitud
+      if (routeData.stops === undefined) {
+        console.log("No se recibieron paradas en la actualización, manteniendo las existentes");
+        // Si no se especificaron stops en la actualización, mantener los existentes
+        routeData.stops = existingRoute.stops;
+      } else {
+        console.log("Paradas recibidas para actualización:", routeData.stops);
+      }
+      
+      console.log("Datos para actualización de ruta:", {
+        id,
+        nombre: routeData.name,
+        origen: routeData.origin,
+        destino: routeData.destination,
+        paradas: routeData.stops
+      });
       
       const updatedRoute = await storage.updateRoute(id, routeData);
       
