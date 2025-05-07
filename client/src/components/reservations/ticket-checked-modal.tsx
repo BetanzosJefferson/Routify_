@@ -51,11 +51,15 @@ const TicketCheckedModal: React.FC<TicketCheckedModalProps> = ({
           <DialogDescription className="text-center">
             {isFirstScan
               ? "Este ticket ha sido escaneado y verificado por primera vez."
-              : checkedByUser 
-                ? `Este ticket ya fue verificado por ${checkedByUser.firstName} ${checkedByUser.lastName}`
-                : "Este ticket ya había sido verificado anteriormente."
+              : "Este ticket ya había sido verificado anteriormente."
             }
           </DialogDescription>
+          {!isFirstScan && checkedByUser && (
+            <div className="mt-2 bg-amber-100 p-3 rounded-lg border border-amber-200 text-center text-amber-800 font-medium">
+              Este ticket ya fue verificado por: <br />
+              <span className="text-lg font-bold">{checkedByUser.firstName} {checkedByUser.lastName}</span>
+            </div>
+          )}
         </DialogHeader>
 
         <div className="flex flex-col items-center justify-center p-4">
