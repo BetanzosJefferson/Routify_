@@ -989,13 +989,29 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
+    // Obtener información del usuario que escaneó el ticket
+    let checkedByUser: schema.User | undefined = undefined;
+    if (reservation.checkedBy) {
+      // Buscar el usuario por ID
+      const [user] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.id, reservation.checkedBy));
+      
+      if (user) {
+        checkedByUser = user;
+        console.log(`[getReservationWithDetails] Reserva ${id} escaneada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
+      }
+    }
+    
     console.log(`[getReservationWithDetails] Acceso concedido a reserva ${id} con ${passengers.length} pasajeros`);
     
     return {
       ...reservation,
       trip,
       passengers,
-      createdByUser // Añadimos el usuario creador
+      createdByUser, // Añadimos el usuario creador
+      checkedByUser  // Añadimos el usuario que escaneó el ticket
     };
   }
   

@@ -19,6 +19,16 @@ type TripSummaryProps = {
 type ReservationWithPassengers = Reservation & {
   passengers: Passenger[];
   trip: TripWithRouteInfo;
+  createdByUser?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  };
+  checkedByUser?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  };
 };
 
 export default function TripSummary({ className }: TripSummaryProps) {
