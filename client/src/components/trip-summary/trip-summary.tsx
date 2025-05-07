@@ -475,11 +475,11 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                       </td>
                                       <td className="py-3 px-4 whitespace-nowrap">
                                         <div className="text-sm font-medium">
-                                          <Badge variant={reservation.paymentStatus === 'paid' ? 'outline' : 'default'} 
-                                            className={reservation.paymentStatus === 'paid' 
+                                          <Badge variant={(reservation.paymentStatus === 'paid' || reservation.status === 'paid') ? 'outline' : 'default'} 
+                                            className={(reservation.paymentStatus === 'paid' || reservation.status === 'paid')
                                               ? 'border-green-500 text-green-700 bg-green-50' 
                                               : 'bg-yellow-100 text-yellow-700'}>
-                                            {reservation.paymentStatus === 'paid' ? 'PAGADO' : 'PENDIENTE'}
+                                            {(reservation.paymentStatus === 'paid' || reservation.status === 'paid') ? 'PAGADO' : 'PENDIENTE'}
                                           </Badge>
                                         </div>
                                       </td>
@@ -492,7 +492,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                             </div>
                                           )}
                                           
-                                          {reservation.paymentStatus === 'paid' ? (
+                                          {(reservation.paymentStatus === 'paid' || reservation.status === 'paid') ? (
                                             <div className="text-sm text-gray-700">
                                               <span className="font-medium">Pagó:</span> ${(reservation.totalAmount - (reservation.advanceAmount || 0)).toLocaleString('es-MX')} 
                                               ({reservation.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'})
@@ -500,6 +500,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                           ) : (
                                             <div className="text-sm text-gray-700">
                                               <span className="font-medium">Restó:</span> ${(reservation.totalAmount - (reservation.advanceAmount || 0)).toLocaleString('es-MX')}
+                                              {reservation.paymentMethod && ` (${reservation.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'})`}
                                             </div>
                                           )}
                                           
@@ -511,7 +512,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                       <td className="py-3 px-4 whitespace-nowrap">
                                         {reservation.createdBy ? (
                                           <div className="text-sm text-gray-700">
-                                            {(reservation as any).createdByUser?.firstName} {(reservation as any).createdByUser?.lastName}
+                                            {reservation.createdByUser?.firstName} {reservation.createdByUser?.lastName}
                                           </div>
                                         ) : (
                                           <div className="text-sm italic text-gray-500">No registrado</div>
