@@ -673,7 +673,10 @@ export default function TripList({ onEditTrip }: TripListProps) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => onEditTrip(trip.id)}
+                              onClick={() => {
+                                console.log("Solicitando edición de viaje con ID:", trip.id);
+                                onEditTrip(trip.id);
+                              }}
                               className="h-8 w-8"
                             >
                               <PencilIcon className="h-4 w-4" />

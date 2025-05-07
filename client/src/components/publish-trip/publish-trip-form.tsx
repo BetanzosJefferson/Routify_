@@ -476,6 +476,7 @@ export function PublishTripForm() {
   // Load trip data for editing
   const loadTripForEditing = async (tripId: number) => {
     try {
+      console.log("Iniciando carga de viaje para edición, ID:", tripId);
       setEditingTripId(tripId);
       const response = await fetch(`/api/trips/${tripId}`);
       
@@ -485,12 +486,17 @@ export function PublishTripForm() {
       
       const tripData = await response.json();
       console.log("Datos de viaje cargados para edición:", tripData);
+      console.log("segmentPrices recibidos:", JSON.stringify(tripData.segmentPrices, null, 2));
       
       // Activar modo edición y habilitar campos de asignación
       setShowForm(true);
       setShowAssignmentFields(true);
       
       // Extraer datos relevantes y establecer en el formulario
+      console.log("Estableciendo routeId:", tripData.routeId);
+      
+      // Importante: handleRouteChange también actualiza el estado selectedRouteId
+      // que es necesario para mostrar los campos de segmentos y horarios
       handleRouteChange(String(tripData.routeId));
       
       // Formateamos la fecha del viaje a formato YYYY-MM-DD para los campos date
@@ -498,6 +504,7 @@ export function PublishTripForm() {
       if (formattedDate && formattedDate.includes('T')) {
         formattedDate = formattedDate.split('T')[0];
       }
+      console.log("Fecha formateada:", formattedDate);
       
       // Setear los valores en el formulario
       form.setValue("routeId", tripData.routeId);
@@ -505,25 +512,41 @@ export function PublishTripForm() {
       form.setValue("endDate", formattedDate);
       form.setValue("capacity", tripData.capacity);
       form.setValue("price", tripData.price);
+      console.log("Valores básicos establecidos en el formulario");
       
       // Establecer vehículo y conductor si existen
       if (tripData.vehicleId) {
+        console.log("Estableciendo vehículo:", tripData.vehicleId);
         form.setValue("vehicleId", tripData.vehicleId);
       }
       
       if (tripData.driverId) {
+        console.log("Estableciendo conductor:", tripData.driverId);
         form.setValue("driverId", tripData.driverId);
       }
       
-      // Esperar a que se carguen los datos del segmento
+      // Esperar a que se carguen los datos del segmento desde la consulta de ruta
+      // Esta espera es necesaria porque los segmentos se cargan después de cambiar la ruta
       const waitForSegmentsLoaded = async () => {
+        console.log("Esperando a que los segmentos se carguen...");
+        console.log("Estado actual de routeSegmentsQuery:", 
+          routeSegmentsQuery.isLoading ? "cargando" : 
+          routeSegmentsQuery.isError ? "error" : 
+          routeSegmentsQuery.data ? "datos disponibles" : "sin datos");
+        
         // Si ya tenemos los segmentos cargados, procedemos a configurar los precios
         if (routeSegmentsQuery.data) {
+          console.log("Datos de segmentos disponibles, configurando precios y horarios");
+          
           // Cargar los precios por segmento si existen
           if (tripData.segmentPrices && Array.isArray(tripData.segmentPrices)) {
-            console.log("Cargando precios por segmento:", tripData.segmentPrices);
+            console.log("Estableciendo precios por segmento en el estado:", tripData.segmentPrices.length, "segmentos");
+            // Importante: actualizar el estado local
             setSegmentPrices(tripData.segmentPrices);
+            // Y también actualizar el formulario
             form.setValue("segmentPrices", tripData.segmentPrices);
+          } else {
+            console.log("No hay precios por segmento disponibles en los datos del viaje");
           }
           
           // Cargar los horarios de parada si existen
@@ -532,14 +555,17 @@ export function PublishTripForm() {
             ...(routeSegmentsQuery.data.stops || []),
             routeSegmentsQuery.data.destination
           ];
+          console.log("Ubicaciones de la ruta:", allLocations);
           
           // Inicializar tiempos de parada usando tiempos reales del viaje
           if (allLocations.length > 0) {
-            const stopTimes: StopTime[] = [];
+            console.log("Inicializando tiempos de parada");
+            const stopTimesNew: StopTime[] = [];
             
             // Agregar origen con hora de salida
             const departureTimeParts = parseTimeString(tripData.departureTime);
-            stopTimes.push({
+            console.log("Tiempo de salida parseado:", departureTimeParts);
+            stopTimesNew.push({
               hour: departureTimeParts.hour,
               minute: departureTimeParts.minute,
               ampm: departureTimeParts.ampm,
@@ -549,33 +575,38 @@ export function PublishTripForm() {
             // Si hay paradas intermedias, establecer tiempos intermedios
             if (allLocations.length > 2) {
               for (let i = 1; i < allLocations.length - 1; i++) {
-                // Intentar encontrar tiempo para esta parada en los datos del viaje
-                const stopTime = {
+                // Para simplificar, en las paradas intermedias usamos tiempos constantes
+                // En una implementación más completa, intentaríamos encontrar los tiempos reales
+                const stopTime: StopTime = {
                   hour: "10",
                   minute: "00",
                   ampm: "AM",
                   location: allLocations[i]
                 };
-                stopTimes.push(stopTime);
+                stopTimesNew.push(stopTime);
               }
             }
             
             // Agregar destino con hora de llegada
             const arrivalTimeParts = parseTimeString(tripData.arrivalTime);
-            stopTimes.push({
+            console.log("Tiempo de llegada parseado:", arrivalTimeParts);
+            stopTimesNew.push({
               hour: arrivalTimeParts.hour,
               minute: arrivalTimeParts.minute,
               ampm: arrivalTimeParts.ampm,
               location: allLocations[allLocations.length - 1]
             });
             
-            setStopTimes(ensureValidStopTimes(stopTimes));
+            const validStopTimes = ensureValidStopTimes(stopTimesNew);
+            console.log("Estableciendo tiempos de parada:", validStopTimes);
+            setStopTimes(validStopTimes);
           }
           
           return true;
         }
         
         // Si los segmentos aún no están cargados, esperamos un poco y volvemos a intentarlo
+        console.log("Segmentos aún no disponibles, esperando...");
         return new Promise<boolean>(resolve => {
           setTimeout(() => {
             waitForSegmentsLoaded().then(resolve);
@@ -584,7 +615,9 @@ export function PublishTripForm() {
       };
       
       // Iniciar la espera para que los segmentos se carguen
-      waitForSegmentsLoaded();
+      console.log("Iniciando proceso de espera para segmentos");
+      await waitForSegmentsLoaded();
+      console.log("Finalizada la carga de datos para edición");
       
     } catch (error) {
       console.error("Error al cargar viaje para edición:", error);
