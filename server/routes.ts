@@ -2950,7 +2950,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let checkedByUser = null;
       if (!isFirstScan && reservation.checkedBy) {
         try {
-          checkedByUser = await storage.getUser(reservation.checkedBy);
+          checkedByUser = await storage.getUserById(reservation.checkedBy);
           console.log(`[CHECK TICKET] Ticket verificado originalmente por: ${checkedByUser?.firstName} ${checkedByUser?.lastName}`);
         } catch (error) {
           console.error(`[CHECK TICKET] Error al obtener información del usuario que verificó el ticket:`, error);
