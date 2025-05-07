@@ -19,6 +19,11 @@ interface TicketCheckedModalProps {
   onClose: () => void;
   reservation: Reservation | undefined;
   isFirstScan: boolean;
+  checkedByUser?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  } | null;
 }
 
 const TicketCheckedModal: React.FC<TicketCheckedModalProps> = ({
@@ -26,6 +31,7 @@ const TicketCheckedModal: React.FC<TicketCheckedModalProps> = ({
   onClose,
   reservation,
   isFirstScan,
+  checkedByUser
 }) => {
   const { user } = useAuth();
   
@@ -45,7 +51,10 @@ const TicketCheckedModal: React.FC<TicketCheckedModalProps> = ({
           <DialogDescription className="text-center">
             {isFirstScan
               ? "Este ticket ha sido escaneado y verificado por primera vez."
-              : "Este ticket ya había sido verificado anteriormente."}
+              : checkedByUser 
+                ? `Este ticket ya fue verificado por ${checkedByUser.firstName} ${checkedByUser.lastName}`
+                : "Este ticket ya había sido verificado anteriormente."
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -66,22 +75,30 @@ const TicketCheckedModal: React.FC<TicketCheckedModalProps> = ({
                 <span className="font-bold text-lg">Reservación #{reservation.id}</span>
               </div>
               <Badge 
-                variant={reservation.paymentStatus === "paid" ? "outline" : "default"}
-                className={reservation.paymentStatus === "paid" 
+                variant={reservation.paymentStatus === "pagado" ? "outline" : "default"}
+                className={reservation.paymentStatus === "pagado" 
                   ? "border-green-500 text-green-700 bg-green-50" 
                   : "bg-yellow-100 text-yellow-700"}
               >
-                {reservation.paymentStatus === "paid" ? "PAGADO" : "PENDIENTE"}
+                {reservation.paymentStatus === "pagado" ? "PAGADO" : "PENDIENTE"}
               </Badge>
             </div>
             
             <div className="space-y-3">
-              {isFirstScan && (
+              {isFirstScan ? (
                 <div className="bg-green-50 p-2 rounded-md border border-green-100">
                   <p className="text-sm text-green-700 flex items-center">
                     <UserCheck className="h-4 w-4 mr-2" />
                     <span className="font-medium">Verificado por:</span>{" "}
                     <span className="ml-1 font-semibold">{user?.firstName} {user?.lastName}</span>
+                  </p>
+                </div>
+              ) : checkedByUser && (
+                <div className="bg-amber-50 p-2 rounded-md border border-amber-100">
+                  <p className="text-sm text-amber-700 flex items-center">
+                    <UserCheck className="h-4 w-4 mr-2" />
+                    <span className="font-medium">Verificado originalmente por:</span>{" "}
+                    <span className="ml-1 font-semibold">{checkedByUser.firstName} {checkedByUser.lastName}</span>
                   </p>
                 </div>
               )}
