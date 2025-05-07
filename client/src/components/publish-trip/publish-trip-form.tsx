@@ -678,8 +678,19 @@ export function PublishTripForm() {
                                 <div className="text-xs text-gray-500 mb-1">Precio</div>
                                 <Input
                                   type="number"
+                                  min="0"
                                   value={segment.price}
-                                  onChange={(e) => updateSegmentPrice(index, parseInt(e.target.value) || 0)}
+                                  onChange={(e) => {
+                                    const inputValue = e.target.value;
+                                    let newPrice = 0;
+                                    if (inputValue !== '') {
+                                      const parsedValue = parseInt(inputValue);
+                                      if (!isNaN(parsedValue)) {
+                                        newPrice = parsedValue;
+                                      }
+                                    }
+                                    updateSegmentPrice(index, newPrice);
+                                  }}
                                   className="w-full"
                                 />
                               </div>
@@ -736,9 +747,19 @@ export function PublishTripForm() {
                                       <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                                         <Input
                                           type="number"
+                                          min="0"
                                           value={firstSegment.price}
                                           onChange={(e) => {
-                                            const newPrice = parseInt(e.target.value) || 0;
+                                            // Permitir valores vacíos temporalmente durante la edición
+                                            const inputValue = e.target.value;
+                                            // Si el valor está vacío o es inválido, usar 0 como fallback
+                                            let newPrice = 0;
+                                            if (inputValue !== '') {
+                                              const parsedValue = parseInt(inputValue);
+                                              if (!isNaN(parsedValue)) {
+                                                newPrice = parsedValue;
+                                              }
+                                            }
                                             
                                             groupSegments.forEach((groupSegment: SegmentTimePrice) => {
                                               const segmentIndex = segmentPrices.findIndex(s => 
@@ -791,8 +812,19 @@ export function PublishTripForm() {
                                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                                     <Input
                                       type="number"
+                                      min="0"
                                       value={segment.price}
-                                      onChange={(e) => updateSegmentPrice(index, parseInt(e.target.value) || 0)}
+                                      onChange={(e) => {
+                                        const inputValue = e.target.value;
+                                        let newPrice = 0;
+                                        if (inputValue !== '') {
+                                          const parsedValue = parseInt(inputValue);
+                                          if (!isNaN(parsedValue)) {
+                                            newPrice = parsedValue;
+                                          }
+                                        }
+                                        updateSegmentPrice(index, newPrice);
+                                      }}
                                       className="w-24"
                                     />
                                   </td>
