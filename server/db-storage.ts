@@ -297,6 +297,36 @@ export class DatabaseStorage implements IStorage {
       routeMap.set(route.id, route);
     });
     
+    // Obtener todos los vehículos y conductores en una sola consulta
+    console.log('Obteniendo todos los vehículos y conductores en una sola consulta');
+    const vehicles = await db.select().from(schema.vehicles);
+    const drivers = await db
+      .select()
+      .from(schema.users)
+      .where(
+        or(
+          eq(schema.users.role, "chofer"),
+          eq(schema.users.role, "CHOFER"),
+          eq(schema.users.role, "Chofer"),
+          eq(schema.users.role, "driver"),
+          eq(schema.users.role, "DRIVER"),
+          eq(schema.users.role, "Driver")
+        )
+      );
+    
+    // Crear mapas para búsqueda rápida
+    const vehicleMap = new Map<number, schema.Vehicle>();
+    vehicles.forEach(vehicle => {
+      vehicleMap.set(vehicle.id, vehicle);
+    });
+    
+    const driverMap = new Map<number, schema.User>();
+    drivers.forEach(driver => {
+      driverMap.set(driver.id, driver);
+    });
+    
+    console.log(`Cargados ${vehicles.length} vehículos y ${drivers.length} conductores para búsqueda rápida`);
+    
     // Asociar cada viaje con su ruta y compañía
     const tripsWithRouteInfo: TripWithRouteInfo[] = [];
     
@@ -315,13 +345,30 @@ export class DatabaseStorage implements IStorage {
           console.log(`Viaje ${trip.id} no tiene companyId`);
         }
         
+        // Buscar vehículo asignado
+        let assignedVehicle = undefined;
+        if (trip.vehicleId && vehicleMap.has(trip.vehicleId)) {
+          assignedVehicle = vehicleMap.get(trip.vehicleId);
+          console.log(`Viaje ${trip.id}: Encontrado vehículo asignado ${assignedVehicle.brand} ${assignedVehicle.model} (${assignedVehicle.plates})`);
+        }
+        
+        // Buscar conductor asignado
+        let assignedDriver = undefined;
+        if (trip.driverId && driverMap.has(trip.driverId)) {
+          assignedDriver = driverMap.get(trip.driverId);
+          console.log(`Viaje ${trip.id}: Encontrado conductor asignado ${assignedDriver.firstName} ${assignedDriver.lastName}`);
+        }
+        
         const tripWithInfo = {
           ...trip,
           route,
           numStops: route.stops.length,
           // Agregar información de la compañía
           companyName: companyData.companyName,
-          companyLogo: companyData.companyLogo
+          companyLogo: companyData.companyLogo,
+          // Agregar información de vehículo y conductor
+          assignedVehicle,
+          assignedDriver
         };
         
         // Verificar que los datos de la compañía estén presentes
@@ -641,6 +688,38 @@ export class DatabaseStorage implements IStorage {
       routeMap.set(route.id, route);
     });
     
+    // Obtener todos los vehículos en una sola consulta
+    const vehicles = await db.select().from(schema.vehicles);
+    
+    // Crear un mapa de vehículos para búsqueda rápida
+    const vehicleMap = new Map<number, schema.Vehicle>();
+    vehicles.forEach(vehicle => {
+      vehicleMap.set(vehicle.id, vehicle);
+    });
+    
+    // Obtener todos los conductores (choferes) en una sola consulta
+    const drivers = await db
+      .select()
+      .from(schema.users)
+      .where(
+        or(
+          eq(schema.users.role, "chofer"),
+          eq(schema.users.role, "CHOFER"),
+          eq(schema.users.role, "Chofer"),
+          eq(schema.users.role, "driver"),
+          eq(schema.users.role, "DRIVER"),
+          eq(schema.users.role, "Driver")
+        )
+      );
+    
+    // Crear un mapa de conductores para búsqueda rápida
+    const driverMap = new Map<number, schema.User>();
+    drivers.forEach(driver => {
+      driverMap.set(driver.id, driver);
+    });
+    
+    console.log(`Cargados ${vehicles.length} vehículos y ${drivers.length} conductores para búsqueda rápida`);
+    
     // Now filter by origin and destination if provided
     const tripsWithRouteInfo: TripWithRouteInfo[] = [];
     
@@ -655,6 +734,20 @@ export class DatabaseStorage implements IStorage {
         companyData = companyMap.get(trip.companyId);
       }
       
+      // Buscar vehículo asignado
+      let assignedVehicle = undefined;
+      if (trip.vehicleId && vehicleMap.has(trip.vehicleId)) {
+        assignedVehicle = vehicleMap.get(trip.vehicleId);
+        console.log(`Viaje ${trip.id}: Encontrado vehículo asignado ${assignedVehicle.brand} ${assignedVehicle.model} (${assignedVehicle.plates})`);
+      }
+      
+      // Buscar conductor asignado
+      let assignedDriver = undefined;
+      if (trip.driverId && driverMap.has(trip.driverId)) {
+        assignedDriver = driverMap.get(trip.driverId);
+        console.log(`Viaje ${trip.id}: Encontrado conductor asignado ${assignedDriver.firstName} ${assignedDriver.lastName}`);
+      }
+      
       // For subtrips, check against segment origin and destination
       if (trip.isSubTrip && trip.segmentOrigin && trip.segmentDestination) {
         const originMatch = !params.origin || trip.segmentOrigin.toLowerCase().includes(params.origin.toLowerCase());
@@ -666,7 +759,9 @@ export class DatabaseStorage implements IStorage {
             route,
             numStops: route.stops.length,
             companyName: companyData.companyName,
-            companyLogo: companyData.companyLogo
+            companyLogo: companyData.companyLogo,
+            assignedVehicle,
+            assignedDriver
           });
         }
         continue;
@@ -694,7 +789,9 @@ export class DatabaseStorage implements IStorage {
           route,
           numStops: route.stops.length,
           companyName: companyData.companyName,
-          companyLogo: companyData.companyLogo
+          companyLogo: companyData.companyLogo,
+          assignedVehicle,
+          assignedDriver
         });
       }
     }
