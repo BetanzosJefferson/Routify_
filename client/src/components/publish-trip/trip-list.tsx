@@ -685,8 +685,8 @@ export default function TripList({ onEditTrip }: TripListProps) {
                               variant="ghost"
                               size="icon"
                               onClick={() => {
-                                setTripToEdit(trip.id);
-                                setEditDialogOpen(true);
+                                // Navegar a la página de edición en lugar de abrir un modal
+                                window.location.href = `/edit-trip/${trip.id}`;
                               }}
                               className="h-8 w-8"
                             >
@@ -872,27 +872,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Dialog para editar viaje */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Editar Viaje</DialogTitle>
-            <DialogDescription>
-              Modifique la información del viaje según necesite.
-            </DialogDescription>
-          </DialogHeader>
-          
-          {tripToEdit && (
-            <EditTripForm 
-              tripId={tripToEdit} 
-              onClose={() => {
-                setEditDialogOpen(false);
-                setTripToEdit(null);
-              }} 
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Utilizamos la navegación para ir a la página de edición en lugar de un dialog */}
     </Card>
   );
 }
