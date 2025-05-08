@@ -337,6 +337,25 @@ export function EditTripForm({ tripId, onClose }: EditTripFormProps) {
     form.setValue("segmentPrices", updatedSegmentPrices);
   };
 
+  // Función para transformar los segmentos agrupados en formato adecuado para la UI
+  const transformGroupSegmentsForUI = (segments: any[]) => {
+    const { cityGroups, cityPairs } = groupSegmentsByCity(segments);
+    
+    // Convertir a formato de array para la UI
+    return cityPairs.map(pair => {
+      const key = `${pair.origin}||${pair.destination}`;
+      const groupSegments = cityGroups[key] || [];
+      const firstSegment = groupSegments[0] || {};
+      
+      return {
+        origin: pair.origin,
+        destination: pair.destination,
+        price: firstSegment.price || 0,
+        count: groupSegments.length
+      };
+    });
+  };
+
   // Actualizar el precio de grupo de ciudades
   const updateCityGroupPrice = (origin: string, destination: string, price: number) => {
     // Encontrar todos los segmentos que correspondan a este grupo de ciudades
@@ -664,7 +683,7 @@ export function EditTripForm({ tripId, onClose }: EditTripFormProps) {
                       Configure el precio entre ciudades principales. Este precio se aplicará automáticamente a todas las combinaciones de paradas entre las mismas ciudades.
                     </p>
                     
-                    {groupSegmentsByCity(segmentPrices).map((group, index) => (
+                    {transformGroupSegmentsForUI(segmentPrices).map((group, index) => (
                       <div key={index} className="space-y-2 p-3 bg-gray-50 rounded-md">
                         <div className="flex items-center justify-between text-sm">
                           <div>
@@ -713,7 +732,7 @@ export function EditTripForm({ tripId, onClose }: EditTripFormProps) {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {groupSegmentsByCity(segmentPrices).map((group, index) => (
+                          {transformGroupSegmentsForUI(segmentPrices).map((group, index) => (
                             <tr key={index}>
                               <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
                                 {getCityName(group.origin)}
