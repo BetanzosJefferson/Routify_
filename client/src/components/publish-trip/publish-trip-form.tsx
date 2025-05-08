@@ -476,7 +476,16 @@ export function PublishTripForm() {
   // Load trip data for editing
   const loadTripForEditing = async (tripId: number) => {
     try {
+      // Reiniciar estados para evitar datos incorrectos de ediciones anteriores
+      setSegmentPrices([]);
+      setStopTimes([]);
+      
+      // Activar modo edición y establecer el ID
       setEditingTripId(tripId);
+      setShowForm(true);
+      setShowAssignmentFields(true);
+      
+      // Cargar datos del viaje
       const response = await fetch(`/api/trips/${tripId}`);
       
       if (!response.ok) {
@@ -486,14 +495,34 @@ export function PublishTripForm() {
       const tripData = await response.json();
       console.log("Datos de viaje cargados para edición:", tripData);
       
-      // Activar modo edición y habilitar campos de asignación
-      setShowForm(true);
-      setShowAssignmentFields(true);
+      // Primero cargar la ruta y esperar a que se complete la carga
+      await new Promise<void>((resolve) => {
+        // Cambiar la ruta seleccionada
+        handleRouteChange(String(tripData.routeId));
+        
+        // Establecer un timer para asegurar que routeSegmentsQuery tenga tiempo de actualizarse
+        setTimeout(resolve, 500); 
+      });
       
-      // Extraer datos relevantes y establecer en el formulario
-      handleRouteChange(String(tripData.routeId));
+      // Ahora que routeId ha cambiado, cargar los datos restantes
+      await new Promise<void>((resolve) => {
+        const checkSegmentsLoaded = () => {
+          if (!routeSegmentsQuery.isLoading && routeSegmentsQuery.data) {
+            console.log("Segmentos de ruta cargados correctamente");
+            resolve();
+          } else {
+            console.log("Esperando carga de segmentos...");
+            setTimeout(checkSegmentsLoaded, 100);
+          }
+        };
+        
+        checkSegmentsLoaded();
+      });
       
-      // Setear los valores en el formulario
+      // Una vez que tenemos la ruta y los segmentos, completar el formulario
+      console.log("Completando formulario con datos del viaje");
+      
+      // Establecer valores base
       form.setValue("routeId", tripData.routeId);
       form.setValue("startDate", tripData.date || tripData.departureDate);
       form.setValue("endDate", tripData.date || tripData.departureDate);
@@ -508,42 +537,28 @@ export function PublishTripForm() {
         form.setValue("driverId", tripData.driverId);
       }
       
-      // Esperar a que routeSegmentsQuery se complete después de cambiar routeId
-      // Esto es necesario para asegurarnos de que los segmentos están cargados
-      // antes de intentar establecer los precios
-      const waitForRouteSegments = async () => {
-        if (routeSegmentsQuery.isLoading) {
-          console.log("Esperando carga de segmentos...");
-          // Esperar 100ms y volver a intentar
-          await new Promise(resolve => setTimeout(resolve, 100));
-          return waitForRouteSegments();
-        }
+      // Una vez que tenemos los segmentos, cargar los precios y horarios
+      if (tripData.segmentPrices && Array.isArray(tripData.segmentPrices) && tripData.segmentPrices.length > 0) {
+        console.log("Cargando precios y horarios de segmentos:", tripData.segmentPrices);
         
-        // Una vez que tenemos los segmentos, podemos cargar los precios y horarios
-        if (routeSegmentsQuery.data && tripData.segmentPrices) {
-          console.log("Cargando precios y horarios de segmentos...", tripData.segmentPrices);
-          
-          // Si el viaje tiene precios de segmentos guardados, usarlos
-          if (Array.isArray(tripData.segmentPrices) && tripData.segmentPrices.length > 0) {
-            // Actualizar los precios en el estado local
-            setSegmentPrices(tripData.segmentPrices);
-            
-            // Asignar valores al formulario
-            form.setValue("segmentPrices", tripData.segmentPrices);
-            
-            // Si hay información de tiempos de parada, cargarla también
-            if (tripData.stopTimes && Array.isArray(tripData.stopTimes)) {
-              setStopTimes(ensureValidStopTimes(tripData.stopTimes));
-            } else {
-              // Intentar reconstruir los tiempos de parada a partir de los tiempos de segmentos
-              reconstructStopTimesFromSegments(tripData.segmentPrices);
-            }
-          }
+        // Primero establecer los precios de segmentos
+        setSegmentPrices(tripData.segmentPrices);
+        form.setValue("segmentPrices", tripData.segmentPrices);
+        
+        // Luego manejar los tiempos de parada
+        if (tripData.stopTimes && Array.isArray(tripData.stopTimes)) {
+          // Si hay tiempos de parada explícitos, usarlos
+          const validStopTimes = ensureValidStopTimes(tripData.stopTimes);
+          console.log("Estableciendo tiempos de parada explícitos:", validStopTimes);
+          setStopTimes(validStopTimes);
+        } else {
+          // Reconstruir a partir de los tiempos de segmentos
+          console.log("Reconstruyendo tiempos de parada desde segmentos");
+          reconstructStopTimesFromSegments(tripData.segmentPrices);
         }
-      };
-      
-      // Iniciar el proceso de espera
-      waitForRouteSegments();
+      } else {
+        console.warn("El viaje no tiene precios por segmento definidos");
+      }
       
     } catch (error) {
       console.error("Error al cargar viaje para edición:", error);
