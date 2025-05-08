@@ -57,6 +57,7 @@ export const tripSegments = pgTable("trip_segments", {
   origin: text("origin").notNull(),
   destination: text("destination").notNull(),
   price: doublePrecision("price").notNull(),
+  availableSeats: integer("available_seats"),  // Asientos disponibles para este segmento específico
   departureTime: text("departure_time"),
   arrivalTime: text("arrival_time"),
   isDirectSegment: boolean("is_direct_segment").default(false),
