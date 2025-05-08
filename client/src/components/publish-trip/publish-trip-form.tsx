@@ -405,26 +405,62 @@ export function PublishTripForm() {
     form.setValue("segmentPrices", updatedSegmentPrices);
   };
 
-  // Mutation for publishing trips
+  // Utilidad para convertir viajes al modelo optimizado
+
+  // Mutation for publishing trips - usando el modelo optimizado
   const publishTripMutation = useMutation({
     mutationFn: async (data: FormValues) => {
       try {
-        const response = await fetch("/api/trips", {
+        // Primero obtenemos la ruta completa con todas sus paradas
+        const routeResponse = await fetch(`/api/routes/${data.routeId}`);
+        if (!routeResponse.ok) {
+          throw new Error("No se pudo obtener la información de la ruta");
+        }
+        const route = await routeResponse.json();
+        
+        // Construir datos para el modelo antiguo (para compatibilidad)
+        const tripData = {
+          routeId: data.routeId,
+          departureDate: data.startDate,
+          capacity: data.capacity,
+          availableSeats: data.capacity,
+          price: data.price,
+          departureTime: data.stopTimes && data.stopTimes[0] ? 
+                          `${data.stopTimes[0].hour}:${data.stopTimes[0].minute} ${data.stopTimes[0].ampm}` : 
+                          "08:00 AM",
+          arrivalTime: data.stopTimes && data.stopTimes[data.stopTimes.length - 1] ? 
+                        `${data.stopTimes[data.stopTimes.length - 1].hour}:${data.stopTimes[data.stopTimes.length - 1].minute} ${data.stopTimes[data.stopTimes.length - 1].ampm}` : 
+                        "12:00 PM",
+          segmentPrices: data.segmentPrices,
+          vehicleId: data.vehicleId,
+          driverId: data.driverId,
+          archived: false
+        };
+        
+        console.log("[PublishTripForm] Datos de viaje para optimizar:", tripData);
+        
+        // Convertir el viaje al modelo optimizado
+        const optimizedData = convertTripToOptimized(tripData, route);
+        
+        console.log("[PublishTripForm] Viaje optimizado para publicar:", optimizedData);
+        
+        // Publicar el viaje usando la nueva API optimizada
+        const response = await fetch("/api/optimized/trips", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(data),
+          body: JSON.stringify(optimizedData),
         });
 
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(errorText || "Failed to publish trip");
+          throw new Error(errorText || "Error al publicar viaje optimizado");
         }
 
         return await response.json();
       } catch (error) {
-        console.error("Error publishing trip:", error);
+        console.error("[PublishTripForm] Error al publicar viaje optimizado:", error);
         throw error;
       }
     },
@@ -442,8 +478,9 @@ export function PublishTripForm() {
         endDate: format(new Date(), "yyyy-MM-dd"),
       });
 
-      // Refresh queries
+      // Refresh queries - Actualizar ambos endpoints para asegurar la consistencia
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/optimized/trips"] });
 
       // Hide form if not editing
       if (!editingTripId) {
