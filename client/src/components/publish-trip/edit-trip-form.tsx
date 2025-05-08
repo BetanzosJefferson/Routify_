@@ -329,7 +329,7 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
     const updatedSegmentPrices = [...segmentPrices];
     updatedSegmentPrices[segmentIndex] = {
       ...updatedSegmentPrices[segmentIndex],
-      price
+      price: Number(price) // Asegurar que el precio es un número
     };
     
     setSegmentPrices(updatedSegmentPrices);
@@ -357,11 +357,14 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
 
   // Actualizar el precio de grupo de ciudades
   const updateCityGroupPrice = (origin: string, destination: string, price: number) => {
+    // Asegurar que el precio es un número
+    const numericPrice = Number(price);
+    
     // Encontrar todos los segmentos que correspondan a este grupo de ciudades
     const updatedSegmentPrices = segmentPrices.map(segment => {
       if (getCityName(segment.origin) === getCityName(origin) && 
           getCityName(segment.destination) === getCityName(destination)) {
-        return { ...segment, price };
+        return { ...segment, price: numericPrice };
       }
       return segment;
     });
