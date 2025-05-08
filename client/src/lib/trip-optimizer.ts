@@ -33,15 +33,55 @@ interface FormTrip {
  */
 export function convertTripToOptimized(
   trip: Trip | TripWithTimes | FormTrip,
-  route: Route & { stops?: StopOnRoute[] }
+  route: Route & { stops?: string[] | StopOnRoute[] }
 ) {
   // Si no hay ruta o paradas, no podemos optimizar
-  if (!route || !route.stops || route.stops.length < 2) {
-    throw new Error("La ruta debe tener al menos dos paradas para optimizar el viaje");
+  if (!route || !route.stops || route.stops.length < 1) {
+    throw new Error("La ruta debe tener al menos una parada para optimizar el viaje");
+  }
+  
+  // Convertir las paradas a objetos StopOnRoute si son strings
+  let stopsObjects: StopOnRoute[] = [];
+  
+  // Verificar si las paradas son strings (desde la API) o ya son objetos
+  if (typeof route.stops[0] === 'string') {
+    console.log("[TripOptimizer] Convirtiendo paradas de strings a objetos");
+    
+    // Crear array con el origen como primera parada
+    const allStops = [
+      { 
+        stopId: 0, 
+        stopIndex: 0, 
+        location: route.origin,
+        stopName: route.origin,
+        stopType: "origin"
+      },
+      // Convertir las paradas intermedias
+      ...((route.stops as string[]).map((stop, index) => ({
+        stopId: index + 1,
+        stopIndex: index + 1,
+        location: stop,
+        stopName: stop,
+        stopType: "stop"
+      }))),
+      // Añadir el destino como última parada
+      { 
+        stopId: route.stops.length + 1, 
+        stopIndex: route.stops.length + 1, 
+        location: route.destination,
+        stopName: route.destination,
+        stopType: "destination"
+      }
+    ];
+    
+    stopsObjects = allStops;
+  } else {
+    // Las paradas ya son objetos
+    stopsObjects = [...(route.stops as StopOnRoute[])];
   }
   
   // Ordenar las paradas por su índice
-  const orderedStops = [...route.stops].sort((a, b) => a.stopIndex - b.stopIndex);
+  const orderedStops = [...stopsObjects].sort((a, b) => a.stopIndex - b.stopIndex);
   
   // Crear datos del viaje maestro
   // Convertir departureDate si viene como string
