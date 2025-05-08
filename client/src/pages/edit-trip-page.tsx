@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useParams } from "wouter";
 import { EditTripForm } from "@/components/publish-trip/edit-trip-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,10 +21,6 @@ export default function EditTripPage() {
 
   return (
     <>
-      <Helmet>
-        <title>Editar Viaje | TransRoute</title>
-      </Helmet>
-
       <div className="container mx-auto py-8">
         <Card className="bg-white shadow-md">
           <CardHeader className="border-b bg-muted/40">
