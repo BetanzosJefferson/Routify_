@@ -2846,7 +2846,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Filtrar por rol si se especificó en la consulta
       if (roleFilter) {
-        users = users.filter(user => user.role.toLowerCase() === roleFilter.toLowerCase());
+        // Normalizar el rol (comparar en minúsculas y manejar variantes)
+        const normalizedRoleFilter = roleFilter.toLowerCase();
+        users = users.filter(user => {
+          const userRole = user.role.toLowerCase();
+          
+          // Caso especial para conductores (pueden tener varias formas en la DB)
+          if (normalizedRoleFilter === 'chofer') {
+            return userRole === 'chofer' || userRole === 'driver' || userRole === 'chófer';
+          }
+          
+          return userRole === normalizedRoleFilter;
+        });
       }
       
       console.log(`[GET /api/users] Encontrados ${users.length} usuarios`);
