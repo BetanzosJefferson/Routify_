@@ -349,9 +349,36 @@ export default function ReservationDetailsModal({
                     </div>
                   </div>
                   
-                  {/* Verificación de ticket */}
+                  {/* Bitácora del ticket */}
                   <div className="bg-gray-50 p-3 sm:p-4 rounded-md">
-                    <h3 className="font-medium text-sm sm:text-base border-b pb-2 mb-3 sm:mb-4">Verificación de ticket</h3>
+                    <h3 className="font-medium text-sm sm:text-base border-b pb-2 mb-3 sm:mb-4">Bitácora</h3>
+                    
+                    {reservation.checkedBy && reservation.checkedByUser && (
+                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
+                        <div className="text-sm text-gray-500 font-medium">VERIFICADO POR:</div>
+                        <div className="font-medium text-right">
+                          {reservation.checkedByUser.firstName} {reservation.checkedByUser.lastName}
+                          <div className="text-xs text-gray-500">({reservation.checkedByUser.role})</div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {reservation.paymentStatus === 'pagado' && reservation.paidBy && reservation.paidByUser && (
+                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
+                        <div className="text-sm text-gray-500 font-medium">COBRADO POR:</div>
+                        <div className="font-medium text-right">
+                          {reservation.paidByUser.firstName} {reservation.paidByUser.lastName}
+                          <div className="text-xs text-gray-500">({reservation.paidByUser.role})</div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {(!reservation.checkedBy && !reservation.paidBy) && (
+                      <div className="text-sm text-gray-500 text-center mb-3">
+                        No hay registros de verificación o cobro
+                      </div>
+                    )}
+                    
                     <Button
                       variant="secondary"
                       className="w-full text-sm"
