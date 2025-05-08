@@ -2829,7 +2829,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as Express.User;
       let users;
       
+      // Filtro por rol si se proporciona en la consulta
+      const roleFilter = req.query.role as string;
       console.log(`[GET /api/users] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}, CompanyId: ${user.companyId || 'N/A'}, Company: ${user.company || 'N/A'}`);
+      console.log(`[GET /api/users] Filtro de rol solicitado: ${roleFilter || 'ninguno'}`);
       
       if (user.role === UserRole.SUPER_ADMIN) {
         console.log(`[GET /api/users] Usuario con rol superadmin: obteniendo TODOS los usuarios`);
@@ -2841,7 +2844,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         users = await storage.getUsersByCompany(companyFilter);
       }
       
-      console.log(`[GET /api/users] Encontrados ${users.length} usuarios. IDs: ${users.map(u => u.id).join(', ')}`);
+      // Filtrar por rol si se especificó en la consulta
+      if (roleFilter) {
+        users = users.filter(user => user.role.toLowerCase() === roleFilter.toLowerCase());
+      }
+      
+      console.log(`[GET /api/users] Encontrados ${users.length} usuarios`);
       
       res.json(users);
     } catch (error) {
