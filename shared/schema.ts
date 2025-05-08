@@ -167,6 +167,7 @@ export type ReservationWithDetails = Reservation & {
   passengers: Passenger[];
   createdByUser?: User;
   checkedByUser?: User;
+  paidByUser?: User;
 };
 
 export type SegmentPrice = {
@@ -383,6 +384,10 @@ export const reservationRelations = relations(reservations, ({ one, many }) => (
   checkedByUser: one(users, {
     fields: [reservations.checkedBy],
     references: [users.id]
+  }),
+  paidByUser: one(users, {
+    fields: [reservations.paidBy],
+    references: [users.id]
   })
 }));
 
@@ -473,6 +478,11 @@ export const userRelations = relations(users, ({ many, one }) => ({
   checkedReservations: many(reservations, {
     fields: [users.id],
     references: [reservations.checkedBy]
+  }),
+  // Relación para las reservaciones marcadas como pagadas por este usuario
+  paidReservations: many(reservations, {
+    fields: [users.id],
+    references: [reservations.paidBy]
   }),
   // Relación con la compañía a la que pertenece el usuario
   company: one(companies, {
