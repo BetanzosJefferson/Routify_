@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+// Eliminamos la declaración global ya que usaremos estado interno en su lugar
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { 
@@ -100,6 +102,8 @@ interface Trip {
   // Información de vehículo y conductor asignados (objetos completos)
   assignedVehicle?: any;
   assignedDriver?: any;
+  // Contador de reservaciones para este viaje
+  reservationCount?: number;
 }
 
 type TripListProps = {
@@ -119,6 +123,8 @@ export default function TripList({ onEditTrip }: TripListProps) {
   const [assignDriverDialogOpen, setAssignDriverDialogOpen] = useState<number | null>(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  // Estado para controlar qué viaje está siendo editado actualmente
+  const [editingTripId, setEditingTripId] = useState<number | null>(null);
 
   // Consulta para obtener todos los viajes
   const { data: trips = [], isLoading, refetch } = useQuery({
@@ -156,7 +162,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
       const data = await res.json();
       console.log("Conductores obtenidos:", data);
       // Filtramos explícitamente para asegurarnos de que solo se incluyan usuarios con rol 'chofer'
-      return data.filter((user: any) => user.role === 'chofer');
+      return data.filter((user: { role: string }) => user.role === 'chofer');
     }
   });
 
@@ -392,8 +398,8 @@ export default function TripList({ onEditTrip }: TripListProps) {
     });
     
     // Ordenar los viajes dentro de cada grupo por hora de salida
-    Object.keys(grouped).forEach(dateKey => {
-      grouped[dateKey].sort((a, b) => 
+    Object.keys(grouped).forEach((dateKey: string) => {
+      grouped[dateKey].sort((a: Trip, b: Trip) => 
         a.departureTime.localeCompare(b.departureTime)
       );
     });
@@ -674,16 +680,34 @@ export default function TripList({ onEditTrip }: TripListProps) {
                               variant="ghost"
                               size="icon"
                               onClick={() => {
-                                // Invalidar la caché antes de editar para forzar una recarga fresca
-                                queryClient.invalidateQueries({ queryKey: ["/api/trips", trip.id] });
-                                // Un pequeño retraso para asegurar que la caché se limpie
+                                // Establecer el viaje en modo edición
+                                setEditingTripId(trip.id);
+                                
+                                // Forzar actualización de la caché de este viaje específico
+                                queryClient.removeQueries({ queryKey: ["/api/trips", trip.id] });
+                                
+                                // Notificar al usuario que se está cargando
+                                toast({
+                                  title: "Cargando datos",
+                                  description: "Preparando viaje para edición...",
+                                  duration: 2000
+                                });
+                                
+                                // Callback para ejecutar la edición
                                 setTimeout(() => {
                                   onEditTrip(trip.id);
-                                }, 50);
+                                  // Liberar el estado de edición después de un tiempo
+                                  setTimeout(() => setEditingTripId(null), 1500);
+                                }, 300);
                               }}
                               className="h-8 w-8"
+                              disabled={editingTripId === trip.id}
                             >
-                              <PencilIcon className="h-4 w-4" />
+                              {editingTripId === trip.id ? (
+                                <Loader2Icon className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <PencilIcon className="h-4 w-4" />
+                              )}
                             </Button>
                             <Button
                               variant="ghost"
