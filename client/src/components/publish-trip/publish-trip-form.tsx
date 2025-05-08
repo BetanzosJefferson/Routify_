@@ -478,10 +478,10 @@ export function PublishTripForm() {
     }
   };
 
-  // Nueva implementación utilizando el endpoint optimizado para edición
+  // Implementación robusta y fiable para edición de viajes
   const loadTripForEditing = async (tripId: number) => {
     try {
-      // FASE 1: NOTIFICAR Y PREPARAR UI
+      // PASO 0: PREPARACIÓN INICIAL - Restablecer estados para evitar conflictos
       console.log(`=== INICIO EDICIÓN DE VIAJE #${tripId} ===`);
       toast({
         title: "Preparando formulario...",
@@ -489,100 +489,122 @@ export function PublishTripForm() {
         duration: 3000
       });
       
-      // Limpiar completamente el formulario y estados
+      // Limpiar todo de forma completa 
       form.reset({});
       setSegmentPrices([]);
       setStopTimes([]);
       setSelectedRouteId(null);
       
-      // Marcar modo edición
-      setEditingTripId(tripId);
+      // Limpiar caché de React Query
+      queryClient.removeQueries({ queryKey: ["/api/trips"] });
+      queryClient.removeQueries({ queryKey: ["/api/routes"] });
+      queryClient.removeQueries({ queryKey: ["/api/vehicles"] });
+      queryClient.removeQueries({ queryKey: ["/api/drivers"] });
+      
+      // Activar estados iniciales UI
+      setEditingTripId(tripId); 
       setShowForm(true);
       setShowAssignmentFields(true);
       
-      // FASE 2: OBTENER TODOS LOS DATOS EN UNA SOLA PETICIÓN OPTIMIZADA
-      console.log("Usando nuevo endpoint optimizado para edición...");
+      // PASO 1: ESPERAR ANTES DE CONTINUAR (crucial para la correcta inicialización)
+      console.log("Esperando inicialización de componentes...");
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Forzar limpieza completa de caché relacionada
-      queryClient.removeQueries({ queryKey: ["/api/trips", tripId] });
-      queryClient.removeQueries({ queryKey: ["/api/routes"] });
-      
-      // Solicitud al nuevo endpoint específico para edición con anti-caché
-      const response = await fetch(`/api/trips/${tripId}/edit?t=${Date.now()}`);
+      // PASO 2: CARGAR DATOS CON ANTI-CACHÉ
+      console.log("Cargando datos optimizados para edición...");
+      const uniqueParam = `t=${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+      const response = await fetch(`/api/trips/${tripId}/edit?${uniqueParam}`);
       
       if (!response.ok) {
         throw new Error(`Error ${response.status}: Fallo al obtener datos para edición`);
       }
       
-      // Extraer datos completos
+      // PASO 3: PROCESAR RESPUESTA
       const editData = await response.json();
-      console.log("Datos completos recibidos del endpoint de edición:", editData);
+      console.log("Respuesta del servidor:", editData);
       
-      // Validar datos mínimos necesarios
-      if (!editData.trip || !editData.trip.routeId) {
-        throw new Error("Datos incompletos o inválidos");
+      // PASO 4: VALIDACIÓN ESTRICTA
+      if (!editData || !editData.trip || typeof editData.trip.routeId === 'undefined') {
+        console.error("Datos incompletos recibidos:", editData);
+        throw new Error("La respuesta del servidor no contiene los datos mínimos necesarios");
       }
       
-      // FASE 3: CONFIGURAR DATOS EN EL FORMULARIO (PROCESO SECUENCIAL)
+      // PASO 5: CONFIGURACIÓN SECUENCIAL (con esperas entre cada paso)
       
-      // Paso 1: Establecer ruta y esperar a que se cargue
-      console.log("Estableciendo ruta ID:", editData.trip.routeId);
-      setSelectedRouteId(parseInt(String(editData.trip.routeId), 10));
-      form.setValue("routeId", editData.trip.routeId);
+      // PASO 5.1: Configurar la ruta (este cambio dispara otras cargas)
+      console.log("Configurando ruta ID:", editData.trip.routeId);
+      const routeId = parseInt(String(editData.trip.routeId), 10);
+      setSelectedRouteId(routeId);
+      form.setValue("routeId", routeId);
       
-      // Esperar a que la interfaz se actualice
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Espera crítica después de cambiar la ruta
+      console.log("Esperando carga de datos dependientes de la ruta...");
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Paso 2: Establecer datos básicos del viaje
-      console.log("Estableciendo datos básicos del viaje");
-      form.setValue("startDate", editData.trip.date || editData.trip.departureDate);
-      form.setValue("endDate", editData.trip.date || editData.trip.departureDate);
-      form.setValue("capacity", editData.trip.capacity);
+      // PASO 5.2: Forzar datos de ruta si están disponibles
+      if (editData.routeData) {
+        console.log("Estableciendo datos de ruta directamente:", editData.routeData);
+        routeSegmentsQuery.data = editData.routeData;
+        
+        // Otra espera para asegurar que los datos se procesan
+        await new Promise(resolve => setTimeout(resolve, 250));
+      }
       
-      // Paso 3: Configurar vehículo y conductor si existen
-      if (editData.trip.vehicleId || editData.vehicleInfo) {
-        const vehicleId = editData.trip.vehicleId || (editData.vehicleInfo ? editData.vehicleInfo.id : null);
-        console.log("Estableciendo vehículo:", vehicleId);
+      // PASO 5.3: Establecer fechas, capacidad y otros datos básicos
+      console.log("Configurando datos básicos...");
+      const tripDate = editData.trip.date || editData.trip.departureDate;
+      form.setValue("startDate", tripDate);
+      form.setValue("endDate", tripDate);
+      form.setValue("capacity", editData.trip.capacity || 40);
+      
+      // PASO 5.4: Asignar vehículo y conductor si existen
+      if (editData.trip.vehicleId || (editData.vehicleInfo && editData.vehicleInfo.id)) {
+        const vehicleId = editData.trip.vehicleId || editData.vehicleInfo.id;
+        console.log("Asignando vehículo ID:", vehicleId);
         form.setValue("vehicleId", vehicleId);
       }
       
-      if (editData.trip.driverId || editData.driverInfo) {
-        const driverId = editData.trip.driverId || (editData.driverInfo ? editData.driverInfo.id : null);
-        console.log("Estableciendo conductor:", driverId);
+      if (editData.trip.driverId || (editData.driverInfo && editData.driverInfo.id)) {
+        const driverId = editData.trip.driverId || editData.driverInfo.id;
+        console.log("Asignando conductor ID:", driverId);
         form.setValue("driverId", driverId);
       }
       
-      // Paso 4: Usar la información de la ruta proporcionada directamente por el endpoint
-      if (editData.routeData && editData.routeData.segments) {
-        console.log("Usando segmentos proporcionados directamente por el servidor");
-        // Forzar actualización del estado de segmentos en lugar de esperar la consulta
-        routeSegmentsQuery.data = editData.routeData;
-      }
-      
-      // Esperar para asegurar que todo está listo
+      // Espera crítica antes de configurar precios y tiempos
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Paso 5: Configurar precios de segmentos y tiempos si están disponibles
-      if (editData.trip.segmentPrices && Array.isArray(editData.trip.segmentPrices)) {
+      // PASO 5.5: Configurar precios de segmentos
+      if (editData.trip.segmentPrices && Array.isArray(editData.trip.segmentPrices) && editData.trip.segmentPrices.length > 0) {
         console.log(`Configurando ${editData.trip.segmentPrices.length} precios de segmentos`);
         
         // Establecer precios
-        setSegmentPrices(editData.trip.segmentPrices);
-        form.setValue("segmentPrices", editData.trip.segmentPrices);
+        const safeSegmentPrices = editData.trip.segmentPrices.map((sp: any) => ({
+          origin: sp.origin,
+          destination: sp.destination,
+          price: sp.price,
+          departureTime: sp.departureTime,
+          arrivalTime: sp.arrivalTime
+        }));
         
-        // Configurar tiempos
-        if (editData.trip.stopTimes && Array.isArray(editData.trip.stopTimes)) {
+        setSegmentPrices(safeSegmentPrices);
+        form.setValue("segmentPrices", safeSegmentPrices);
+        
+        // Espera breve para asegurar que los precios se establecieron
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // PASO 5.6: Configurar tiempos de parada
+        if (editData.trip.stopTimes && Array.isArray(editData.trip.stopTimes) && editData.trip.stopTimes.length > 0) {
+          console.log("Configurando tiempos de parada explícitos");
           const validStopTimes = ensureValidStopTimes(editData.trip.stopTimes);
-          console.log("Configurando tiempos de parada:", validStopTimes.length);
           setStopTimes(validStopTimes);
         } else {
           console.log("Reconstruyendo tiempos de parada desde segmentos");
-          reconstructStopTimesFromSegments(editData.trip.segmentPrices);
+          reconstructStopTimesFromSegments(safeSegmentPrices);
         }
       }
       
-      // FASE 4: FINALIZACIÓN
-      console.log("Edición preparada correctamente");
+      // PASO 6: FINALIZACIÓN
+      console.log("=== EDICIÓN PREPARADA EXITOSAMENTE ===");
       toast({
         title: "Viaje cargado con éxito",
         description: "El formulario está listo para editar",
@@ -592,11 +614,15 @@ export function PublishTripForm() {
     } catch (error: any) {
       console.error("❌ ERROR EN CARGA DE VIAJE:", error);
       
-      // Limpiar estado en caso de error
+      // Limpieza en caso de error
+      form.reset({});
+      setSegmentPrices([]);
+      setStopTimes([]);
+      setSelectedRouteId(null);
       setEditingTripId(null);
       setShowForm(false);
       
-      // Notificar al usuario del error
+      // Notificar al usuario
       toast({
         variant: "destructive",
         title: "Error al cargar viaje",

@@ -552,13 +552,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // 2. Obtener datos del vehículo asignado (si existe)
           trip.vehicleId ? storage.getVehicle(trip.vehicleId) : Promise.resolve(null),
           
-          // 3. Obtener datos del conductor asignado (si existe)
-          trip.driverId ? storage.getUserById(trip.driverId) : Promise.resolve(null)
+          // 3. Obtener datos del conductor asignado (si existe) - getUserById es el método correcto
+          trip.driverId ? (storage.getUserById ? storage.getUserById(trip.driverId) : Promise.resolve(null)) : Promise.resolve(null)
         ]);
         
-        console.log(`[GET /trips/${tripId}/edit] Datos obtenidos correctamente`);
+        console.log(`[GET /trips/${req.params.id}/edit] Datos obtenidos correctamente`);
       } catch (err) {
-        console.error(`[GET /trips/${tripId}/edit] Error al obtener datos complementarios:`, err);
+        console.error(`[GET /trips/${req.params.id}/edit] Error al obtener datos complementarios:`, err);
         // Si hay error en los datos complementarios, continuamos con lo que tengamos
       }
       
