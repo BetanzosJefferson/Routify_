@@ -3116,6 +3116,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/reservations/:id/pay - Marcar un ticket como pagado
+  app.post(apiRouter('/reservations/:id/pay'), isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Verificar que la reservación existe
+      const reservation = await storage.getReservation(id);
+      if (!reservation) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Reservación no encontrada' 
+        });
+      }
+      
+      // Verificar que el usuario está autenticado
+      if (!req.user) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Usuario no autenticado' 
+        });
+      }
+      
+      console.log(`[PAY TICKET] Solicitud de pago de ticket ${id} por usuario ${req.user.firstName} ${req.user.lastName} (ID: ${req.user.id})`);
+    
+      // Verificar permisos: solo ciertos roles pueden marcar tickets como pagados
+      const allowedRoles = [
+        UserRole.SUPER_ADMIN, 
+        UserRole.ADMIN, 
+        UserRole.OWNER, 
+        UserRole.CHECKER, 
+        UserRole.TICKET_OFFICE
+      ];
+      
+      if (!allowedRoles.includes(req.user.role)) {
+        console.log(`[PAY TICKET] DENEGADO: Rol ${req.user.role} no autorizado para marcar tickets como pagados`);
+        return res.status(403).json({ 
+          success: false, 
+          message: 'No tienes permiso para marcar tickets como pagados' 
+        });
+      }
+      
+      // Obtener los detalles del viaje asociado a la reservación
+      const trip = await storage.getTrip(reservation.tripId);
+      if (!trip) {
+        console.log(`[PAY TICKET] DENEGADO: No se encontró el viaje ${reservation.tripId} asociado a la reservación ${id}`);
+        return res.status(404).json({ 
+          success: false, 
+          message: 'No se encontró el viaje asociado a esta reservación' 
+        });
+      }
+      
+      // Obtener la compañía del usuario
+      const userCompanyId = req.user.company || (req.user as any).companyId;
+      
+      // Obtener la compañía del viaje
+      const tripCompanyId = trip.companyId;
+      
+      console.log(`[PAY TICKET] Verificando compañías - Usuario: ${userCompanyId || 'ninguna'}, Viaje: ${tripCompanyId || 'ninguna'}`);
+      
+      // Verificar si ambas compañías coinciden (solo si el usuario no es superAdmin)
+      if (req.user.role !== UserRole.SUPER_ADMIN) {
+        // Si el usuario no tiene compañía asignada, no puede marcar tickets como pagados
+        if (!userCompanyId) {
+          console.log(`[PAY TICKET] DENEGADO: Usuario sin compañía asignada`);
+          return res.status(403).json({ 
+            success: false, 
+            message: 'No tienes una compañía asignada para marcar tickets como pagados' 
+          });
+        }
+        
+        // Si el viaje no tiene compañía asignada, aplicamos una restricción similar
+        if (!tripCompanyId) {
+          console.log(`[PAY TICKET] DENEGADO: El viaje no tiene compañía asignada`);
+          return res.status(403).json({ 
+            success: false, 
+            message: 'El viaje asociado no tiene compañía asignada' 
+          });
+        }
+        
+        // Normalizar IDs de compañía para la comparación
+        // Extraer el nombre base de la compañía sin el sufijo (ej. "bamo-456" => "bamo")
+        const normalizeCompanyId = (companyId: string) => {
+          const companyIdLower = companyId.toLowerCase();
+          // Si tiene formato "compañía-XXX", extraer solo la parte de la compañía
+          const match = companyIdLower.match(/^([a-z]+)(?:-\d+)?$/);
+          return match ? match[1] : companyIdLower;
+        };
+        
+        const normalizedUserCompany = normalizeCompanyId(userCompanyId);
+        const normalizedTripCompany = normalizeCompanyId(tripCompanyId);
+        
+        console.log(`[PAY TICKET] Compañías normalizadas - Usuario: ${normalizedUserCompany}, Viaje: ${normalizedTripCompany}`);
+        
+        // Verificar que las compañías coincidan después de normalizarlas
+        if (normalizedUserCompany !== normalizedTripCompany) {
+          console.log(`[PAY TICKET] DENEGADO: Las compañías no coinciden después de normalizar - Usuario: ${normalizedUserCompany}, Viaje: ${normalizedTripCompany}`);
+          return res.status(403).json({ 
+            success: false, 
+            message: 'No puedes marcar como pagados tickets de viajes que no pertenecen a tu compañía' 
+          });
+        }
+      }
+      
+      // Marcar el ticket como pagado
+      const updatedReservation = await storage.markAsPaid(id, req.user.id);
+      
+      console.log(`[PAY TICKET] Ticket ${id} marcado como pagado por usuario ${req.user.id}`);
+      
+      res.json({ 
+        success: true, 
+        reservation: updatedReservation,
+        message: 'Ticket marcado como pagado correctamente'
+      });
+    } catch (error) {
+      console.error('Error al marcar ticket como pagado:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error al procesar el pago del ticket' 
+      });
+    }
+  });
+
   // ======== API de Cupones ========
 
   // GET /api/coupons - Obtener todos los cupones
