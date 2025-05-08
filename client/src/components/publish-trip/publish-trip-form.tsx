@@ -486,7 +486,11 @@ export function PublishTripForm() {
       setSegmentPrices([]);
       setStopTimes([]);
       
+      // Establecer el ID del viaje que estamos editando para referencia futura
+      setEditingTripId(tripId);
+      
       // Primero cargar los datos del viaje sin mostrar el formulario todavía
+      console.log(`Cargando datos del viaje ID: ${tripId}`);
       const response = await fetch(`/api/trips/${tripId}`);
       
       if (!response.ok) {
@@ -497,35 +501,16 @@ export function PublishTripForm() {
       console.log("Datos de viaje cargados para edición:", tripData);
       
       // Precargar la ruta seleccionada
+      console.log(`Configurando ruta ID: ${tripData.routeId}`); 
       handleRouteChange(String(tripData.routeId));
+      setSelectedRouteId(tripData.routeId);
       
-      // Establecer el ID del viaje que estamos editando para referencia futura
-      setEditingTripId(tripId);
+      // Esperar un poco para asegurar que el cambio de ruta se propague
+      await new Promise<void>((resolve) => setTimeout(resolve, 500));
       
-      // Esperar a que se complete la carga de la ruta
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, 500); 
-      });
+      console.log("Estableciendo valores básicos del formulario");
       
-      // Ahora que routeId ha cambiado, esperar a que se carguen los segmentos
-      await new Promise<void>((resolve) => {
-        const checkSegmentsLoaded = () => {
-          if (!routeSegmentsQuery.isLoading && routeSegmentsQuery.data) {
-            console.log("Segmentos de ruta cargados correctamente");
-            resolve();
-          } else {
-            console.log("Esperando carga de segmentos...");
-            setTimeout(checkSegmentsLoaded, 100);
-          }
-        };
-        
-        checkSegmentsLoaded();
-      });
-      
-      // Una vez que tenemos la ruta y los segmentos, preparar los datos del formulario
-      console.log("Completando formulario con datos del viaje");
-      
-      // Establecer valores base
+      // Establecer valores base (también si routeSegmentsQuery no está listo)
       form.setValue("routeId", tripData.routeId);
       form.setValue("startDate", tripData.date || tripData.departureDate);
       form.setValue("endDate", tripData.date || tripData.departureDate);
@@ -540,22 +525,20 @@ export function PublishTripForm() {
         form.setValue("driverId", tripData.driverId);
       }
       
-      // Una vez que tenemos los segmentos, cargar los precios y horarios
+      // Continuar solo si tenemos datos de segmentos de precios
       if (tripData.segmentPrices && Array.isArray(tripData.segmentPrices) && tripData.segmentPrices.length > 0) {
-        console.log("Cargando precios y horarios de segmentos:", tripData.segmentPrices);
+        console.log("El viaje tiene precios por segmento:", tripData.segmentPrices.length);
         
-        // Primero establecer los precios de segmentos
+        // Establecer directamente los precios de segmentos
         setSegmentPrices(tripData.segmentPrices);
         form.setValue("segmentPrices", tripData.segmentPrices);
         
-        // Luego manejar los tiempos de parada
+        // Si hay tiempos de parada, configurarlos
         if (tripData.stopTimes && Array.isArray(tripData.stopTimes)) {
-          // Si hay tiempos de parada explícitos, usarlos
+          console.log("Estableciendo tiempos de parada explícitos");
           const validStopTimes = ensureValidStopTimes(tripData.stopTimes);
-          console.log("Estableciendo tiempos de parada explícitos:", validStopTimes);
           setStopTimes(validStopTimes);
-        } else {
-          // Reconstruir a partir de los tiempos de segmentos
+        } else if (routeSegmentsQuery.data) {
           console.log("Reconstruyendo tiempos de parada desde segmentos");
           reconstructStopTimesFromSegments(tripData.segmentPrices);
         }
@@ -566,6 +549,8 @@ export function PublishTripForm() {
       // Ahora que todos los datos están cargados, mostrar el formulario
       setShowForm(true);
       setShowAssignmentFields(true);
+      
+      console.log("Edición de viaje preparada correctamente");
       
       // Desactivar el estado de carga
       setIsLoadingTripEdit(false);
@@ -579,6 +564,7 @@ export function PublishTripForm() {
       });
       setIsLoadingTripEdit(false);
       setEditingTripId(null); // Limpiar el ID en caso de error
+      setShowForm(false); // Asegurar que no se muestra el formulario en caso de error
     }
   };
   
