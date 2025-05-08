@@ -673,7 +673,14 @@ export default function TripList({ onEditTrip }: TripListProps) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => onEditTrip(trip.id)}
+                              onClick={() => {
+                                // Invalidar la caché antes de editar para forzar una recarga fresca
+                                queryClient.invalidateQueries({ queryKey: ["/api/trips", trip.id] });
+                                // Un pequeño retraso para asegurar que la caché se limpie
+                                setTimeout(() => {
+                                  onEditTrip(trip.id);
+                                }, 50);
+                              }}
                               className="h-8 w-8"
                             >
                               <PencilIcon className="h-4 w-4" />
