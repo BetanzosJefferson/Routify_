@@ -259,16 +259,6 @@ export default function ReservationDetailsModal({
                         </div>
                       </div>
                       
-                      {/* Mostrar quién marcó como pagado, si aplica */}
-                      {reservation.paymentStatus === 'pagado' && reservation.cobradoPorUser && (
-                        <div className="grid grid-cols-2 items-center">
-                          <div className="text-sm text-gray-500 font-medium">COBRADO POR</div>
-                          <div className="text-right">
-                            {reservation.cobradoPorUser.firstName} {reservation.cobradoPorUser.lastName}
-                          </div>
-                        </div>
-                      )}
-                      
                       <div className="grid grid-cols-2 items-center">
                         <div className="text-sm text-gray-500 font-medium">MONTO TOTAL</div>
                         <div className="text-right font-medium">{formatPrice(reservation.totalAmount)}</div>
