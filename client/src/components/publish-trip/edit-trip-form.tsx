@@ -149,10 +149,12 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
   const driversQuery = useQuery({
     queryKey: ["/api/users", "chofer"],
     queryFn: async () => {
+      // Importante: usar "chofer" en minúsculas para que coincida con el filtro del backend
       const response = await fetch("/api/users?role=chofer");
       if (!response.ok) {
         throw new Error("Error al cargar conductores");
       }
+      console.log("Conductores cargados:", await response.clone().json());
       return await response.json();
     },
     enabled: true, // Siempre habilitada para edición
