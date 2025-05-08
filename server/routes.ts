@@ -553,7 +553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           trip.vehicleId ? storage.getVehicle(trip.vehicleId) : Promise.resolve(null),
           
           // 3. Obtener datos del conductor asignado (si existe)
-          trip.driverId ? storage.getUser(trip.driverId) : Promise.resolve(null)
+          trip.driverId ? storage.getUserById(trip.driverId) : Promise.resolve(null)
         ]);
         
         console.log(`[GET /trips/${tripId}/edit] Datos obtenidos correctamente`);
@@ -576,8 +576,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           brand: vehicleInfo.brand,
           model: vehicleInfo.model,
           plates: vehicleInfo.plates,
-          capacity: vehicleInfo.capacity,
-          type: vehicleInfo.type
+          capacity: vehicleInfo.capacity
         } : null,
         
         // Información del conductor si está disponible
@@ -592,14 +591,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: Date.now()
       };
       
-      console.log(`[GET /trips/${tripId}/edit] Enviando respuesta completa para edición`);
+      console.log(`[GET /trips/${req.params.id}/edit] Enviando respuesta completa para edición`);
       res.json(enrichedResponse);
       
-    } catch (error) {
-      console.error(`[GET /trips/${tripId}/edit] Error:`, error);
+    } catch (error: any) {
+      console.error(`[GET /trips/${req.params.id}/edit] Error:`, error);
       res.status(500).json({ 
         error: "Error al preparar datos para edición", 
-        details: error.message 
+        details: error.message || "Error desconocido" 
       });
     }
   });
