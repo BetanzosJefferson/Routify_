@@ -478,7 +478,7 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
   const updateTripMutation = useMutation({
     mutationFn: async (data: FormValues) => {
       console.log("Enviando datos para actualizar viaje:", data);
-      const res = await apiRequest("PATCH", `/api/trips/${tripId}`, data);
+      const res = await apiRequest("PUT", `/api/trips/${tripId}`, data);
       return await res.json();
     },
     onSuccess: () => {
