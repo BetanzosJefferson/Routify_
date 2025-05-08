@@ -243,7 +243,7 @@ export default function ReservationRequestsPage() {
                       <div>
                         <span className="font-medium">Ruta:</span>{" "}
                         <span className="text-muted-foreground">
-                          {selectedRequest.tripOrigin || "Origen no especificado"} → {selectedRequest.tripDestination || "Destino no especificado"}
+                          {selectedRequest.tripOrigin || "Origen no especificado"} - {selectedRequest.tripDestination || "Destino no especificado"}
                         </span>
                       </div>
                     </div>
@@ -482,7 +482,7 @@ function RequestCard({ request, isProcessed, onReview }: RequestCardProps) {
             <div className="flex items-center text-sm">
               <MapPin className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
               <span className="truncate">
-                {request.tripOrigin || "Origen no especificado"} → {request.tripDestination || "Destino no especificado"}
+                {request.tripOrigin || "Origen no especificado"} - {request.tripDestination || "Destino no especificado"}
               </span>
             </div>
             <div className="flex items-center text-sm">
@@ -493,17 +493,10 @@ function RequestCard({ request, isProcessed, onReview }: RequestCardProps) {
             </div>
             <div className="flex items-center text-sm">
               <User className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-              <div className="flex flex-col">
-                <span>
-                  {request.passengersData?.length || 0} pasajeros • Solicitado por{" "}
-                  <span className="font-medium">{request.requesterName || `Agente #${request.requesterId}`}</span>
-                </span>
-                {request.passengerNames && request.passengerNames.length > 0 && (
-                  <span className="text-xs text-muted-foreground mt-1">
-                    {request.passengerNames.join(', ')}
-                  </span>
-                )}
-              </div>
+              <span>
+                Solicitado por{" "}
+                <span className="font-medium">{request.requesterName || `Agente #${request.requesterId}`}</span>
+              </span>
             </div>
           </div>
           <div className="space-y-3">
@@ -523,9 +516,22 @@ function RequestCard({ request, isProcessed, onReview }: RequestCardProps) {
             )}
             
             <div className="flex items-center text-sm">
+              <User className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+              <div className="flex flex-col">
+                <span>{request.passengersData?.length || 0} pasajeros</span>
+                {request.passengerNames && request.passengerNames.length > 0 && (
+                  <span className="text-xs text-muted-foreground mt-1">
+                    {request.passengerNames.join(', ')}
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex items-center text-sm">
               <Phone className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
               <span className="truncate">{request.phone}</span>
             </div>
+            
             <div className="flex items-center text-sm">
               <span className="mr-2 flex-shrink-0">📧</span>
               <span className="truncate">{request.email}</span>
