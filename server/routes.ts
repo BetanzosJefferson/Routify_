@@ -1803,10 +1803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Determinar estado de pago basado en anticipo
       let paymentStatus = "pendiente";
-      if (reservationData.advanceAmount && reservationData.advanceAmount >= totalAmount) {
-        paymentStatus = "pagado";
-      }
-
+      
       // Obtener el usuario autenticado, si existe
       const { user } = req as any;
       
@@ -1815,6 +1812,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (createdByUserId) {
         console.log(`Registrando usuario creador de la reservación: ID ${createdByUserId}`);
+      }
+      
+      // Determinar si está pagada y quién la pagó
+      let paidBy = null;
+      if (reservationData.advanceAmount && reservationData.advanceAmount >= totalAmount) {
+        paymentStatus = "pagado";
+        
+        // Si se paga completamente al crearla, entonces quien la crea es quien cobra el pago
+        paidBy = createdByUserId;
+        console.log(`Reservación pagada completamente al crearla. Registrando paidBy: ID ${paidBy}`);
       }
       
       const reservation = await storage.createReservation({
@@ -1830,7 +1837,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         advanceAmount: reservationData.advanceAmount || 0, // Añadir campo de anticipo
         advancePaymentMethod: reservationData.advancePaymentMethod || "efectivo", // Añadir método de pago del anticipo
         paymentStatus: paymentStatus, // Estado del pago basado en el anticipo
-        createdBy: createdByUserId // ID del usuario que crea la reservación (para comisiones)
+        createdBy: createdByUserId, // ID del usuario que crea la reservación (para comisiones)
+        paidBy: paidBy // ID del usuario que cobró el pago (si se pagó completamente al crear)
       });
       
       // Create the passengers
