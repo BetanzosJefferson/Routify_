@@ -490,8 +490,8 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       // Refresh queries antes de redirigir
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
       
-      // Redirigir de vuelta a la lista de viajes publicados usando React Router
-      navigate("/publish");
+      // Redirigir de vuelta a la lista de viajes publicados usando los parámetros de consulta
+      navigate("/?tab=publish-trip");
     },
     onError: (error: Error) => {
       toast({
