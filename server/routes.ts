@@ -2835,29 +2835,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[GET /api/users] Filtro de rol solicitado: ${roleFilter || 'ninguno'}`);
       
       if (user.role === UserRole.SUPER_ADMIN) {
-        console.log(`[GET /api/users] Usuario con rol superadmin: obteniendo TODOS los usuarios`);
-        users = await storage.getUsers();
+        if (roleFilter) {
+          // Si hay filtro de rol, usar la función optimizada aunque sea superadmin
+          console.log(`[GET /api/users] Usuario con rol superadmin: filtrando por rol "${roleFilter}" en todas las empresas`);
+          // Los superadmin ven usuarios de todas las compañías
+          users = await storage.getUsers();
+          // Luego filtramos por rol
+          const normalizedRoleFilter = roleFilter.toLowerCase();
+          users = users.filter(user => {
+            const userRole = user.role.toLowerCase();
+            
+            // Caso especial para conductores 
+            if (normalizedRoleFilter === 'chofer') {
+              return userRole === 'chofer' || userRole === 'driver' || userRole === 'chófer';
+            }
+            
+            return userRole === normalizedRoleFilter;
+          });
+        } else {
+          // Si no hay filtro de rol, obtener todos los usuarios
+          console.log(`[GET /api/users] Usuario con rol superadmin: obteniendo TODOS los usuarios`);
+          users = await storage.getUsers();
+        }
       } else {
         // Para Owner y Admin, filtramos por companyId o company
         const companyFilter = user.companyId || user.company || '';
-        console.log(`[GET /api/users] Usuario con rol ${user.role}: filtrando por compañía: ${companyFilter}`);
-        users = await storage.getUsersByCompany(companyFilter);
-      }
-      
-      // Filtrar por rol si se especificó en la consulta
-      if (roleFilter) {
-        // Normalizar el rol (comparar en minúsculas y manejar variantes)
-        const normalizedRoleFilter = roleFilter.toLowerCase();
-        users = users.filter(user => {
-          const userRole = user.role.toLowerCase();
-          
-          // Caso especial para conductores (pueden tener varias formas en la DB)
-          if (normalizedRoleFilter === 'chofer') {
-            return userRole === 'chofer' || userRole === 'driver' || userRole === 'chófer';
-          }
-          
-          return userRole === normalizedRoleFilter;
-        });
+        
+        if (roleFilter) {
+          // Si hay filtro de rol, usar función optimizada con filtro combinado
+          console.log(`[GET /api/users] Usuario con rol ${user.role}: filtrando por compañía: ${companyFilter} y rol: ${roleFilter}`);
+          users = await storage.getUsersByCompanyAndRole(companyFilter, roleFilter);
+        } else {
+          // Si no hay filtro de rol, obtener todos los usuarios de la compañía
+          console.log(`[GET /api/users] Usuario con rol ${user.role}: filtrando por compañía: ${companyFilter}`);
+          users = await storage.getUsersByCompany(companyFilter);
+        }
       }
       
       console.log(`[GET /api/users] Encontrados ${users.length} usuarios`);
