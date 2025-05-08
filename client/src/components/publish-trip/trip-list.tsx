@@ -24,7 +24,8 @@ import {
   CarIcon, 
   UserIcon,
   CheckIcon,
-  Loader2Icon
+  Loader2Icon,
+  XIcon
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -61,9 +62,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { UserRole } from "@shared/schema";
+import { EditTripForm } from "./edit-trip-form";
 
 // Define la estructura de un viaje
 interface Trip {
@@ -119,6 +128,8 @@ export default function TripList({ onEditTrip }: TripListProps) {
   const [assignDriverDialogOpen, setAssignDriverDialogOpen] = useState<number | null>(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [tripToEdit, setTripToEdit] = useState<number | null>(null);
 
   // Consulta para obtener todos los viajes
   const { data: trips = [], isLoading, refetch } = useQuery({
@@ -673,7 +684,10 @@ export default function TripList({ onEditTrip }: TripListProps) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => onEditTrip(trip.id)}
+                              onClick={() => {
+                                setTripToEdit(trip.id);
+                                setEditDialogOpen(true);
+                              }}
                               className="h-8 w-8"
                             >
                               <PencilIcon className="h-4 w-4" />
@@ -857,6 +871,28 @@ export default function TripList({ onEditTrip }: TripListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog para editar viaje */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Viaje</DialogTitle>
+            <DialogDescription>
+              Modifique la información del viaje según necesite.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {tripToEdit && (
+            <EditTripForm 
+              tripId={tripToEdit} 
+              onClose={() => {
+                setEditDialogOpen(false);
+                setTripToEdit(null);
+              }} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
