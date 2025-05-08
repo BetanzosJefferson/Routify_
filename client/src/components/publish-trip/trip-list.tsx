@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-
-// Eliminamos la declaración global ya que usaremos estado interno en su lugar
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { 
@@ -102,8 +100,6 @@ interface Trip {
   // Información de vehículo y conductor asignados (objetos completos)
   assignedVehicle?: any;
   assignedDriver?: any;
-  // Contador de reservaciones para este viaje
-  reservationCount?: number;
 }
 
 type TripListProps = {
@@ -123,8 +119,6 @@ export default function TripList({ onEditTrip }: TripListProps) {
   const [assignDriverDialogOpen, setAssignDriverDialogOpen] = useState<number | null>(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
-  // Estado para controlar qué viaje está siendo editado actualmente
-  const [editingTripId, setEditingTripId] = useState<number | null>(null);
 
   // Consulta para obtener todos los viajes
   const { data: trips = [], isLoading, refetch } = useQuery({
@@ -162,7 +156,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
       const data = await res.json();
       console.log("Conductores obtenidos:", data);
       // Filtramos explícitamente para asegurarnos de que solo se incluyan usuarios con rol 'chofer'
-      return data.filter((user: { role: string }) => user.role === 'chofer');
+      return data.filter((user: any) => user.role === 'chofer');
     }
   });
 
@@ -398,8 +392,8 @@ export default function TripList({ onEditTrip }: TripListProps) {
     });
     
     // Ordenar los viajes dentro de cada grupo por hora de salida
-    Object.keys(grouped).forEach((dateKey: string) => {
-      grouped[dateKey].sort((a: Trip, b: Trip) => 
+    Object.keys(grouped).forEach(dateKey => {
+      grouped[dateKey].sort((a, b) => 
         a.departureTime.localeCompare(b.departureTime)
       );
     });
@@ -677,52 +671,12 @@ export default function TripList({ onEditTrip }: TripListProps) {
                           
                           <div className="flex gap-2 mt-0 lg:mt-4">
                             <Button
-                              variant={editingTripId === trip.id ? "default" : "ghost"}
+                              variant="ghost"
                               size="icon"
-                              onClick={() => {
-                                // BLOQUEAR BOTÓN: Establecer viaje en edición
-                                setEditingTripId(trip.id);
-                                
-                                // LIMPIAR CACHE: Eliminar datos antiguos
-                                queryClient.removeQueries({ queryKey: ["/api/trips", trip.id] });
-                                queryClient.removeQueries({ queryKey: ["/api/routes", trip.routeId, "segments"] });
-                                
-                                // INTENTAR CAPTURAR DATOS
-                                fetch(`/api/trips/${trip.id}?t=${Date.now()}`)
-                                  .then(response => response.json())
-                                  .then(data => {
-                                    console.log("Pre-cargados datos para viaje", trip.id, ":", 
-                                      data ? "Datos correctos" : "Sin datos");
-                                  })
-                                  .catch(err => {
-                                    console.error("Error en pre-carga:", err);
-                                  });
-                                
-                                // NOTIFICAR
-                                toast({
-                                  title: "Preparando edición",
-                                  description: "Por favor espere mientras cargamos los datos del viaje...",
-                                  duration: 3000
-                                });
-                                
-                                // INICIAR PROCESO DE EDICIÓN CON RETRASO
-                                setTimeout(() => {
-                                  onEditTrip(trip.id);
-                                  
-                                  // Mantener el botón bloqueado por 5 segundos para evitar doble clic
-                                  setTimeout(() => {
-                                    setEditingTripId(null);
-                                  }, 5000);
-                                }, 500);
-                              }}
+                              onClick={() => onEditTrip(trip.id)}
                               className="h-8 w-8"
-                              disabled={editingTripId !== null} // Desactivar TODOS los botones mientras se edita cualquier viaje
                             >
-                              {editingTripId === trip.id ? (
-                                <Loader2Icon className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <PencilIcon className="h-4 w-4" />
-                              )}
+                              <PencilIcon className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
