@@ -120,7 +120,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
-  const [showFilter, setShowFilter] = useState(false);
+  const [showFilter, setShowFilter] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [tripToDelete, setTripToDelete] = useState<number | null>(null);
   const [routeFilter, setRouteFilter] = useState<string>("all");
@@ -383,9 +383,11 @@ export default function TripList({ onEditTrip }: TripListProps) {
     return matchesSearch && matchesDate && matchesRoute;
   });
 
-  // Agrupar viajes por fecha y ordenarlos
+  // Agrupar viajes por fecha y ordenarlos, separando los archivados (fecha < hoy)
   const groupTripsByDate = () => {
     const grouped: Record<string, Trip[]> = {};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalizamos "hoy" a las 00:00:00
     
     // Primero filtramos solo los viajes principales (no sub-viajes)
     filteredTrips.filter((trip: Trip) => !trip.isSubTrip).forEach((trip: Trip) => {
@@ -395,18 +397,34 @@ export default function TripList({ onEditTrip }: TripListProps) {
       // Formato yyyy-MM-dd que usaremos como clave
       const dateKey = format(localDate, "yyyy-MM-dd");
       
-      if (!grouped[dateKey]) {
-        grouped[dateKey] = [];
+      // Verificar si el viaje es para una fecha pasada
+      const isPastTrip = localDate.getTime() < today.getTime();
+      
+      // Usamos una clave especial para los viajes archivados
+      const keyToUse = isPastTrip ? "archived" : dateKey;
+      
+      if (!grouped[keyToUse]) {
+        grouped[keyToUse] = [];
       }
       
-      grouped[dateKey].push(trip);
+      grouped[keyToUse].push(trip);
     });
     
     // Ordenar los viajes dentro de cada grupo por hora de salida
     Object.keys(grouped).forEach(dateKey => {
-      grouped[dateKey].sort((a, b) => 
-        a.departureTime.localeCompare(b.departureTime)
-      );
+      if (dateKey === "archived") {
+        // Para viajes archivados, ordenamos por fecha descendente (más reciente primero)
+        grouped[dateKey].sort((a, b) => {
+          const dateA = normalizeToStartOfDay(a.departureDate);
+          const dateB = normalizeToStartOfDay(b.departureDate);
+          return dateB.getTime() - dateA.getTime(); // Orden descendente
+        });
+      } else {
+        // Para viajes futuros, ordenamos por hora de salida
+        grouped[dateKey].sort((a, b) => 
+          a.departureTime.localeCompare(b.departureTime)
+        );
+      }
     });
     
     return grouped;
@@ -414,6 +432,11 @@ export default function TripList({ onEditTrip }: TripListProps) {
 
   // Formatear fecha para encabezado
   const formatDateHeader = (dateString: string) => {
+    // Si es la clave especial "archived", mostramos un encabezado diferente
+    if (dateString === "archived") {
+      return "Viajes Archivados";
+    }
+    
     // Usamos normalizeToStartOfDay para asegurar una fecha correcta
     const localDate = normalizeToStartOfDay(dateString);
     
@@ -435,29 +458,11 @@ export default function TripList({ onEditTrip }: TripListProps) {
       <CardHeader className="bg-primary/5">
         <div className="flex flex-wrap items-center justify-between">
           <CardTitle className="text-xl">Publicación de Viajes</CardTitle>
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilter(!showFilter)}
-            >
-              <FilterIcon className="h-4 w-4 mr-1" />
-              Filtros
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-            >
-              <RefreshCcwIcon className="h-4 w-4 mr-1" />
-              Actualizar
-            </Button>
-          </div>
         </div>
       </CardHeader>
 
-      {showFilter && (
+      {/* Filtros siempre visibles */}
+      {(
         <div className="p-4 border-b">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
@@ -556,7 +561,9 @@ export default function TripList({ onEditTrip }: TripListProps) {
                 <div>
                   <h3 className="text-lg font-medium">{formatDateHeader(dateKey)}</h3>
                   <p className="text-sm text-muted-foreground">
-                    Gestiona los viajes programados para esta fecha, asigna vehículos y conductores.
+                    {dateKey === "archived" 
+                      ? "Viajes ya pasados que se mantienen para consulta histórica." 
+                      : "Gestiona los viajes programados para esta fecha, asigna vehículos y conductores."}
                   </p>
                 </div>
                 
