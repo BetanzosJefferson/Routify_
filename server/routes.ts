@@ -1117,6 +1117,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put(apiRouter("/trips/:id"), isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id, 10);
+      
+      // Log detallado de la solicitud para diagnóstico
+      console.log(`⬆️ PUT /trips/${id} - Datos recibidos:`, JSON.stringify(req.body, null, 2));
+      
       const validationResult = insertTripSchema.partial().safeParse(req.body);
       
       if (!validationResult.success) {

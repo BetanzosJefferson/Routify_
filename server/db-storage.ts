@@ -425,11 +425,33 @@ export class DatabaseStorage implements IStorage {
   }
   
   async updateTrip(id: number, tripUpdate: Partial<Trip>): Promise<Trip | undefined> {
+    // Registrar los datos para depuración
+    console.log(`🔄 Actualizando viaje ${id} con datos:`, JSON.stringify(tripUpdate, null, 2));
+    
+    // Verificar si se están actualizando los horarios
+    if (tripUpdate.departureTime || tripUpdate.arrivalTime) {
+      console.log(`⏰ ACTUALIZACIÓN DE HORARIOS DETECTADA: 
+        - Salida: ${tripUpdate.departureTime || 'sin cambios'} 
+        - Llegada: ${tripUpdate.arrivalTime || 'sin cambios'}`);
+    }
+    
+    // Realizar la actualización en la base de datos
     const [updatedTrip] = await db
       .update(schema.trips)
       .set(tripUpdate)
       .where(eq(schema.trips.id, id))
       .returning();
+    
+    // Registrar el resultado
+    console.log(`✅ Viaje ${id} actualizado, nuevos valores:`, 
+      JSON.stringify({
+        departureTime: updatedTrip.departureTime,
+        arrivalTime: updatedTrip.arrivalTime,
+        price: updatedTrip.price,
+        capacity: updatedTrip.capacity
+      }, null, 2)
+    );
+    
     return updatedTrip;
   }
   
