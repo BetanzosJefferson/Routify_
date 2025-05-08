@@ -1,4 +1,4 @@
-import { Trip, Route } from "@shared/schema";
+import { Trip, Route, TripWithTimes } from "@shared/schema";
 
 // Definimos el tipo de parada en la ruta
 interface StopOnRoute {
@@ -9,6 +9,22 @@ interface StopOnRoute {
   stopType?: string;
 }
 
+// Tipo personalizado para el formulario
+interface FormTrip {
+  routeId: number;
+  departureDate: string | Date;
+  capacity: number;
+  availableSeats?: number;
+  price: number;
+  departureTime?: string;
+  arrivalTime?: string;
+  segmentPrices?: any;
+  vehicleId?: number | null;
+  driverId?: number | null;
+  companyId?: string | null;
+  archived?: boolean;
+}
+
 /**
  * Función para convertir un viaje desde el modelo antiguo al modelo optimizado
  * @param trip Viaje en formato antiguo
@@ -16,7 +32,7 @@ interface StopOnRoute {
  * @returns Datos estructurados para crear un viaje optimizado
  */
 export function convertTripToOptimized(
-  trip: Trip,
+  trip: Trip | TripWithTimes | FormTrip,
   route: Route & { stops?: StopOnRoute[] }
 ) {
   // Si no hay ruta o paradas, no podemos optimizar
@@ -28,17 +44,23 @@ export function convertTripToOptimized(
   const orderedStops = [...route.stops].sort((a, b) => a.stopIndex - b.stopIndex);
   
   // Crear datos del viaje maestro
+  // Convertir departureDate si viene como string
+  let departureDate = trip.departureDate;
+  if (typeof departureDate === 'string') {
+    departureDate = new Date(departureDate);
+  }
+
   const tripMaster = {
     routeId: trip.routeId,
-    departureDate: trip.departureDate,
-    capacity: trip.capacity,
-    availableSeats: trip.availableSeats,
-    price: trip.price,
-    departureTime: trip.departureTime,
-    arrivalTime: trip.arrivalTime,
-    vehicleId: trip.vehicleId,
-    driverId: trip.driverId,
-    companyId: trip.companyId,
+    departureDate: departureDate,
+    capacity: trip.capacity || 18,
+    availableSeats: trip.availableSeats || trip.capacity || 18,
+    price: typeof trip.price === 'number' ? trip.price : 0,
+    departureTime: trip.departureTime || null,
+    arrivalTime: trip.arrivalTime || null,
+    vehicleId: trip.vehicleId || null,
+    driverId: trip.driverId || null,
+    companyId: trip.companyId || null,
     archived: false // Los viajes nuevos no están archivados por defecto
   };
   
@@ -52,11 +74,17 @@ export function convertTripToOptimized(
     // Calcular hora de salida y llegada para este segmento específico
     // Esto es una simplificación; podríamos mejorar estos cálculos en el futuro
     
+    // Asegurar que tenemos ubicaciones para los segmentos
+    const originLocation = originStop.location || `Parada-${originStop.stopIndex}`;
+    const destinationLocation = destinationStop.location || `Parada-${destinationStop.stopIndex}`;
+    
     segments.push({
       originStopId: originStop.stopId,
       destinationStopId: destinationStop.stopId,
       originStopIndex: originStop.stopIndex,
       destinationStopIndex: destinationStop.stopIndex,
+      origin: originLocation,
+      destination: destinationLocation, 
       availableSeats: trip.capacity || 18, // Inicialmente todos los asientos están disponibles, default 18
       price: calculateSegmentPrice(typeof trip.price === 'number' ? trip.price : 450, originStop.stopIndex, destinationStop.stopIndex, orderedStops.length - 1)
     });
