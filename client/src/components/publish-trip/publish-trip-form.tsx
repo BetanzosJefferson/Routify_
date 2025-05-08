@@ -958,23 +958,9 @@ export function PublishTripForm() {
                                 </div>
                                 <PriceInput
                                   value={segment.price}
-                                  onChange={(e) => {
-                                    const inputValue = e.target.value;
-                                    let newPrice = 0;
-
-                                    if (inputValue.trim() !== "") {
-                                      const parsedValue = parseInt(
-                                        inputValue,
-                                        10,
-                                      );
-                                      if (!isNaN(parsedValue)) {
-                                        newPrice = parsedValue;
-                                      }
-                                    }
-
+                                  onChange={(newPrice) => {
                                     console.log(
                                       "Actualizando precio de segmento (móvil):",
-                                      inputValue,
                                       "->",
                                       newPrice,
                                     );
