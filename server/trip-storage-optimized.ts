@@ -8,7 +8,7 @@ import {
   TripMaster,
   TripSegment
 } from "@shared/schema";
-import { eq, and, gte, lte, or, sql } from "drizzle-orm";
+import { eq, and, gte, lte, lt, gt, or, sql } from "drizzle-orm";
 
 /**
  * Clase para gestionar almacenamiento optimizado de viajes
@@ -250,8 +250,46 @@ export class OptimizedTripStorage {
       })
       .where(eq(tripMasters.id, tripId));
     
-    // En una implementación real, actualizaríamos la disponibilidad de cada segmento afectado
-    // basándonos en los índices de origen y destino
+    // Obtener todos los segmentos afectados por la reservación
+    // Un segmento está afectado si la reservación pasa por él
+    // Es decir, si cualquier parte de la ruta reservada se superpone al segmento
+    const affectedSegments = await db.query.tripSegments.findMany({
+      where: and(
+        eq(tripSegments.tripMasterId, tripId),
+        // La lógica de superposición:
+        // El segmento está afectado si:
+        // 1. Su origen está dentro del rango de la reserva
+        // 2. Su destino está dentro del rango de la reserva
+        // 3. La reserva cubre completamente el segmento
+        or(
+          // Origen del segmento dentro del rango de la reserva
+          and(
+            gte(tripSegments.originStopIndex, originStopIndex),
+            lt(tripSegments.originStopIndex, destinationStopIndex)
+          ),
+          // Destino del segmento dentro del rango de la reserva
+          and(
+            gt(tripSegments.destinationStopIndex, originStopIndex),
+            lte(tripSegments.destinationStopIndex, destinationStopIndex)
+          ),
+          // La reserva cubre todo el segmento
+          and(
+            lte(tripSegments.originStopIndex, originStopIndex),
+            gte(tripSegments.destinationStopIndex, destinationStopIndex)
+          )
+        )
+      )
+    });
+    
+    // Actualizar cada segmento afectado
+    for (const segment of affectedSegments) {
+      const currentAvailableSeats = segment.availableSeats !== null ? segment.availableSeats : trip.availableSeats;
+      await db.update(tripSegments)
+        .set({
+          availableSeats: Math.max(0, currentAvailableSeats - seats)
+        })
+        .where(eq(tripSegments.id, segment.id));
+    }
   }
   
   /**
@@ -286,6 +324,77 @@ export class OptimizedTripStorage {
     }
     
     return updatedTrip;
+  }
+  
+  /**
+   * Calcula la disponibilidad de asientos para un segmento específico
+   * @param tripId ID del viaje
+   * @param originStopIndex Índice de parada de origen
+   * @param destinationStopIndex Índice de parada de destino
+   * @returns Número de asientos disponibles
+   */
+  async calculateSegmentAvailability(
+    tripId: number,
+    originStopIndex: number,
+    destinationStopIndex: number
+  ): Promise<number> {
+    // Obtener el viaje principal
+    const trip = await db.query.tripMasters.findFirst({
+      where: eq(tripMasters.id, tripId)
+    });
+    
+    if (!trip) {
+      throw new Error(`Viaje con ID ${tripId} no encontrado`);
+    }
+    
+    // Buscar segmentos directos que se superponen con el rango solicitado
+    const overlappingSegments = await db.query.tripSegments.findMany({
+      where: and(
+        eq(tripSegments.tripMasterId, tripId),
+        // Un segmento se superpone con el rango solicitado si:
+        // 1. El origen del segmento está dentro del rango solicitado
+        // 2. El destino del segmento está dentro del rango solicitado
+        // 3. El segmento cubre completamente el rango solicitado
+        or(
+          // Origen del segmento dentro del rango solicitado
+          and(
+            gte(tripSegments.originStopIndex, originStopIndex),
+            lt(tripSegments.originStopIndex, destinationStopIndex)
+          ),
+          // Destino del segmento dentro del rango solicitado
+          and(
+            gt(tripSegments.destinationStopIndex, originStopIndex),
+            lte(tripSegments.destinationStopIndex, destinationStopIndex)
+          ),
+          // El segmento cubre completamente el rango solicitado
+          and(
+            lte(tripSegments.originStopIndex, originStopIndex),
+            gte(tripSegments.destinationStopIndex, destinationStopIndex)
+          )
+        )
+      )
+    });
+    
+    // Si no hay segmentos superpuestos, usamos la disponibilidad del viaje principal
+    if (overlappingSegments.length === 0) {
+      return trip.availableSeats;
+    }
+    
+    // Encontrar la menor disponibilidad entre todos los segmentos superpuestos
+    let minAvailableSeats = trip.availableSeats;
+    
+    for (const segment of overlappingSegments) {
+      // Si el segmento tiene un valor de disponibilidad específico, lo usamos
+      // Si no, usamos la disponibilidad del viaje principal
+      const segmentAvailability = segment.availableSeats !== null
+        ? segment.availableSeats
+        : trip.availableSeats;
+      
+      // Actualizar el mínimo
+      minAvailableSeats = Math.min(minAvailableSeats, segmentAvailability);
+    }
+    
+    return minAvailableSeats;
   }
 }
 

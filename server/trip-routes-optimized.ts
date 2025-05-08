@@ -1,314 +1,389 @@
-import { Express, Request, Response } from 'express';
-import { isAuthenticated } from './authMiddleware';
-import { optimizedTripStorage } from './trip-storage-optimized';
-import { UserRole, publishTripValidationSchema } from '@shared/schema';
-import { calculateProportionalPrice, calculateSegmentTimes, generateAllPossibleSegments, isSameCity } from './trip-utils';
+import { Request, Response } from "express";
+import { optimizedTripStorage } from "./trip-storage-optimized";
+import { optimizedReservationStorage } from "./reservation-storage-optimized";
+import { TripMaster, InsertTripMaster, TripSegment, InsertTripSegment, RouteWithSegments } from "@shared/schema";
+import { db } from "./db";
+import { routes, users, vehicles } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 /**
- * Registrar rutas optimizadas para la gestión de viajes
- * Esta implementación reduce la cantidad de registros en la base de datos
+ * Registra las rutas relacionadas con viajes optimizados
+ * @param app Aplicación Express
+ * @param apiRouter Función para generar rutas de API
  */
-export function registerOptimizedTripRoutes(app: Express, apiRouter: (path: string) => string) {
-  // Endpoint para crear viajes optimizados (menos registros)
-  app.post(apiRouter("/trips-optimized"), isAuthenticated, async (req: Request, res: Response) => {
+export function registerOptimizedTripRoutes(
+  app: any, 
+  apiRouter: (path: string) => string,
+  isAuthenticated: any
+) {
+  // Obtener todos los viajes (con filtros opcionales)
+  app.get(apiRouter("/optimized/trips"), async (req: Request, res: Response) => {
     try {
-      const validationResult = publishTripValidationSchema.safeParse(req.body);
+      const { 
+        companyId, 
+        startDate, 
+        endDate, 
+        routeId,
+        archived = false
+      } = req.query;
       
-      if (!validationResult.success) {
-        return res.status(400).json({ 
-          error: "Datos de viaje inválidos", 
-          details: validationResult.error.format() 
-        });
+      const filters: any = {
+        archived: archived === 'true'
+      };
+      
+      if (companyId) filters.companyId = companyId as string;
+      if (routeId) filters.routeId = parseInt(routeId as string);
+      
+      if (startDate) {
+        filters.startDate = new Date(startDate as string);
       }
       
-      // Obtener los datos del usuario autenticado
-      const { user } = req as any;
-      
-      console.log(`[POST /trips-optimized] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
-      
-      // SEGURIDAD: Verificar que el usuario tenga una compañía asignada
-      let companyId = user.companyId || user.company || null;
-      
-      if (!companyId) {
-        console.log(`[POST /trips-optimized] ERROR: Usuario sin companyId intenta crear un viaje`);
-        return res.status(403).json({
-          error: "No puede crear viajes",
-          details: "El usuario no tiene una compañía asignada"
-        });
-      }
-      
-      console.log(`[POST /trips-optimized] CREANDO VIAJE PARA COMPAÑÍA: ${companyId} del usuario ${user.firstName} ${user.lastName}`);
-      
-      // Verificar que el usuario tenga permisos para crear viajes
-      const allowedRoles = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.OWNER, UserRole.DEVELOPER];
-      
-      if (!allowedRoles.includes(user.role)) {
-        console.log(`[POST /trips-optimized] DENEGADO: Usuario con rol ${user.role} no tiene permisos para crear viajes`);
-        return res.status(403).json({
-          error: "Acceso denegado",
-          details: "No tiene permisos para crear viajes"
-        });
-      }
-      
-      const tripData = validationResult.data;
-      
-      // Obtener la ruta completa para determinar la secuencia de paradas
-      const stopSequence = await optimizedTripStorage.getRouteStopSequence(tripData.routeId);
-      
-      // Calculate departure/arrival time from stopTimes
-      let departureTime = "";
-      let arrivalTime = "";
-      
-      if (tripData.stopTimes && tripData.stopTimes.length > 0) {
-        const stopTimes = tripData.stopTimes;
-        // El primer tiempo de parada es la salida
-        if (stopTimes[0] && stopTimes[0].hour && stopTimes[0].minute && stopTimes[0].ampm) {
-          departureTime = `${stopTimes[0].hour.padStart(2, '0')}:${stopTimes[0].minute.padStart(2, '0')} ${stopTimes[0].ampm}`;
-        }
-        
-        // El último tiempo de parada es la llegada
-        if (stopTimes.length > 1) {
-          const lastStop = stopTimes[stopTimes.length - 1];
-          if (lastStop && lastStop.hour && lastStop.minute && lastStop.ampm) {
-            arrivalTime = `${lastStop.hour.padStart(2, '0')}:${lastStop.minute.padStart(2, '0')} ${lastStop.ampm}`;
-          }
-        }
-      }
-      
-      // Si no pudimos extraer los tiempos, usar valores predeterminados
-      if (!departureTime) departureTime = "08:00 AM";
-      if (!arrivalTime) arrivalTime = "02:00 PM";
-      
-      // Create a trip for each date in the range
-      const startDate = new Date(tripData.startDate);
-      const endDate = new Date(tripData.endDate);
-      const createdTrips = [];
-      
-      for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-        // Buscar el precio del segmento de origen a destino final para usarlo como precio principal
-        const mainSegmentPrice = tripData.segmentPrices.find(
-          (sp: any) => sp.origin === stopSequence[0] && sp.destination === stopSequence[stopSequence.length - 1]
-        );
-        
-        // Crear viaje principal
-        const tripMasterData = {
-          routeId: tripData.routeId,
-          departureDate: new Date(date),
-          capacity: tripData.capacity,
-          availableSeats: tripData.capacity,
-          price: mainSegmentPrice?.price || 450, // Usar el precio del segmento principal o un valor por defecto
-          departureTime,
-          arrivalTime,
-          companyId,
-          vehicleId: tripData.vehicleId || null,
-          driverId: tripData.driverId || null
-        };
-        
-        // Generar los segmentos
-        const segmentsToCreate = [];
-        
-        // 1. Primero agregamos los segmentos directos (entre paradas consecutivas)
-        for (let i = 0; i < stopSequence.length - 1; i++) {
-          const origin = stopSequence[i];
-          const destination = stopSequence[i + 1];
-          
-          // Buscar precio y tiempos específicos del segmento
-          const segmentData = tripData.segmentPrices.find(
-            (sp: any) => sp.origin === origin && sp.destination === destination
-          );
-          
-          let segmentDepartureTime = '';
-          let segmentArrivalTime = '';
-          let segmentPrice = 0;
-          
-          if (segmentData) {
-            segmentPrice = segmentData.price;
-            segmentDepartureTime = segmentData.departureTime || '';
-            segmentArrivalTime = segmentData.arrivalTime || '';
-          } else {
-            // Calcular proporcionalmente
-            segmentPrice = calculateProportionalPrice(
-              { origin, destination, price: 0 },
-              { origin: stopSequence[0], destination: stopSequence[stopSequence.length - 1], stops: stopSequence.slice(1, -1) },
-              tripMasterData.price
-            );
-          }
-          
-          segmentsToCreate.push({
-            tripMasterId: 0, // Se asignará después
-            originStopIndex: i,
-            destinationStopIndex: i + 1,
-            origin,
-            destination,
-            price: segmentPrice,
-            departureTime: segmentDepartureTime,
-            arrivalTime: segmentArrivalTime,
-            isDirectSegment: true
-          });
-        }
-        
-        // 2. Luego agregar segmentos significativos (no entre todas las paradas)
-        // Estos son segmentos que abarcan múltiples paradas consecutivas
-        for (let i = 0; i < stopSequence.length - 2; i++) {
-          for (let j = i + 2; j < stopSequence.length; j++) {
-            const origin = stopSequence[i];
-            const destination = stopSequence[j];
-            
-            // Saltamos los segmentos donde origen y destino están en la misma ciudad
-            if (isSameCity(origin, destination)) {
-              continue;
-            }
-            
-            // Determinar si es un segmento significativo
-            const isFirstToLast = i === 0 && j === stopSequence.length - 1;
-            const isShortRoute = stopSequence.length <= 4; // Rutas con pocas paradas
-            
-            // Solo incluir segmentos significativos o si la ruta tiene pocas paradas
-            if (!isFirstToLast && !isShortRoute && j - i <= 2) {
-              continue; // Saltar segmentos no significativos
-            }
-            
-            // Buscar precio y tiempos específicos del segmento
-            const segmentData = tripData.segmentPrices.find(
-              (sp: any) => sp.origin === origin && sp.destination === destination
-            );
-            
-            let segmentDepartureTime = '';
-            let segmentArrivalTime = '';
-            let segmentPrice = 0;
-            
-            if (segmentData) {
-              segmentPrice = segmentData.price;
-              segmentDepartureTime = segmentData.departureTime || '';
-              segmentArrivalTime = segmentData.arrivalTime || '';
-            } else {
-              // Calcular proporcionalmente
-              segmentPrice = calculateProportionalPrice(
-                { origin, destination, price: 0 },
-                { origin: stopSequence[0], destination: stopSequence[stopSequence.length - 1], stops: stopSequence.slice(1, -1) },
-                tripMasterData.price
-              );
-            }
-            
-            segmentsToCreate.push({
-              tripMasterId: 0, // Se asignará después
-              originStopIndex: i,
-              destinationStopIndex: j,
-              origin,
-              destination,
-              price: segmentPrice,
-              departureTime: segmentDepartureTime,
-              arrivalTime: segmentArrivalTime,
-              isDirectSegment: false
-            });
-          }
-        }
-        
-        // Crear el viaje principal y sus segmentos
-        try {
-          const createdTrip = await optimizedTripStorage.createTrip(tripMasterData, segmentsToCreate);
-          createdTrips.push(createdTrip);
-          console.log(`Viaje optimizado creado con ID ${createdTrip.id} con ${segmentsToCreate.length} segmentos`);
-        } catch (error) {
-          console.error('Error al crear viaje optimizado:', error);
-        }
-      }
-      
-      res.status(201).json({
-        message: "Viajes creados correctamente (modelo optimizado)",
-        totalTrips: createdTrips.length,
-        firstTrip: createdTrips[0]
-      });
-    } catch (error) {
-      console.error("Error creating optimized trips:", error);
-      res.status(500).json({ error: "Failed to create optimized trip" });
-    }
-  });
-
-  // Endpoint para obtener viajes optimizados
-  app.get(apiRouter("/trips-optimized"), isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const { user } = req as any;
-      
-      // Construir filtros basados en permisos y parámetros
-      const filters: { companyId?: string; startDate?: Date; endDate?: Date; routeId?: number } = {};
-      
-      // Filtrar por compañía si el usuario no es superadmin
-      if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.DEVELOPER) {
-        filters.companyId = user.companyId || user.company;
-      }
-      
-      // Aplicar filtros adicionales desde la consulta
-      if (req.query.startDate) {
-        filters.startDate = new Date(req.query.startDate as string);
-      }
-      
-      if (req.query.endDate) {
-        filters.endDate = new Date(req.query.endDate as string);
-      }
-      
-      if (req.query.routeId) {
-        filters.routeId = parseInt(req.query.routeId as string);
+      if (endDate) {
+        filters.endDate = new Date(endDate as string);
       }
       
       const trips = await optimizedTripStorage.getTrips(filters);
       
-      res.json(trips);
-    } catch (error) {
-      console.error("Error getting optimized trips:", error);
-      res.status(500).json({ error: "Failed to get optimized trips" });
+      // Realizar búsquedas adicionales para enriquecer la respuesta
+      const enrichedTrips = await Promise.all(
+        trips.map(async (trip) => {
+          const route = await db.query.routes.findFirst({
+            where: eq(routes.id, trip.routeId)
+          });
+          
+          let vehicle = null;
+          if (trip.vehicleId) {
+            vehicle = await db.query.vehicles.findFirst({
+              where: eq(vehicles.id, trip.vehicleId)
+            });
+          }
+          
+          let driver = null;
+          if (trip.driverId) {
+            driver = await db.query.users.findFirst({
+              where: eq(users.id, trip.driverId)
+            });
+          }
+          
+          return {
+            ...trip,
+            route,
+            vehicle,
+            driver
+          };
+        })
+      );
+      
+      res.json(enrichedTrips);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
-
-  // Endpoint para obtener un viaje optimizado con sus segmentos
-  app.get(apiRouter("/trips-optimized/:id"), isAuthenticated, async (req: Request, res: Response) => {
+  
+  // Obtener un viaje específico con todos sus segmentos
+  app.get(apiRouter("/optimized/trips/:id"), async (req: Request, res: Response) => {
     try {
       const tripId = parseInt(req.params.id);
-      if (isNaN(tripId)) {
-        return res.status(400).json({ error: "Invalid trip ID" });
+      const tripWithSegments = await optimizedTripStorage.getTripWithSegments(tripId);
+      
+      // Enriquecer con datos adicionales
+      let vehicle = null;
+      if (tripWithSegments.vehicleId) {
+        vehicle = await db.query.vehicles.findFirst({
+          where: eq(vehicles.id, tripWithSegments.vehicleId)
+        });
       }
       
-      const trip = await optimizedTripStorage.getTripWithSegments(tripId);
-      
-      // Verificar permisos de acceso
-      const { user } = req as any;
-      if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.DEVELOPER) {
-        if (trip.companyId !== user.companyId && trip.companyId !== user.company) {
-          return res.status(403).json({ error: "Access denied to this trip" });
-        }
+      let driver = null;
+      if (tripWithSegments.driverId) {
+        driver = await db.query.users.findFirst({
+          where: eq(users.id, tripWithSegments.driverId)
+        });
       }
       
-      res.json(trip);
-    } catch (error) {
-      console.error(`Error getting optimized trip: ${error}`);
-      res.status(500).json({ error: "Failed to get optimized trip" });
+      const enrichedTrip = {
+        ...tripWithSegments,
+        vehicle,
+        driver
+      };
+      
+      res.json(enrichedTrip);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
-
-  // Endpoint para eliminar un viaje optimizado
-  app.delete(apiRouter("/trips-optimized/:id"), isAuthenticated, async (req: Request, res: Response) => {
+  
+  // Crear un nuevo viaje optimizado
+  app.post(apiRouter("/optimized/trips"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { tripMaster, segments, routeId } = req.body;
+      
+      // Verificar que la ruta existe
+      const route = await db.query.routes.findFirst({
+        where: eq(routes.id, routeId)
+      });
+      
+      if (!route) {
+        return res.status(404).json({ error: `Ruta con ID ${routeId} no encontrada` });
+      }
+      
+      // Crear el viaje master
+      const tripData: Omit<InsertTripMaster, "id"> = {
+        ...tripMaster,
+        routeId: route.id,
+        // Asegurar que tiene los campos obligatorios
+        createdAt: new Date()
+      };
+      
+      // Crear segmentos
+      const segmentDataList: Omit<InsertTripSegment, "id">[] = segments.map(
+        (segment: any) => ({
+          ...segment,
+          // No incluimos tripMasterId aquí porque se asignará en createTrip
+        })
+      );
+      
+      const createdTrip = await optimizedTripStorage.createTrip(tripData, segmentDataList);
+      
+      res.status(201).json(createdTrip);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Actualizar un viaje existente
+  app.put(apiRouter("/optimized/trips/:id"), isAuthenticated, async (req: Request, res: Response) => {
     try {
       const tripId = parseInt(req.params.id);
-      if (isNaN(tripId)) {
-        return res.status(400).json({ error: "Invalid trip ID" });
+      const tripData = req.body;
+      
+      const updatedTrip = await optimizedTripStorage.updateTrip(tripId, tripData);
+      
+      res.json(updatedTrip);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Eliminar un viaje
+  app.delete(apiRouter("/optimized/trips/:id"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const tripId = parseInt(req.params.id);
+      
+      const success = await optimizedTripStorage.deleteTrip(tripId);
+      
+      if (success) {
+        res.json({ message: `Viaje con ID ${tripId} eliminado correctamente` });
+      } else {
+        res.status(404).json({ error: `No se pudo eliminar el viaje con ID ${tripId}` });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Archivar un viaje (marcarlo como completado)
+  app.post(apiRouter("/optimized/trips/:id/archive"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const tripId = parseInt(req.params.id);
+      
+      const archivedTrip = await optimizedTripStorage.archiveTrip(tripId);
+      
+      res.json({
+        message: `Viaje con ID ${tripId} archivado correctamente`,
+        trip: archivedTrip
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Asignar vehículo y/o conductor a un viaje
+  app.post(apiRouter("/optimized/trips/:id/assign"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const tripId = parseInt(req.params.id);
+      const { vehicleId, driverId } = req.body;
+      
+      const updatedTrip = await optimizedTripStorage.assignVehicleAndDriver(
+        tripId,
+        vehicleId,
+        driverId
+      );
+      
+      res.json({
+        message: `Asignación actualizada para el viaje con ID ${tripId}`,
+        trip: updatedTrip
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Obtener reservaciones de un viaje
+  app.get(apiRouter("/optimized/trips/:id/reservations"), async (req: Request, res: Response) => {
+    try {
+      const tripId = parseInt(req.params.id);
+      
+      const reservations = await optimizedReservationStorage.getReservations({}, tripId);
+      
+      res.json(reservations);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Verificar disponibilidad de asientos para un segmento específico
+  app.get(apiRouter("/optimized/trips/:id/availability"), async (req: Request, res: Response) => {
+    try {
+      const tripId = parseInt(req.params.id);
+      const { originIndex, destinationIndex } = req.query;
+      
+      if (!originIndex || !destinationIndex) {
+        return res.status(400).json({ error: "Se requieren los índices de origen y destino" });
       }
       
-      // Obtener el viaje para verificar permisos
-      const trip = await optimizedTripStorage.getTripWithSegments(tripId);
+      const availableSeats = await optimizedTripStorage.calculateSegmentAvailability(
+        tripId,
+        parseInt(originIndex as string),
+        parseInt(destinationIndex as string)
+      );
       
-      // Verificar permisos de acceso
-      const { user } = req as any;
-      if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.DEVELOPER) {
-        if (trip.companyId !== user.companyId && trip.companyId !== user.company) {
-          return res.status(403).json({ error: "Access denied to delete this trip" });
-        }
+      res.json({ availableSeats });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // =====================================
+  // RUTAS PARA RESERVACIONES OPTIMIZADAS
+  // =====================================
+  
+  // Crear una nueva reservación
+  app.post(apiRouter("/optimized/reservations"), async (req: Request, res: Response) => {
+    try {
+      const { reservation, passengers } = req.body;
+      
+      const createdReservation = await optimizedReservationStorage.createReservation(
+        reservation,
+        passengers
+      );
+      
+      res.status(201).json(createdReservation);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Obtener una reservación específica con todos sus detalles
+  app.get(apiRouter("/optimized/reservations/:id"), async (req: Request, res: Response) => {
+    try {
+      const reservationId = parseInt(req.params.id);
+      
+      const reservation = await optimizedReservationStorage.getReservationWithDetails(reservationId);
+      
+      if (!reservation) {
+        return res.status(404).json({ error: `Reservación con ID ${reservationId} no encontrada` });
       }
       
-      await optimizedTripStorage.deleteTrip(tripId);
-      res.status(204).send();
-    } catch (error) {
-      console.error(`Error deleting optimized trip: ${error}`);
-      res.status(500).json({ error: "Failed to delete optimized trip" });
+      res.json(reservation);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Obtener todas las reservaciones con filtros opcionales
+  app.get(apiRouter("/optimized/reservations"), async (req: Request, res: Response) => {
+    try {
+      const { 
+        companyId, 
+        status, 
+        paymentStatus, 
+        startDate, 
+        endDate,
+        createdBy 
+      } = req.query;
+      
+      const filters: any = {};
+      
+      if (companyId) filters.companyId = companyId as string;
+      if (status) filters.status = status as string;
+      if (paymentStatus) filters.paymentStatus = paymentStatus as string;
+      if (createdBy) filters.createdBy = parseInt(createdBy as string);
+      
+      if (startDate) {
+        filters.startDate = new Date(startDate as string);
+      }
+      
+      if (endDate) {
+        filters.endDate = new Date(endDate as string);
+      }
+      
+      const reservations = await optimizedReservationStorage.getReservations(filters);
+      
+      res.json(reservations);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Actualizar el estado de una reservación
+  app.patch(apiRouter("/optimized/reservations/:id/status"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const reservationId = parseInt(req.params.id);
+      const { status } = req.body;
+      
+      const updatedReservation = await optimizedReservationStorage.updateReservationStatus(
+        reservationId,
+        status
+      );
+      
+      res.json({
+        message: `Estado de la reservación con ID ${reservationId} actualizado a "${status}"`,
+        reservation: updatedReservation
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Actualizar el estado de pago de una reservación
+  app.patch(apiRouter("/optimized/reservations/:id/payment"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const reservationId = parseInt(req.params.id);
+      const { paymentStatus, paidBy } = req.body;
+      
+      const updatedReservation = await optimizedReservationStorage.updatePaymentStatus(
+        reservationId,
+        paymentStatus,
+        paidBy
+      );
+      
+      res.json({
+        message: `Estado de pago de la reservación con ID ${reservationId} actualizado a "${paymentStatus}"`,
+        reservation: updatedReservation
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Marcar una reservación como escaneada/verificada
+  app.patch(apiRouter("/optimized/reservations/:id/check"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const reservationId = parseInt(req.params.id);
+      const { checkedBy } = req.body;
+      
+      const updatedReservation = await optimizedReservationStorage.markAsChecked(
+        reservationId,
+        checkedBy
+      );
+      
+      res.json({
+        message: `Reservación con ID ${reservationId} marcada como escaneada/verificada`,
+        reservation: updatedReservation
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 }
