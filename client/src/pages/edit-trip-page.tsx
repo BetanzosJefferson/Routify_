@@ -220,7 +220,7 @@ export default function EditTripPage() {
             onClick={() => navigate('/')}
           >
             <ArrowLeftIcon className="h-4 w-4 mr-2" />
-            Volver
+            Volver al Dashboard
           </Button>
           <h1 className="text-2xl font-bold">Editar Viaje</h1>
         </div>
