@@ -84,14 +84,17 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
 
   // Función para marcar como pagado
   const markAsPaid = async () => {
-    if (!reservationId) return;
+    if (!reservationId || !user) return;
     
     setIsMarkingAsPaid(true);
     try {
       let response = await apiRequest(
         "PUT", 
         `/api/reservations/${reservationId}`, 
-        { paymentStatus: "pagado" }
+        { 
+          paymentStatus: "pagado",
+          paidBy: user.id // Guardamos el ID del usuario que marca como pagado
+        }
       );
       
       if (!response.ok) {
