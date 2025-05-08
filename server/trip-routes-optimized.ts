@@ -118,6 +118,12 @@ export function registerOptimizedTripRoutes(
     try {
       const { tripMaster, segments, routeId } = req.body;
       
+      console.log("[POST /optimized/trips] Datos recibidos:", { 
+        tripMaster, 
+        segmentsLength: segments.length,
+        routeId 
+      });
+      
       // Verificar que la ruta existe
       const route = await db.query.routes.findFirst({
         where: eq(routes.id, routeId)
@@ -127,9 +133,33 @@ export function registerOptimizedTripRoutes(
         return res.status(404).json({ error: `Ruta con ID ${routeId} no encontrada` });
       }
       
+      // Asegurarse de que la fecha es correcta
+      let departureDate: Date;
+      
+      console.log("[POST /optimized/trips] Tipo de departureDate:", typeof tripMaster.departureDate);
+      
+      if (typeof tripMaster.departureDate === 'string') {
+        try {
+          departureDate = new Date(tripMaster.departureDate);
+          
+          // Verificar que la fecha es válida
+          if (isNaN(departureDate.getTime())) {
+            throw new Error("Fecha inválida");
+          }
+        } catch (error) {
+          console.error("[POST /optimized/trips] Error al convertir fecha:", error);
+          return res.status(400).json({ error: "Formato de fecha inválido" });
+        }
+      } else if (tripMaster.departureDate instanceof Date) {
+        departureDate = tripMaster.departureDate;
+      } else {
+        return res.status(400).json({ error: "Se requiere una fecha de salida válida" });
+      }
+      
       // Crear el viaje master
       const tripData: Omit<InsertTripMaster, "id"> = {
         ...tripMaster,
+        departureDate,  // Usamos la fecha validada
         routeId: route.id,
         // Asegurar que tiene los campos obligatorios
         createdAt: new Date()
