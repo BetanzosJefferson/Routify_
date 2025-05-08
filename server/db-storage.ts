@@ -1316,6 +1316,54 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
   }
+  
+  async getUsersByCompanyAndRole(companyId: string, role: string): Promise<schema.User[]> {
+    console.log(`[getUsersByCompanyAndRole] Buscando usuarios de compañía ${companyId} con rol ${role}`);
+    
+    if (!companyId || !role) {
+      console.warn(`[getUsersByCompanyAndRole] Compañía o rol inválidos: companyId=${companyId}, role=${role}`);
+      return [];
+    }
+    
+    try {
+      let normalizedRole = role.toLowerCase();
+      
+      // Primero recuperamos todos los usuarios de la compañía
+      const companyUsers = await db.select()
+        .from(schema.users)
+        .where(
+          or(
+            eq(schema.users.companyId, companyId),
+            eq(schema.users.company, companyId)
+          )
+        );
+      
+      console.log(`[getUsersByCompanyAndRole] Encontrados ${companyUsers.length} usuarios para compañía ${companyId}, filtrando por rol ${role}`);
+      
+      // Luego filtramos localmente por el rol
+      let filteredUsers;
+      
+      // Caso especial para conductores (varias variantes posibles)
+      if (normalizedRole === 'chofer') {
+        filteredUsers = companyUsers.filter(user => {
+          const userRole = (user.role || '').toLowerCase();
+          return userRole === 'chofer' || userRole === 'driver' || userRole === 'chófer';
+        });
+      } else {
+        // Para otros roles, simplemente comparamos el lowercase
+        filteredUsers = companyUsers.filter(user => 
+          (user.role || '').toLowerCase() === normalizedRole
+        );
+      }
+      
+      console.log(`[getUsersByCompanyAndRole] Filtrados ${filteredUsers.length} usuarios con rol ${role} para compañía ${companyId}`);
+      
+      return filteredUsers;
+    } catch (error) {
+      console.error(`[getUsersByCompanyAndRole] Error al filtrar usuarios por rol ${role} y compañía ${companyId}:`, error);
+      return [];
+    }
+  }
 
   async getUserById(id: number): Promise<schema.User | undefined> {
     const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id));
