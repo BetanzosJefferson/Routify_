@@ -32,7 +32,58 @@ export const insertRouteSchema = createInsertSchema(routes);
 export type InsertRoute = z.infer<typeof insertRouteSchema>;
 export type Route = typeof routes.$inferSelect;
 
-// TRIP SCHEMA
+// Esquemas para el nuevo modelo optimizado
+export const tripMasters = pgTable("trip_masters", {
+  id: serial("id").primaryKey(),
+  routeId: integer("route_id").notNull(),
+  departureDate: timestamp("departure_date").notNull(),
+  capacity: integer("capacity").notNull(),
+  availableSeats: integer("available_seats").notNull(),
+  price: doublePrecision("price").notNull(),
+  departureTime: text("departure_time"),
+  arrivalTime: text("arrival_time"),
+  companyId: text("company_id"),
+  vehicleId: integer("vehicle_id"),
+  driverId: integer("driver_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const tripSegments = pgTable("trip_segments", {
+  id: serial("id").primaryKey(),
+  tripMasterId: integer("trip_master_id").notNull().references(() => tripMasters.id, { onDelete: 'cascade' }),
+  originStopIndex: integer("origin_stop_index").notNull(),
+  destinationStopIndex: integer("destination_stop_index").notNull(),
+  origin: text("origin").notNull(),
+  destination: text("destination").notNull(),
+  price: doublePrecision("price").notNull(),
+  departureTime: text("departure_time"),
+  arrivalTime: text("arrival_time"),
+  isDirectSegment: boolean("is_direct_segment").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Definir relaciones entre tripMasters y tripSegments
+export const tripMastersRelations = relations(tripMasters, ({ many }) => ({
+  segments: many(tripSegments),
+}));
+
+export const tripSegmentsRelations = relations(tripSegments, ({ one }) => ({
+  master: one(tripMasters, {
+    fields: [tripSegments.tripMasterId],
+    references: [tripMasters.id],
+  }),
+}));
+
+// Crear esquemas de inserción para los nuevos modelos
+export const insertTripMasterSchema = createInsertSchema(tripMasters);
+export type InsertTripMaster = z.infer<typeof insertTripMasterSchema>;
+export type TripMaster = typeof tripMasters.$inferSelect;
+
+export const insertTripSegmentSchema = createInsertSchema(tripSegments);
+export type InsertTripSegment = z.infer<typeof insertTripSegmentSchema>;
+export type TripSegment = typeof tripSegments.$inferSelect;
+
+// TRIP SCHEMA (Mantenemos el esquema original para compatibilidad)
 export const trips = pgTable("trips", {
   id: serial("id").primaryKey(),
   routeId: integer("route_id").notNull(),
@@ -135,6 +186,9 @@ export const reservations = pgTable("reservations", {
   checkedBy: integer("checked_by"), // ID del usuario que escaneó el ticket
   checkedAt: timestamp("checked_at"), // Fecha y hora del escaneo
   checkCount: integer("check_count").default(0), // Contador de veces que se ha escaneado el ticket
+  // Campos para el modelo optimizado
+  originStopIndex: integer("origin_stop_index"), // Índice de la parada de origen
+  destinationStopIndex: integer("destination_stop_index"), // Índice de la parada de destino
 });
 
 export const insertReservationSchema = createInsertSchema(reservations);
