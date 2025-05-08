@@ -1770,6 +1770,12 @@ export class DatabaseStorage implements IStorage {
           
           const requesterName = requester ? `${requester.firstName} ${requester.lastName}` : `Agente #${request.requesterId}`;
           
+          // Extraer nombres de pasajeros para mostrar
+          const passengersData = request.passengersData as any[] || [];
+          const passengerNames = passengersData.map(passenger => 
+            `${passenger.firstName || ''} ${passenger.lastName || ''}`
+          ).filter(name => name.trim() !== '');
+          
           return {
             ...request,
             trip: tripResult?.trip,
@@ -1781,7 +1787,8 @@ export class DatabaseStorage implements IStorage {
             requester,
             requesterName,
             reviewer,
-            advancePaymentInfo
+            advancePaymentInfo,
+            passengerNames
           };
         })
       );
@@ -1861,6 +1868,12 @@ export class DatabaseStorage implements IStorage {
       
       const requesterName = requester ? `${requester.firstName} ${requester.lastName}` : `Agente #${request.requesterId}`;
       
+      // Extraer nombres de pasajeros para mostrar
+      const passengersData = request.passengersData as any[] || [];
+      const passengerNames = passengersData.map(passenger => 
+        `${passenger.firstName || ''} ${passenger.lastName || ''}`
+      ).filter(name => name.trim() !== '');
+      
       return {
         ...request,
         trip: tripResult?.trip,
@@ -1872,7 +1885,8 @@ export class DatabaseStorage implements IStorage {
         requester,
         requesterName,
         reviewer,
-        advancePaymentInfo
+        advancePaymentInfo,
+        passengerNames
       };
     } catch (error) {
       console.error(`Error al obtener solicitud de reservación ${id}:`, error);

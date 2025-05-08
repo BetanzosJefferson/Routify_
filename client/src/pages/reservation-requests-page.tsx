@@ -26,6 +26,7 @@ interface ReservationRequest {
   id: number;
   tripId: number;
   passengersData: any[]; // Detalles de los pasajeros
+  passengerNames?: string[]; // Nombres formateados de los pasajeros
   requesterId: number;
   requesterName?: string;
   companyId: string | null;
@@ -257,13 +258,21 @@ export default function ReservationRequestsPage() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center">
-                      <User className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                    <div className="flex items-start">
+                      <User className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
                       <div>
                         <span className="font-medium">Pasajeros:</span>{" "}
                         <span className="text-muted-foreground">
                           {selectedRequest.passengersData?.length || 0}
                         </span>
+                        
+                        {selectedRequest.passengerNames && selectedRequest.passengerNames.length > 0 && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {selectedRequest.passengerNames.map((name, index) => (
+                              <div key={index} className="mb-0.5">• {name}</div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -484,10 +493,17 @@ function RequestCard({ request, isProcessed, onReview }: RequestCardProps) {
             </div>
             <div className="flex items-center text-sm">
               <User className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-              <span>
-                {request.passengersData?.length || 0} pasajeros • Solicitado por{" "}
-                <span className="font-medium">{request.requesterName || `Agente #${request.requesterId}`}</span>
-              </span>
+              <div className="flex flex-col">
+                <span>
+                  {request.passengersData?.length || 0} pasajeros • Solicitado por{" "}
+                  <span className="font-medium">{request.requesterName || `Agente #${request.requesterId}`}</span>
+                </span>
+                {request.passengerNames && request.passengerNames.length > 0 && (
+                  <span className="text-xs text-muted-foreground mt-1">
+                    {request.passengerNames.join(', ')}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <div className="space-y-3">
