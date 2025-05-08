@@ -1043,12 +1043,44 @@ export class DatabaseStorage implements IStorage {
         }
       }
       
+      // Obtener información del usuario que escaneó el ticket
+      let checkedByUser: schema.User | undefined = undefined;
+      if (reservation.checkedBy) {
+        // Buscar el usuario por ID
+        const [user] = await db
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.id, reservation.checkedBy));
+        
+        if (user) {
+          checkedByUser = user;
+          console.log(`[getReservations] Reserva ${reservation.id} escaneada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
+        }
+      }
+      
+      // Obtener información del usuario que marcó como pagado el ticket
+      let paidByUser: schema.User | undefined = undefined;
+      if (reservation.paidBy) {
+        // Buscar el usuario por ID
+        const [user] = await db
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.id, reservation.paidBy));
+        
+        if (user) {
+          paidByUser = user;
+          console.log(`[getReservations] Reserva ${reservation.id} marcada como pagada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
+        }
+      }
+      
       // Agregar a los resultados
       reservationsWithDetails.push({
         ...reservation,
         trip,
         passengers,
-        createdByUser // Añadimos el usuario creador
+        createdByUser, // Añadimos el usuario creador
+        checkedByUser, // Añadimos el usuario que escaneó el ticket
+        paidByUser     // Añadimos el usuario que marcó como pagado el ticket
       });
     }
     
@@ -1255,6 +1287,35 @@ export class DatabaseStorage implements IStorage {
       }
     } catch (error) {
       console.error("[checkTicket] Error al registrar escaneo de ticket:", error);
+      throw error;
+    }
+  }
+
+  async markAsPaid(id: number, userId: number): Promise<Reservation | undefined> {
+    try {
+      // Primero obtenemos la reservación
+      const reservation = await this.getReservation(id);
+      
+      if (!reservation) {
+        throw new Error("Reservación no encontrada");
+      }
+      
+      console.log(`[markAsPaid] Marcando ticket #${id} como pagado por el usuario ${userId}`);
+      
+      // Actualizar el estado de pago y guardar el usuario que marca como pagado
+      const [updatedReservation] = await db
+        .update(schema.reservations)
+        .set({
+          paidBy: userId,
+          paidAt: new Date(),
+          paymentStatus: 'PAID' // Establecer estado a PAGADO
+        })
+        .where(eq(schema.reservations.id, id))
+        .returning();
+        
+      return updatedReservation;
+    } catch (error) {
+      console.error("[markAsPaid] Error al marcar ticket como pagado:", error);
       throw error;
     }
   }
