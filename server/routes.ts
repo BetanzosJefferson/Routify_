@@ -1180,9 +1180,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tripData.capacity = currentTrip.capacity;
       }
       
-      // Identificar y extraer información de tiempos de parada para el viaje principal
-      console.log("⏰ Procesando stopTimes para actualización de horarios del viaje principal");
+      // Identificar y extraer información de tiempos de parada y precios para el viaje principal
+      console.log("⏰ Procesando tiempos y precios para actualización del viaje principal");
       
+      // 1. ACTUALIZACIÓN DE HORARIOS
       // Obtener los tiempos de parada del formulario (si están disponibles)
       if (req.body.stopTimes && Array.isArray(req.body.stopTimes) && req.body.stopTimes.length > 0) {
         console.log("⏰ stopTimes recibidos:", req.body.stopTimes);
@@ -1208,7 +1209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       } 
-      // Alternativamente, si no hay stopTimes, revisar los segmentPrices
+      // Alternativamente, si no hay stopTimes, revisar los segmentPrices para horarios
       else if (tripData.segmentPrices && Array.isArray(tripData.segmentPrices) && tripData.segmentPrices.length > 0) {
         console.log("⏰ Calculando horarios para el viaje principal basado en segmentPrices");
         
@@ -1255,6 +1256,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (destinationSegments.length > 0 && destinationSegments[0].arrivalTime) {
             console.log(`⏰ HORA DESTINO establecida a: ${destinationSegments[0].arrivalTime}`);
             tripData.arrivalTime = destinationSegments[0].arrivalTime;
+          }
+        }
+      }
+
+      // 2. ACTUALIZACIÓN DE PRECIO
+      // Calcular el precio del viaje principal como la suma de los precios de todos los segmentos directos
+      if (tripData.segmentPrices && Array.isArray(tripData.segmentPrices) && tripData.segmentPrices.length > 0) {
+        console.log("💰 Calculando precio del viaje principal basado en segmentos");
+        
+        // Buscar si existe un segmento directo que represente la ruta completa
+        const directSegment = tripData.segmentPrices.find(
+          segment => segment.origin === currentTrip.segmentOrigin && 
+                    segment.destination === currentTrip.segmentDestination
+        );
+        
+        if (directSegment) {
+          // Si hay un segmento directo, usar su precio
+          console.log(`💰 PRECIO DIRECTO encontrado: ${directSegment.price}`);
+          tripData.price = directSegment.price;
+        } 
+        else {
+          // Si no hay un segmento directo, usar el segmento más caro como precio base
+          const prices = tripData.segmentPrices.map(segment => Number(segment.price) || 0);
+          console.log(`💰 Precios de segmentos: ${prices.join(', ')}`);
+          
+          // Usar reduce para encontrar el máximo de forma segura
+          const maxPrice = prices.length > 0 
+            ? prices.reduce((max, price) => Math.max(max, price), 0)
+            : 0;
+            
+          console.log(`💰 PRECIO MÁXIMO entre segmentos: ${maxPrice}`);
+          
+          if (maxPrice > 0) {
+            // Establecer el precio como el precio máximo de segmento para viajes completos
+            tripData.price = maxPrice;
+            console.log(`💰 PRECIO PRINCIPAL establecido a: ${tripData.price}`);
+          } else {
+            console.log("💰 No se pudo determinar un precio basado en segmentos, manteniendo el actual");
           }
         }
       }
