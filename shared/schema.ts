@@ -134,6 +134,8 @@ export const reservations = pgTable("reservations", {
   checkedBy: integer("checked_by"), // ID del usuario que escaneó el ticket
   checkedAt: timestamp("checked_at"), // Fecha y hora del escaneo
   checkCount: integer("check_count").default(0), // Contador de veces que se ha escaneado el ticket
+  // Campo para registrar quién marcó como pagado el ticket
+  cobradoPor: integer("cobrado_por"), // ID del usuario que marcó como pagado
 });
 
 export const insertReservationSchema = createInsertSchema(reservations);
@@ -166,6 +168,7 @@ export type ReservationWithDetails = Reservation & {
   passengers: Passenger[];
   createdByUser?: User;
   checkedByUser?: User;
+  cobradoPorUser?: User;
 };
 
 export type SegmentPrice = {
@@ -381,6 +384,10 @@ export const reservationRelations = relations(reservations, ({ one, many }) => (
   }),
   checkedByUser: one(users, {
     fields: [reservations.checkedBy],
+    references: [users.id]
+  }),
+  cobradoPorUser: one(users, {
+    fields: [reservations.cobradoPor],
     references: [users.id]
   })
 }));
