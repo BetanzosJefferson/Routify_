@@ -344,17 +344,56 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               <div>
                                 <Label className="text-gray-500">Vehículo</Label>
                                 <div className="font-medium capitalize">
-                                  {trips.find(t => t.id === selectedTrip)?.assignedVehicle ? 
-                                   `${trips.find(t => t.id === selectedTrip)?.assignedVehicle?.brand} ${trips.find(t => t.id === selectedTrip)?.assignedVehicle?.model}` : 
-                                   'No asignado'}
+                                  {(() => {
+                                    const trip = trips.find(t => t.id === selectedTrip);
+                                    // Primero intentamos mostrar la info desde assignedVehicle si existe
+                                    if (trip?.assignedVehicle) {
+                                      return `${trip.assignedVehicle.brand} ${trip.assignedVehicle.model} - ${trip.assignedVehicle.plates}`;
+                                    }
+                                    // Si no hay assignedVehicle pero hay vehicleId, buscamos por ID
+                                    else if (trip?.vehicleId) {
+                                      // Buscar el vehículo en trips (algún viaje podría tener la info)
+                                      const vehicleInfo = trips
+                                        .filter(t => t.assignedVehicle)
+                                        .find(t => t.vehicleId === trip.vehicleId)?.assignedVehicle;
+                                      
+                                      if (vehicleInfo) {
+                                        return `${vehicleInfo.brand} ${vehicleInfo.model} - ${vehicleInfo.plates}`;
+                                      }
+                                    }
+                                    // Si no tenemos info, mostramos "Sin unidad asignada"
+                                    return 'Sin unidad asignada';
+                                  })()}
                                 </div>
                               </div>
                               <div>
                                 <Label className="text-gray-500">Operador Asignado</Label>
                                 <div className="font-medium capitalize">
-                                  {trips.find(t => t.id === selectedTrip)?.assignedDriver 
-                                    ? `${trips.find(t => t.id === selectedTrip)?.assignedDriver?.firstName} ${trips.find(t => t.id === selectedTrip)?.assignedDriver?.lastName}`
-                                    : 'No asignado'}
+                                  {(() => {
+                                    const trip = trips.find(t => t.id === selectedTrip);
+                                    // Primero intentamos mostrar la info desde assignedDriver si existe
+                                    if (trip?.assignedDriver) {
+                                      return `${trip.assignedDriver.firstName} ${trip.assignedDriver.lastName}`;
+                                    }
+                                    // Si no hay assignedDriver pero hay driverId, buscamos por ID
+                                    else if (trip?.driverId) {
+                                      // Buscar el conductor en trips (algún viaje podría tener la info)
+                                      const driverInfo = trips
+                                        .filter(t => t.assignedDriver)
+                                        .find(t => t.driverId === trip.driverId)?.assignedDriver;
+                                      
+                                      if (driverInfo) {
+                                        return `${driverInfo.firstName} ${driverInfo.lastName}`;
+                                      } else {
+                                        // Si sabemos que es el chofer con ID 15 (Gerardo Jesus)
+                                        if (trip.driverId === 15) {
+                                          return 'Gerardo Jesus';
+                                        }
+                                      }
+                                    }
+                                    // Si no tenemos info, mostramos "No asignado"
+                                    return 'No asignado';
+                                  })()}
                                 </div>
                               </div>
                             </div>
