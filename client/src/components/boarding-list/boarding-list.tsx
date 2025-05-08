@@ -252,7 +252,25 @@ export function BoardingList() {
                       <div className="flex items-center text-gray-600">
                         <Bus className="h-4 w-4 mr-2" />
                         <span className="capitalize">
-                          {trip.vehicle?.name}
+                          {(() => {
+                            // Primero intentamos mostrar la info desde assignedVehicle si existe
+                            if (trip.assignedVehicle) {
+                              return `${trip.assignedVehicle.brand} ${trip.assignedVehicle.model} - ${trip.assignedVehicle.plates}`;
+                            }
+                            // Si no hay assignedVehicle pero hay vehicleId, buscamos por ID
+                            else if (trip.vehicleId) {
+                              // Buscar el vehículo en trips (algún viaje podría tener la info)
+                              const vehicleInfo = trips
+                                .filter(t => t.assignedVehicle)
+                                .find(t => t.vehicleId === trip.vehicleId)?.assignedVehicle;
+                              
+                              if (vehicleInfo) {
+                                return `${vehicleInfo.brand} ${vehicleInfo.model} - ${vehicleInfo.plates}`;
+                              }
+                            }
+                            // Si no tenemos info, mostramos "Sin unidad asignada"
+                            return 'Sin unidad asignada';
+                          })()}
                         </span>
                       </div>
                       
