@@ -1875,6 +1875,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const reservationData = validationResult.data;
+      
+      // Si se está actualizando el estado de pago a "pagado", registrar el usuario que hizo el cambio
+      if (reservationData.paymentStatus === PaymentStatus.PAID) {
+        // Obtener el usuario autenticado, si existe
+        const { user } = req as any;
+        
+        if (user && user.id) {
+          console.log(`Registrando usuario que marcó como pagado: ${user.firstName} ${user.lastName} (ID: ${user.id})`);
+          reservationData.cobradoPor = user.id;
+        }
+      }
+      
       const updatedReservation = await storage.updateReservation(id, reservationData);
       
       if (!updatedReservation) {
@@ -1883,6 +1895,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(updatedReservation);
     } catch (error) {
+      console.error("Error al actualizar reservación:", error);
       res.status(500).json({ error: "Failed to update reservation" });
     }
   });
