@@ -3,6 +3,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { HelpCircleIcon } from "lucide-react";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
 import {
@@ -221,9 +222,19 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       setSelectedRouteId(tripData.routeId);
       form.setValue("routeId", tripData.routeId);
       
-      // Establecer fechas
-      form.setValue("startDate", tripData.date || tripData.departureDate);
-      form.setValue("endDate", tripData.date || tripData.departureDate);
+      // Convertir la fecha a formato YYYY-MM-DD para el input type="date"
+      const formatDateForInput = (dateString: string) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toISOString().split('T')[0];
+      };
+      
+      // Establecer fechas en formato correcto para input date
+      const formattedDate = formatDateForInput(tripData.date || tripData.departureDate);
+      console.log("Fecha formateada para input:", formattedDate);
+      
+      form.setValue("startDate", formattedDate);
+      form.setValue("endDate", formattedDate);
       
       // Establecer capacidad
       form.setValue("capacity", tripData.capacity);
@@ -346,10 +357,21 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       const groupSegments = cityGroups[key] || [];
       const firstSegment = groupSegments[0] || {};
       
+      // Asegurar que el precio sea un número válido
+      let price = 0;
+      if (firstSegment.price !== undefined && firstSegment.price !== null) {
+        // Si es una cadena, intentar convertirla
+        if (typeof firstSegment.price === 'string') {
+          price = parseFloat(firstSegment.price) || 0;
+        } else {
+          price = Number(firstSegment.price) || 0;
+        }
+      }
+      
       return {
         origin: pair.origin,
         destination: pair.destination,
-        price: firstSegment.price || 0,
+        price: price,
         count: groupSegments.length
       };
     });
@@ -449,6 +471,9 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
     form.setValue("segmentPrices", updatedSegmentPrices);
   };
 
+  // Importar useLocation para redirección en React
+  const [, navigate] = useLocation();
+
   // Mutation para actualizar el viaje
   const updateTripMutation = useMutation({
     mutationFn: async (data: FormValues) => {
@@ -462,11 +487,11 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
         description: "El viaje ha sido actualizado correctamente."
       });
       
-      // Redirigir de vuelta a la lista de viajes publicados
-      window.location.href = '/publish';
-      
-      // Refresh queries
+      // Refresh queries antes de redirigir
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
+      
+      // Redirigir de vuelta a la lista de viajes publicados usando React Router
+      navigate("/publish");
     },
     onError: (error: Error) => {
       toast({
