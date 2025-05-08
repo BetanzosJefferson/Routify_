@@ -725,7 +725,7 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
                         <div className="flex items-center">
                           <PriceInput
                             value={group.price}
-                            onChange={(value) => updateCityGroupPrice(group.origin, group.destination, value)}
+                            onChange={(value: number) => updateCityGroupPrice(group.origin, group.destination, value)}
                             className="w-full"
                           />
                         </div>
@@ -804,7 +804,7 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
                           <div className="text-xs font-medium text-gray-500">Precio</div>
                           <PriceInput
                             value={segment.price}
-                            onChange={(value) => updateSegmentPrice(index, value)}
+                            onChange={(value: number) => updateSegmentPrice(index, value)}
                             className="w-full"
                           />
                         </div>
@@ -852,7 +852,7 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
                             <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 w-40">
                               <PriceInput
                                 value={segment.price}
-                                onChange={(value) => updateSegmentPrice(index, value)}
+                                onChange={(value: number) => updateSegmentPrice(index, value)}
                               />
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
@@ -972,7 +972,7 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
             <Button 
               type="button" 
               variant="outline"
-              onClick={() => window.location.href = '/publish'}
+              onClick={() => navigate('/publish')}
             >
               Cancelar
             </Button>
