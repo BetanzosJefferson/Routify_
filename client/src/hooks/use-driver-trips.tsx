@@ -20,6 +20,15 @@ export interface Trip {
   segmentOrigin?: string;
   segmentDestination?: string;
   companyId?: string;
+  assignedVehicle?: {
+    id: number;
+    brand: string;
+    model: string;
+    plates: string;
+    economicNumber: string;
+  };
+  
+  // Backward compatibility with existing code
   vehicle?: {
     id: number;
     name: string;
