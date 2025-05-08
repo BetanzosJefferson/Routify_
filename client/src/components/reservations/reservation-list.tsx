@@ -405,6 +405,7 @@ export function ReservationList() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seats</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pago</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cobrado por</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado por</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -483,6 +484,20 @@ export function ReservationList() {
                       >
                         {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
                       </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {reservation.paymentStatus === 'pagado' && reservation.paidByUser ? (
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {reservation.paidByUser.firstName} {reservation.paidByUser.lastName}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {reservation.paidByUser.role}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">-</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {reservation.createdByUser ? (
@@ -660,6 +675,15 @@ export function ReservationList() {
                               <div className="text-gray-500">Estado</div>
                               <div className="font-medium">{reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}</div>
                             </div>
+                            {reservation.paymentStatus === 'pagado' && reservation.paidByUser && (
+                              <div className="col-span-2 mt-2">
+                                <div className="text-gray-500">Cobrado por:</div>
+                                <div className="font-medium">
+                                  {reservation.paidByUser.firstName} {reservation.paidByUser.lastName}
+                                  <span className="text-xs text-gray-500 ml-1">({reservation.paidByUser.role})</span>
+                                </div>
+                              </div>
+                            )}
                           </>
                         ) : (
                           <>
