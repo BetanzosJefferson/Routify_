@@ -6,7 +6,6 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { HelpCircleIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { convertTripToOptimized } from "@/lib/trip-optimizer";
 
 import {
   Form,
@@ -406,73 +405,26 @@ export function PublishTripForm() {
     form.setValue("segmentPrices", updatedSegmentPrices);
   };
 
-  // Utilidad para convertir viajes al modelo optimizado
-
-  // Mutation for publishing trips - usando el modelo optimizado
+  // Mutation for publishing trips
   const publishTripMutation = useMutation({
     mutationFn: async (data: FormValues) => {
       try {
-        // Primero obtenemos la ruta completa con todas sus paradas
-        const routeResponse = await fetch(`/api/routes/${data.routeId}`);
-        if (!routeResponse.ok) {
-          throw new Error("No se pudo obtener la información de la ruta");
-        }
-        const route = await routeResponse.json();
-        
-        // Convertir la fecha al formato correcto
-        let departureDate;
-        try {
-          // Asegurar que la fecha es un objeto Date válido
-          departureDate = data.startDate ? new Date(data.startDate) : new Date();
-          console.log("[PublishTripForm] Fecha de salida convertida:", departureDate);
-        } catch (error) {
-          console.error("[PublishTripForm] Error convirtiendo fecha:", error);
-          departureDate = new Date(); // Usar fecha actual como respaldo
-        }
-        
-        // Construir datos para el modelo antiguo (para compatibilidad)
-        const tripData = {
-          routeId: data.routeId,
-          departureDate: departureDate, // Usar el objeto Date validado
-          capacity: data.capacity,
-          availableSeats: data.capacity,
-          price: data.price,
-          departureTime: data.stopTimes && data.stopTimes[0] ? 
-                          `${data.stopTimes[0].hour}:${data.stopTimes[0].minute} ${data.stopTimes[0].ampm}` : 
-                          "08:00 AM",
-          arrivalTime: data.stopTimes && data.stopTimes[data.stopTimes.length - 1] ? 
-                        `${data.stopTimes[data.stopTimes.length - 1].hour}:${data.stopTimes[data.stopTimes.length - 1].minute} ${data.stopTimes[data.stopTimes.length - 1].ampm}` : 
-                        "12:00 PM",
-          segmentPrices: data.segmentPrices,
-          vehicleId: data.vehicleId,
-          driverId: data.driverId,
-          archived: false
-        };
-        
-        console.log("[PublishTripForm] Datos de viaje para optimizar:", tripData);
-        
-        // Convertir el viaje al modelo optimizado
-        const optimizedData = convertTripToOptimized(tripData, route);
-        
-        console.log("[PublishTripForm] Viaje optimizado para publicar:", optimizedData);
-        
-        // Publicar el viaje usando la nueva API optimizada
-        const response = await fetch("/api/optimized/trips", {
+        const response = await fetch("/api/trips", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(optimizedData),
+          body: JSON.stringify(data),
         });
 
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(errorText || "Error al publicar viaje optimizado");
+          throw new Error(errorText || "Failed to publish trip");
         }
 
         return await response.json();
       } catch (error) {
-        console.error("[PublishTripForm] Error al publicar viaje optimizado:", error);
+        console.error("Error publishing trip:", error);
         throw error;
       }
     },
@@ -490,9 +442,8 @@ export function PublishTripForm() {
         endDate: format(new Date(), "yyyy-MM-dd"),
       });
 
-      // Refresh queries - Actualizar ambos endpoints para asegurar la consistencia
+      // Refresh queries
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/optimized/trips"] });
 
       // Hide form if not editing
       if (!editingTripId) {
