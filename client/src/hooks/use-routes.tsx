@@ -1,34 +1,35 @@
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "./use-auth";
-import { Route } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
+
+interface Route {
+  id: number;
+  name: string;
+  origin: string;
+  destination: string;
+  stops: string[];
+  companyId?: string;
+}
 
 /**
- * Hook para obtener todas las rutas disponibles
+ * Hook para obtener las rutas disponibles
  */
 export function useRoutes() {
-  const { user } = useAuth();
-  
-  return useQuery<Route[]>({
-    queryKey: ["/api/routes"],
-    enabled: !!user,
-    staleTime: 60000, // 1 minuto
-    refetchInterval: false,
+  const { data: routes = [], isLoading, error } = useQuery({
+    queryKey: ['/api/routes'],
     queryFn: async () => {
       try {
-        console.log("Cargando rutas...");
-        const response = await fetch("/api/routes");
-        
-        if (!response.ok) {
-          throw new Error(`Error al obtener rutas: ${response.statusText}`);
+        const res = await apiRequest('GET', '/api/routes');
+        if (!res.ok) {
+          throw new Error('No se pudieron obtener las rutas');
         }
-        
-        const routes = await response.json();
-        console.log("Rutas cargadas:", routes);
-        return routes;
+        return await res.json();
       } catch (error) {
-        console.error("Error al cargar rutas:", error);
+        console.error('Error al obtener rutas:', error);
         throw error;
       }
     }
   });
+
+  return { routes, isLoading, error };
 }
