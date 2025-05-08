@@ -156,19 +156,48 @@ export function registerOptimizedTripRoutes(
         return res.status(400).json({ error: "Se requiere una fecha de salida válida" });
       }
       
-      // Crear el viaje master
+      // Si el usuario está autenticado, asignar su compañía al viaje
+      let companyId = tripMaster.companyId || null;
+      if (req.user && req.user.company) {
+        companyId = req.user.company;
+      }
+      
+      // Crear el viaje master con los datos validados
       const tripData: Omit<InsertTripMaster, "id"> = {
-        ...tripMaster,
-        departureDate,  // Usamos la fecha validada
         routeId: route.id,
-        // Asegurar que tiene los campos obligatorios
+        departureDate,
+        capacity: tripMaster.capacity,
+        availableSeats: tripMaster.availableSeats || tripMaster.capacity,
+        price: tripMaster.price,
+        departureTime: tripMaster.departureTime || null,
+        arrivalTime: tripMaster.arrivalTime || null,
+        vehicleId: tripMaster.vehicleId || null,
+        driverId: tripMaster.driverId || null,
+        companyId: companyId,
+        archived: false,
         createdAt: new Date()
       };
       
-      // Crear segmentos
+      // Verificar que hay segmentos y que tienen los datos necesarios
+      if (!segments || !Array.isArray(segments) || segments.length === 0) {
+        return res.status(400).json({ error: "Se requiere al menos un segmento para crear el viaje" });
+      }
+      
+      console.log("[POST /optimized/trips] Validando segmentos:", segments.length);
+      
+      // Crear segmentos asegurando que todos los campos requeridos estén presentes
       const segmentDataList: Omit<InsertTripSegment, "id">[] = segments.map(
-        (segment: any) => ({
-          ...segment,
+        (segment: any, index: number) => ({
+          originStopIndex: segment.originStopIndex || 0,
+          destinationStopIndex: segment.destinationStopIndex || index + 1,
+          origin: segment.origin || "Origen desconocido",
+          destination: segment.destination || "Destino desconocido",
+          price: segment.price || 0,
+          availableSeats: segment.availableSeats || tripMaster.capacity || 18,
+          departureTime: segment.departureTime || null,
+          arrivalTime: segment.arrivalTime || null,
+          isDirectSegment: segment.isDirectSegment || false,
+          createdAt: new Date()
           // No incluimos tripMasterId aquí porque se asignará en createTrip
         })
       );
