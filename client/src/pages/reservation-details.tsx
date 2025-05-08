@@ -259,6 +259,16 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
               <div className="text-right font-medium">{formatPrice(reservation.totalAmount)}</div>
             </div>
             
+            {/* Mostrar quién marcó como pagado, si aplica */}
+            {reservation.paymentStatus === 'pagado' && reservation.cobradoPorUser && (
+              <div className="grid grid-cols-2 items-center mb-3">
+                <div className="text-sm text-gray-500 font-medium">COBRADO POR</div>
+                <div className="text-right">
+                  {reservation.cobradoPorUser.firstName} {reservation.cobradoPorUser.lastName}
+                </div>
+              </div>
+            )}
+            
             <div className="grid grid-cols-2 items-center mb-3">
               <div className="text-sm text-gray-500 font-medium">MÉTODO DE PAGO</div>
               <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
