@@ -46,8 +46,17 @@ export function convertTripToOptimized(
   // Crear datos del viaje maestro
   // Convertir departureDate si viene como string
   let departureDate = trip.departureDate;
+  console.log("[TripOptimizer] Tipo de departureDate:", typeof departureDate, departureDate);
+  
   if (typeof departureDate === 'string') {
-    departureDate = new Date(departureDate);
+    try {
+      departureDate = new Date(departureDate);
+      console.log("[TripOptimizer] departureDate convertido a Date:", departureDate);
+    } catch (error) {
+      console.error("[TripOptimizer] Error al convertir departureDate a Date:", error);
+      // Usar la fecha actual como fallback
+      departureDate = new Date();
+    }
   }
 
   const tripMaster = {

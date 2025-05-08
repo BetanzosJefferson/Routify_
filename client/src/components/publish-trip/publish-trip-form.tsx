@@ -419,10 +419,21 @@ export function PublishTripForm() {
         }
         const route = await routeResponse.json();
         
+        // Convertir la fecha al formato correcto
+        let departureDate;
+        try {
+          // Asegurar que la fecha es un objeto Date válido
+          departureDate = data.startDate ? new Date(data.startDate) : new Date();
+          console.log("[PublishTripForm] Fecha de salida convertida:", departureDate);
+        } catch (error) {
+          console.error("[PublishTripForm] Error convirtiendo fecha:", error);
+          departureDate = new Date(); // Usar fecha actual como respaldo
+        }
+        
         // Construir datos para el modelo antiguo (para compatibilidad)
         const tripData = {
           routeId: data.routeId,
-          departureDate: data.startDate,
+          departureDate: departureDate, // Usar el objeto Date validado
           capacity: data.capacity,
           availableSeats: data.capacity,
           price: data.price,
