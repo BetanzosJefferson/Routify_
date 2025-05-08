@@ -302,7 +302,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                     else if (tripDetails.vehicleId) {
                       // Buscar el vehículo en trips (algún viaje podría tener la info)
                       const vehicleInfo = trips
-                        ?.filter(t => t.assignedVehicle)
+                        ?.filter(t => t.assignedVehicle !== undefined)
                         .find(t => t.vehicleId === tripDetails.vehicleId)?.assignedVehicle;
                       
                       if (vehicleInfo) {

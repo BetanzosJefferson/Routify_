@@ -1,6 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 
+// Definición del tipo de vehículo asignado
+export interface AssignedVehicle {
+  id: number;
+  brand: string;
+  model: string;
+  plates: string;
+  economicNumber: string;
+}
+
+// Tipo de vehículo antiguo (para compatibilidad)
+export interface VehicleOld {
+  id: number;
+  name: string;
+  licensePlate?: string;
+}
+
 // Tipos de datos básicos para viajes
 export interface Trip {
   id: number;
@@ -20,20 +36,10 @@ export interface Trip {
   segmentOrigin?: string;
   segmentDestination?: string;
   companyId?: string;
-  assignedVehicle?: {
-    id: number;
-    brand: string;
-    model: string;
-    plates: string;
-    economicNumber: string;
-  };
+  assignedVehicle?: AssignedVehicle;
   
   // Backward compatibility with existing code
-  vehicle?: {
-    id: number;
-    name: string;
-    licensePlate?: string;
-  };
+  vehicle?: VehicleOld;
   route?: {
     id: number;
     name: string;

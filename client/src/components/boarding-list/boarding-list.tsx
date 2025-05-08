@@ -258,10 +258,10 @@ export function BoardingList() {
                               return `${trip.assignedVehicle.brand} ${trip.assignedVehicle.model} - ${trip.assignedVehicle.plates}`;
                             }
                             // Si no hay assignedVehicle pero hay vehicleId, buscamos por ID
-                            else if (trip.vehicleId) {
+                            else if (trip.vehicleId && trips) {
                               // Buscar el vehículo en trips (algún viaje podría tener la info)
                               const vehicleInfo = trips
-                                .filter(t => t.assignedVehicle)
+                                .filter(t => t.assignedVehicle !== undefined)
                                 .find(t => t.vehicleId === trip.vehicleId)?.assignedVehicle;
                               
                               if (vehicleInfo) {
