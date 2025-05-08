@@ -904,24 +904,9 @@ export function PublishTripForm() {
                                       </div>
                                       <PriceInput
                                         value={firstSegment.price}
-                                        onChange={(e) => {
-                                          // Convertir el valor a número, con manejo especial para cadenas vacías
-                                          const inputValue = e.target.value;
-                                          let newPrice = 0;
-
-                                          if (inputValue.trim() !== "") {
-                                            const parsedValue = parseInt(
-                                              inputValue,
-                                              10,
-                                            );
-                                            if (!isNaN(parsedValue)) {
-                                              newPrice = parsedValue;
-                                            }
-                                          }
-
+                                        onChange={(newPrice) => {
                                           console.log(
                                             "Actualizando precio de ciudad (móvil):",
-                                            inputValue,
                                             "->",
                                             newPrice,
                                           );
@@ -1083,24 +1068,10 @@ export function PublishTripForm() {
                                         <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                                           <PriceInput
                                             value={firstSegment.price}
-                                            onChange={(e) => {
-                                              // Convertir el valor a número, con manejo especial para cadenas vacías
-                                              const inputValue = e.target.value;
-                                              let newPrice = 0;
-
-                                              if (inputValue.trim() !== "") {
-                                                const parsedValue = parseInt(
-                                                  inputValue,
-                                                  10,
-                                                );
-                                                if (!isNaN(parsedValue)) {
-                                                  newPrice = parsedValue;
-                                                }
-                                              }
-
+                                            onChange={(newPrice) => {
+                                              // El valor ya está convertido a número por el componente PriceInput
                                               console.log(
                                                 "Actualizando precio de ciudad:",
-                                                inputValue,
                                                 "->",
                                                 newPrice,
                                               );
@@ -1174,23 +1145,9 @@ export function PublishTripForm() {
                                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                                     <PriceInput
                                       value={segment.price}
-                                      onChange={(e) => {
-                                        const inputValue = e.target.value;
-                                        let newPrice = 0;
-
-                                        if (inputValue.trim() !== "") {
-                                          const parsedValue = parseInt(
-                                            inputValue,
-                                            10,
-                                          );
-                                          if (!isNaN(parsedValue)) {
-                                            newPrice = parsedValue;
-                                          }
-                                        }
-
+                                      onChange={(newPrice) => {
                                         console.log(
                                           "Actualizando precio de segmento:",
-                                          inputValue,
                                           "->",
                                           newPrice,
                                         );
