@@ -1303,12 +1303,13 @@ export class DatabaseStorage implements IStorage {
       console.log(`[markAsPaid] Marcando ticket #${id} como pagado por el usuario ${userId}`);
       
       // Actualizar el estado de pago y guardar el usuario que marca como pagado
+      const now = new Date();
       const [updatedReservation] = await db
         .update(schema.reservations)
         .set({
           paidBy: userId,
-          paidAt: new Date(),
-          paymentStatus: 'PAID' // Establecer estado a PAGADO
+          paymentStatus: 'PAID', // Establecer estado a PAGADO
+          updatedAt: now
         })
         .where(eq(schema.reservations.id, id))
         .returning();
