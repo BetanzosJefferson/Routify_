@@ -1877,7 +1877,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reservationData = validationResult.data;
       
       // Si se está actualizando el estado de pago a "pagado", registrar el usuario que hizo el cambio
-      if (reservationData.paymentStatus === PaymentStatus.PAID) {
+      if (reservationData.paymentStatus === "PAID") {
         // Obtener el usuario autenticado, si existe
         const { user } = req as any;
         
