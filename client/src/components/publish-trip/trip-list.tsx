@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { 
@@ -107,8 +106,7 @@ type TripListProps = {
   onEditTrip: (tripId: number) => void;
 };
 
-export default function TripList() {
-  const [, navigate] = useLocation();
+export default function TripList({ onEditTrip }: TripListProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
@@ -675,7 +673,7 @@ export default function TripList() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => navigate(`/trip/edit/${trip.id}`)}
+                              onClick={() => onEditTrip(trip.id)}
                               className="h-8 w-8"
                             >
                               <PencilIcon className="h-4 w-4" />
