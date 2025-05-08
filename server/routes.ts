@@ -1176,50 +1176,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tripData.capacity = currentTrip.capacity;
       }
       
-      // Si hay datos de segmentos y stopTimes, calcular horarios para el viaje principal
-      if (tripData.segmentPrices && Array.isArray(tripData.segmentPrices) && tripData.segmentPrices.length > 0) {
-        console.log("Calculando horarios para el viaje principal basado en segmentos");
+      // Identificar y extraer información de tiempos de parada para el viaje principal
+      console.log("⏰ Procesando stopTimes para actualización de horarios del viaje principal");
+      
+      // Obtener los tiempos de parada del formulario (si están disponibles)
+      if (req.body.stopTimes && Array.isArray(req.body.stopTimes) && req.body.stopTimes.length > 0) {
+        console.log("⏰ stopTimes recibidos:", req.body.stopTimes);
         
-        // Encontrar el primer y último segmento para determinar el tiempo total
-        const firstSegment = tripData.segmentPrices.find(seg => seg.origin === currentTrip.segmentOrigin);
-        const lastSegment = tripData.segmentPrices.find(seg => seg.destination === currentTrip.segmentDestination);
-        
-        // El origen y destino principal siempre debe tener el primer y último segmento correspondiente
-        if (firstSegment && firstSegment.departureTime) {
-          console.log(`Actualizando hora de salida del viaje principal a: ${firstSegment.departureTime}`);
-          tripData.departureTime = firstSegment.departureTime;
+        // Asignar hora de origen (primera parada) al departureTime
+        if (req.body.stopTimes[0]) {
+          const firstStopTime = req.body.stopTimes[0];
+          if (firstStopTime && typeof firstStopTime === 'object') {
+            const formattedTime = `${firstStopTime.hour || '00'}:${firstStopTime.minute || '00'} ${firstStopTime.ampm || 'AM'}`;
+            console.log(`⏰ HORA ORIGEN establecida a: ${formattedTime}`);
+            tripData.departureTime = formattedTime;
+          }
         }
         
-        if (lastSegment && lastSegment.arrivalTime) {
-          console.log(`Actualizando hora de llegada del viaje principal a: ${lastSegment.arrivalTime}`);
-          tripData.arrivalTime = lastSegment.arrivalTime;
+        // Asignar hora de destino (última parada) al arrivalTime
+        const lastIndex = req.body.stopTimes.length - 1;
+        if (req.body.stopTimes[lastIndex]) {
+          const lastStopTime = req.body.stopTimes[lastIndex];
+          if (lastStopTime && typeof lastStopTime === 'object') {
+            const formattedTime = `${lastStopTime.hour || '00'}:${lastStopTime.minute || '00'} ${lastStopTime.ampm || 'AM'}`;
+            console.log(`⏰ HORA DESTINO establecida a: ${formattedTime}`);
+            tripData.arrivalTime = formattedTime;
+          }
         }
+      } 
+      // Alternativamente, si no hay stopTimes, revisar los segmentPrices
+      else if (tripData.segmentPrices && Array.isArray(tripData.segmentPrices) && tripData.segmentPrices.length > 0) {
+        console.log("⏰ Calculando horarios para el viaje principal basado en segmentPrices");
         
-        // Para todos los segmentos, buscar el de origen y destino final
-        const originSegments = tripData.segmentPrices.filter(
-          segment => segment.origin === (currentTrip.routeOrigin || currentTrip.segmentOrigin)
+        const allOrigins = new Set(tripData.segmentPrices.map(seg => seg.origin));
+        const allDestinations = new Set(tripData.segmentPrices.map(seg => seg.destination));
+        
+        console.log(`⏰ Orígenes disponibles: ${Array.from(allOrigins).join(', ')}`);
+        console.log(`⏰ Destinos disponibles: ${Array.from(allDestinations).join(', ')}`);
+        
+        // Si existe la ruta directa entre el origen y destino principal
+        const directSegment = tripData.segmentPrices.find(
+          segment => segment.origin === currentTrip.segmentOrigin && 
+                    segment.destination === currentTrip.segmentDestination
         );
         
-        const destinationSegments = tripData.segmentPrices.filter(
-          segment => segment.destination === (currentTrip.routeDestination || currentTrip.segmentDestination)
-        );
-        
-        // Buscar el segmento que va del origen principal al destino principal
-        if (originSegments.length > 0 && destinationSegments.length > 0) {
-          const mainRouteSegment = tripData.segmentPrices.find(
-            segment => 
-              segment.origin === (currentTrip.routeOrigin || currentTrip.segmentOrigin) && 
-              segment.destination === (currentTrip.routeDestination || currentTrip.segmentDestination)
+        if (directSegment) {
+          console.log("⏰ Encontrada ruta directa entre origen y destino principal");
+          if (directSegment.departureTime) {
+            console.log(`⏰ HORA ORIGEN (directa) establecida a: ${directSegment.departureTime}`);
+            tripData.departureTime = directSegment.departureTime;
+          }
+          if (directSegment.arrivalTime) {
+            console.log(`⏰ HORA DESTINO (directa) establecida a: ${directSegment.arrivalTime}`);
+            tripData.arrivalTime = directSegment.arrivalTime;
+          }
+        }
+        // De lo contrario, buscar el primer segmento y el último
+        else {
+          // Encontrar el primer segmento (que inicia en el origen del viaje)
+          const originSegments = tripData.segmentPrices.filter(seg => 
+            seg.origin === currentTrip.segmentOrigin
           );
           
-          if (mainRouteSegment) {
-            console.log("Encontrado segmento principal que representa toda la ruta");
-            if (mainRouteSegment.departureTime) {
-              tripData.departureTime = mainRouteSegment.departureTime;
-            }
-            if (mainRouteSegment.arrivalTime) {
-              tripData.arrivalTime = mainRouteSegment.arrivalTime;
-            }
+          if (originSegments.length > 0 && originSegments[0].departureTime) {
+            console.log(`⏰ HORA ORIGEN establecida a: ${originSegments[0].departureTime}`);
+            tripData.departureTime = originSegments[0].departureTime;
+          }
+          
+          // Encontrar el último segmento (que termina en el destino del viaje)
+          const destinationSegments = tripData.segmentPrices.filter(seg => 
+            seg.destination === currentTrip.segmentDestination
+          );
+          
+          if (destinationSegments.length > 0 && destinationSegments[0].arrivalTime) {
+            console.log(`⏰ HORA DESTINO establecida a: ${destinationSegments[0].arrivalTime}`);
+            tripData.arrivalTime = destinationSegments[0].arrivalTime;
           }
         }
       }
