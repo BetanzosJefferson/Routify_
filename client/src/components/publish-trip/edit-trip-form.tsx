@@ -59,10 +59,9 @@ type FormValues = {
 
 interface EditTripFormProps {
   tripId: number;
-  onClose: () => void;
 }
 
-export function EditTripForm({ tripId, onClose }: EditTripFormProps) {
+export function EditTripForm({ tripId }: EditTripFormProps) {
   const { toast } = useToast();
   const [segmentPrices, setSegmentPrices] = useState<SegmentTimePrice[]>([]);
   const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
@@ -460,8 +459,8 @@ export function EditTripForm({ tripId, onClose }: EditTripFormProps) {
         description: "El viaje ha sido actualizado correctamente."
       });
       
-      // Cerrar el formulario de edición
-      onClose();
+      // Redirigir de vuelta a la lista de viajes publicados
+      window.location.href = '/publish';
       
       // Refresh queries
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
@@ -945,7 +944,7 @@ export function EditTripForm({ tripId, onClose }: EditTripFormProps) {
             <Button 
               type="button" 
               variant="outline"
-              onClick={onClose}
+              onClick={() => window.location.href = '/publish'}
             >
               Cancelar
             </Button>
