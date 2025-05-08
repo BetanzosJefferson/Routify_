@@ -473,19 +473,20 @@ export function PublishTripForm() {
     }
   };
 
+  // Estado para controlar el estado de carga durante la edición
+  const [isLoadingTripEdit, setIsLoadingTripEdit] = useState(false);
+  
   // Load trip data for editing
   const loadTripForEditing = async (tripId: number) => {
     try {
+      // Activar estado de carga
+      setIsLoadingTripEdit(true);
+      
       // Reiniciar estados para evitar datos incorrectos de ediciones anteriores
       setSegmentPrices([]);
       setStopTimes([]);
       
-      // Activar modo edición y establecer el ID
-      setEditingTripId(tripId);
-      setShowForm(true);
-      setShowAssignmentFields(true);
-      
-      // Cargar datos del viaje
+      // Primero cargar los datos del viaje sin mostrar el formulario todavía
       const response = await fetch(`/api/trips/${tripId}`);
       
       if (!response.ok) {
@@ -495,16 +496,18 @@ export function PublishTripForm() {
       const tripData = await response.json();
       console.log("Datos de viaje cargados para edición:", tripData);
       
-      // Primero cargar la ruta y esperar a que se complete la carga
+      // Precargar la ruta seleccionada
+      handleRouteChange(String(tripData.routeId));
+      
+      // Establecer el ID del viaje que estamos editando para referencia futura
+      setEditingTripId(tripId);
+      
+      // Esperar a que se complete la carga de la ruta
       await new Promise<void>((resolve) => {
-        // Cambiar la ruta seleccionada
-        handleRouteChange(String(tripData.routeId));
-        
-        // Establecer un timer para asegurar que routeSegmentsQuery tenga tiempo de actualizarse
         setTimeout(resolve, 500); 
       });
       
-      // Ahora que routeId ha cambiado, cargar los datos restantes
+      // Ahora que routeId ha cambiado, esperar a que se carguen los segmentos
       await new Promise<void>((resolve) => {
         const checkSegmentsLoaded = () => {
           if (!routeSegmentsQuery.isLoading && routeSegmentsQuery.data) {
@@ -519,7 +522,7 @@ export function PublishTripForm() {
         checkSegmentsLoaded();
       });
       
-      // Una vez que tenemos la ruta y los segmentos, completar el formulario
+      // Una vez que tenemos la ruta y los segmentos, preparar los datos del formulario
       console.log("Completando formulario con datos del viaje");
       
       // Establecer valores base
@@ -560,6 +563,13 @@ export function PublishTripForm() {
         console.warn("El viaje no tiene precios por segmento definidos");
       }
       
+      // Ahora que todos los datos están cargados, mostrar el formulario
+      setShowForm(true);
+      setShowAssignmentFields(true);
+      
+      // Desactivar el estado de carga
+      setIsLoadingTripEdit(false);
+      
     } catch (error) {
       console.error("Error al cargar viaje para edición:", error);
       toast({
@@ -567,6 +577,8 @@ export function PublishTripForm() {
         title: "Error al cargar viaje",
         description: "No se pudo cargar la información del viaje para editar."
       });
+      setIsLoadingTripEdit(false);
+      setEditingTripId(null); // Limpiar el ID en caso de error
     }
   };
   
@@ -647,13 +659,28 @@ export function PublishTripForm() {
             Vea y administre los viajes disponibles para reservación.
           </p>
         </div>
-        <Button onClick={toggleForm} className="self-start">
+        <Button onClick={toggleForm} className="self-start" disabled={isLoadingTripEdit}>
           {showForm ? "Cancelar" : editingTripId ? "Editar Viaje" : "Publicar Nuevo Viaje"}
         </Button>
       </div>
 
-      {/* Form section */}
-      {showForm && (
+      {/* Loading indicator cuando se están cargando datos para edición */}
+      {isLoadingTripEdit && (
+        <div className="bg-card rounded-lg border shadow-sm p-6">
+          <div className="flex flex-col items-center justify-center py-8">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+            </div>
+            <h3 className="text-lg font-semibold">Cargando datos del viaje</h3>
+            <p className="text-sm text-muted-foreground mt-2">
+              Espere mientras se cargan todos los datos necesarios para la edición...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Form section - Only show when not loading and showForm is true */}
+      {showForm && !isLoadingTripEdit && (
         <div className="bg-card rounded-lg border shadow-sm p-6">
           <h3 className="text-lg font-semibold mb-4">
             {editingTripId ? "Editar Viaje" : "Publicar Nuevo Viaje"}
@@ -1228,11 +1255,13 @@ export function PublishTripForm() {
         </div>
       )}
 
-      {/* Trip list */}
-      <TripList 
-        onEditTrip={loadTripForEditing} 
-        editMode={!!editingTripId}
-      />
+      {/* Trip list - Hide when loading */}
+      {!isLoadingTripEdit && (
+        <TripList 
+          onEditTrip={loadTripForEditing} 
+          editMode={!!editingTripId}
+        />
+      )}
     </div>
   );
 }
