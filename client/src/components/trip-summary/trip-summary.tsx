@@ -29,6 +29,13 @@ type ReservationWithPassengers = Reservation & {
     firstName: string;
     lastName: string;
   };
+  paidBy?: number;
+  paidAt?: string | Date;
+  paidByUser?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  };
 };
 
 export default function TripSummary({ className }: TripSummaryProps) {
@@ -470,6 +477,9 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                     <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                       Ticket Escaneado
                                     </th>
+                                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Cobrado por
+                                    </th>
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -564,6 +574,20 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                           <Badge variant="outline" className="border-gray-300 text-gray-500">
                                             Pendiente
                                           </Badge>
+                                        )}
+                                      </td>
+                                      <td className="py-3 px-4 whitespace-nowrap">
+                                        {reservation.paidBy ? (
+                                          <div className="text-sm text-gray-700">
+                                            {reservation.paidByUser?.firstName} {reservation.paidByUser?.lastName}
+                                            {reservation.paidAt && (
+                                              <div className="text-xs text-gray-500 mt-1">
+                                                {new Date(reservation.paidAt).toLocaleString('es-MX')}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <div className="text-sm italic text-gray-500">No registrado</div>
                                         )}
                                       </td>
                                     </tr>
