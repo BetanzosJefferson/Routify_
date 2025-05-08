@@ -21,6 +21,20 @@ import { formatPrice } from "@/lib/utils";
 import { Check, X, CalendarIcon, CreditCard, MapPin, Phone, User } from "lucide-react";
 import { TabType } from "@/hooks/use-active-tab";
 
+// Función auxiliar para extraer solo el nombre de la ciudad de la dirección completa
+function extractCityName(fullAddress?: string): string {
+  if (!fullAddress) return "";
+  
+  // Si la dirección contiene el patrón "Ciudad, Estado - Lugar específico"
+  // extraemos solo la ciudad (antes de la primera coma)
+  const cityMatch = fullAddress.match(/^([^,]+)/);
+  if (cityMatch && cityMatch[1]) {
+    return cityMatch[1].trim();
+  }
+  
+  return fullAddress;
+}
+
 // Interfaz para el tipo de solicitud de reservación
 interface ReservationRequest {
   id: number;
@@ -243,7 +257,7 @@ export default function ReservationRequestsPage() {
                       <div>
                         <span className="font-medium">Ruta:</span>{" "}
                         <span className="text-muted-foreground">
-                          {selectedRequest.tripOrigin || "Origen no especificado"} - {selectedRequest.tripDestination || "Destino no especificado"}
+                          {extractCityName(selectedRequest.tripOrigin) || "Origen no especificado"} - {extractCityName(selectedRequest.tripDestination) || "Destino no especificado"}
                         </span>
                       </div>
                     </div>
@@ -466,7 +480,7 @@ function RequestCard({ request, isProcessed, onReview }: RequestCardProps) {
               <span className="ml-3">{getStatusBadge()}</span>
             </CardTitle>
             <CardDescription>
-              {formattedCreatedAt} • por {request.requesterName || `Agente #${request.requesterId}`}
+              {formattedCreatedAt}
             </CardDescription>
           </div>
           {!isProcessed && onReview && (
@@ -482,7 +496,7 @@ function RequestCard({ request, isProcessed, onReview }: RequestCardProps) {
             <div className="flex items-center text-sm">
               <MapPin className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
               <span className="truncate">
-                {request.tripOrigin || "Origen no especificado"} - {request.tripDestination || "Destino no especificado"}
+                {extractCityName(request.tripOrigin) || "Origen no especificado"} - {extractCityName(request.tripDestination) || "Destino no especificado"}
               </span>
             </div>
             <div className="flex items-center text-sm">
