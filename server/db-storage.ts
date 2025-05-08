@@ -1123,6 +1123,21 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
+    // Obtener información del usuario que marcó como pagado el ticket
+    let paidByUser: schema.User | undefined = undefined;
+    if (reservation.paidBy) {
+      // Buscar el usuario por ID
+      const [user] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.id, reservation.paidBy));
+      
+      if (user) {
+        paidByUser = user;
+        console.log(`[getReservationWithDetails] Reserva ${id} marcada como pagada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
+      }
+    }
+    
     console.log(`[getReservationWithDetails] Acceso concedido a reserva ${id} con ${passengers.length} pasajeros`);
     
     return {
@@ -1130,7 +1145,8 @@ export class DatabaseStorage implements IStorage {
       trip,
       passengers,
       createdByUser, // Añadimos el usuario creador
-      checkedByUser  // Añadimos el usuario que escaneó el ticket
+      checkedByUser, // Añadimos el usuario que escaneó el ticket
+      paidByUser     // Añadimos el usuario que marcó como pagado el ticket
     };
   }
   
