@@ -25,7 +25,8 @@ import {
   UserIcon,
   CheckIcon,
   Loader2Icon,
-  XIcon
+  XIcon,
+  Archive as ArchiveIcon
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -434,7 +435,12 @@ export default function TripList({ onEditTrip }: TripListProps) {
   const formatDateHeader = (dateString: string) => {
     // Si es la clave especial "archived", mostramos un encabezado diferente
     if (dateString === "archived") {
-      return "Viajes Archivados";
+      return (
+        <div className="flex items-center">
+          <ArchiveIcon className="h-5 w-5 mr-2 text-yellow-600" />
+          <span>Viajes Archivados</span>
+        </div>
+      );
     }
     
     // Usamos normalizeToStartOfDay para asegurar una fecha correcta
@@ -550,14 +556,19 @@ export default function TripList({ onEditTrip }: TripListProps) {
         ) : (
           <div className="space-y-6">
             {Object.entries(groupTripsByDate())
-              // Ordenar fechas de más cercana a más lejana
+              // Ordenar fechas de más cercana a más lejana, pero con "archived" siempre al final
               .sort(([dateKeyA], [dateKeyB]) => {
+                // Si alguna de las claves es "archived", moverla al final
+                if (dateKeyA === "archived") return 1;
+                if (dateKeyB === "archived") return -1;
+                
+                // Para el resto de fechas, orden ascendente normal
                 const dateA = new Date(dateKeyA);
                 const dateB = new Date(dateKeyB);
-                return dateA.getTime() - dateB.getTime(); // Orden ascendente
+                return dateA.getTime() - dateB.getTime();
               })
               .map(([dateKey, trips]) => (
-              <div key={dateKey} className="space-y-4">
+              <div key={dateKey} className={`space-y-4 ${dateKey === "archived" ? "mt-8 pt-6 border-t-2" : ""}`}>
                 <div>
                   <h3 className="text-lg font-medium">{formatDateHeader(dateKey)}</h3>
                   <p className="text-sm text-muted-foreground">
