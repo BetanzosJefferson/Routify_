@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { EditTripForm } from "@/components/publish-trip/edit-trip-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,8 @@ export default function EditTripPage() {
     setActiveTab(tab);
   };
 
+  const [, navigate] = useLocation();
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar activeTab={activeTab} onTabChange={handleTabChange} />
@@ -48,7 +50,7 @@ export default function EditTripPage() {
                       <Button 
                         variant="ghost" 
                         className="mr-2 h-8 w-8 p-0"
-                        onClick={() => window.location.href = '/publish'}
+                        onClick={() => navigate('/publish')}
                       >
                         <ArrowLeftIcon className="h-4 w-4" />
                       </Button>
@@ -67,7 +69,7 @@ export default function EditTripPage() {
                       <Button 
                         variant="outline" 
                         className="mt-4"
-                        onClick={() => window.location.href = '/publish'}
+                        onClick={() => navigate('/publish')}
                       >
                         Volver a Viajes Publicados
                       </Button>
