@@ -104,9 +104,10 @@ interface Trip {
 
 type TripListProps = {
   onEditTrip: (tripId: number) => void;
+  editMode?: boolean; // Indica si estamos en modo edición para desactivar botones
 };
 
-export default function TripList({ onEditTrip }: TripListProps) {
+export default function TripList({ onEditTrip, editMode = false }: TripListProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
