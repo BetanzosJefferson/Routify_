@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "./use-auth";
+import { apiRequest } from "@/lib/queryClient";
 
 interface Driver {
   id: number;
@@ -13,27 +13,23 @@ interface Driver {
  * Hook para obtener los conductores disponibles
  */
 export function useDrivers() {
-  const { user } = useAuth();
-  
-  return useQuery<Driver[]>({
-    queryKey: ["/api/users"],
-    enabled: !!user,
-    staleTime: 60000, // 1 minuto
-    refetchInterval: false,
+  const { data: drivers = [], isLoading, error } = useQuery({
+    queryKey: ['/api/users', 'chofer'],
     queryFn: async () => {
       try {
-        // Filtrar solo por usuarios con rol de chofer
-        const response = await fetch("/api/users?role=chofer");
-        
-        if (!response.ok) {
-          throw new Error(`Error al obtener conductores: ${response.statusText}`);
+        const res = await apiRequest('GET', '/api/users?role=chofer');
+        if (!res.ok) {
+          throw new Error('No se pudieron obtener los conductores');
         }
-        
-        return await response.json();
+        const data = await res.json();
+        // Filtramos explícitamente para asegurarnos de que solo se incluyan usuarios con rol 'chofer'
+        return data.filter((user: Driver) => user.role === 'chofer');
       } catch (error) {
-        console.error("Error al cargar conductores:", error);
+        console.error('Error al obtener conductores:', error);
         throw error;
       }
     }
   });
+
+  return { drivers, isLoading, error };
 }
