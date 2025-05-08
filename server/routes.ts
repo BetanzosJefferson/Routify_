@@ -3602,5 +3602,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Registrar las rutas optimizadas para viajes
+  registerOptimizedTripRoutes(app, apiRouter);
+
   return httpServer;
 }

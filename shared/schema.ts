@@ -45,6 +45,7 @@ export const tripMasters = pgTable("trip_masters", {
   companyId: text("company_id"),
   vehicleId: integer("vehicle_id"),
   driverId: integer("driver_id"),
+  archived: boolean("archived").default(false), // Indica si el viaje está archivado (completado/pasado)
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -160,6 +161,8 @@ export const PaymentMethod = {
 } as const;
 
 export type PaymentMethodType = typeof PaymentMethod[keyof typeof PaymentMethod];
+
+
 
 // RESERVATION SCHEMA
 export const reservations = pgTable("reservations", {
