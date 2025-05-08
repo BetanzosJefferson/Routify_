@@ -660,15 +660,6 @@ export function ReservationList() {
                               <div className="text-gray-500">Estado</div>
                               <div className="font-medium">{reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}</div>
                             </div>
-                            {reservation.paymentStatus === 'pagado' && reservation.paidByUser && (
-                              <div className="col-span-2 mt-2">
-                                <div className="text-gray-500">Cobrado por:</div>
-                                <div className="font-medium">
-                                  {reservation.paidByUser.firstName} {reservation.paidByUser.lastName}
-                                  <span className="text-xs text-gray-500 ml-1">({reservation.paidByUser.role})</span>
-                                </div>
-                              </div>
-                            )}
                           </>
                         ) : (
                           <>
@@ -690,15 +681,7 @@ export function ReservationList() {
                               </div>
                             )}
                             
-                            {reservation.paymentStatus === 'pagado' && reservation.paidByUser && (
-                              <div className="col-span-2 mt-2">
-                                <div className="text-gray-500">Cobrado por:</div>
-                                <div className="font-medium">
-                                  {reservation.paidByUser.firstName} {reservation.paidByUser.lastName}
-                                  <span className="text-xs text-gray-500 ml-1">({reservation.paidByUser.role})</span>
-                                </div>
-                              </div>
-                            )}
+
                           </>
                         )}
                       </div>
