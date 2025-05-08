@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -94,8 +94,8 @@ interface Trip {
   routeName?: string;
   segmentOrigin?: string;
   segmentDestination?: string;
-  vehicleId?: number | null; // ID del vehículo asignado
-  driverId?: number | null; // ID del conductor asignado
+  vehicleId?: number | null; 
+  driverId?: number | null; 
   route?: {
     id: number;
     name: string;
@@ -107,9 +107,20 @@ interface Trip {
   companyId?: string;
   companyName?: string;
   companyLogo?: string;
-  // Información de vehículo y conductor asignados (objetos completos)
-  assignedVehicle?: any;
-  assignedDriver?: any;
+  // Información de vehículo y conductor asignados
+  assignedVehicle?: {
+    id: number;
+    brand: string;
+    model: string;
+    plates: string;
+  };
+  assignedDriver?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  };
+  // Propiedades adicionales
+  reservationCount?: number;
 }
 
 type TripListProps = {
@@ -122,6 +133,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [showFilter, setShowFilter] = useState(true);
+  const [showArchived, setShowArchived] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [tripToDelete, setTripToDelete] = useState<number | null>(null);
   const [routeFilter, setRouteFilter] = useState<string>("all");
@@ -384,67 +396,59 @@ export default function TripList({ onEditTrip }: TripListProps) {
     return matchesSearch && matchesDate && matchesRoute;
   });
 
-  // Agrupar viajes por fecha y ordenarlos, separando los archivados (fecha < hoy)
-  const groupTripsByDate = () => {
-    const grouped: Record<string, Trip[]> = {};
+  // Obtener y organizar viajes, separando actuales y archivados
+  const { currentTrips, archivedTrips } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Normalizamos "hoy" a las 00:00:00
+    
+    // Separamos viajes actuales y archivados
+    const current: Record<string, Trip[]> = {};
+    let archived: Trip[] = [];
     
     // Primero filtramos solo los viajes principales (no sub-viajes)
     filteredTrips.filter((trip: Trip) => !trip.isSubTrip).forEach((trip: Trip) => {
       // Normalizar la fecha para evitar problemas de zona horaria
       const localDate = normalizeToStartOfDay(trip.departureDate);
       
-      // Formato yyyy-MM-dd que usaremos como clave
-      const dateKey = format(localDate, "yyyy-MM-dd");
-      
       // Verificar si el viaje es para una fecha pasada
       const isPastTrip = localDate.getTime() < today.getTime();
       
-      // Usamos una clave especial para los viajes archivados
-      const keyToUse = isPastTrip ? "archived" : dateKey;
-      
-      if (!grouped[keyToUse]) {
-        grouped[keyToUse] = [];
-      }
-      
-      grouped[keyToUse].push(trip);
-    });
-    
-    // Ordenar los viajes dentro de cada grupo por hora de salida
-    Object.keys(grouped).forEach(dateKey => {
-      if (dateKey === "archived") {
-        // Para viajes archivados, ordenamos por fecha descendente (más reciente primero)
-        grouped[dateKey].sort((a, b) => {
-          const dateA = normalizeToStartOfDay(a.departureDate);
-          const dateB = normalizeToStartOfDay(b.departureDate);
-          return dateB.getTime() - dateA.getTime(); // Orden descendente
-        });
+      if (isPastTrip) {
+        // Es un viaje archivado
+        archived.push(trip);
       } else {
-        // Para viajes futuros, ordenamos por hora de salida
-        grouped[dateKey].sort((a, b) => 
-          a.departureTime.localeCompare(b.departureTime)
-        );
+        // Es un viaje actual, lo agrupamos por fecha
+        const dateKey = format(localDate, "yyyy-MM-dd");
+        
+        if (!current[dateKey]) {
+          current[dateKey] = [];
+        }
+        
+        current[dateKey].push(trip);
       }
     });
     
-    return grouped;
-  };
+    // Ordenar viajes archivados por fecha (más reciente primero)
+    archived.sort((a, b) => {
+      const dateA = normalizeToStartOfDay(a.departureDate);
+      const dateB = normalizeToStartOfDay(b.departureDate);
+      return dateB.getTime() - dateA.getTime(); // Orden descendente
+    });
+    
+    // Ordenar viajes actuales por hora dentro de cada fecha
+    Object.keys(current).forEach(dateKey => {
+      current[dateKey].sort((a, b) => 
+        a.departureTime.localeCompare(b.departureTime)
+      );
+    });
+    
+    return { currentTrips: current, archivedTrips: archived };
+  }, [filteredTrips]);
 
   // Formatear fecha para encabezado
-  const formatDateHeader = (dateString: string) => {
-    // Si es la clave especial "archived", mostramos un encabezado diferente
-    if (dateString === "archived") {
-      return (
-        <div className="flex items-center">
-          <ArchiveIcon className="h-5 w-5 mr-2 text-yellow-600" />
-          <span>Viajes Archivados</span>
-        </div>
-      );
-    }
-    
+  const formatDateHeader = (dateKey: string) => {
     // Usamos normalizeToStartOfDay para asegurar una fecha correcta
-    const localDate = normalizeToStartOfDay(dateString);
+    const localDate = normalizeToStartOfDay(dateKey);
     
     return format(localDate, "'Viajes para' d 'de' MMMM 'de' yyyy", { locale: es });
   };
@@ -555,20 +559,16 @@ export default function TripList({ onEditTrip }: TripListProps) {
           </div>
         ) : (
           <div className="space-y-6">
-            {Object.entries(groupTripsByDate())
-              // Ordenar fechas de más cercana a más lejana, pero con "archived" siempre al final
+            {/* Viajes actuales */}
+            {Object.entries(currentTrips)
+              // Ordenar fechas de más cercana a más lejana
               .sort(([dateKeyA], [dateKeyB]) => {
-                // Si alguna de las claves es "archived", moverla al final
-                if (dateKeyA === "archived") return 1;
-                if (dateKeyB === "archived") return -1;
-                
-                // Para el resto de fechas, orden ascendente normal
                 const dateA = new Date(dateKeyA);
                 const dateB = new Date(dateKeyB);
                 return dateA.getTime() - dateB.getTime();
               })
               .map(([dateKey, trips]) => (
-              <div key={dateKey} className={`space-y-4 ${dateKey === "archived" ? "mt-8 pt-6 border-t-2" : ""}`}>
+              <div key={dateKey} className="space-y-4">
                 <div>
                   <h3 className="text-lg font-medium">{formatDateHeader(dateKey)}</h3>
                   <p className="text-sm text-muted-foreground">
@@ -681,15 +681,12 @@ export default function TripList({ onEditTrip }: TripListProps) {
                             </div>
                           </div>
                           
-                          {/* Query para obtener las reservaciones */}
+                          {/* Reservaciones */}
                           <div className="flex items-center mt-4">
                             <UsersIcon className="h-4 w-4 mr-1 text-muted-foreground" />
                             <span className="text-xs text-muted-foreground">
-                              {trips.filter((t: Trip) => 
-                                (t.id === trip.id || t.parentTripId === trip.id) && 
-                                t.reservationCount && 
-                                t.reservationCount > 0
-                              ).reduce((sum, t: any) => sum + (t.reservationCount || 0), 0)} reservas
+                              {/* Aquí simplificamos la lógica de reservaciones */}
+                              {trip.reservationCount || 0} reservas
                             </span>
                           </div>
                         </div>
@@ -726,6 +723,156 @@ export default function TripList({ onEditTrip }: TripListProps) {
                 </div>
               </div>
             ))}
+            
+            {/* Sección de viajes archivados con botón de colapso */}
+            {archivedTrips.length > 0 && (
+              <div className="mt-8 pt-6 border-t-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <ArchiveIcon className="h-5 w-5 mr-2 text-yellow-600" />
+                    <h3 className="text-lg font-medium">Viajes Archivados</h3>
+                  </div>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setShowArchived(!showArchived)}
+                    className="text-xs"
+                  >
+                    {showArchived ? "Ocultar viajes archivados" : "Mostrar viajes archivados"}
+                  </Button>
+                </div>
+                
+                <p className="text-sm text-muted-foreground mt-1 mb-4">
+                  Viajes ya pasados que se mantienen para consulta histórica.
+                </p>
+                
+                {showArchived && (
+                  <div className="space-y-4 mt-4">
+                    {archivedTrips.map((trip: Trip) => (
+                      <div key={trip.id} className="border rounded-lg overflow-hidden bg-card">
+                        <div className="flex flex-col lg:flex-row">
+                          <div className="p-4 lg:p-6 flex-1">
+                            <div className="flex justify-between items-start">
+                              <div className="flex">
+                                {/* Logo de la compañía (solo para TypeScript) */}
+                                {trip.companyLogo ? (
+                                  <div className="mr-3 h-12 w-12 flex-shrink-0">
+                                    <img 
+                                      src={trip.companyLogo} 
+                                      alt={trip.companyName || "Logo de transportista"} 
+                                      className="h-full w-full object-cover rounded-full border border-gray-100"
+                                      onError={(e) => {
+                                        // Si falla la carga, ocultar la imagen
+                                        const target = e.currentTarget as HTMLImageElement;
+                                        target.style.display = 'none';
+                                      }} 
+                                    />
+                                  </div>
+                                ) : null}
+                                
+                                <div>
+                                  <h4 className="text-base font-medium mb-1">
+                                    {trip.route?.name || trip.routeName || `Ruta #${trip.routeId}`}
+                                  </h4>
+                                  {trip.companyName && (
+                                    <div className="text-xs text-gray-500 mb-1">
+                                      {trip.companyName}
+                                    </div>
+                                  )}
+                                  <div className="flex items-center text-sm text-muted-foreground">
+                                    <CalendarIcon className="h-4 w-4 mr-1" />
+                                    <span>
+                                      {format(normalizeToStartOfDay(trip.departureDate), "dd/MM/yyyy")}
+                                    </span>
+                                    <ClockIcon className="h-4 w-4 ml-4 mr-1" />
+                                    <span>{formatTime(trip.departureTime)} - {formatTime(trip.arrivalTime)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                              {/* Primera columna: Ruta */}
+                              <div className="bg-muted/50 p-3 rounded-md">
+                                <div className="flex items-start mb-2">
+                                  <MapPinIcon className="h-5 w-5 mr-2 text-primary shrink-0 mt-0.5" />
+                                  <div>
+                                    <p className="text-sm font-medium">Ruta</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Terminal {trip.origin?.split(' - ')[1] || ''} → {trip.destination?.split(' - ')[1] || ''}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {getStopsCount(trip)} paradas intermedias
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Segunda columna: Vehículo */}
+                              <div className="bg-muted/50 p-3 rounded-md">
+                                <div className="flex items-start">
+                                  <CarIcon className="h-5 w-5 mr-2 text-primary shrink-0 mt-0.5" />
+                                  <div>
+                                    <p className="text-sm font-medium">Vehículo</p>
+                                    {trip.vehicleId || trip.assignedVehicle ? (
+                                      <p className="text-xs text-green-600 font-medium">
+                                        {trip.assignedVehicle ? 
+                                          `${trip.assignedVehicle.brand} ${trip.assignedVehicle.model} - ${trip.assignedVehicle.plates}` :
+                                          `${vehicles.find((v: any) => v.id === trip.vehicleId)?.brand || ''} ${vehicles.find((v: any) => v.id === trip.vehicleId)?.model || ''} - ${vehicles.find((v: any) => v.id === trip.vehicleId)?.plates || ''}`
+                                        }
+                                      </p>
+                                    ) : (
+                                      <p className="text-xs text-red-500 font-medium">No asignado</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Tercera columna: Conductor */}
+                              <div className="bg-muted/50 p-3 rounded-md">
+                                <div className="flex items-start">
+                                  <UserIcon className="h-5 w-5 mr-2 text-primary shrink-0 mt-0.5" />
+                                  <div>
+                                    <p className="text-sm font-medium">Conductor</p>
+                                    {trip.driverId || trip.assignedDriver ? (
+                                      <p className="text-xs text-green-600 font-medium">
+                                        {trip.assignedDriver ? 
+                                          `${trip.assignedDriver.firstName} ${trip.assignedDriver.lastName}` :
+                                          `${drivers.find((d: any) => d.id === trip.driverId)?.firstName || ''} ${drivers.find((d: any) => d.id === trip.driverId)?.lastName || ''}`
+                                        }
+                                      </p>
+                                    ) : (
+                                      <p className="text-xs text-red-500 font-medium">No asignado</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="p-4 lg:p-6 flex flex-row lg:flex-col items-center justify-between border-t lg:border-t-0 lg:border-l bg-muted/20">
+                            {/* Solo botón para ver detalles en viajes archivados */}
+                            <div className="flex gap-2 mt-0 lg:mt-4">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  window.location.href = `/edit-trip/${trip.id}`;
+                                }}
+                                className="h-8 w-8"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </CardContent>
