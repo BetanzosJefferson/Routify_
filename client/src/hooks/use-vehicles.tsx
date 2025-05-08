@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "./use-auth";
+import { apiRequest } from "@/lib/queryClient";
 
 interface Vehicle {
   id: number;
@@ -13,26 +13,21 @@ interface Vehicle {
  * Hook para obtener los vehículos disponibles
  */
 export function useVehicles() {
-  const { user } = useAuth();
-  
-  return useQuery<Vehicle[]>({
-    queryKey: ["/api/vehicles"],
-    enabled: !!user,
-    staleTime: 60000, // 1 minuto
-    refetchInterval: false,
+  const { data: vehicles = [], isLoading, error } = useQuery({
+    queryKey: ['/api/vehicles'],
     queryFn: async () => {
       try {
-        const response = await fetch("/api/vehicles");
-        
-        if (!response.ok) {
-          throw new Error(`Error al obtener vehículos: ${response.statusText}`);
+        const res = await apiRequest('GET', '/api/vehicles');
+        if (!res.ok) {
+          throw new Error('No se pudieron obtener los vehículos');
         }
-        
-        return await response.json();
+        return await res.json();
       } catch (error) {
-        console.error("Error al cargar vehículos:", error);
+        console.error('Error al obtener vehículos:', error);
         throw error;
       }
     }
   });
+
+  return { vehicles, isLoading, error };
 }

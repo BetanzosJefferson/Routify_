@@ -107,7 +107,8 @@ type TripListProps = {
   onEditTrip: (tripId: number) => void;
 };
 
-export default function TripList({ onEditTrip }: TripListProps) {
+export default function TripList() {
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
@@ -674,7 +675,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => onEditTrip(trip.id)}
+                              onClick={() => navigate(`/trip/edit/${trip.id}`)}
                               className="h-8 w-8"
                             >
                               <PencilIcon className="h-4 w-4" />
