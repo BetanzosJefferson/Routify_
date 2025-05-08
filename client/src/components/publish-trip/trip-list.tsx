@@ -677,31 +677,46 @@ export default function TripList({ onEditTrip }: TripListProps) {
                           
                           <div className="flex gap-2 mt-0 lg:mt-4">
                             <Button
-                              variant="ghost"
+                              variant={editingTripId === trip.id ? "default" : "ghost"}
                               size="icon"
                               onClick={() => {
-                                // Establecer el viaje en modo edición
+                                // BLOQUEAR BOTÓN: Establecer viaje en edición
                                 setEditingTripId(trip.id);
                                 
-                                // Forzar actualización de la caché de este viaje específico
+                                // LIMPIAR CACHE: Eliminar datos antiguos
                                 queryClient.removeQueries({ queryKey: ["/api/trips", trip.id] });
+                                queryClient.removeQueries({ queryKey: ["/api/routes", trip.routeId, "segments"] });
                                 
-                                // Notificar al usuario que se está cargando
+                                // INTENTAR CAPTURAR DATOS
+                                fetch(`/api/trips/${trip.id}?t=${Date.now()}`)
+                                  .then(response => response.json())
+                                  .then(data => {
+                                    console.log("Pre-cargados datos para viaje", trip.id, ":", 
+                                      data ? "Datos correctos" : "Sin datos");
+                                  })
+                                  .catch(err => {
+                                    console.error("Error en pre-carga:", err);
+                                  });
+                                
+                                // NOTIFICAR
                                 toast({
-                                  title: "Cargando datos",
-                                  description: "Preparando viaje para edición...",
-                                  duration: 2000
+                                  title: "Preparando edición",
+                                  description: "Por favor espere mientras cargamos los datos del viaje...",
+                                  duration: 3000
                                 });
                                 
-                                // Callback para ejecutar la edición
+                                // INICIAR PROCESO DE EDICIÓN CON RETRASO
                                 setTimeout(() => {
                                   onEditTrip(trip.id);
-                                  // Liberar el estado de edición después de un tiempo
-                                  setTimeout(() => setEditingTripId(null), 1500);
-                                }, 300);
+                                  
+                                  // Mantener el botón bloqueado por 5 segundos para evitar doble clic
+                                  setTimeout(() => {
+                                    setEditingTripId(null);
+                                  }, 5000);
+                                }, 500);
                               }}
                               className="h-8 w-8"
-                              disabled={editingTripId === trip.id}
+                              disabled={editingTripId !== null} // Desactivar TODOS los botones mientras se edita cualquier viaje
                             >
                               {editingTripId === trip.id ? (
                                 <Loader2Icon className="h-4 w-4 animate-spin" />
