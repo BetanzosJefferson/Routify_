@@ -1,4 +1,13 @@
-import { Trip, Route, StopsOnRoutes } from "@shared/schema";
+import { Trip, Route } from "@shared/schema";
+
+// Definimos el tipo de parada en la ruta
+interface StopOnRoute {
+  stopId: number;
+  stopIndex: number;
+  stopName?: string;
+  location?: string;
+  stopType?: string;
+}
 
 /**
  * Función para convertir un viaje desde el modelo antiguo al modelo optimizado
@@ -8,7 +17,7 @@ import { Trip, Route, StopsOnRoutes } from "@shared/schema";
  */
 export function convertTripToOptimized(
   trip: Trip,
-  route: Route & { stops?: StopsOnRoutes[] }
+  route: Route & { stops?: StopOnRoute[] }
 ) {
   // Si no hay ruta o paradas, no podemos optimizar
   if (!route || !route.stops || route.stops.length < 2) {
@@ -30,7 +39,7 @@ export function convertTripToOptimized(
     vehicleId: trip.vehicleId,
     driverId: trip.driverId,
     companyId: trip.companyId,
-    archived: trip.archived || false
+    archived: false // Los viajes nuevos no están archivados por defecto
   };
   
   // Crear segmentos para cada par de paradas consecutivas
@@ -48,8 +57,8 @@ export function convertTripToOptimized(
       destinationStopId: destinationStop.stopId,
       originStopIndex: originStop.stopIndex,
       destinationStopIndex: destinationStop.stopIndex,
-      availableSeats: trip.capacity, // Inicialmente todos los asientos están disponibles
-      price: calculateSegmentPrice(trip.price, originStop.stopIndex, destinationStop.stopIndex, orderedStops.length - 1)
+      availableSeats: trip.capacity || 18, // Inicialmente todos los asientos están disponibles, default 18
+      price: calculateSegmentPrice(typeof trip.price === 'number' ? trip.price : 450, originStop.stopIndex, destinationStop.stopIndex, orderedStops.length - 1)
     });
   }
   

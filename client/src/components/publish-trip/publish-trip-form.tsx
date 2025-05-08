@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { HelpCircleIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { convertTripToOptimized } from "@/lib/trip-optimizer";
 
 import {
   Form,
