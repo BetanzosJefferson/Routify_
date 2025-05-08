@@ -1679,18 +1679,23 @@ export class DatabaseStorage implements IStorage {
     requesterId?: number 
   }): Promise<any[]> {
     try {
+      console.log("[getReservationRequests] Iniciando consulta con filtros:", filters);
+      
       // Construir condiciones para la consulta
       const conditions = [];
       
       if (filters?.companyId) {
+        console.log(`[getReservationRequests] Filtrando por compañía: ${filters.companyId}`);
         conditions.push(eq(schema.reservationRequests.companyId, filters.companyId));
       }
       
       if (filters?.status) {
+        console.log(`[getReservationRequests] Filtrando por estado: ${filters.status}`);
         conditions.push(eq(schema.reservationRequests.status, filters.status));
       }
       
       if (filters?.requesterId) {
+        console.log(`[getReservationRequests] Filtrando por solicitante: ${filters.requesterId}`);
         conditions.push(eq(schema.reservationRequests.requesterId, filters.requesterId));
       }
       
@@ -1705,16 +1710,40 @@ export class DatabaseStorage implements IStorage {
       query = query.orderBy(desc(schema.reservationRequests.createdAt));
       
       const requests = await query;
+      console.log(`[getReservationRequests] Encontradas ${requests.length} solicitudes`);
       
       // Enriquecer los datos de las solicitudes con información adicional
       const enrichedRequests = await Promise.all(
         requests.map(async (request) => {
-          // Obtener información del viaje
-          const [trip] = await db
-            .select()
+          // Obtener información del viaje y ruta
+          const [tripResult] = await db
+            .select({
+              trip: schema.trips,
+              route: schema.routes
+            })
             .from(schema.trips)
             .leftJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
             .where(eq(schema.trips.id, request.tripId));
+          
+          let tripOrigin = "";
+          let tripDestination = "";
+          let tripDate = "";
+          let tripDepartureTime = "";
+          
+          if (tripResult) {
+            const { trip, route } = tripResult;
+            tripOrigin = route?.origin || "";
+            tripDestination = route?.destination || "";
+            tripDate = trip.departureDate ? trip.departureDate.toISOString().split('T')[0] : "";
+            tripDepartureTime = trip.departureTime || "";
+            
+            console.log(`[getReservationRequests] Información de viaje para solicitud ${request.id}: 
+              Origen: ${tripOrigin}
+              Destino: ${tripDestination}
+              Fecha: ${tripDate}
+              Hora: ${tripDepartureTime}`
+            );
+          }
           
           // Obtener información del comisionista
           const [requester] = await db
@@ -1731,11 +1760,28 @@ export class DatabaseStorage implements IStorage {
               .where(eq(schema.users.id, request.reviewedBy));
           }
           
+          // Información de pago formateada para mostrar
+          let advancePaymentInfo = "";
+          if (request.advanceAmount > 0) {
+            const method = request.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia';
+            advancePaymentInfo = `${request.advanceAmount} (${method})`;
+            console.log(`[getReservationRequests] Anticipo para solicitud ${request.id}: ${advancePaymentInfo}`);
+          }
+          
+          const requesterName = requester ? `${requester.firstName} ${requester.lastName}` : `Agente #${request.requesterId}`;
+          
           return {
             ...request,
-            trip: trip,
-            requester: requester,
-            reviewer: reviewer
+            trip: tripResult?.trip,
+            route: tripResult?.route,
+            tripOrigin,
+            tripDestination,
+            tripDate,
+            tripDepartureTime,
+            requester,
+            requesterName,
+            reviewer,
+            advancePaymentInfo
           };
         })
       );
@@ -1749,21 +1795,46 @@ export class DatabaseStorage implements IStorage {
   
   async getReservationRequest(id: number): Promise<any> {
     try {
+      console.log(`[getReservationRequest] Obteniendo solicitud con ID: ${id}`);
       const [request] = await db
         .select()
         .from(schema.reservationRequests)
         .where(eq(schema.reservationRequests.id, id));
       
       if (!request) {
+        console.log(`[getReservationRequest] No se encontró solicitud con ID: ${id}`);
         return null;
       }
       
-      // Obtener información del viaje
-      const [trip] = await db
-        .select()
+      // Obtener información del viaje y ruta
+      const [tripResult] = await db
+        .select({
+          trip: schema.trips,
+          route: schema.routes
+        })
         .from(schema.trips)
         .leftJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
         .where(eq(schema.trips.id, request.tripId));
+      
+      let tripOrigin = "";
+      let tripDestination = "";
+      let tripDate = "";
+      let tripDepartureTime = "";
+      
+      if (tripResult) {
+        const { trip, route } = tripResult;
+        tripOrigin = route?.origin || "";
+        tripDestination = route?.destination || "";
+        tripDate = trip.departureDate ? trip.departureDate.toISOString().split('T')[0] : "";
+        tripDepartureTime = trip.departureTime || "";
+        
+        console.log(`[getReservationRequest] Información de viaje para solicitud ${request.id}: 
+          Origen: ${tripOrigin}
+          Destino: ${tripDestination}
+          Fecha: ${tripDate}
+          Hora: ${tripDepartureTime}`
+        );
+      }
       
       // Obtener información del comisionista
       const [requester] = await db
@@ -1780,11 +1851,28 @@ export class DatabaseStorage implements IStorage {
           .where(eq(schema.users.id, request.reviewedBy));
       }
       
+      // Información de pago formateada para mostrar
+      let advancePaymentInfo = "";
+      if (request.advanceAmount > 0) {
+        const method = request.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia';
+        advancePaymentInfo = `${request.advanceAmount} (${method})`;
+        console.log(`[getReservationRequest] Anticipo para solicitud ${request.id}: ${advancePaymentInfo}`);
+      }
+      
+      const requesterName = requester ? `${requester.firstName} ${requester.lastName}` : `Agente #${request.requesterId}`;
+      
       return {
         ...request,
-        trip: trip,
-        requester: requester,
-        reviewer: reviewer
+        trip: tripResult?.trip,
+        route: tripResult?.route,
+        tripOrigin,
+        tripDestination,
+        tripDate,
+        tripDepartureTime,
+        requester,
+        requesterName,
+        reviewer,
+        advancePaymentInfo
       };
     } catch (error) {
       console.error(`Error al obtener solicitud de reservación ${id}:`, error);

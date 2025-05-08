@@ -222,16 +222,151 @@ export default function ReservationRequestsPage() {
 
         {/* Diálogo de revisión */}
         <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Revisar Solicitud de Reservación</DialogTitle>
               <DialogDescription>
-                Selecciona si deseas aprobar o rechazar esta solicitud.
+                Revisa los detalles y selecciona si deseas aprobar o rechazar esta solicitud.
               </DialogDescription>
             </DialogHeader>
             
             {selectedRequest && (
-              <div className="space-y-4 py-4">
+              <div className="space-y-6 py-4">
+                {/* Resumen del viaje */}
+                <div className="bg-muted/40 p-4 rounded-lg space-y-2">
+                  <h3 className="font-semibold text-base">Detalles del Viaje</h3>
+                  
+                  <div className="grid grid-cols-1 gap-2 text-sm">
+                    <div className="flex items-center">
+                      <MapPin className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <div>
+                        <span className="font-medium">Ruta:</span>{" "}
+                        <span className="text-muted-foreground">
+                          {selectedRequest.tripOrigin || "Origen no especificado"} → {selectedRequest.tripDestination || "Destino no especificado"}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <div>
+                        <span className="font-medium">Fecha y hora:</span>{" "}
+                        <span className="text-muted-foreground">
+                          {selectedRequest.tripDate || "Fecha no especificada"} • {selectedRequest.tripDepartureTime || "Hora no especificada"}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <User className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <div>
+                        <span className="font-medium">Pasajeros:</span>{" "}
+                        <span className="text-muted-foreground">
+                          {selectedRequest.passengersData?.length || 0}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Información de pagos */}
+                <div className="bg-muted/40 p-4 rounded-lg space-y-2">
+                  <h3 className="font-semibold text-base">Información de Pago</h3>
+                  
+                  <div className="grid grid-cols-1 gap-2 text-sm">
+                    <div className="flex items-center">
+                      <CreditCard className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <div>
+                        <span className="font-medium">Total:</span>{" "}
+                        <span className="text-muted-foreground font-semibold">
+                          {formatPrice(selectedRequest.totalAmount)}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <CreditCard className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <div>
+                        <span className="font-medium">Método de pago:</span>{" "}
+                        <span className="text-muted-foreground">
+                          {selectedRequest.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {selectedRequest.advanceAmount > 0 && (
+                      <div className="flex items-center">
+                        <CreditCard className="mr-2 h-4 w-4 flex-shrink-0 text-green-500" />
+                        <div>
+                          <span className="font-medium">Anticipo:</span>{" "}
+                          <span className="text-muted-foreground">
+                            {formatPrice(selectedRequest.advanceAmount)} ({selectedRequest.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center">
+                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        selectedRequest.paymentStatus === 'pagado' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {selectedRequest.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Información del solicitante */}
+                <div className="bg-muted/40 p-4 rounded-lg space-y-2">
+                  <h3 className="font-semibold text-base">Información del Solicitante</h3>
+                  
+                  <div className="grid grid-cols-1 gap-2 text-sm">
+                    <div className="flex items-center">
+                      <User className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <div>
+                        <span className="font-medium">Agente:</span>{" "}
+                        <span className="text-muted-foreground">
+                          {selectedRequest.requesterName || `Agente #${selectedRequest.requesterId}`}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <Phone className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <div>
+                        <span className="font-medium">Teléfono:</span>{" "}
+                        <span className="text-muted-foreground">
+                          {selectedRequest.phone}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <span className="mr-2 flex-shrink-0">📧</span>
+                      <div>
+                        <span className="font-medium">Email:</span>{" "}
+                        <span className="text-muted-foreground">
+                          {selectedRequest.email}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {selectedRequest.notes && (
+                      <div className="flex items-start pt-2 border-t border-border mt-2">
+                        <div>
+                          <span className="font-medium">Notas:</span>{" "}
+                          <span className="text-muted-foreground block mt-1">
+                            {selectedRequest.notes}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Notas de revisión */}
                 <div className="space-y-2">
                   <Label>Notas sobre la revisión (opcional)</Label>
                   <Textarea 
@@ -239,15 +374,6 @@ export default function ReservationRequestsPage() {
                     value={reviewNotes}
                     onChange={(e) => setReviewNotes(e.target.value)}
                   />
-                </div>
-                
-                <div className="flex items-center text-sm space-x-4">
-                  <div className="flex-1">
-                    <span className="font-semibold">Viaje:</span> {selectedRequest.tripOrigin} - {selectedRequest.tripDestination}
-                  </div>
-                  <div>
-                    <span className="font-semibold">Total:</span> {formatPrice(selectedRequest.totalAmount)}
-                  </div>
                 </div>
               </div>
             )}
@@ -346,17 +472,22 @@ function RequestCard({ request, isProcessed, onReview }: RequestCardProps) {
           <div className="space-y-3">
             <div className="flex items-center text-sm">
               <MapPin className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-              <span className="truncate">{request.tripOrigin} → {request.tripDestination}</span>
+              <span className="truncate">
+                {request.tripOrigin || "Origen no especificado"} → {request.tripDestination || "Destino no especificado"}
+              </span>
             </div>
             <div className="flex items-center text-sm">
               <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
               <span>
-                {request.tripDate} • {request.tripDepartureTime}
+                {request.tripDate || "Fecha no especificada"} • {request.tripDepartureTime || "Hora no especificada"}
               </span>
             </div>
             <div className="flex items-center text-sm">
               <User className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-              <span>{request.passengersData?.length || 0} pasajeros</span>
+              <span>
+                {request.passengersData?.length || 0} pasajeros • Solicitado por{" "}
+                <span className="font-medium">{request.requesterName || `Agente #${request.requesterId}`}</span>
+              </span>
             </div>
           </div>
           <div className="space-y-3">
@@ -364,6 +495,17 @@ function RequestCard({ request, isProcessed, onReview }: RequestCardProps) {
               <CreditCard className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
               <span>Total: <strong>{formatPrice(request.totalAmount)}</strong></span>
             </div>
+            
+            {/* Información de anticipo */}
+            {request.advanceAmount > 0 && (
+              <div className="flex items-center text-sm">
+                <CreditCard className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground text-green-500" />
+                <span>
+                  Anticipo: <strong>{formatPrice(request.advanceAmount)}</strong> ({request.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
+                </span>
+              </div>
+            )}
+            
             <div className="flex items-center text-sm">
               <Phone className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
               <span className="truncate">{request.phone}</span>
