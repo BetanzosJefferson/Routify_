@@ -398,7 +398,7 @@ export const passengerRelations = relations(passengers, ({ one }) => ({
   })
 }));
 
-// Nota: Las tablas de caja (cash payments y cash cuts) ya están definidas más adelante en este archivo
+// Esquema de pagos en efectivo y cortes de caja
 
 // COMPANIES SCHEMA
 export const companies = pgTable("companies", {
