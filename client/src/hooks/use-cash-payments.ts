@@ -26,6 +26,10 @@ export type CashCut = {
   companyId: string;
   createdAt: string;
   paymentsCount: number;
+  user?: {
+    firstName: string;
+    lastName: string;
+  };
 };
 
 export function useCashPayments() {
