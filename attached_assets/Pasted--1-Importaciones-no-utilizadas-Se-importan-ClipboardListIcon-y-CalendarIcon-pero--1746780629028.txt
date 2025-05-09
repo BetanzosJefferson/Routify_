@@ -1,0 +1,38 @@
+
+
+1. **Importaciones no utilizadas**:
+   - Se importan `ClipboardListIcon` y `CalendarIcon` pero no se utilizan en el componente.
+   - Se importa `Input` pero se usa un elemento `input` nativo en su lugar.
+
+2. **Manejo de datos y errores**:
+   - En el procesamiento de `groupedReservations`, se accede a propiedades como `advanceAmount` y `advancePaymentMethod` con casting a `any`, lo que sugiere un problema con los tipos.
+   - No hay manejo adecuado para cuando `reservations` está vacío pero no hay error (actualmente muestra "Cargando..." indefinidamente).
+
+3. **Problema de tipos en reservaciones**:
+   - La función asume que `reservation.passengers` siempre existe, pero más adelante comprueba si es un array, lo que puede llevar a inconsistencias.
+
+4. **Inconsistencia en el manejo de errores**:
+   - Se muestra "Cargando..." cuando `isLoadingReservations` es true, pero no hay manejo específico para `reservationsError`.
+
+5. **Problema potencial al formatear fechas**:
+   - La función `normalizeToStartOfDay` se usa sin verificar si `dateString` es válido.
+
+6. **Ineficiencias en el código**:
+   - Se utilizan múltiples niveles de operadores ternarios anidados que dificultan la legibilidad.
+   - Se repite la búsqueda de `tripDetails.route?.origin` y `tripDetails.route?.destination` en varios lugares.
+
+7. **Problemas de accesibilidad**:
+   - Faltan atributos `aria-` para mejorar la accesibilidad.
+   - Contraste de color potencialmente bajo en algunos elementos UI.
+
+8. **Uso incorrecto de hooks React**:
+   - Se importa `useEffect` pero no se utiliza en el componente.
+
+9. **Gestión de dependencias incompleta**:
+   - Las funciones `formatPrice` y `normalizeToStartOfDay` se importan de utils pero no vemos su implementación.
+
+10. **Posible error de renderizado condicional**:
+    - Si `reservations` contiene elementos pero `groupedReservations` está vacío debido a un error en el procesamiento, el componente mostrará el mensaje "No hay pasajeros registrados" en lugar de un error.
+
+11. **Uso inconsistente de operador nullish coalescing**:
+    - A veces se usa `||` en lugar de `??` para valores que podrían ser `0` o cadenas vacías legítimas.
