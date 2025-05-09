@@ -42,7 +42,8 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "commissions",
     "reservation-requests",
     "notifications",
-    "coupons"
+    "coupons",
+    "cashier"
   ],
   [UserRole.ADMIN]: [
     "routes",
@@ -55,7 +56,8 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "vehicles",
     "commissions",
     "reservation-requests", 
-    "notifications"
+    "notifications",
+    "cashier"
   ],
   [UserRole.CALL_CENTER]: [
     "trips",
@@ -66,19 +68,22 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
   ],
   [UserRole.CHECKER]: [
     "boarding-list",
-    "notifications"
+    "notifications",
+    "cashier"
   ],
   // Permisos para rol DRIVER (conductor) - ya incluye el alias español 'chofer'
   [UserRole.DRIVER]: [
     "dashboard",
     "boarding-list",
-    "notifications"
+    "notifications",
+    "cashier"
     // Quitamos acceso a "trips" y "reservations" para conductor
   ],
   [UserRole.TICKET_OFFICE]: [
     "trips",
     "reservations",
-    "notifications"
+    "notifications",
+    "cashier"
   ],
   // Permisos para el nuevo rol COMISIONISTA
   [UserRole.COMMISSIONER]: [
