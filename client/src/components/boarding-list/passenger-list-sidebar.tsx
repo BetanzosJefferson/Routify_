@@ -126,8 +126,8 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           advanceAmount: (reservation as any).advanceAmount || 0,
           advancePaymentMethod: (reservation as any).advancePaymentMethod || 'efectivo',
           tripSegment: 'Viaje completo',
-          origin: trip?.segmentOrigin || trip?.route?.origin || "Acapulco de Juárez, Guerrero",
-          destination: trip?.segmentDestination || trip?.route?.destination || "Coyoacán, Ciudad de México",
+          origin: reservation.origin || trip?.segmentOrigin || trip?.route?.origin || "Origen no especificado",
+          destination: reservation.destination || trip?.segmentDestination || trip?.route?.destination || "Destino no especificado",
           notes: (reservation as any).notes || '',
           finalPaymentAmount: reservation.paymentStatus === 'pagado' ? 
             ((reservation.totalAmount || 0) - ((reservation as any).advanceAmount || 0)) : 0,
