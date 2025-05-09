@@ -379,7 +379,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           </div>
                           
                           {/* Mostrar "Pagó" solamente si está marcado como pagado */}
-                          {reservation.paymentStatus === 'pagado' && (reservation.advanceAmount ?? 0) < reservation.amount && (
+                          {reservation.paymentStatus === 'pagado' && (
                             <div className="text-xs text-gray-700 mb-1">
                               Pagó: {formatPrice(reservation.amount - (reservation.advanceAmount ?? 0))} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
                             </div>
