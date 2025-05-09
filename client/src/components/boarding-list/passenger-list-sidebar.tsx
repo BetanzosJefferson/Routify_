@@ -126,8 +126,38 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           advanceAmount: (reservation as any).advanceAmount || 0,
           advancePaymentMethod: (reservation as any).advancePaymentMethod || 'efectivo',
           tripSegment: 'Viaje completo',
-          origin: (reservation as any).origin || trip?.segmentOrigin || trip?.route?.origin || "Origen no especificado",
-          destination: (reservation as any).destination || trip?.segmentDestination || trip?.route?.destination || "Destino no especificado",
+          origin: (() => {
+            // 1. Primero intentamos obtener de la reservación
+            if ((reservation as any).origin && typeof (reservation as any).origin === 'string') {
+              return (reservation as any).origin;
+            }
+            // 2. Luego del segmento del viaje 
+            if (trip?.segmentOrigin && typeof trip.segmentOrigin === 'string') {
+              return trip.segmentOrigin;
+            }
+            // 3. Luego de la ruta
+            if (trip?.route?.origin && typeof trip.route.origin === 'string') {
+              return trip.route.origin;
+            }
+            // 4. Si todo falla, valor por defecto
+            return "Origen no especificado";
+          })(),
+          destination: (() => {
+            // 1. Primero intentamos obtener de la reservación
+            if ((reservation as any).destination && typeof (reservation as any).destination === 'string') {
+              return (reservation as any).destination;
+            }
+            // 2. Luego del segmento del viaje 
+            if (trip?.segmentDestination && typeof trip.segmentDestination === 'string') {
+              return trip.segmentDestination;
+            }
+            // 3. Luego de la ruta
+            if (trip?.route?.destination && typeof trip.route.destination === 'string') {
+              return trip.route.destination;
+            }
+            // 4. Si todo falla, valor por defecto
+            return "Destino no especificado";
+          })(),
           notes: (reservation as any).notes || '',
           finalPaymentAmount: reservation.paymentStatus === 'pagado' ? 
             ((reservation.totalAmount || 0) - ((reservation as any).advanceAmount || 0)) : 0,
@@ -434,21 +464,21 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         <div>
                           <div className="text-xs text-gray-500">Origen</div>
                           <div className="font-medium">
-                            {(reservation as any).origin && !(reservation as any).origin.includes('no especificado') 
-                              ? (reservation as any).origin.split(' - ')[0]
-                              : tripDetails?.route?.origin 
-                                ? tripDetails.route.origin.split(' - ')[0]
-                                : 'Origen no especificado'}
+                            {(() => {
+                              // Extraer la primera parte antes de un posible " - "
+                              const originText = reservation.origin || "";
+                              return originText.includes(' - ') ? originText.split(' - ')[0] : originText;
+                            })()}
                           </div>
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">Destino</div>
                           <div className="font-medium">
-                            {(reservation as any).destination && !(reservation as any).destination.includes('no especificado') 
-                              ? (reservation as any).destination.split(' - ')[0] 
-                              : tripDetails?.route?.destination
-                                ? tripDetails.route.destination.split(' - ')[0]
-                                : 'Destino no especificado'}
+                            {(() => {
+                              // Extraer la primera parte antes de un posible " - "
+                              const destinationText = reservation.destination || "";
+                              return destinationText.includes(' - ') ? destinationText.split(' - ')[0] : destinationText;
+                            })()}
                           </div>
                         </div>
                       </div>
