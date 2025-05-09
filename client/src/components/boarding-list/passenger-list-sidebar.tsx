@@ -1,18 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { 
+  CalendarIcon, 
+  ClipboardListIcon,
   Users, 
   Calendar,
   Clock,
   Bus,
+  User,
   X,
   UserIcon,
   Search
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input"; 
 import { useDriverTrips, Trip } from "@/hooks/use-driver-trips";
 import { useDriverReservations, Reservation, Passenger } from "@/hooks/use-driver-reservations";
 import { normalizeToStartOfDay, formatPrice } from "@/lib/utils";
@@ -115,8 +121,8 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           paymentMethod: reservation.paymentMethod || 'unknown',
           paymentStatus: reservation.paymentStatus || 'pendiente',
           amount: reservation.totalAmount || 0,
-          advanceAmount: reservation.advanceAmount ?? 0,
-          advancePaymentMethod: reservation.advancePaymentMethod ?? 'efectivo',
+          advanceAmount: (reservation as any).advanceAmount || 0,
+          advancePaymentMethod: (reservation as any).advancePaymentMethod || 'efectivo',
           tripSegment: 'Viaje completo',
           origin: trip?.segmentOrigin || trip?.route?.origin || "Origen no especificado",
           destination: trip?.segmentDestination || trip?.route?.destination || "Destino no especificado",
@@ -375,13 +381,13 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         </div>
                         <div className="text-right flex flex-col items-end">
                           <div className="text-xs text-gray-700 mb-1">
-                            Anticipo: {formatPrice(reservation.advanceAmount ?? 0)} ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
+                            Anticipo: {formatPrice(reservation.advanceAmount || 0)} ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
                           </div>
                           
                           {/* Mostrar "Pagó" solamente si está marcado como pagado */}
-                          {reservation.paymentStatus === 'pagado' && (
+                          {reservation.paymentStatus === 'pagado' && reservation.advanceAmount < reservation.amount && (
                             <div className="text-xs text-gray-700 mb-1">
-                              Pagó: {formatPrice(reservation.amount - (reservation.advanceAmount ?? 0))} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
+                              Pagó: {formatPrice(reservation.amount - (reservation.advanceAmount || 0))} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
                             </div>
                           )}
                           
@@ -390,7 +396,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                             <span className="text-lg font-bold text-primary">
                               {reservation.paymentStatus === 'pagado' 
                                 ? '$ 0' 
-                                : `$ ${(reservation.amount - (reservation.advanceAmount ?? 0)).toFixed(0)}`
+                                : `$ ${(reservation.amount - (reservation.advanceAmount || 0)).toFixed(0)}`
                               }
                             </span>
                           </div>
@@ -423,39 +429,17 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         <div>
                           <div className="text-xs text-gray-500">Origen</div>
                           <div className="font-medium">
-                            {(() => {
-                              // Primero verificamos si hay un origen válido en la reservación
-                              if (reservation.origin && !reservation.origin.includes('no especificado')) {
-                                const parts = reservation.origin.split(' - ');
-                                return parts.length > 0 ? parts[0] : reservation.origin;
-                              }
-                              // Si no, usamos el origen de la ruta del viaje
-                              else if (tripDetails?.route?.origin) {
-                                const parts = tripDetails.route.origin.split(' - ');
-                                return parts.length > 0 ? parts[0] : tripDetails.route.origin;
-                              }
-                              // Fallback final
-                              return 'Origen';
-                            })()}
+                            {reservation.origin && !reservation.origin.includes('no especificado') 
+                              ? reservation.origin.split(' - ')[0] 
+                              : tripDetails?.route?.origin?.split(' - ')[0] || 'Origen'}
                           </div>
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">Destino</div>
                           <div className="font-medium">
-                            {(() => {
-                              // Primero verificamos si hay un destino válido en la reservación
-                              if (reservation.destination && !reservation.destination.includes('no especificado')) {
-                                const parts = reservation.destination.split(' - ');
-                                return parts.length > 0 ? parts[0] : reservation.destination;
-                              }
-                              // Si no, usamos el destino de la ruta del viaje
-                              else if (tripDetails?.route?.destination) {
-                                const parts = tripDetails.route.destination.split(' - ');
-                                return parts.length > 0 ? parts[0] : tripDetails.route.destination;
-                              }
-                              // Fallback final
-                              return 'Destino';
-                            })()}
+                            {reservation.destination && !reservation.destination.includes('no especificado') 
+                              ? reservation.destination.split(' - ')[0] 
+                              : tripDetails?.route?.destination?.split(' - ')[0] || 'Destino'}
                           </div>
                         </div>
                       </div>
