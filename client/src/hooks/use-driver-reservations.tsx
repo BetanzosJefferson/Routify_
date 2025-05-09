@@ -23,10 +23,6 @@ export interface Reservation {
   code?: string;
   notes?: string;
   totalAmount: number;
-  origin?: string;
-  destination?: string;
-  advanceAmount?: number;
-  advancePaymentMethod?: string;
   passengers: Passenger[];
 }
 
