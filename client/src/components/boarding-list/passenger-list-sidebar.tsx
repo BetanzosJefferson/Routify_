@@ -397,7 +397,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                             <div className="font-medium">
                               {reservation.passengers.length === 1 
                                 ? reservation.passengers[0]?.firstName + ' ' + reservation.passengers[0]?.lastName 
-                                : `nombre del pasajero`}
+                                : `${reservation.passengers[0]?.firstName || 'nombre'} ${reservation.passengers[0]?.lastName || 'del pasajero'}`}
                             </div>
                             <div className="text-xs text-gray-500">{reservation.code}</div>
                           </div>
