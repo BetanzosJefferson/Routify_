@@ -434,8 +434,8 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         <div>
                           <div className="text-xs text-gray-500">Origen</div>
                           <div className="font-medium">
-                            {reservation.origin && !reservation.origin.includes('no especificado') 
-                              ? reservation.origin.split(' - ')[0]
+                            {(reservation as any).origin && !(reservation as any).origin.includes('no especificado') 
+                              ? (reservation as any).origin.split(' - ')[0]
                               : tripDetails?.route?.origin 
                                 ? tripDetails.route.origin.split(' - ')[0]
                                 : 'Origen no especificado'}
@@ -444,8 +444,8 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         <div>
                           <div className="text-xs text-gray-500">Destino</div>
                           <div className="font-medium">
-                            {reservation.destination && !reservation.destination.includes('no especificado') 
-                              ? reservation.destination.split(' - ')[0] 
+                            {(reservation as any).destination && !(reservation as any).destination.includes('no especificado') 
+                              ? (reservation as any).destination.split(' - ')[0] 
                               : tripDetails?.route?.destination
                                 ? tripDetails.route.destination.split(' - ')[0]
                                 : 'Destino no especificado'}
