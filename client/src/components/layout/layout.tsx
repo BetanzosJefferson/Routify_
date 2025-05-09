@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 import { MobileNav } from './mobile-nav';
-import { useActiveTab, TabType } from '@/hooks/use-active-tab';
+import { useActiveTab, TabType } from '@/hooks/use-active-tab.tsx';
 
 interface LayoutProps {
   children: React.ReactNode;

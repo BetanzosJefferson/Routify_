@@ -1,7 +1,7 @@
 import React from "react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { TabType } from "@/hooks/use-active-tab";
+import { TabType } from "@/hooks/use-active-tab.tsx";
 import { useAuth } from "@/hooks/use-auth";
 import { hasAccessToSection } from "@/lib/role-based-permissions";
 import { 
