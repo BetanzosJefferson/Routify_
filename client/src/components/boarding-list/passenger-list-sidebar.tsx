@@ -32,8 +32,8 @@ interface GroupedReservation {
   paymentMethod: string;
   paymentStatus: string;
   amount: number;
-  advanceAmount?: number;
-  advancePaymentMethod?: string;
+  advanceAmount: number | null;
+  advancePaymentMethod: string | null;
   tripSegment: string;
   origin?: string;
   destination?: string;
@@ -385,7 +385,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           </div>
                           
                           {/* Mostrar "Pagó" solamente si está marcado como pagado */}
-                          {reservation.paymentStatus === 'pagado' && reservation.advanceAmount < reservation.amount && (
+                          {reservation.paymentStatus === 'pagado' && (
                             <div className="text-xs text-gray-700 mb-1">
                               Pagó: {formatPrice(reservation.amount - (reservation.advanceAmount || 0))} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
                             </div>
@@ -430,8 +430,10 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           <div className="text-xs text-gray-500">Origen</div>
                           <div className="font-medium">
                             {reservation.origin && !reservation.origin.includes('no especificado') 
-                              ? reservation.origin.split(' - ')[0] 
-                              : tripDetails?.route?.origin?.split(' - ')[0] || 'Origen'}
+                              ? reservation.origin.split(' - ')[0]
+                              : tripDetails?.route?.origin 
+                                ? tripDetails.route.origin.split(' - ')[0]
+                                : 'Acapulco de Juárez, Guerrero'}
                           </div>
                         </div>
                         <div>
@@ -439,7 +441,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           <div className="font-medium">
                             {reservation.destination && !reservation.destination.includes('no especificado') 
                               ? reservation.destination.split(' - ')[0] 
-                              : tripDetails?.route?.destination?.split(' - ')[0] || 'Destino'}
+                              : tripDetails?.route?.destination
+                                ? tripDetails.route.destination.split(' - ')[0]
+                                : 'Coyoacán, Ciudad de México'}
                           </div>
                         </div>
                       </div>
