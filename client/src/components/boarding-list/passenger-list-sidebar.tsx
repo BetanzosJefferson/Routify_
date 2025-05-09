@@ -32,13 +32,11 @@ interface GroupedReservation {
   paymentMethod: string;
   paymentStatus: string;
   amount: number;
-  advanceAmount: number | null;
-  advancePaymentMethod: string | null;
+  advanceAmount?: number;
+  advancePaymentMethod?: string;
   tripSegment: string;
   origin?: string;
   destination?: string;
-  notes?: string;
-  finalPaymentAmount?: number;
   passengers: {
     id: number;
     firstName: string;
@@ -120,47 +118,14 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           tripId: reservation.tripId,
           email: reservation.email || '',
           phone: reservation.phone || '',
-          paymentMethod: reservation.paymentMethod || 'efectivo',
+          paymentMethod: reservation.paymentMethod || 'unknown',
           paymentStatus: reservation.paymentStatus || 'pendiente',
           amount: reservation.totalAmount || 0,
           advanceAmount: (reservation as any).advanceAmount || 0,
           advancePaymentMethod: (reservation as any).advancePaymentMethod || 'efectivo',
           tripSegment: 'Viaje completo',
-          origin: (() => {
-            // 1. Primero intentamos obtener de la reservación
-            if ((reservation as any).origin && typeof (reservation as any).origin === 'string') {
-              return (reservation as any).origin;
-            }
-            // 2. Luego del segmento del viaje 
-            if (trip?.segmentOrigin && typeof trip.segmentOrigin === 'string') {
-              return trip.segmentOrigin;
-            }
-            // 3. Luego de la ruta
-            if (trip?.route?.origin && typeof trip.route.origin === 'string') {
-              return trip.route.origin;
-            }
-            // 4. Si todo falla, valor por defecto
-            return "Origen no especificado";
-          })(),
-          destination: (() => {
-            // 1. Primero intentamos obtener de la reservación
-            if ((reservation as any).destination && typeof (reservation as any).destination === 'string') {
-              return (reservation as any).destination;
-            }
-            // 2. Luego del segmento del viaje 
-            if (trip?.segmentDestination && typeof trip.segmentDestination === 'string') {
-              return trip.segmentDestination;
-            }
-            // 3. Luego de la ruta
-            if (trip?.route?.destination && typeof trip.route.destination === 'string') {
-              return trip.route.destination;
-            }
-            // 4. Si todo falla, valor por defecto
-            return "Destino no especificado";
-          })(),
-          notes: (reservation as any).notes || '',
-          finalPaymentAmount: reservation.paymentStatus === 'pagado' ? 
-            ((reservation.totalAmount || 0) - ((reservation as any).advanceAmount || 0)) : 0,
+          origin: trip?.segmentOrigin || trip?.route?.origin || "Origen no especificado",
+          destination: trip?.segmentDestination || trip?.route?.destination || "Destino no especificado",
           passengers: []
         };
         
@@ -420,9 +385,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           </div>
                           
                           {/* Mostrar "Pagó" solamente si está marcado como pagado */}
-                          {reservation.paymentStatus === 'pagado' && (
+                          {reservation.paymentStatus === 'pagado' && reservation.advanceAmount < reservation.amount && (
                             <div className="text-xs text-gray-700 mb-1">
-                              Pagó: {formatPrice(reservation.finalPaymentAmount || 0)} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
+                              Pagó: {formatPrice(reservation.amount - (reservation.advanceAmount || 0))} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
                             </div>
                           )}
                           
@@ -464,21 +429,17 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         <div>
                           <div className="text-xs text-gray-500">Origen</div>
                           <div className="font-medium">
-                            {(() => {
-                              // Extraer la primera parte antes de un posible " - "
-                              const originText = reservation.origin || "";
-                              return originText.includes(' - ') ? originText.split(' - ')[0] : originText;
-                            })()}
+                            {reservation.origin && !reservation.origin.includes('no especificado') 
+                              ? reservation.origin.split(' - ')[0] 
+                              : tripDetails?.route?.origin?.split(' - ')[0] || 'Origen'}
                           </div>
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">Destino</div>
                           <div className="font-medium">
-                            {(() => {
-                              // Extraer la primera parte antes de un posible " - "
-                              const destinationText = reservation.destination || "";
-                              return destinationText.includes(' - ') ? destinationText.split(' - ')[0] : destinationText;
-                            })()}
+                            {reservation.destination && !reservation.destination.includes('no especificado') 
+                              ? reservation.destination.split(' - ')[0] 
+                              : tripDetails?.route?.destination?.split(' - ')[0] || 'Destino'}
                           </div>
                         </div>
                       </div>
@@ -494,14 +455,6 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
                         </Badge>
                       </div>
-                      
-                      {/* Notas adicionales */}
-                      {reservation.notes && reservation.notes.trim() !== '' && (
-                        <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                          <div className="text-xs text-gray-500 mb-1">Notas adicionales:</div>
-                          <div className="text-sm">{reservation.notes}</div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}
