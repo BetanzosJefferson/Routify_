@@ -383,10 +383,21 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           <div className="text-xs text-gray-700 mb-1">
                             Anticipo: {formatPrice(reservation.advanceAmount || 0)} ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
                           </div>
+                          
+                          {/* Mostrar "Pagó" solamente si está marcado como pagado */}
+                          {reservation.paymentStatus === 'pagado' && reservation.advanceAmount < reservation.amount && (
+                            <div className="text-xs text-gray-700 mb-1">
+                              Pagó: {formatPrice(reservation.amount - (reservation.advanceAmount || 0))} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
+                            </div>
+                          )}
+                          
                           <div className="flex items-center">
                             <span className="text-sm font-medium mr-2">Por cobrar</span> 
                             <span className="text-lg font-bold text-primary">
-                              $ {(reservation.amount - (reservation.advanceAmount || 0)).toFixed(0)}
+                              {reservation.paymentStatus === 'pagado' 
+                                ? '$ 0' 
+                                : `$ ${(reservation.amount - (reservation.advanceAmount || 0)).toFixed(0)}`
+                              }
                             </span>
                           </div>
                         </div>
