@@ -367,31 +367,8 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                     <div className="border-b border-gray-100 bg-gray-50 px-4 py-2.5">
                       <div className="flex justify-between items-center mb-1.5">
                         <div className="flex items-center">
-                          <div className="flex -space-x-2 mr-3">
-                            {reservation.passengers.length > 0 ? (
-                              <>
-                                {reservation.passengers.slice(0, 3).map((passenger) => (
-                                  <Avatar key={passenger.id} className="border-2 border-white">
-                                    <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                                      {passenger.initials}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                ))}
-                                {reservation.passengers.length > 3 && (
-                                  <Avatar className="border-2 border-white">
-                                    <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                                      +{reservation.passengers.length - 3}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                )}
-                              </>
-                            ) : (
-                              <Avatar className="border-2 border-white">
-                                <AvatarFallback className="bg-gray-200 text-gray-500">
-                                  0
-                                </AvatarFallback>
-                              </Avatar>
-                            )}
+                          <div className="bg-primary/10 text-primary font-medium px-3 py-1 rounded-md mr-3">
+                            {reservation.passengers.length} asientos
                           </div>
                           <div>
                             <div className="font-medium">
@@ -408,7 +385,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           </div>
                           <div className="flex items-center">
                             <span className="text-sm font-medium mr-2">Por cobrar</span> 
-                            <span className={`text-lg font-bold ${(reservation.advanceAmount || 0) >= reservation.amount ? 'text-green-600' : 'text-primary'}`}>
+                            <span className="text-lg font-bold text-primary">
                               $ {(reservation.amount - (reservation.advanceAmount || 0)).toFixed(0)}
                             </span>
                           </div>
@@ -439,15 +416,19 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                       {/* Origen y destino simplificados */}
                       <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                         <div>
-                          <div className="text-xs text-gray-500">origen</div>
+                          <div className="text-xs text-gray-500">Origen</div>
                           <div className="font-medium">
-                            {reservation.origin ? reservation.origin.split(' - ')[0] : 'Origen'}
+                            {reservation.origin && !reservation.origin.includes('no especificado') 
+                              ? reservation.origin.split(' - ')[0] 
+                              : tripDetails?.route?.origin?.split(' - ')[0] || 'Origen'}
                           </div>
                         </div>
                         <div>
-                          <div className="text-xs text-gray-500">destino</div>
+                          <div className="text-xs text-gray-500">Destino</div>
                           <div className="font-medium">
-                            {reservation.destination ? reservation.destination.split(' - ')[0] : 'Destino'}
+                            {reservation.destination && !reservation.destination.includes('no especificado') 
+                              ? reservation.destination.split(' - ')[0] 
+                              : tripDetails?.route?.destination?.split(' - ')[0] || 'Destino'}
                           </div>
                         </div>
                       </div>
