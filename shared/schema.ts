@@ -612,3 +612,56 @@ export const couponRelations = relations(coupons, ({ one }) => ({
     references: [companies.identifier]
   })
 }));
+
+// CASH PAYMENTS SCHEMA
+export const cashPayments = pgTable("cash_payments", {
+  id: serial("id").primaryKey(),
+  reservationId: integer("reservation_id").notNull(),
+  tripId: integer("trip_id").notNull(),
+  amount: doublePrecision("amount").notNull(),
+  paymentMethod: text("payment_method").notNull().default("efectivo"),
+  collectedById: integer("collected_by_id").notNull(),
+  companyId: text("company_id").notNull(),
+  processed: boolean("processed").notNull().default(false),
+  cashCutId: integer("cash_cut_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// CASH CUTS SCHEMA
+export const cashCuts = pgTable("cash_cuts", {
+  id: serial("id").primaryKey(),
+  amount: doublePrecision("amount").notNull(),
+  userId: integer("user_id").notNull(),
+  companyId: text("company_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Relaciones para cash_payments
+export const cashPaymentsRelations = relations(cashPayments, ({ one }) => ({
+  reservation: one(reservations, {
+    fields: [cashPayments.reservationId],
+    references: [reservations.id],
+  }),
+  trip: one(trips, {
+    fields: [cashPayments.tripId],
+    references: [trips.id],
+  }),
+  collectedByUser: one(users, {
+    fields: [cashPayments.collectedById],
+    references: [users.id],
+    relationName: "collectedByUser",
+  }),
+  cashCut: one(cashCuts, {
+    fields: [cashPayments.cashCutId],
+    references: [cashCuts.id],
+  }),
+}));
+
+// Relaciones para cash_cuts
+export const cashCutsRelations = relations(cashCuts, ({ one, many }) => ({
+  user: one(users, {
+    fields: [cashCuts.userId],
+    references: [users.id],
+  }),
+  cashPayments: many(cashPayments),
+}));
