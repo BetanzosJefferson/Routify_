@@ -126,8 +126,8 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           advanceAmount: (reservation as any).advanceAmount || 0,
           advancePaymentMethod: (reservation as any).advancePaymentMethod || 'efectivo',
           tripSegment: 'Viaje completo',
-          origin: reservation.origin || trip?.segmentOrigin || trip?.route?.origin || "Origen no especificado",
-          destination: reservation.destination || trip?.segmentDestination || trip?.route?.destination || "Destino no especificado",
+          origin: (reservation as any).origin || trip?.segmentOrigin || trip?.route?.origin || "Origen no especificado",
+          destination: (reservation as any).destination || trip?.segmentDestination || trip?.route?.destination || "Destino no especificado",
           notes: (reservation as any).notes || '',
           finalPaymentAmount: reservation.paymentStatus === 'pagado' ? 
             ((reservation.totalAmount || 0) - ((reservation as any).advanceAmount || 0)) : 0,
@@ -438,7 +438,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                               ? reservation.origin.split(' - ')[0]
                               : tripDetails?.route?.origin 
                                 ? tripDetails.route.origin.split(' - ')[0]
-                                : 'Acapulco de Juárez, Guerrero'}
+                                : 'Origen no especificado'}
                           </div>
                         </div>
                         <div>
@@ -448,7 +448,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                               ? reservation.destination.split(' - ')[0] 
                               : tripDetails?.route?.destination
                                 ? tripDetails.route.destination.split(' - ')[0]
-                                : 'Coyoacán, Ciudad de México'}
+                                : 'Destino no especificado'}
                           </div>
                         </div>
                       </div>
