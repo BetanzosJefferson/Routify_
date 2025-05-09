@@ -18,7 +18,6 @@ import {
 
 import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
 import { setupAuthentication } from "./auth-session";
-import { setupCashPaymentsRoutes } from "./routes/cash-payments";
 // Utility function to check if two locations are in the same city
 function isSameCity(location1: string, location2: string): boolean {
   // Validar que ambas ubicaciones tienen el formato esperado
@@ -3601,9 +3600,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-
-  // Configurar rutas de pagos en efectivo y cortes de caja
-  setupCashPaymentsRoutes(app);
 
   return httpServer;
 }

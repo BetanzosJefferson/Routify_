@@ -32,11 +32,11 @@ interface GroupedReservation {
   paymentMethod: string;
   paymentStatus: string;
   amount: number;
-  advanceAmount: number;  // Cambiado de opcional a requerido con valor por defecto
-  advancePaymentMethod: string;  // Cambiado de opcional a requerido con valor por defecto
+  advanceAmount?: number;
+  advancePaymentMethod?: string;
   tripSegment: string;
-  origin: string;  // Cambiado de opcional a requerido con valor por defecto
-  destination: string;  // Cambiado de opcional a requerido con valor por defecto
+  origin?: string;
+  destination?: string;
   passengers: {
     id: number;
     firstName: string;
@@ -124,8 +124,8 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           advanceAmount: (reservation as any).advanceAmount || 0,
           advancePaymentMethod: (reservation as any).advancePaymentMethod || 'efectivo',
           tripSegment: 'Viaje completo',
-          origin: trip?.segmentOrigin || trip?.route?.origin || tripDetails?.route?.origin || "Acapulco",
-          destination: trip?.segmentDestination || trip?.route?.destination || tripDetails?.route?.destination || "Ciudad de México",
+          origin: trip?.segmentOrigin || trip?.route?.origin || "Origen no especificado",
+          destination: trip?.segmentDestination || trip?.route?.destination || "Destino no especificado",
           passengers: []
         };
         
@@ -387,7 +387,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           {/* Mostrar "Pagó" solamente si está marcado como pagado */}
                           {reservation.paymentStatus === 'pagado' && reservation.advanceAmount < reservation.amount && (
                             <div className="text-xs text-gray-700 mb-1">
-                              Pagó: {formatPrice(reservation.amount - reservation.advanceAmount)} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
+                              Pagó: {formatPrice(reservation.amount - (reservation.advanceAmount || 0))} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
                             </div>
                           )}
                           
@@ -396,7 +396,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                             <span className="text-lg font-bold text-primary">
                               {reservation.paymentStatus === 'pagado' 
                                 ? '$ 0' 
-                                : `$ ${(reservation.amount - reservation.advanceAmount).toFixed(0)}`
+                                : `$ ${(reservation.amount - (reservation.advanceAmount || 0)).toFixed(0)}`
                               }
                             </span>
                           </div>
