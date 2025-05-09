@@ -434,7 +434,9 @@ export function TripList() {
                   <div className="flex flex-col">
                     <div className="text-lg font-bold">{trip.departureTime}</div>
                     <div className="text-sm text-gray-500 mt-1">
-                      {trip.isSubTrip ? trip.segmentOrigin : trip.route.origin}
+                      {trip.isSubTrip ? trip.segmentOrigin : 
+                        (trip.route && trip.route.origin ? trip.route.origin : 
+                          (trip.origin || 'Origen no especificado'))}
                     </div>
                   </div>
                   
@@ -456,7 +458,9 @@ export function TripList() {
                   <div className="flex flex-col items-end">
                     <div className="text-lg font-bold">{trip.arrivalTime}</div>
                     <div className="text-sm text-gray-500 mt-1 text-right">
-                      {trip.isSubTrip ? trip.segmentDestination : trip.route.destination}
+                      {trip.isSubTrip ? trip.segmentDestination : 
+                        (trip.route && trip.route.destination ? trip.route.destination : 
+                          (trip.destination || 'Destino no especificado'))}
                     </div>
                   </div>
                 </div>
