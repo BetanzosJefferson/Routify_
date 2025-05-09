@@ -250,8 +250,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("cashier") && (
                 <NavItem 
                   icon={<DollarSignIcon className="h-5 w-5" />} 
-                  active={(location === '/' || location === '/dashboard') && activeTab === "cashier"}
-                  onClick={() => handleTabClick("cashier")}
+                  active={location === "/cashier"}
+                  onClick={() => setLocation("/cashier")}
                 >
                   Caja
                 </NavItem>
