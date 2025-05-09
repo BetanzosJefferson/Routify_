@@ -111,8 +111,6 @@ export function TripList() {
     queryFn: async () => {
       const response = await fetch("/api/trips");
       if (!response.ok) throw new Error("Failed to fetch trips");
-      
-      // @ts-ignore - La respuesta API incluye más campos que los definidos en TripWithRouteInfo
       return await response.json() as TripWithRouteInfo[];
     },
   });
@@ -127,8 +125,6 @@ export function TripList() {
       
       const response = await fetch(`/api/trips${queryString ? `?${queryString}` : ''}`);
       if (!response.ok) throw new Error("Failed to fetch trips");
-      
-      // @ts-ignore - La respuesta API incluye más campos que los definidos en TripWithRouteInfo
       return await response.json() as TripWithRouteInfo[];
     },
     enabled: Object.keys(searchParams).length > 0 // Only run if there are search params
@@ -438,18 +434,7 @@ export function TripList() {
                   <div className="flex flex-col">
                     <div className="text-lg font-bold">{trip.departureTime}</div>
                     <div className="text-sm text-gray-500 mt-1">
-                      {(() => {
-                        // Manejo defensivo del origen
-                        if (trip.isSubTrip && trip.segmentOrigin) {
-                          return trip.segmentOrigin;
-                        } else if (trip.route && trip.route.origin) {
-                          return trip.route.origin;
-                        } else if ((trip as any).origin) {
-                          return (trip as any).origin;
-                        } else {
-                          return 'Origen no especificado';
-                        }
-                      })()}
+                      {trip.isSubTrip ? trip.segmentOrigin : trip.route.origin}
                     </div>
                   </div>
                   
@@ -471,36 +456,17 @@ export function TripList() {
                   <div className="flex flex-col items-end">
                     <div className="text-lg font-bold">{trip.arrivalTime}</div>
                     <div className="text-sm text-gray-500 mt-1 text-right">
-                      {(() => {
-                        // Manejo defensivo del destino
-                        if (trip.isSubTrip && trip.segmentDestination) {
-                          return trip.segmentDestination;
-                        } else if (trip.route && trip.route.destination) {
-                          return trip.route.destination;
-                        } else if ((trip as any).destination) {
-                          return (trip as any).destination;
-                        } else {
-                          return 'Destino no especificado';
-                        }
-                      })()}
+                      {trip.isSubTrip ? trip.segmentDestination : trip.route.destination}
                     </div>
                   </div>
                 </div>
                 
                 <div className="mt-4 flex items-center justify-between">
-                  {(() => {
-                    // Manejo defensivo del vehículo
-                    const vehicleName = 
-                      (trip as any).vehicle?.name || 
-                      (trip as any).vehicleName || 
-                      (trip.vehicleId ? 'Vehículo asignado' : null);
-                    
-                    return vehicleName ? (
-                      <div className="text-sm">
-                        <span className="capitalize">{vehicleName}</span>
-                      </div>
-                    ) : null;
-                  })()}
+                  {trip.vehicle?.name && (
+                    <div className="text-sm">
+                      <span className="capitalize">{trip.vehicle.name}</span>
+                    </div>
+                  )}
                   
                   <Button
                     variant="default"
@@ -512,7 +478,7 @@ export function TripList() {
                   </Button>
                 </div>
                 
-                {trip.isSubTrip && trip.route?.name && (
+                {trip.isSubTrip && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
                     <span className="flex items-center text-xs text-gray-500">
                       <span className="inline-block h-2 w-2 rounded-full bg-indigo-500 mr-2"></span>
@@ -521,7 +487,7 @@ export function TripList() {
                   </div>
                 )}
                 
-                {!trip.isSubTrip && trip.numStops && trip.numStops > 0 && (
+                {!trip.isSubTrip && trip.numStops > 0 && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
                     <span className="text-xs text-gray-500">
                       {trip.numStops} paradas en ruta

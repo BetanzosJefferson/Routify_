@@ -18,8 +18,7 @@ import {
   UsersIcon,
   BellIcon,
   FileTextIcon,
-  TagIcon,
-  DollarSignIcon
+  TagIcon
 } from "lucide-react";
 
 interface SidebarProps {
@@ -209,7 +208,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           )}
           
           {/* Sección de Flota y Finanzas */}
-          {(canAccess("vehicles") || canAccess("commissions") || canAccess("my-commissions") || canAccess("coupons") || canAccess("cashier")) && (
+          {(canAccess("vehicles") || canAccess("commissions") || canAccess("my-commissions") || canAccess("coupons")) && (
             <NavSection title="Flota y Finanzas">
               {canAccess("vehicles") && (
                 <NavItem 
@@ -245,15 +244,6 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   onClick={() => setLocation("/coupons")}
                 >
                   Cupones
-                </NavItem>
-              )}
-              {canAccess("cashier") && (
-                <NavItem 
-                  icon={<DollarSignIcon className="h-5 w-5" />} 
-                  active={location === "/cashier"}
-                  onClick={() => setLocation("/cashier")}
-                >
-                  Caja
                 </NavItem>
               )}
             </NavSection>
