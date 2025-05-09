@@ -395,28 +395,23 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           </div>
                           <div>
                             <div className="font-medium">
-                              {reservation.passengers.length} {reservation.passengers.length === 1 ? 'pasajero' : 'pasajeros'}
+                              {reservation.passengers.length === 1 
+                                ? reservation.passengers[0]?.firstName + ' ' + reservation.passengers[0]?.lastName 
+                                : `nombre del pasajero`}
                             </div>
                             <div className="text-xs text-gray-500">{reservation.code}</div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-primary">
-                            {formatPrice(reservation.amount)}
+                        <div className="text-right flex flex-col items-end">
+                          <div className="text-xs text-gray-700 mb-1">
+                            Anticipo: {formatPrice(reservation.advanceAmount || 0)} ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
                           </div>
-                        </div>
-                      </div>
-                      
-                      {/* Información de origen y destino */}
-                      <div className="flex items-center mt-2 text-xs text-gray-600 border-t border-gray-100 pt-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <div className="flex-1 truncate">
-                          <span className="font-medium">{reservation.origin}</span>
-                          <span className="mx-1">→</span>
-                          <span className="font-medium">{reservation.destination}</span>
+                          <div className="flex items-center">
+                            <span className="text-sm font-medium mr-2">Por cobrar</span> 
+                            <span className={`text-lg font-bold ${(reservation.advanceAmount || 0) >= reservation.amount ? 'text-green-600' : 'text-primary'}`}>
+                              $ {(reservation.amount - (reservation.advanceAmount || 0)).toFixed(0)}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -424,79 +419,49 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                     <div className="p-4">
                       {/* Datos de pasajeros */}
                       <div className="mb-3">
-                        <h4 className="text-xs uppercase text-gray-500 font-medium mb-2">Pasajeros</h4>
-                        <div className="space-y-1.5">
-                          {reservation.passengers.map((passenger) => (
-                            <div key={passenger.id} className="flex items-center">
-                              <Avatar className="h-6 w-6 mr-2">
-                                <AvatarFallback className="text-xs bg-gray-100 text-gray-700">
-                                  {passenger.initials}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="font-medium text-gray-800">{passenger.firstName} {passenger.lastName}</span>
-                            </div>
-                          ))}
+                        <div className="text-sm font-medium text-gray-800">
+                          {reservation.passengers.length > 1 
+                            ? (
+                              <>
+                                <div className="mb-1">
+                                  {reservation.passengers.map((passenger, idx) => (
+                                    <div key={idx}>
+                                      {passenger.firstName} {passenger.lastName}
+                                    </div>
+                                  ))}
+                                </div>
+                              </>
+                            ) 
+                            : null}
                         </div>
                       </div>
                       
-                      {/* Datos de contacto */}
+                      {/* Origen y destino simplificados */}
                       <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                         <div>
-                          <div className="text-xs text-gray-500">Email</div>
-                          <div className="font-medium truncate">{reservation.email || '-'}</div>
+                          <div className="text-xs text-gray-500">origen</div>
+                          <div className="font-medium">
+                            {reservation.origin ? reservation.origin.split(' - ')[0] : 'Origen'}
+                          </div>
                         </div>
                         <div>
-                          <div className="text-xs text-gray-500">Teléfono</div>
-                          <div className="font-medium">{reservation.phone || '-'}</div>
+                          <div className="text-xs text-gray-500">destino</div>
+                          <div className="font-medium">
+                            {reservation.destination ? reservation.destination.split(' - ')[0] : 'Destino'}
+                          </div>
                         </div>
                       </div>
                       
-                      {/* Información de pago con métodos */}
-                      <div className="mt-3 bg-gray-50 p-2 rounded border border-gray-200">
-                        {(!reservation.advanceAmount || reservation.advanceAmount <= 0) ? (
-                          <div className="grid grid-cols-2 gap-1">
-                            <div className="text-xs text-gray-500">Método de pago:</div>
-                            <div className="text-xs text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-                            <div className="text-xs text-gray-500">Estado:</div>
-                            <div className="text-xs text-right font-medium">
-                              <Badge 
-                                variant="outline"
-                                className={reservation.paymentStatus === 'pagado' 
-                                  ? 'bg-green-100 text-green-800 border-green-200' 
-                                  : 'bg-yellow-100 text-yellow-800 border-yellow-200'}
-                              >
-                                {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
-                              </Badge>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            <div className="text-xs">
-                              <span className="text-gray-500">Anticipo: </span>
-                              <span className="font-medium">{formatPrice(reservation.advanceAmount)} </span>
-                              <span className="font-normal">({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
-                            </div>
-                            
-                            {reservation.advanceAmount < reservation.amount && (
-                              <div className="text-xs">
-                                <span className="text-gray-500">{reservation.paymentStatus === 'pagado' ? 'Pagó: ' : 'Resta: '}</span>
-                                <span className="font-medium">{formatPrice(reservation.amount - reservation.advanceAmount)} </span>
-                                <span className="font-normal">({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
-                              </div>
-                            )}
-                            
-                            <div className="flex justify-end mt-1">
-                              <Badge 
-                                variant="outline"
-                                className={reservation.paymentStatus === 'pagado' 
-                                  ? 'bg-green-100 text-green-800 border-green-200' 
-                                  : 'bg-yellow-100 text-yellow-800 border-yellow-200'}
-                              >
-                                {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
-                              </Badge>
-                            </div>
-                          </div>
-                        )}
+                      {/* Información de pago simplificada */}
+                      <div className="mt-3">
+                        <Badge 
+                          variant="outline"
+                          className={reservation.paymentStatus === 'pagado' 
+                            ? 'bg-green-100 text-green-800 border-green-200' 
+                            : 'bg-yellow-100 text-yellow-800 border-yellow-200'}
+                        >
+                          {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+                        </Badge>
                       </div>
                     </div>
                   </div>
