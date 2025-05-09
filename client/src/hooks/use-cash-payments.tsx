@@ -1,106 +1,104 @@
-import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
-import { useAuth } from "@/hooks/use-auth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useState } from "react";
+import { formatCurrency } from "@/lib/utils";
 
-// Definición del tipo de pago en efectivo
-export interface CashPayment {
+export type CashPayment = {
   id: number;
   reservationId: number;
   tripId: number;
-  passengerName: string;
-  origin: string;
-  destination: string;
   amount: number;
-  paymentDate: string;
-  collectedBy: string;
-}
+  paymentMethod: string;
+  collectedById: number;
+  companyId: string;
+  processed: boolean;
+  createdAt: string;
+  passengerName?: string;
+  origin?: string;
+  destination?: string;
+};
+
+export type CashCut = {
+  id: number;
+  amount: number;
+  userId: number;
+  companyId: string;
+  createdAt: string;
+  paymentsCount: number;
+};
 
 export function useCashPayments() {
   const { toast } = useToast();
-  const { user } = useAuth();
-  const [totalCashAmount, setTotalCashAmount] = useState(0);
+  const [showCutModal, setShowCutModal] = useState(false);
   
-  // Obtener pagos en efectivo 
+  // Consulta para obtener pagos en efectivo pendientes (no procesados)
   const { 
-    data: cashPayments = [], 
-    isLoading,
-    isError,
-    refetch
-  } = useQuery({
-    queryKey: ["/api/cash-payments"],
-    queryFn: async () => {
-      try {
-        const response = await fetch("/api/cash-payments");
-        if (!response.ok) {
-          throw new Error("Error al cargar los pagos en efectivo");
-        }
-        return await response.json() as CashPayment[];
-      } catch (error) {
-        console.error("Error en cash payments:", error);
-        throw error;
-      }
-    },
+    data: pendingPayments = [], 
+    isLoading: isLoadingPayments,
+    error: paymentsError,
+    refetch: refetchPayments
+  } = useQuery<CashPayment[]>({
+    queryKey: ['/api/cash-payments'],
+    staleTime: 30 * 1000 // 30 segundos
   });
   
-  // Calcular el total cuando los pagos cambian
-  useEffect(() => {
-    if (cashPayments && cashPayments.length > 0) {
-      const total = cashPayments.reduce((sum, payment) => sum + payment.amount, 0);
-      setTotalCashAmount(total);
-    } else {
-      setTotalCashAmount(0);
-    }
-  }, [cashPayments]);
+  // Consulta para obtener historial de cortes de caja
+  const {
+    data: cashCuts = [],
+    isLoading: isLoadingCuts,
+    error: cutsError,
+    refetch: refetchCuts
+  } = useQuery<CashCut[]>({
+    queryKey: ['/api/cash-cuts'],
+    staleTime: 5 * 60 * 1000 // 5 minutos
+  });
   
-  // Mutación para limpiar los pagos (hacer corte)
-  const clearCashPaymentsMutation = useMutation({
+  // Mutación para realizar un corte de caja
+  const makeCashCutMutation = useMutation({
     mutationFn: async () => {
-      try {
-        const response = await fetch("/api/cash-payments/clear", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            amount: totalCashAmount,
-            userId: user?.id,
-          }),
-        });
-        
-        if (!response.ok) {
-          throw new Error("Error al realizar el corte de caja");
-        }
-        
-        return await response.json();
-      } catch (error) {
-        console.error("Error al realizar corte:", error);
-        throw error;
-      }
+      const res = await apiRequest("POST", "/api/cash-cuts", {});
+      return await res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/cash-payments"] });
-    },
-    onError: (error) => {
+    onSuccess: (data: CashCut) => {
       toast({
-        title: "Error al realizar el corte",
-        description: error.message || "No se pudo completar la operación",
-        variant: "destructive",
+        title: "Corte de caja exitoso",
+        description: `Se ha registrado un corte de caja por ${formatCurrency(data.amount)}`,
+        variant: "default"
       });
+      
+      // Invalidar las consultas para recargar los datos
+      queryClient.invalidateQueries({ queryKey: ['/api/cash-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cash-cuts'] });
+      
+      // Cerrar modal
+      setShowCutModal(false);
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Error al realizar corte de caja",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   });
   
-  const clearCashPayments = async () => {
-    return clearCashPaymentsMutation.mutateAsync();
-  };
+  // Calcular total pendiente
+  const pendingTotal = pendingPayments.reduce((sum, payment) => sum + payment.amount, 0);
   
   return {
-    cashPayments,
-    isLoading,
-    isError,
-    totalCashAmount,
-    clearCashPayments,
-    refetch,
+    pendingPayments,
+    isLoadingPayments,
+    paymentsError,
+    cashCuts,
+    isLoadingCuts,
+    cutsError,
+    pendingTotal,
+    showCutModal,
+    setShowCutModal,
+    makeCashCut: makeCashCutMutation.mutate,
+    isCutting: makeCashCutMutation.isPending,
+    refetchPayments,
+    refetchCuts
   };
 }
