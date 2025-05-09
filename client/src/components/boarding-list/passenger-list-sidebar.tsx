@@ -423,17 +423,39 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         <div>
                           <div className="text-xs text-gray-500">Origen</div>
                           <div className="font-medium">
-                            {reservation.origin && !reservation.origin.includes('no especificado') 
-                              ? reservation.origin.split(' - ')[0] 
-                              : tripDetails?.route?.origin?.split(' - ')[0] || 'Origen'}
+                            {(() => {
+                              // Primero verificamos si hay un origen válido en la reservación
+                              if (reservation.origin && !reservation.origin.includes('no especificado')) {
+                                const parts = reservation.origin.split(' - ');
+                                return parts.length > 0 ? parts[0] : reservation.origin;
+                              }
+                              // Si no, usamos el origen de la ruta del viaje
+                              else if (tripDetails?.route?.origin) {
+                                const parts = tripDetails.route.origin.split(' - ');
+                                return parts.length > 0 ? parts[0] : tripDetails.route.origin;
+                              }
+                              // Fallback final
+                              return 'Origen';
+                            })()}
                           </div>
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">Destino</div>
                           <div className="font-medium">
-                            {reservation.destination && !reservation.destination.includes('no especificado') 
-                              ? reservation.destination.split(' - ')[0] 
-                              : tripDetails?.route?.destination?.split(' - ')[0] || 'Destino'}
+                            {(() => {
+                              // Primero verificamos si hay un destino válido en la reservación
+                              if (reservation.destination && !reservation.destination.includes('no especificado')) {
+                                const parts = reservation.destination.split(' - ');
+                                return parts.length > 0 ? parts[0] : reservation.destination;
+                              }
+                              // Si no, usamos el destino de la ruta del viaje
+                              else if (tripDetails?.route?.destination) {
+                                const parts = tripDetails.route.destination.split(' - ');
+                                return parts.length > 0 ? parts[0] : tripDetails.route.destination;
+                              }
+                              // Fallback final
+                              return 'Destino';
+                            })()}
                           </div>
                         </div>
                       </div>
