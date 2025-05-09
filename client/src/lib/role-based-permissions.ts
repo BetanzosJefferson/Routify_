@@ -22,6 +22,7 @@ export const ALL_SECTIONS: Section[] = [
   { id: "reservation-requests", name: "Solicitudes", description: "Gestión de solicitudes de reservación" },
   { id: "notifications", name: "Notificaciones", description: "Centro de notificaciones del sistema" },
   { id: "coupons", name: "Cupones", description: "Gestión de cupones de descuento" },
+  { id: "cashier", name: "Caja", description: "Gestión de pagos en efectivo" },
   { id: "settings", name: "Configuración", description: "Ajustes generales del sistema" }
 ];
 

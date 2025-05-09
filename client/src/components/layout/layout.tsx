@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sidebar } from './sidebar';
-import { TopBar } from './topbar';
+import { Topbar } from './topbar';
 import { MobileNav } from './mobile-nav';
 import { useActiveTab } from '@/hooks/use-active-tab';
 
@@ -28,7 +28,7 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Content area */}
       <div className="flex flex-col w-0 flex-1 overflow-hidden">
-        <TopBar onOpenSidebar={() => setSidebarOpen(true)} />
+        <Topbar onOpenSidebar={() => setSidebarOpen(true)} />
         <main className="flex-1 relative overflow-y-auto focus:outline-none">
           {children}
         </main>
