@@ -1,203 +1,272 @@
 import React, { useState } from "react";
 import { Layout } from "@/components/layout/layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DollarSign, Wallet, History, Loader } from "lucide-react";
+import { useCashPayments, CashPayment, CashCut } from "@/hooks/use-cash-payments";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import { formatCurrency } from "@/lib/utils";
-import { CashRegister, CalendarIcon, FileText, AlertCircle } from "lucide-react";
-import { useCashPayments } from "@/hooks/use-cash-payments";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function CashierPage() {
   const { toast } = useToast();
-  const [showCashCutDialog, setShowCashCutDialog] = useState(false);
-  const { cashPayments, isLoading, totalCashAmount, clearCashPayments } = useCashPayments();
+  const [activeTab, setActiveTab] = useState("pending");
+  const {
+    pendingPayments,
+    cashCuts,
+    isLoadingPayments,
+    isLoadingCuts,
+    pendingTotal,
+    showCutModal,
+    setShowCutModal,
+    makeCashCut,
+    isCutting,
+    refetchPayments,
+    refetchCuts,
+  } = useCashPayments();
 
-  // Función para realizar el corte de caja
-  const handleCashCut = async () => {
-    try {
-      await clearCashPayments();
-      setShowCashCutDialog(false);
-      
+  // Función para hacer un corte de caja
+  const handleCashCut = () => {
+    if (pendingPayments.length === 0) {
       toast({
-        title: "Corte de caja realizado",
-        description: `Se ha registrado el corte por ${formatCurrency(totalCashAmount)}`,
-        variant: "success",
-      });
-    } catch (error) {
-      toast({
-        title: "Error al realizar el corte",
-        description: "Ocurrió un problema al procesar el corte de caja",
+        title: "No hay pagos pendientes",
+        description: "No se puede realizar un corte de caja sin pagos pendientes",
         variant: "destructive",
       });
+      return;
     }
+
+    // Mostrar el modal de confirmación
+    setShowCutModal(true);
+  };
+
+  // Función para confirmar el corte de caja
+  const confirmCashCut = () => {
+    makeCashCut();
   };
 
   return (
     <Layout>
       <div className="container mx-auto py-6">
-        <header className="mb-6">
-          <div className="flex items-center mb-4">
-            <div className="rounded-full bg-primary bg-opacity-10 p-2 mr-3">
-              <CashRegister className="h-6 w-6 text-primary" />
-            </div>
-            <h1 className="text-2xl font-bold">Caja</h1>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Caja</h1>
+            <p className="text-gray-500 mt-1">Gestión de pagos en efectivo y cortes de caja</p>
           </div>
-          <p className="text-gray-500">
-            Administra los pagos en efectivo y realiza cortes de caja
-          </p>
-        </header>
+          <Button
+            onClick={handleCashCut}
+            className="bg-green-600 hover:bg-green-700"
+            disabled={pendingPayments.length === 0 || isCutting}
+          >
+            <Wallet className="mr-2 h-4 w-4" />
+            Hacer corte
+          </Button>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="grid gap-6 mb-8">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">Total en Caja</CardTitle>
+            <CardHeader className="bg-primary/5 pb-4">
+              <CardTitle className="flex items-center">
+                <DollarSign className="mr-2 h-5 w-5 text-primary" />
+                Total en Caja
+              </CardTitle>
+              <CardDescription>Monto total pendiente de corte</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <div className="text-3xl font-bold text-primary">
-                {isLoading ? "Cargando..." : formatCurrency(totalCashAmount)}
+                {formatCurrency(pendingTotal)}
               </div>
               <p className="text-sm text-gray-500 mt-1">
-                Total de pagos en efectivo pendientes de corte
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">Pagos Registrados</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {isLoading ? "Cargando..." : cashPayments.length}
-              </div>
-              <p className="text-sm text-gray-500 mt-1">
-                Número de pagos en efectivo registrados
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-primary bg-opacity-5 border-primary border-opacity-20">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">Acciones</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                onClick={() => setShowCashCutDialog(true)}
-                className="w-full"
-                disabled={isLoading || totalCashAmount === 0}
-              >
-                Hacer Corte
-              </Button>
-              <p className="text-sm text-gray-500 mt-2">
-                Registra el corte de caja y reinicia el conteo
+                {pendingPayments.length} {pendingPayments.length === 1 ? "pago" : "pagos"} pendientes
               </p>
             </CardContent>
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <FileText className="h-5 w-5 mr-2" />
-              Historial de Pagos en Efectivo
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p>Cargando pagos...</p>
-              </div>
-            ) : cashPayments.length === 0 ? (
-              <div className="text-center py-12">
-                <AlertCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-1">No hay pagos registrados</h3>
-                <p className="text-gray-500">
-                  Los pagos en efectivo que marques como cobrados aparecerán aquí
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y">
-                {cashPayments.map((payment) => (
-                  <div key={payment.id} className="py-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-medium">{payment.passengerName}</h4>
-                        <div className="flex items-center text-sm text-gray-500 mt-1">
-                          <span>{payment.origin} → {payment.destination}</span>
-                        </div>
-                        <div className="flex items-center text-sm text-gray-500 mt-1">
-                          <CalendarIcon className="h-4 w-4 mr-1" />
-                          <span>
-                            {payment.paymentDate} · Cobrado por {payment.collectedBy}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-bold text-lg text-primary">
-                          {formatCurrency(payment.amount)}
-                        </span>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Efectivo
-                        </div>
-                      </div>
-                    </div>
+        <Tabs defaultValue="pending" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsTrigger value="pending" className="text-center">
+              Pagos Pendientes
+            </TabsTrigger>
+            <TabsTrigger value="history" className="text-center">
+              Historial de Cortes
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pending" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pagos Pendientes</CardTitle>
+                <CardDescription>
+                  Listado de pagos en efectivo pendientes de corte
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingPayments ? (
+                  <div className="flex justify-center items-center py-8">
+                    <Loader className="h-8 w-8 animate-spin text-primary" />
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                ) : pendingPayments.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No hay pagos pendientes
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[400px] w-full pr-4">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Pasajero</TableHead>
+                          <TableHead>Ruta</TableHead>
+                          <TableHead>Monto</TableHead>
+                          <TableHead>Fecha</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pendingPayments.map((payment) => (
+                          <TableRow key={payment.id}>
+                            <TableCell className="font-medium">
+                              {payment.passengerName}
+                            </TableCell>
+                            <TableCell>
+                              {payment.origin} - {payment.destination}
+                            </TableCell>
+                            <TableCell>{formatCurrency(payment.amount)}</TableCell>
+                            <TableCell>
+                              {formatDate(new Date(payment.createdAt))}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                )}
+              </CardContent>
+              <CardFooter className="border-t bg-muted/20 flex justify-between">
+                <div className="text-sm text-gray-500">
+                  {pendingPayments.length} {pendingPayments.length === 1 ? "pago" : "pagos"} pendientes
+                </div>
+                <div className="font-semibold">
+                  Total: {formatCurrency(pendingTotal)}
+                </div>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <History className="mr-2 h-5 w-5" />
+                  Historial de Cortes
+                </CardTitle>
+                <CardDescription>
+                  Registro de cortes de caja realizados
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingCuts ? (
+                  <div className="flex justify-center items-center py-8">
+                    <Loader className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : cashCuts.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No hay cortes de caja registrados
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[400px] w-full pr-4">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Usuario</TableHead>
+                          <TableHead>Pagos</TableHead>
+                          <TableHead>Monto Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {cashCuts.map((cut) => (
+                          <TableRow key={cut.id}>
+                            <TableCell>
+                              {formatDate(new Date(cut.createdAt))}
+                            </TableCell>
+                            <TableCell>
+                              {cut.user?.firstName} {cut.user?.lastName}
+                            </TableCell>
+                            <TableCell>{cut.paymentsCount}</TableCell>
+                            <TableCell className="font-medium">
+                              {formatCurrency(cut.amount)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
-      {/* Modal de Corte de Caja */}
-      <Dialog open={showCashCutDialog} onOpenChange={setShowCashCutDialog}>
+      {/* Modal de confirmación de corte de caja */}
+      <Dialog open={showCutModal} onOpenChange={setShowCutModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmar Corte de Caja</DialogTitle>
+            <DialogTitle>Confirmar corte de caja</DialogTitle>
             <DialogDescription>
-              Estás a punto de realizar un corte de caja por el monto acumulado.
-              Este proceso registrará el corte y reiniciará el contador.
+              ¿Estás seguro de que deseas realizar un corte de caja con los siguientes pagos?
             </DialogDescription>
           </DialogHeader>
           
           <div className="py-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-medium text-gray-700 mb-2">Resumen del Corte</h3>
-              
-              <div className="flex justify-between py-2 border-b border-gray-200">
-                <span>Total de pagos</span>
-                <span>{cashPayments.length}</span>
-              </div>
-              
-              <div className="flex justify-between py-2 border-b border-gray-200">
-                <span>Monto total</span>
-                <span className="font-bold">{formatCurrency(totalCashAmount)}</span>
-              </div>
-              
-              <div className="flex justify-between py-2 mt-2">
-                <span className="font-medium">Total a entregar</span>
-                <span className="font-bold text-primary text-lg">
-                  {formatCurrency(totalCashAmount)}
-                </span>
-              </div>
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-semibold">Total pagos:</span>
+              <Badge>{pendingPayments.length}</Badge>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="font-semibold">Monto total:</span>
+              <span className="text-xl font-bold">{formatCurrency(pendingTotal)}</span>
             </div>
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCashCutDialog(false)}>
+            <Button variant="outline" onClick={() => setShowCutModal(false)} disabled={isCutting}>
               Cancelar
             </Button>
-            <Button onClick={handleCashCut}>
-              Confirmar Corte
+            <Button onClick={confirmCashCut} disabled={isCutting}>
+              {isCutting ? (
+                <>
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  Procesando...
+                </>
+              ) : (
+                "Confirmar Corte"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

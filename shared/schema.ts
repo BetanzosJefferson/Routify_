@@ -629,14 +629,33 @@ export const cashPayments = pgTable("cash_payments", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Esquema tipo para inserción y selección de cash_payments
+export const insertCashPaymentSchema = createInsertSchema(cashPayments).omit({ 
+  id: true, 
+  createdAt: true,
+  cashCutId: true,
+  processed: true 
+});
+export type InsertCashPayment = z.infer<typeof insertCashPaymentSchema>;
+export type CashPayment = typeof cashPayments.$inferSelect;
+
 // CASH CUTS SCHEMA
 export const cashCuts = pgTable("cash_cuts", {
   id: serial("id").primaryKey(),
   amount: doublePrecision("amount").notNull(),
   userId: integer("user_id").notNull(),
   companyId: text("company_id").notNull(),
+  paymentsCount: integer("payments_count").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// Esquema tipo para inserción y selección de cash_cuts
+export const insertCashCutSchema = createInsertSchema(cashCuts).omit({ 
+  id: true, 
+  createdAt: true 
+});
+export type InsertCashCut = z.infer<typeof insertCashCutSchema>;
+export type CashCut = typeof cashCuts.$inferSelect;
 
 // Relaciones para cash_payments
 export const cashPaymentsRelations = relations(cashPayments, ({ one }) => ({
