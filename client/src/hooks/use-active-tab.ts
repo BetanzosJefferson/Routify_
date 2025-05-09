@@ -20,7 +20,7 @@ export type TabType =
   | "boarding-list"; // Incluimos todas las pestañas que se están usando en la aplicación
 
 // Hook personalizado para gestionar la pestaña activa
-export const useActiveTab = () => {
+export function useActiveTab() {
   const [location] = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>("trips");
 
