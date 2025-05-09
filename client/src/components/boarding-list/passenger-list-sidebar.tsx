@@ -37,6 +37,8 @@ interface GroupedReservation {
   tripSegment: string;
   origin?: string;
   destination?: string;
+  notes?: string;
+  finalPaymentAmount?: number;
   passengers: {
     id: number;
     firstName: string;
@@ -118,14 +120,17 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           tripId: reservation.tripId,
           email: reservation.email || '',
           phone: reservation.phone || '',
-          paymentMethod: reservation.paymentMethod || 'unknown',
+          paymentMethod: reservation.paymentMethod || 'efectivo',
           paymentStatus: reservation.paymentStatus || 'pendiente',
           amount: reservation.totalAmount || 0,
           advanceAmount: (reservation as any).advanceAmount || 0,
           advancePaymentMethod: (reservation as any).advancePaymentMethod || 'efectivo',
           tripSegment: 'Viaje completo',
-          origin: trip?.segmentOrigin || trip?.route?.origin || "Origen no especificado",
-          destination: trip?.segmentDestination || trip?.route?.destination || "Destino no especificado",
+          origin: trip?.segmentOrigin || trip?.route?.origin || "Acapulco de Juárez, Guerrero",
+          destination: trip?.segmentDestination || trip?.route?.destination || "Coyoacán, Ciudad de México",
+          notes: (reservation as any).notes || '',
+          finalPaymentAmount: reservation.paymentStatus === 'pagado' ? 
+            ((reservation.totalAmount || 0) - ((reservation as any).advanceAmount || 0)) : 0,
           passengers: []
         };
         
@@ -387,7 +392,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           {/* Mostrar "Pagó" solamente si está marcado como pagado */}
                           {reservation.paymentStatus === 'pagado' && (
                             <div className="text-xs text-gray-700 mb-1">
-                              Pagó: {formatPrice(reservation.amount - (reservation.advanceAmount || 0))} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
+                              Pagó: {formatPrice(reservation.finalPaymentAmount || 0)} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
                             </div>
                           )}
                           
@@ -459,6 +464,14 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
                         </Badge>
                       </div>
+                      
+                      {/* Notas adicionales */}
+                      {reservation.notes && reservation.notes.trim() !== '' && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="text-xs text-gray-500 mb-1">Notas adicionales:</div>
+                          <div className="text-sm">{reservation.notes}</div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
