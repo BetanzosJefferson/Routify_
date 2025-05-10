@@ -183,6 +183,8 @@ export type TripWithRouteInfo = Trip & {
   // Información del vehículo y conductor asignados
   assignedVehicle?: Vehicle;
   assignedDriver?: User;
+  // Estado calculado del viaje (puede sobreescribir el valor de la BD)
+  tripStatus?: string;
 };
 
 export type ReservationWithDetails = Reservation & {
