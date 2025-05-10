@@ -175,6 +175,8 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       stopTimes: [],
       vehicleId: null,
       driverId: null,
+      visibility: TripVisibility.PUBLISHED,
+      tripStatus: TripStatus.NOT_STARTED,
     },
     mode: "onChange",
   });
