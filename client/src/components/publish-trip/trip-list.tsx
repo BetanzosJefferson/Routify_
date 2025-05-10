@@ -10,6 +10,8 @@ import {
   dateToLocalISOString,
   formatDateForApiQuery
 } from "@/lib/utils";
+import TripStatusBadges from "@/components/trips/trip-status-badges";
+import TripCard from "./trip-card-component";
 import { 
   PencilIcon, 
   TrashIcon, 
