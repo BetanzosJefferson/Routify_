@@ -7,6 +7,7 @@ import {
   insertTripSchema, 
   insertReservationSchema, 
   insertPassengerSchema,
+  insertPackageSchema,
   createRouteValidationSchema,
   publishTripValidationSchema,
   createReservationValidationSchema,
@@ -15,8 +16,32 @@ import {
   locationData,
   TripVisibility,
   TripStatus,
-  UserRole
+  UserRole,
+  PaymentStatus,
+  PaymentMethod
 } from "@shared/schema";
+
+// Constantes para roles y permisos de paqueterías
+const PACKAGE_ACCESS_ROLES = [
+  UserRole.OWNER, 
+  UserRole.ADMIN, 
+  UserRole.CALL_CENTER, 
+  UserRole.CHECKER, 
+  UserRole.DRIVER
+];
+
+const PACKAGE_WRITE_ROLES = [
+  UserRole.OWNER,
+  UserRole.ADMIN,
+  UserRole.CALL_CENTER
+];
+
+const PACKAGE_CREATE_ROLES = [
+  UserRole.OWNER,
+  UserRole.ADMIN,
+  UserRole.CALL_CENTER,
+  UserRole.CHECKER
+];
 
 import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
 import { setupAuthentication } from "./auth-session";
