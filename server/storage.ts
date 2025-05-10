@@ -128,6 +128,14 @@ export interface IStorage {
     coupon?: Coupon;
     message?: string;
   }>;
+  
+  // Package methods
+  getPackages(filters?: { companyId?: string, tripId?: number }): Promise<schema.Package[]>;
+  getPackage(id: number): Promise<schema.Package | undefined>;
+  getPackageWithTripInfo(id: number): Promise<schema.Package & { trip?: TripWithRouteInfo } | undefined>;
+  createPackage(packageData: schema.InsertPackage): Promise<schema.Package>;
+  updatePackage(id: number, packageData: Partial<schema.Package>): Promise<schema.Package | undefined>;
+  deletePackage(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
