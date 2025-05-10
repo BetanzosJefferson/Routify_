@@ -220,6 +220,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
     onError: (error: any) => {
       // Incluso en caso de error, refrescamos la lista para verificar si realmente se eliminó
       setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['/api/admin-trips'] });
         queryClient.invalidateQueries({ queryKey: ['/api/trips'] });
       }, 1000);
       
@@ -263,6 +264,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
       }
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin-trips'] });
       queryClient.invalidateQueries({ queryKey: ['/api/trips'] });
       toast({
         title: "Vehículo asignado",
@@ -312,6 +314,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
       }
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin-trips'] });
       queryClient.invalidateQueries({ queryKey: ['/api/trips'] });
       toast({
         title: "Conductor asignado",
