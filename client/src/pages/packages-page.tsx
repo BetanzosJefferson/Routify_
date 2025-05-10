@@ -125,7 +125,8 @@ export default function PackagesPage() {
             </div>
             
             <PackageForm 
-              tripId={selectedTripId || undefined} 
+              tripId={selectedTripId || undefined}
+              packageId={selectedPackageId || undefined}
               onSuccess={handleFormSuccess}
               onCancel={handleFormCancel}
             />

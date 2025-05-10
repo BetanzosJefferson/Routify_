@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -58,13 +58,15 @@ type PackageFormValues = z.infer<typeof packageFormSchema>;
 // Props para el componente del formulario
 interface PackageFormProps {
   tripId?: number;
+  packageId?: number;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-export function PackageForm({ tripId, onSuccess, onCancel }: PackageFormProps) {
+export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Valores por defecto para el formulario
   const defaultValues: Partial<PackageFormValues> = {
@@ -87,6 +89,53 @@ export function PackageForm({ tripId, onSuccess, onCancel }: PackageFormProps) {
     defaultValues,
   });
   
+  // Cargar datos del paquete existente si se está editando
+  useEffect(() => {
+    async function fetchPackageData() {
+      if (!packageId) return;
+      
+      setIsLoading(true);
+      try {
+        const response = await fetch(`/api/packages/${packageId}`);
+        if (!response.ok) {
+          throw new Error('Error al cargar los datos del paquete');
+        }
+        
+        const packageData = await response.json();
+        // Actualizar el formulario con los datos del paquete
+        form.reset({
+          senderName: packageData.senderName,
+          senderLastName: packageData.senderLastName,
+          senderPhone: packageData.senderPhone,
+          recipientName: packageData.recipientName,
+          recipientLastName: packageData.recipientLastName,
+          recipientPhone: packageData.recipientPhone,
+          packageDescription: packageData.packageDescription,
+          price: packageData.price,
+          isPaid: packageData.isPaid,
+          paymentMethod: packageData.paymentMethod || "efectivo",
+          deliveryStatus: packageData.deliveryStatus || "pendiente",
+        });
+        
+        // Si es un paquete existente, también actualizamos el ID del viaje
+        if (!tripId && packageData.tripId) {
+          tripId = packageData.tripId;
+        }
+      } catch (error) {
+        console.error('Error al cargar el paquete:', error);
+        toast({
+          title: 'Error',
+          description: 'No se pudo cargar la información del paquete',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    fetchPackageData();
+  }, [packageId, form, toast]);
+  
   // Obtener el estado del pago para condicionar campos
   const isPaid = form.watch("isPaid");
   
@@ -98,7 +147,11 @@ export function PackageForm({ tripId, onSuccess, onCancel }: PackageFormProps) {
         tripId: tripId,
       };
       
-      const response = await apiRequest("POST", "/api/packages", packageData);
+      // Si tenemos ID de paquete, estamos actualizando, de lo contrario creando nuevo
+      const method = packageId ? "PUT" : "POST";
+      const url = packageId ? `/api/packages/${packageId}` : "/api/packages";
+      
+      const response = await apiRequest(method, url, packageData);
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Error al guardar el paquete");
@@ -107,9 +160,11 @@ export function PackageForm({ tripId, onSuccess, onCancel }: PackageFormProps) {
     },
     onSuccess: () => {
       toast({
-        title: "Paquete registrado",
-        description: "El paquete ha sido registrado exitosamente",
-        variant: "success",
+        title: packageId ? "Paquete actualizado" : "Paquete registrado",
+        description: packageId 
+          ? "El paquete ha sido actualizado exitosamente" 
+          : "El paquete ha sido registrado exitosamente",
+        variant: "default",
       });
       form.reset(defaultValues);
       queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
@@ -131,12 +186,32 @@ export function PackageForm({ tripId, onSuccess, onCancel }: PackageFormProps) {
     saveMutation.mutate(data);
   };
   
+  // Si está cargando los datos del paquete, mostrar un indicador
+  if (isLoading) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Cargando datos...</CardTitle>
+          <CardDescription>
+            Cargando información del paquete...
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+  
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Registro de Paquete</CardTitle>
+        <CardTitle>{packageId ? "Editar Paquete" : "Registro de Paquete"}</CardTitle>
         <CardDescription>
-          Ingresa los datos del remitente, destinatario y detalles del paquete
+          {packageId 
+            ? "Actualiza los datos del remitente, destinatario y detalles del paquete"
+            : "Ingresa los datos del remitente, destinatario y detalles del paquete"
+          }
         </CardDescription>
       </CardHeader>
       <CardContent>
