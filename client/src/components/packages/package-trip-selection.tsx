@@ -304,38 +304,101 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
               className="hover:shadow-md transition-all cursor-pointer border-l-4 border-l-blue-500"
               onClick={() => onTripSelect(trip.id)}
             >
-              <div className="flex flex-col md:flex-row p-4 w-full">
-                {/* Sólo información de horarios */}
-                <div className="flex-1">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="font-bold text-lg">{trip.departureTime}</div>
-                    <div className="text-xs text-gray-500 hidden md:block">
-                      {calculateDuration(trip.departureTime, trip.arrivalTime)}
-                    </div>
-                    <div className="font-bold text-lg text-right">{trip.arrivalTime}</div>
+              <div className="p-4 w-full">
+                {/* Horarios en la parte superior */}
+                <div className="flex justify-between items-center mb-4">
+                  <div className="font-bold text-lg">{trip.departureTime}</div>
+                  <div className="text-xs text-gray-500">
+                    {calculateDuration(trip.departureTime, trip.arrivalTime)}
                   </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <div className="flex-1 flex justify-center items-center px-2">
-                      <div className="border-t border-gray-300 flex-1 relative">
-                        <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-white px-2 text-xs text-gray-500 md:hidden">
-                          {calculateDuration(trip.departureTime, trip.arrivalTime)}
-                        </div>
+                  <div className="font-bold text-lg text-right">{trip.arrivalTime}</div>
+                </div>
+                
+                <div className="border-t border-gray-200 pt-3 mt-2">
+                  {/* Información de ruta */}
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500">Ruta</div>
+                      <div className="text-sm font-medium">{trip.route?.name || "Sin nombre"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500">ID del viaje</div>
+                      <div className="text-sm">{trip.id}</div>
+                    </div>
+                  </div>
+
+                  {/* Origen y destino */}
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500">Origen</div>
+                      <div className="text-sm">{trip.route?.origin || "No especificado"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500">Destino</div>
+                      <div className="text-sm">{trip.route?.destination || "No especificado"}</div>
+                    </div>
+                  </div>
+
+                  {/* Terminales */}
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500">Terminal de salida</div>
+                      <div className="text-sm">{trip.originTerminal || "Terminal principal"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500">Terminal de llegada</div>
+                      <div className="text-sm">{trip.destinationTerminal || "Terminal principal"}</div>
+                    </div>
+                  </div>
+
+                  {/* Información de fecha y vehículo */}
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500">Fecha de salida</div>
+                      <div className="text-sm">{format(new Date(trip.departureDate), 'dd/MM/yyyy')}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500">Vehículo</div>
+                      <div className="text-sm flex items-center">
+                        <Truck className="h-4 w-4 mr-1 text-gray-500" />
+                        {trip.assignedVehiclePlate || trip.vehicleType || "Vehículo estándar"}
                       </div>
                     </div>
                   </div>
-                </div>
-                
-                {/* Columna con información esencial */}
-                <div className="flex md:flex-col justify-between items-center mt-4 md:mt-0 md:px-4 md:border-l border-gray-200">
-                  <div className="flex flex-col items-center">
-                    <div className="text-xs text-gray-500 mb-1">Fecha</div>
-                    <div className="text-sm">{format(new Date(trip.departureDate), 'dd/MM/yyyy')}</div>
+
+                  {/* Información de capacidad y asientos */}
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500">Capacidad</div>
+                      <div className="text-sm">{trip.capacity || "N/A"} asientos</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500">Disponibles</div>
+                      <div className="text-sm">{trip.availableSeats || 0} asientos</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500">Precio base</div>
+                      <div className="text-sm font-medium">{formatPrice(trip.basePrice || 0)}</div>
+                    </div>
                   </div>
-                  
-                  <div className="flex items-center mt-2">
-                    <Truck className="h-4 w-4 mr-1 text-gray-500" />
-                    <span className="text-sm">{trip.vehicleType || "Vehículo estándar"}</span>
+
+                  {/* Estado del viaje y conductor */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500">Estado</div>
+                      <div className="text-sm">
+                        {trip.tripStatus === "en_progreso" ? "En progreso" :
+                         trip.tripStatus === "finalizado" ? "Finalizado" :
+                         trip.tripStatus === "aun_no_inicia" ? "Aún no inicia" :
+                         "No especificado"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500">Conductor</div>
+                      <div className="text-sm">
+                        {trip.assignedDriverName || "Sin asignar"}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
