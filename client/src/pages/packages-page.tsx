@@ -9,7 +9,7 @@ import { TabType } from "@/hooks/use-active-tab";
 import { PageTitle } from "@/components/ui/page-title";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Package, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 // Package Components
 import { PackageList } from "@/components/packages/package-list";
@@ -68,67 +68,70 @@ export default function PackagesPage() {
   // Si el usuario no tiene permiso
   if (!hasAccess) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Acceso Denegado</CardTitle>
-          <CardDescription>
-            No tienes permiso para acceder a la sección de paqueterías.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">
-            Por favor, contacta con el administrador del sistema si necesitas acceso a esta sección.
-          </p>
-        </CardContent>
-      </Card>
+      <DefaultLayout activeTab={activeTab}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Acceso Denegado</CardTitle>
+            <CardDescription>
+              No tienes permiso para acceder a la sección de paqueterías.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              Por favor, contacta con el administrador del sistema si necesitas acceso a esta sección.
+            </p>
+          </CardContent>
+        </Card>
+      </DefaultLayout>
     );
   }
   
   return (
-    <div className="container mx-auto py-6">
-      <PageTitle 
-        title="Paqueterías" 
-        description="Gestiona los envíos de paquetes" 
-        icon={<Package />}
-      />
-      
-      {view === "list" && (
-        <PackageList 
-          onAddPackage={handleAddPackage} 
-          onEditPackage={handleEditPackage} 
+    <DefaultLayout activeTab={activeTab}>
+      <div className="container mx-auto py-6">
+        <PageTitle 
+          title="Paqueterías" 
+          description="Gestiona los envíos de paquetes" 
         />
-      )}
-      
-      {view === "selectTrip" && (
-        <PackageTripSelection
-          onTripSelect={handleTripSelect}
-          onBack={() => setView("list")}
-        />
-      )}
-      
-      {view === "form" && (
-        <div className="space-y-4">
-          <div className="flex items-center">
-            <Button 
-              variant="ghost" 
-              className="mr-2" 
-              onClick={() => setView("list")}
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Volver
-            </Button>
-            <h2 className="text-xl font-bold">
-              {selectedPackageId ? "Editar Paquete" : "Registrar Nuevo Paquete"}
-            </h2>
-          </div>
-          
-          <PackageForm 
-            tripId={selectedTripId || undefined} 
-            onSuccess={handleFormSuccess}
-            onCancel={handleFormCancel}
+        
+        {view === "list" && (
+          <PackageList 
+            onAddPackage={handleAddPackage} 
+            onEditPackage={handleEditPackage} 
           />
-        </div>
-      )}
-    </div>
+        )}
+        
+        {view === "selectTrip" && (
+          <PackageTripSelection
+            onTripSelect={handleTripSelect}
+            onBack={() => setView("list")}
+          />
+        )}
+        
+        {view === "form" && (
+          <div className="space-y-4">
+            <div className="flex items-center">
+              <Button 
+                variant="ghost" 
+                className="mr-2" 
+                onClick={() => setView("list")}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Volver
+              </Button>
+              <h2 className="text-xl font-bold">
+                {selectedPackageId ? "Editar Paquete" : "Registrar Nuevo Paquete"}
+              </h2>
+            </div>
+            
+            <PackageForm 
+              tripId={selectedTripId || undefined} 
+              onSuccess={handleFormSuccess}
+              onCancel={handleFormCancel}
+            />
+          </div>
+        )}
+      </div>
+    </DefaultLayout>
   );
 }
