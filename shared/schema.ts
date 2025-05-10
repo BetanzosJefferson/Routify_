@@ -18,6 +18,8 @@ export const UserRole = {
 
 export type UserRoleType = typeof UserRole[keyof typeof UserRole];
 
+// Las definiciones de TripVisibility y TripStatus se han movido más abajo en el archivo
+
 // ROUTE SCHEMA
 export const routes = pgTable("routes", {
   id: serial("id").primaryKey(),
@@ -128,7 +130,7 @@ export type TripVisibilityType = typeof TripVisibility[keyof typeof TripVisibili
 export const TripStatus = {
   NOT_STARTED: "aun_no_inicia",
   IN_PROGRESS: "en_progreso",
-  FINISHED: "finalizado",
+  COMPLETED: "finalizado",
 } as const;
 
 export type TripStatusType = typeof TripStatus[keyof typeof TripStatus];

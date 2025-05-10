@@ -432,13 +432,13 @@ export class DatabaseStorage implements IStorage {
       }
       fullArrivalDate.setHours(Math.floor(arrivalTime / 60), arrivalTime % 60, 0, 0);
       
-      // Determinar el estado del viaje
+      // Determinar el estado del viaje usando las constantes del esquema
       if (now < fullDepartureDate) {
-        return "aun_no_inicia";
+        return schema.TripStatus.NOT_STARTED;
       } else if (now >= fullDepartureDate && now < fullArrivalDate) {
-        return "en_progreso";
+        return schema.TripStatus.IN_PROGRESS;
       } else {
-        return "finalizado";
+        return schema.TripStatus.COMPLETED;
       }
     };
     
