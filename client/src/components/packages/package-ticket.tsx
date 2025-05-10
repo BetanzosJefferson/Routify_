@@ -1,5 +1,5 @@
 import React from "react";
-import { Package, User, Clock, Calendar, PhoneCall, Truck, DollarSign, CheckCircle } from "lucide-react";
+import { Package, User, Clock, Calendar, PhoneCall, Truck, DollarSign, CheckCircle, Armchair } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/utils";
 
 // Define la estructura del paquete
@@ -14,6 +14,8 @@ interface PackageData {
   recipientPhone: string;
   packageDescription: string;
   price: number;
+  usesSeats?: boolean;
+  seatsQuantity?: number;
   isPaid: boolean;
   paymentMethod?: string;
   deliveryStatus: string;
@@ -138,6 +140,14 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
           <DollarSign size={12} />
           <span>{formatCurrency(packageData.price)}</span>
         </div>
+        {packageData.usesSeats && (
+          <div className="ticket-row">
+            <ChairDirector size={12} />
+            <span>
+              Ocupa {packageData.seatsQuantity} {packageData.seatsQuantity === 1 ? 'asiento' : 'asientos'}
+            </span>
+          </div>
+        )}
         <div className="ticket-row">
           <CheckCircle size={12} />
           <span>

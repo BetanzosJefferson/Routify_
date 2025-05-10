@@ -102,7 +102,7 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
       toast({
         title: "Paquete actualizado",
         description: "El paquete ha sido marcado como entregado",
-        variant: "success",
+        variant: "default",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
     },
@@ -129,7 +129,7 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
       toast({
         title: "Paquete eliminado",
         description: "El paquete ha sido eliminado exitosamente",
-        variant: "success",
+        variant: "default",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
       setPackageToDelete(null);
@@ -239,6 +239,7 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
               <TableHead>Origen</TableHead>
               <TableHead>Destino</TableHead>
               <TableHead>Precio</TableHead>
+              <TableHead>Asientos</TableHead>
               <TableHead>Estado Pago</TableHead>
               <TableHead>Estado Entrega</TableHead>
               <TableHead>Fecha</TableHead>
@@ -268,6 +269,15 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                   {pkg.segmentDestination || pkg.tripDestination || "No disponible"}
                 </TableCell>
                 <TableCell>{formatCurrency(pkg.price)}</TableCell>
+                <TableCell>
+                  {pkg.usesSeats ? (
+                    <Badge className="bg-orange-500 hover:bg-orange-600">
+                      {pkg.seatsQuantity} {pkg.seatsQuantity === 1 ? 'asiento' : 'asientos'}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">No usa</Badge>
+                  )}
+                </TableCell>
                 <TableCell>
                   {pkg.isPaid ? (
                     <Badge className="bg-green-500 hover:bg-green-600">
