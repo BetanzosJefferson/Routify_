@@ -180,6 +180,31 @@ export default function TripSummary({ className }: TripSummaryProps) {
     }
   }, [selectedTrip, reservations, trips]);
 
+  // Calcular y actualizar los totales cuando hay paqueterías
+  useEffect(() => {
+    if (selectedTrip && packages && packages.length > 0) {
+      // Calcular ventas por paqueterías
+      let packageCashSales = 0;
+      let packageTransferSales = 0;
+      
+      // Recorrer cada paquetería para calcular las ventas
+      packages.forEach(pkg => {
+        if (pkg.isPaid) {
+          if (pkg.paymentMethod === 'efectivo') {
+            packageCashSales += pkg.price;
+          } else if (pkg.paymentMethod === 'transferencia') {
+            packageTransferSales += pkg.price;
+          }
+        }
+      });
+      
+      // Actualizar totales sumando los valores de paqueterías a los totales existentes
+      setTotalSales(prevTotal => prevTotal + packageCashSales + packageTransferSales);
+      setTotalCashSales(prevCash => prevCash + packageCashSales);
+      setTotalTransferSales(prevTransfer => prevTransfer + packageTransferSales);
+    }
+  }, [selectedTrip, packages]);
+
   // Auto-seleccionar el primer viaje filtrado si no hay ninguno seleccionado
   useEffect(() => {
     if (filteredTrips && filteredTrips.length > 0 && !selectedTrip) {
@@ -458,8 +483,85 @@ export default function TripSummary({ className }: TripSummaryProps) {
                           </Card>
                         </div>
                         
+                        {/* Sección de Paqueterías */}
+                        {packages && packages.length > 0 && (
+                          <div className="mt-6">
+                            <h3 className="text-lg font-semibold mb-4 flex items-center">
+                              <PackageIcon className="h-5 w-5 mr-2" />
+                              Paqueterías
+                            </h3>
+                            
+                            <div className="overflow-x-auto">
+                              <table className="w-full border-collapse">
+                                <thead>
+                                  <tr className="bg-gray-50">
+                                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      ID
+                                    </th>
+                                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Remitente
+                                    </th>
+                                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Destinatario
+                                    </th>
+                                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Descripción
+                                    </th>
+                                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Precio
+                                    </th>
+                                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Estado de Pago
+                                    </th>
+                                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Forma de Pago
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {packages.map(pkg => (
+                                    <tr key={pkg.id}>
+                                      <td className="py-3 px-4 whitespace-nowrap">
+                                        <div className="text-sm text-gray-900">{pkg.id}</div>
+                                      </td>
+                                      <td className="py-3 px-4 whitespace-nowrap">
+                                        <div className="text-sm text-gray-900">{pkg.senderName} {pkg.senderLastName}</div>
+                                        <div className="text-xs text-gray-500">{pkg.senderPhone}</div>
+                                      </td>
+                                      <td className="py-3 px-4 whitespace-nowrap">
+                                        <div className="text-sm text-gray-900">{pkg.recipientName} {pkg.recipientLastName}</div>
+                                        <div className="text-xs text-gray-500">{pkg.recipientPhone}</div>
+                                      </td>
+                                      <td className="py-3 px-4 whitespace-nowrap">
+                                        <div className="text-sm text-gray-900">{pkg.packageDescription}</div>
+                                      </td>
+                                      <td className="py-3 px-4 whitespace-nowrap">
+                                        <div className="text-sm text-gray-900">${pkg.price.toLocaleString('es-MX')}</div>
+                                      </td>
+                                      <td className="py-3 px-4 whitespace-nowrap">
+                                        <Badge variant={pkg.isPaid ? "success" : "outline"}>
+                                          {pkg.isPaid ? "Pagado" : "Pendiente"}
+                                        </Badge>
+                                      </td>
+                                      <td className="py-3 px-4 whitespace-nowrap">
+                                        <div className="text-sm text-gray-900">
+                                          {pkg.paymentMethod === 'efectivo' ? 'Efectivo' : 
+                                           pkg.paymentMethod === 'transferencia' ? 'Transferencia' : 'N/A'}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                        
                         <div className="mt-6">
-                          <h3 className="text-lg font-semibold mb-4">Lista de Pasajeros</h3>
+                          <h3 className="text-lg font-semibold mb-4 flex items-center">
+                            <UserIcon className="h-5 w-5 mr-2" />
+                            Lista de Pasajeros
+                          </h3>
                           
                           {tripReservations.length > 0 ? (
                             <div className="overflow-x-auto">
