@@ -327,27 +327,46 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                     </div>
                   </div>
 
-                  {/* Origen y destino */}
+                  {/* Origen y destino de la ruta completa */}
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     <div>
-                      <div className="text-xs font-semibold text-gray-500">Origen</div>
+                      <div className="text-xs font-semibold text-gray-500">Origen de ruta</div>
                       <div className="text-sm">{trip.route?.origin || "No especificado"}</div>
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-gray-500">Destino</div>
+                      <div className="text-xs font-semibold text-gray-500">Destino de ruta</div>
                       <div className="text-sm">{trip.route?.destination || "No especificado"}</div>
                     </div>
                   </div>
 
-                  {/* Terminales */}
+                  {/* Terminales específicas para este viaje */}
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     <div>
-                      <div className="text-xs font-semibold text-gray-500">Terminal de salida</div>
-                      <div className="text-sm">{trip.originTerminal || "Terminal principal"}</div>
+                      <div className="text-xs font-semibold text-gray-500">Punto de abordaje</div>
+                      <div className="text-sm font-medium text-green-700">{trip.originTerminal || "Terminal principal"}</div>
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-gray-500">Terminal de llegada</div>
-                      <div className="text-sm">{trip.destinationTerminal || "Terminal principal"}</div>
+                      <div className="text-xs font-semibold text-gray-500">Punto de llegada</div>
+                      <div className="text-sm font-medium text-red-700">{trip.destinationTerminal || "Terminal principal"}</div>
+                    </div>
+                  </div>
+                  
+                  {/* Paradas intermedias */}
+                  <div className="mb-3">
+                    <div className="text-xs font-semibold text-gray-500 mb-1">Paradas intermedias</div>
+                    <div className="text-sm">
+                      {trip.route?.stops && trip.route.stops.length > 0 ? (
+                        <div className="max-h-20 overflow-y-auto pl-2 border-l-2 border-gray-300">
+                          {trip.route.stops.map((stop, index) => (
+                            <div key={index} className="mb-1 text-xs flex items-center">
+                              <div className="w-2 h-2 rounded-full bg-gray-400 mr-2"></div>
+                              {stop}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 italic">Sin paradas intermedias</span>
+                      )}
                     </div>
                   </div>
 
@@ -361,7 +380,7 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                       <div className="text-xs font-semibold text-gray-500">Vehículo</div>
                       <div className="text-sm flex items-center">
                         <Truck className="h-4 w-4 mr-1 text-gray-500" />
-                        {trip.assignedVehiclePlate || trip.vehicleType || "Vehículo estándar"}
+                        {trip.assignedVehicle?.plates || trip.vehicleType || "Vehículo estándar"}
                       </div>
                     </div>
                   </div>
@@ -378,7 +397,7 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-gray-500">Precio base</div>
-                      <div className="text-sm font-medium">{formatPrice(trip.basePrice || 0)}</div>
+                      <div className="text-sm font-medium">{formatPrice(trip.price || 0)}</div>
                     </div>
                   </div>
 
@@ -396,7 +415,9 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                     <div>
                       <div className="text-xs font-semibold text-gray-500">Conductor</div>
                       <div className="text-sm">
-                        {trip.assignedDriverName || "Sin asignar"}
+                        {trip.assignedDriver ? 
+                          `${trip.assignedDriver.firstName || ''} ${trip.assignedDriver.lastName || ''}` : 
+                          "Sin asignar"}
                       </div>
                     </div>
                   </div>
