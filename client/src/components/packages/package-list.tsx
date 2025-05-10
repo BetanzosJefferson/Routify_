@@ -236,6 +236,8 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
               <TableHead>ID</TableHead>
               <TableHead>Remitente</TableHead>
               <TableHead>Destinatario</TableHead>
+              <TableHead>Origen</TableHead>
+              <TableHead>Destino</TableHead>
               <TableHead>Precio</TableHead>
               <TableHead>Estado Pago</TableHead>
               <TableHead>Estado Entrega</TableHead>
