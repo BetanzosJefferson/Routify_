@@ -21,7 +21,7 @@ interface SearchParams {
   origin?: string;
   destination?: string;
   date?: string;
-  seats?: number;
+  visibility?: string;
 }
 
 interface PackageTripSelectionProps {
@@ -96,16 +96,15 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
   const { data: trips, isLoading, isError } = useQuery({
     queryKey: ["/api/trips", searchParams],
     queryFn: async () => {
-      // Añadir el filtro de visibilidad publicado a los parámetros de búsqueda
-      const paramsWithVisibility = { ...searchParams, visibility: 'publicado' };
-      
       const queryString = new URLSearchParams(
-        Object.entries(paramsWithVisibility).filter(([_, v]) => v !== undefined) as [string, string][]
+        Object.entries(searchParams).filter(([_, v]) => v !== undefined) as [string, string][]
       ).toString();
       
       const response = await fetch(`/api/trips${queryString ? `?${queryString}` : ''}`);
       if (!response.ok) throw new Error("Failed to fetch trips");
-      return await response.json() as TripWithRouteInfo[];
+      const fetchedTrips = await response.json() as TripWithRouteInfo[];
+      console.log("Trips with route info:", fetchedTrips);
+      return fetchedTrips;
     },
     enabled: Object.keys(searchParams).length > 0 // Only run if there are search params
   });
@@ -124,6 +123,9 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
       if (origin) params.origin = origin;
       if (destination) params.destination = destination;
       if (date) params.date = formatDateForApiQuery(date);
+      
+      // Always add visibility parameter
+      params.visibility = 'publicado';
       
       setSearchParams(params);
     }, 300); // 300ms debounce
@@ -298,10 +300,9 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                   
                   <div className="flex justify-between items-start">
                     <div className="max-w-[40%]">
-                      <div className="font-bold truncate">{trip.routeOrigin || trip.route?.origin || trip.routeName?.split(' a ')[0]}</div>
+                      <div className="font-bold truncate">{trip.route?.origin || "Origen"}</div>
                       <div className="text-xs text-gray-500">
-                        {trip.originTerminal || 
-                         (trip.route?.stops?.length > 0 ? trip.route.stops[0] : "Terminal principal")}
+                        {trip.originTerminal || "Terminal principal"}
                       </div>
                     </div>
                     
@@ -314,10 +315,9 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                     </div>
                     
                     <div className="max-w-[40%] text-right">
-                      <div className="font-bold truncate">{trip.routeDestination || trip.route?.destination || trip.routeName?.split(' a ')[1]}</div>
+                      <div className="font-bold truncate">{trip.route?.destination || "Destino"}</div>
                       <div className="text-xs text-gray-500">
-                        {trip.destinationTerminal || 
-                         (trip.route?.stops?.length > 0 ? trip.route.stops[trip.route.stops.length-1] : "Terminal principal")}
+                        {trip.destinationTerminal || "Terminal principal"}
                       </div>
                     </div>
                   </div>
@@ -336,13 +336,7 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                   </div>
                 </div>
                 
-                {/* Columna derecha: Solo fecha de operación */}
-                <div className="flex justify-between items-center mt-4 md:mt-0 md:ml-4 min-w-[140px]">
-                  <div className="text-right">
-                    <div className="text-xs text-gray-500 mb-1">Operación</div>
-                    <div className="font-bold text-lg">Paquetería</div>
-                  </div>
-                </div>
+
               </div>
             </Card>
           ))}
