@@ -591,6 +591,7 @@ export class DatabaseStorage implements IStorage {
     companyId?: string;  // Añadido para filtrar por compañía
     driverId?: number;   // Añadido para filtrar viajes de un conductor específico
     visibility?: string; // Añadido para filtrar por visibilidad (publicado/oculto/cancelado)
+    includeAllVisibilities?: boolean; // Nuevo parámetro para incluir todos los estados de visibilidad
   }): Promise<TripWithRouteInfo[]> {
     console.time('searchTrips-optimized');
     
