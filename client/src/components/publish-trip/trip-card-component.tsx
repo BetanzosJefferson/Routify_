@@ -8,6 +8,8 @@ import {
   CarIcon,
   UserIcon,
   CheckIcon,
+  PencilIcon,
+  TrashIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

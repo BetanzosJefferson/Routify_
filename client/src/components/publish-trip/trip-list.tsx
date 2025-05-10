@@ -335,6 +335,16 @@ export default function TripList({ onEditTrip }: TripListProps) {
     setTripToDelete(tripId);
     setDeleteDialogOpen(true);
   };
+  
+  // Función para abrir el diálogo de asignación de vehículo
+  const handleOpenAssignVehicleDialog = (tripId: number) => {
+    setAssignVehicleDialogOpen(tripId);
+  };
+
+  // Función para abrir el diálogo de asignación de conductor
+  const handleOpenAssignDriverDialog = (tripId: number) => {
+    setAssignDriverDialogOpen(tripId);
+  };
 
   const confirmDelete = () => {
     if (tripToDelete) {
