@@ -539,6 +539,7 @@ export class DatabaseStorage implements IStorage {
     seats?: number;
     companyId?: string;  // Añadido para filtrar por compañía
     driverId?: number;   // Añadido para filtrar viajes de un conductor específico
+    includeHidden?: boolean; // Si es true, incluye los viajes marcados como ocultos (para sección "publicar viajes")
   }): Promise<TripWithRouteInfo[]> {
     console.time('searchTrips-optimized');
     
@@ -617,6 +618,14 @@ export class DatabaseStorage implements IStorage {
       
       const viajesContador = Number(testQuery.rows?.[0]?.count || 0);
       console.log(`[searchTrips-v2] Verificación: Existen ${viajesContador} viajes asignados al conductor ID ${params.driverId}`);
+    }
+    
+    // Aplicar filtro de visibilidad - Solo mostrar viajes "publicado" por defecto
+    // Solo en la sección 'viajes' queremos excluir los viajes marcados como ocultos
+    // En la sección 'publicar viajes' sí queremos mostrar todos para poder administrarlos
+    if (!params.includeHidden) {
+      console.log(`[searchTrips-v2] Aplicando filtro de visibilidad: Solo viajes publicados`);
+      condiciones.push(sql`visibility = 'publicado'`);
     }
     
     // CONSULTA FINAL: Construir y ejecutar la consulta SQL con todas las condiciones
