@@ -431,37 +431,43 @@ export const passengerRelations = relations(passengers, ({ one }) => ({
 // ESQUEMA DE PAQUETERÍAS
 export const packages = pgTable("packages", {
   id: serial("id").primaryKey(),
-  tripId: integer("trip_id").notNull(), // Viaje al que está asociado el paquete
+  tripId: integer("trip_id").references(() => trips.id),
   
   // Datos del remitente
-  senderFirstName: text("sender_first_name").notNull(),
-  senderLastName: text("sender_last_name").notNull(),
+  senderName: text("sender_name").notNull(),
+  senderLastName: text("sender_lastname").notNull(),
   senderPhone: text("sender_phone").notNull(),
   
   // Datos del destinatario
-  recipientFirstName: text("recipient_first_name").notNull(),
-  recipientLastName: text("recipient_last_name").notNull(),
+  recipientName: text("recipient_name").notNull(),
+  recipientLastName: text("recipient_lastname").notNull(),
   recipientPhone: text("recipient_phone").notNull(),
   
   // Detalles del paquete
-  description: text("description").notNull(),
+  packageDescription: text("package_description").notNull(),
   price: doublePrecision("price").notNull(),
   
   // Estado del pago
-  paymentStatus: text("payment_status").notNull().default(PaymentStatus.PENDING),
-  paymentMethod: text("payment_method").default(PaymentMethod.CASH),
+  isPaid: boolean("is_paid").default(false).notNull(),
+  paymentMethod: text("payment_method"), // efectivo, transferencia, etc.
   
   // Metadatos
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  createdBy: integer("created_by"), // ID del usuario que registra el paquete
-  companyId: text("company_id"), // Para el aislamiento de datos por compañía
+  createdBy: integer("created_by").references(() => users.id), // ID del usuario que registra el paquete
+  companyId: text("company_id").references(() => companies.identifier), // Para el aislamiento de datos por compañía
   
   // Para seguimiento de estado
-  deliveryStatus: text("delivery_status").notNull().default("pendiente"), // pendiente, en_transito, entregado, cancelado
+  deliveryStatus: text("delivery_status").notNull().default("pendiente"), // pendiente, entregado
+  deliveredAt: timestamp("delivered_at"),
 });
 
-export const insertPackageSchema = createInsertSchema(packages);
+export const insertPackageSchema = createInsertSchema(packages).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true,
+  deliveredAt: true 
+});
 export type InsertPackage = z.infer<typeof insertPackageSchema>;
 export type Package = typeof packages.$inferSelect;
 
@@ -474,6 +480,10 @@ export const packageRelations = relations(packages, ({ one }) => ({
   createdByUser: one(users, {
     fields: [packages.createdBy],
     references: [users.id]
+  }),
+  company: one(companies, {
+    fields: [packages.companyId],
+    references: [companies.identifier]
   })
 }));
 

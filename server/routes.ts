@@ -4059,5 +4059,204 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Setup routes for packages
+  setupPackageRoutes(app);
+
   return httpServer;
+}
+
+/**
+ * Configura las rutas para la funcionalidad de paqueterías
+ * @param app - Instancia de Express
+ */
+function setupPackageRoutes(app: Express) {
+  // Helper para rutas API
+  const apiRouter = (path: string) => `/api${path}`;
+  
+  // Middleware para verificar autenticación
+  function isAuthenticated(req: Request, res: Response, next: Function) {
+    if (req.isAuthenticated && req.isAuthenticated()) {
+      return next();
+    }
+    res.status(401).json({ message: 'No autenticado' });
+  }
+  
+  // Constantes para roles que pueden crear/editar paquetes
+  const PACKAGE_WRITE_ROLES = [UserRole.OWNER, UserRole.ADMIN, UserRole.CALL_CENTER, UserRole.CHECKER];
+  // Roles que solo pueden ver paquetes
+  const PACKAGE_READ_ONLY_ROLES = [UserRole.DRIVER];
+  
+  // Middleware para comprobar permisos de paqueterías
+  function hasPackageAccess(req: Request, res: Response, next: Function) {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: 'No autenticado' });
+    }
+    
+    const user = req.user as any;
+    const userRole = user.role;
+    
+    if ([...PACKAGE_WRITE_ROLES, ...PACKAGE_READ_ONLY_ROLES].includes(userRole)) {
+      return next();
+    }
+    
+    res.status(403).json({ message: 'No tiene permisos para acceder a esta funcionalidad' });
+  }
+  
+  // Middleware para comprobar permisos de escritura de paqueterías
+  function hasPackageWriteAccess(req: Request, res: Response, next: Function) {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: 'No autenticado' });
+    }
+    
+    const user = req.user as any;
+    const userRole = user.role;
+    
+    if (PACKAGE_WRITE_ROLES.includes(userRole)) {
+      return next();
+    }
+    
+    res.status(403).json({ message: 'No tiene permisos para modificar paquetes' });
+  }
+  
+  // GET /api/packages - Obtener lista de paquetes
+  app.get(apiRouter('/packages'), isAuthenticated, hasPackageAccess, async (req, res) => {
+    try {
+      const tripId = req.query.tripId ? parseInt(req.query.tripId as string) : undefined;
+      
+      // Filtrar por compañía para asegurar aislamiento de datos
+      let companyFilter = null;
+      if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
+        companyFilter = req.user.company || req.user.companyId;
+      }
+      
+      // Obtener paquetes
+      const packages = await storage.getPackages(companyFilter, tripId);
+      
+      res.json(packages);
+    } catch (error) {
+      console.error('Error al obtener paquetes:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
+  
+  // GET /api/packages/:id - Obtener un paquete específico
+  app.get(apiRouter('/packages/:id'), isAuthenticated, hasPackageAccess, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Obtener el paquete
+      const packageData = await storage.getPackageById(id);
+      
+      if (!packageData) {
+        return res.status(404).json({ message: 'Paquete no encontrado' });
+      }
+      
+      // Verificar acceso a la compañía
+      if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
+        const userCompany = req.user.company || req.user.companyId;
+        if (packageData.companyId !== userCompany) {
+          return res.status(403).json({ message: 'No tiene permisos para ver este paquete' });
+        }
+      }
+      
+      res.json(packageData);
+    } catch (error) {
+      console.error(`Error al obtener paquete con ID ${req.params.id}:`, error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
+  
+  // POST /api/packages - Crear un nuevo paquete
+  app.post(apiRouter('/packages'), isAuthenticated, hasPackageWriteAccess, async (req, res) => {
+    try {
+      // Validar los datos con el esquema
+      const packageData = insertPackageSchema.parse(req.body);
+      
+      // Agregar información del usuario y compañía
+      const newPackage = {
+        ...packageData,
+        createdBy: req.user?.id,
+        companyId: req.user?.company || req.user?.companyId,
+      };
+      
+      // Crear el paquete
+      const createdPackage = await storage.createPackage(newPackage);
+      
+      res.status(201).json(createdPackage);
+    } catch (error) {
+      console.error('Error al crear paquete:', error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: 'Datos de paquete inválidos', 
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
+  
+  // PATCH /api/packages/:id - Actualizar un paquete
+  app.patch(apiRouter('/packages/:id'), isAuthenticated, hasPackageWriteAccess, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Verificar que el paquete existe
+      const existingPackage = await storage.getPackageById(id);
+      if (!existingPackage) {
+        return res.status(404).json({ message: 'Paquete no encontrado' });
+      }
+      
+      // Verificar permisos de compañía
+      if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
+        const userCompany = req.user.company || req.user.companyId;
+        if (existingPackage.companyId !== userCompany) {
+          return res.status(403).json({ message: 'No tiene permisos para editar este paquete' });
+        }
+      }
+      
+      // Actualizar estado de entrega si corresponde
+      if (req.body.deliveryStatus === 'entregado' && existingPackage.deliveryStatus !== 'entregado') {
+        req.body.deliveredAt = new Date();
+      }
+      
+      // Actualizar el paquete
+      const updatedPackage = await storage.updatePackage(id, req.body);
+      
+      res.json(updatedPackage);
+    } catch (error) {
+      console.error(`Error al actualizar paquete con ID ${req.params.id}:`, error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
+  
+  // DELETE /api/packages/:id - Eliminar un paquete
+  app.delete(apiRouter('/packages/:id'), isAuthenticated, hasPackageWriteAccess, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Verificar que el paquete existe
+      const existingPackage = await storage.getPackageById(id);
+      if (!existingPackage) {
+        return res.status(404).json({ message: 'Paquete no encontrado' });
+      }
+      
+      // Verificar permisos de compañía
+      if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
+        const userCompany = req.user.company || req.user.companyId;
+        if (existingPackage.companyId !== userCompany) {
+          return res.status(403).json({ message: 'No tiene permisos para eliminar este paquete' });
+        }
+      }
+      
+      // Eliminar el paquete
+      await storage.deletePackage(id);
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error(`Error al eliminar paquete con ID ${req.params.id}:`, error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
 }

@@ -187,6 +187,22 @@ export function formatPrice(price: number | null | undefined): string {
   }).format(price);
 }
 
+/**
+ * Formatea un valor numérico como moneda
+ * @param amount - Cantidad a formatear
+ * @returns String formateado como moneda (ej: $1,234.56 MXN)
+ */
+export function formatCurrency(amount: number | null | undefined): string {
+  if (amount === null || amount === undefined) {
+    return '$0.00 MXN';
+  }
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    minimumFractionDigits: 2,
+  }).format(amount);
+}
+
 export function generateTripsForDateRange(
   startDateStr: string, 
   endDateStr: string
