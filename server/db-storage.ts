@@ -2558,6 +2558,64 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
+  async getPackagesWithTripInfo(filters?: { companyId?: string, tripId?: number }): Promise<(schema.Package & { tripOrigin?: string, tripDestination?: string })[]> {
+    try {
+      // Primero obtenemos los paquetes
+      const packages = await this.getPackages(filters);
+      
+      // Si no hay paquetes, retornamos array vacío
+      if (packages.length === 0) {
+        return [];
+      }
+      
+      // Extraemos los IDs de viajes para buscarlos
+      const tripIds = [...new Set(packages.map(pkg => pkg.tripId))];
+      
+      // Obtenemos todos los viajes necesarios con un solo query
+      const trips = await db.select({
+        id: schema.trips.id,
+        routeId: schema.trips.routeId
+      }).from(schema.trips)
+        .where(inArray(schema.trips.id, tripIds));
+      
+      // Convertimos los trips a un mapa para fácil búsqueda
+      const tripsMap = trips.reduce((acc, trip) => {
+        acc[trip.id] = trip;
+        return acc;
+      }, {} as Record<number, typeof trips[0]>);
+      
+      // Buscamos las rutas relacionadas
+      const routeIds = [...new Set(trips.map(trip => trip.routeId))];
+      const routes = await db.select({
+        id: schema.routes.id,
+        origin: schema.routes.origin,
+        destination: schema.routes.destination,
+      }).from(schema.routes)
+        .where(inArray(schema.routes.id, routeIds));
+      
+      // Convertimos las rutas a un mapa para fácil búsqueda
+      const routesMap = routes.reduce((acc, route) => {
+        acc[route.id] = route;
+        return acc;
+      }, {} as Record<number, typeof routes[0]>);
+      
+      // Añadimos origen y destino a cada paquete
+      return packages.map(pkg => {
+        const tripInfo = tripsMap[pkg.tripId];
+        const routeInfo = tripInfo ? routesMap[tripInfo.routeId] : null;
+        
+        return {
+          ...pkg,
+          tripOrigin: routeInfo?.origin || "No disponible",
+          tripDestination: routeInfo?.destination || "No disponible"
+        };
+      });
+    } catch (error) {
+      console.error(`[getPackagesWithTripInfo] Error al obtener paqueterías con datos de viaje:`, error);
+      return [];
+    }
+  }
+  
   async getPackage(id: number): Promise<schema.Package | undefined> {
     try {
       console.log(`[getPackage] Buscando paquetería con ID: ${id}`);
