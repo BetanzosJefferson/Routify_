@@ -253,6 +253,11 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       if (tripData.driverId) {
         form.setValue("driverId", tripData.driverId);
       }
+      
+      // Establecer visibilidad del viaje si existe
+      if (tripData.visibility) {
+        form.setValue("visibility", tripData.visibility);
+      }
     }
   }, [tripQuery.data, form]);
 
@@ -673,6 +678,36 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
                       ))} */}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Visibilidad del viaje */}
+            <FormField
+              control={form.control}
+              name="visibility"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Visibilidad</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value || "publicado"}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccione la visibilidad" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="publicado">Publicado</SelectItem>
+                      <SelectItem value="oculto">Oculto</SelectItem>
+                      <SelectItem value="cancelado">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Controle si el viaje es visible, está oculto, o ha sido cancelado.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
