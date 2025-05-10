@@ -261,6 +261,12 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                     {pkg.recipientPhone}
                   </div>
                 </TableCell>
+                <TableCell>
+                  {pkg.tripOrigin || "No disponible"}
+                </TableCell>
+                <TableCell>
+                  {pkg.tripDestination || "No disponible"}
+                </TableCell>
                 <TableCell>{formatCurrency(pkg.price)}</TableCell>
                 <TableCell>
                   {pkg.isPaid ? (
