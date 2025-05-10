@@ -317,7 +317,7 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                   
                   <div className="flex justify-between items-start">
                     <div className="max-w-[40%]">
-                      <div className="font-bold truncate">{trip.routeName?.split('-')[0] || trip.route?.origin || "Origen"}</div>
+                      <div className="font-bold truncate">{trip.route?.origin || "Origen"}</div>
                       <div className="text-xs text-gray-500">
                         Terminal {trip.originTerminal || "principal"}
                       </div>
@@ -332,7 +332,7 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                     </div>
                     
                     <div className="max-w-[40%] text-right">
-                      <div className="font-bold truncate">{trip.routeName?.split('-')[1] || trip.route?.destination || "Destino"}</div>
+                      <div className="font-bold truncate">{trip.route?.destination || "Destino"}</div>
                       <div className="text-xs text-gray-500">
                         Terminal {trip.destinationTerminal || "principal"}
                       </div>
