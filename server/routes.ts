@@ -1208,9 +1208,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const todayDate = new Date().setHours(0, 0, 0, 0);
       
       // Solo actualizar automáticamente si el viaje no está cancelado
-      if (tripData.visibility !== TripVisibility.CANCELED) {
+      if (tripData.visibility !== TripVisibility.CANCELLED) {
         if (todayDate > compareDate) {
-          tripData.tripStatus = TripStatus.COMPLETED;
+          tripData.tripStatus = TripStatus.FINISHED;
         } else if (todayDate === compareDate) {
           tripData.tripStatus = TripStatus.IN_PROGRESS;
         }
