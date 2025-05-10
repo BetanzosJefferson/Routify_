@@ -1,20 +1,25 @@
-import React from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
 import { z } from "zod";
-import { insertPackageSchema } from "@shared/schema";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
+
+// UI Components
 import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -22,33 +27,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { PriceInput } from "@/components/ui/price-input";
-import { CalendarIcon, CheckCircle, Loader2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
 
-// Esquema de validación extendido para el formulario
-const packageFormSchema = insertPackageSchema.extend({
-  tripId: z.number().optional(),
-  senderName: z.string().min(2, "El nombre del remitente es requerido"),
-  senderLastName: z.string().min(2, "El apellido del remitente es requerido"),
-  senderPhone: z.string().min(10, "El teléfono debe tener al menos 10 dígitos"),
-  recipientName: z.string().min(2, "El nombre del destinatario es requerido"),
-  recipientLastName: z.string().min(2, "El apellido del destinatario es requerido"),
-  recipientPhone: z.string().min(10, "El teléfono debe tener al menos 10 dígitos"),
-  packageDescription: z.string().min(5, "La descripción es requerida"),
-  price: z.number().min(1, "El precio es requerido"),
+// Esquema de validación para el formulario
+const packageFormSchema = z.object({
+  senderName: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres" }),
+  senderLastName: z.string().min(2, { message: "El apellido debe tener al menos 2 caracteres" }),
+  senderPhone: z.string().min(10, { message: "El teléfono debe tener al menos 10 dígitos" }),
+  recipientName: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres" }),
+  recipientLastName: z.string().min(2, { message: "El apellido debe tener al menos 2 caracteres" }),
+  recipientPhone: z.string().min(10, { message: "El teléfono debe tener al menos 10 dígitos" }),
+  packageDescription: z.string().min(5, { message: "La descripción debe tener al menos 5 caracteres" }),
+  price: z.coerce.number().min(0, { message: "El precio no puede ser negativo" }),
   isPaid: z.boolean().default(false),
   paymentMethod: z.string().optional(),
   deliveryStatus: z.string().default("pendiente"),
 });
 
-// Tipo para el formulario
+// Tipo para los valores del formulario
 type PackageFormValues = z.infer<typeof packageFormSchema>;
 
-// Tipo para las props del componente
+// Props para el componente del formulario
 interface PackageFormProps {
   tripId?: number;
   onSuccess?: () => void;
@@ -57,47 +64,55 @@ interface PackageFormProps {
 
 export function PackageForm({ tripId, onSuccess, onCancel }: PackageFormProps) {
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Configurar el formulario con valores por defecto
+  // Valores por defecto para el formulario
+  const defaultValues: Partial<PackageFormValues> = {
+    senderName: "",
+    senderLastName: "",
+    senderPhone: "",
+    recipientName: "",
+    recipientLastName: "",
+    recipientPhone: "",
+    packageDescription: "",
+    price: 0,
+    isPaid: false,
+    paymentMethod: "efectivo",
+    deliveryStatus: "pendiente",
+  };
+  
+  // Configuración del formulario
   const form = useForm<PackageFormValues>({
     resolver: zodResolver(packageFormSchema),
-    defaultValues: {
-      tripId: tripId,
-      senderName: "",
-      senderLastName: "",
-      senderPhone: "",
-      recipientName: "",
-      recipientLastName: "",
-      recipientPhone: "",
-      packageDescription: "",
-      price: 0,
-      isPaid: false,
-      paymentMethod: "efectivo",
-      deliveryStatus: "pendiente",  // Estado predeterminado
-    },
+    defaultValues,
   });
   
-  // Observar el estado del checkbox de pago
+  // Obtener el estado del pago para condicionar campos
   const isPaid = form.watch("isPaid");
   
-  // Mutación para crear un paquete
-  const createPackageMutation = useMutation({
+  // Mutación para guardar el paquete
+  const saveMutation = useMutation({
     mutationFn: async (data: PackageFormValues) => {
-      const response = await apiRequest("POST", "/api/packages", data);
+      const packageData = {
+        ...data,
+        tripId: tripId,
+      };
+      
+      const response = await apiRequest("POST", "/api/packages", packageData);
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Error al crear el paquete");
+        throw new Error(errorData.message || "Error al guardar el paquete");
       }
       return await response.json();
     },
     onSuccess: () => {
       toast({
-        title: "Paquete creado",
-        description: "El paquete ha sido creado exitosamente",
+        title: "Paquete registrado",
+        description: "El paquete ha sido registrado exitosamente",
         variant: "success",
       });
+      form.reset(defaultValues);
       queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
-      form.reset();
       if (onSuccess) onSuccess();
     },
     onError: (error: Error) => {
@@ -106,43 +121,29 @@ export function PackageForm({ tripId, onSuccess, onCancel }: PackageFormProps) {
         description: error.message,
         variant: "destructive",
       });
+      setIsSubmitting(false);
     },
   });
   
-  // Función para manejar el envío del formulario
+  // Manejar el envío del formulario
   const onSubmit = (data: PackageFormValues) => {
-    // Asegurarse de que el método de pago esté configurado cuando está pagado
-    if (data.isPaid && !data.paymentMethod) {
-      form.setError("paymentMethod", {
-        type: "manual",
-        message: "Seleccione un método de pago",
-      });
-      return;
-    }
-    
-    // Si no está pagado, establecer el método de pago como null
-    if (!data.isPaid) {
-      data.paymentMethod = undefined;
-    }
-    
-    // Enviar los datos
-    createPackageMutation.mutate(data);
+    setIsSubmitting(true);
+    saveMutation.mutate(data);
   };
   
   return (
-    <Card className="w-full max-w-4xl mx-auto">
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle>Nuevo Paquete</CardTitle>
+        <CardTitle>Registro de Paquete</CardTitle>
         <CardDescription>
-          Complete la información para registrar un nuevo paquete
+          Ingresa los datos del remitente, destinatario y detalles del paquete
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Sección de información del remitente */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Información del Remitente</h3>
+              <h3 className="text-lg font-medium">Datos del Remitente</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -170,25 +171,28 @@ export function PackageForm({ tripId, onSuccess, onCancel }: PackageFormProps) {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="senderPhone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Teléfono</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Teléfono del remitente" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
+              <FormField
+                control={form.control}
+                name="senderPhone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Teléfono</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Número de teléfono" 
+                        {...field} 
+                        type="tel"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
             
-            {/* Sección de información del destinatario */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Información del Destinatario</h3>
+              <h3 className="text-lg font-medium">Datos del Destinatario</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -216,126 +220,131 @@ export function PackageForm({ tripId, onSuccess, onCancel }: PackageFormProps) {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="recipientPhone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Teléfono</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Teléfono del destinatario" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
+              <FormField
+                control={form.control}
+                name="recipientPhone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Teléfono</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Número de teléfono" 
+                        {...field} 
+                        type="tel"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
             
-            {/* Sección de información del paquete */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Información del Paquete</h3>
-              <div className="grid grid-cols-1 gap-4">
+              <h3 className="text-lg font-medium">Detalles del Paquete</h3>
+              <FormField
+                control={form.control}
+                name="packageDescription"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descripción del Paquete</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Describa el contenido y características del paquete" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Precio del Envío (MXN)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="0.00" 
+                        {...field} 
+                        type="number"
+                        step="0.01"
+                        min="0"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="isPaid"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Pago realizado</FormLabel>
+                      <FormDescription>
+                        ¿El cliente ya ha pagado por el envío?
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              
+              {isPaid && (
                 <FormField
                   control={form.control}
-                  name="packageDescription"
+                  name="paymentMethod"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Descripción del Paquete</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Describa el contenido y características del paquete" 
-                          {...field} 
-                          rows={3}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="price"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Precio</FormLabel>
-                      <FormControl>
-                        <PriceInput
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="0.00"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="isPaid"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormLabel>Método de Pago</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                      >
                         <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccione un método de pago" />
+                          </SelectTrigger>
                         </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>¿Paquete Pagado?</FormLabel>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {isPaid && (
-                    <FormField
-                      control={form.control}
-                      name="paymentMethod"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Método de Pago</FormLabel>
-                          <Select
-                            disabled={!isPaid}
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Seleccione un método de pago" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="efectivo">Efectivo</SelectItem>
-                              <SelectItem value="transferencia">Transferencia</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                        <SelectContent>
+                          <SelectItem value="efectivo">Efectivo</SelectItem>
+                          <SelectItem value="transferencia">Transferencia</SelectItem>
+                          <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </div>
-              </div>
+                />
+              )}
             </div>
             
-            {/* Botones de acción */}
             <div className="flex justify-end space-x-2">
+              {onCancel && (
+                <Button 
+                  variant="outline" 
+                  type="button"
+                  onClick={onCancel}
+                  disabled={isSubmitting}
+                >
+                  Cancelar
+                </Button>
+              )}
               <Button 
-                type="button" 
-                variant="outline" 
-                onClick={onCancel}
+                type="submit"
+                disabled={isSubmitting}
               >
-                Cancelar
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={createPackageMutation.isPending}
-              >
-                {createPackageMutation.isPending ? (
+                {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Guardando...

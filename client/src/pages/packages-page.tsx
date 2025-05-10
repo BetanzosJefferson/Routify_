@@ -1,35 +1,52 @@
-import React, { useState } from "react";
-import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { formatDate } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
+import { hasRoleAccess } from "@/lib/role-based-permissions";
+import { UserRole } from "@shared/schema";
+
+// UI Components
 import { PageTitle } from "@/components/ui/page-title";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Package, Truck, ArrowLeft } from "lucide-react";
+
+// Package Components
 import { PackageList } from "@/components/packages/package-list";
 import { PackageForm } from "@/components/packages/package-form";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Package, Calendar, MapPin, Bus, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { TripWithRouteInfo } from "@shared/schema";
 
-// Posibles estados de la página
-type PackagesPageState = "list" | "select-trip" | "create" | "edit";
+// Interfaces para los viajes
+interface Trip {
+  id: number;
+  routeId: number;
+  departureDate: string;
+  routeName?: string;
+  routeOrigin?: string;
+  routeDestination?: string;
+  departureTime?: string;
+  arrivalTime?: string;
+  price: number;
+  vehicleType: string;
+  capacity: number;
+  availableSeats: number;
+}
 
 export default function PackagesPage() {
-  // Estado para controlar la vista actual
-  const [pageState, setPageState] = useState<PackagesPageState>("list");
-  const [selectedPackageId, setSelectedPackageId] = useState<number | null>(null);
+  const { user } = useAuth();
   const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
-  const [location, setLocation] = useLocation();
-  const { user, isLoading } = useAuth();
+  const [selectedPackageId, setSelectedPackageId] = useState<number | null>(null);
+  const [view, setView] = useState<"list" | "selectTrip" | "form">("list");
   
-  // Si no está autenticado, redirigir al login
-  if (!isLoading && !user) {
-    setLocation("/auth");
-    return null;
-  }
+  // Verificar permisos para acceder a esta página
+  const hasAccess = user ? hasRoleAccess(user.role, [
+    UserRole.OWNER, 
+    UserRole.ADMIN, 
+    UserRole.CALL_CENTER, 
+    UserRole.CHECKER,
+    UserRole.DRIVER
+  ]) : false;
   
-  // Consulta para obtener los viajes disponibles
+  // Consulta de viajes disponibles (usada para selección al crear paquete)
   const tripsQuery = useQuery({
     queryKey: ["/api/trips"],
     queryFn: async () => {
@@ -37,277 +54,195 @@ export default function PackagesPage() {
       if (!response.ok) {
         throw new Error("Error al cargar viajes");
       }
-      return response.json() as Promise<TripWithRouteInfo[]>;
+      return response.json();
     },
-    enabled: pageState === "select-trip",
+    enabled: view === "selectTrip", // Solo se ejecuta cuando necesitamos seleccionar un viaje
   });
   
-  // Manejadores de eventos
+  // Manejar click en viaje para seleccionarlo
+  const handleTripSelect = (tripId: number) => {
+    setSelectedTripId(tripId);
+    setView("form");
+  };
+  
+  // Manejar click en boton de agregar paquete
   const handleAddPackage = () => {
-    setPageState("select-trip");
-  };
-  
-  const handleEditPackage = (packageId: number) => {
-    setSelectedPackageId(packageId);
-    setPageState("edit");
-  };
-  
-  const handleBackToList = () => {
-    setPageState("list");
     setSelectedPackageId(null);
     setSelectedTripId(null);
+    setView("selectTrip");
   };
   
-  const handleSelectTrip = (tripId: number) => {
-    setSelectedTripId(tripId);
-    setPageState("create");
+  // Manejar click en botón de editar paquete
+  const handleEditPackage = (packageId: number) => {
+    setSelectedPackageId(packageId);
+    setView("form");
   };
   
-  const handleBackToTripSelection = () => {
-    setPageState("select-trip");
+  // Manejar finalización de formulario
+  const handleFormSuccess = () => {
+    setView("list");
+    setSelectedTripId(null);
     setSelectedPackageId(null);
   };
   
-  // Renderizado condicional basado en el estado de la página
-  const renderContent = () => {
-    switch (pageState) {
-      case "select-trip":
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center mb-6">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mr-2"
-                onClick={handleBackToList}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Volver
-              </Button>
-              <PageTitle title="Seleccionar Viaje para el Paquete" />
-            </div>
-            
-            {tripsQuery.isLoading ? (
-              <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : tripsQuery.isError ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Error</CardTitle>
-                  <CardDescription>No se pudieron cargar los viajes disponibles</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-destructive">
-                    {tripsQuery.error instanceof Error
-                      ? tripsQuery.error.message
-                      : "Error desconocido"}
-                  </p>
-                </CardContent>
-                <CardFooter>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => tripsQuery.refetch()}
-                  >
-                    Reintentar
-                  </Button>
-                </CardFooter>
-              </Card>
-            ) : tripsQuery.data && tripsQuery.data.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {tripsQuery.data.map((trip) => (
-                  <Card 
-                    key={trip.id} 
-                    className="cursor-pointer hover:bg-accent/5 transition-colors"
-                    onClick={() => handleSelectTrip(trip.id)}
-                  >
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">{trip.route.name}</CardTitle>
-                      <CardDescription>
-                        {formatDate(trip.departureDate)} - {trip.departureTime}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pb-2">
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span>
-                            {trip.route.origin} - {trip.route.destination}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>
-                            {formatDate(trip.departureDate)}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Bus className="h-4 w-4 text-muted-foreground" />
-                          <span>
-                            {trip.vehicleType || "No especificado"}
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button className="w-full">
-                        <Package className="mr-2 h-4 w-4" />
-                        Seleccionar este viaje
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>No hay viajes disponibles</CardTitle>
-                  <CardDescription>
-                    No se encontraron viajes programados para transportar paquetes.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex justify-center py-6">
-                  <Bus className="h-16 w-16 text-muted-foreground opacity-50" />
-                </CardContent>
-                <CardFooter className="flex justify-center">
-                  <Button variant="outline" onClick={handleBackToList}>
-                    Volver a la lista de paquetes
-                  </Button>
-                </CardFooter>
-              </Card>
-            )}
-          </div>
-        );
-        
-      case "create":
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center mb-6">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mr-2"
-                onClick={handleBackToTripSelection}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Volver a selección de viaje
-              </Button>
-              <PageTitle title="Crear Nuevo Paquete" />
-            </div>
-            <PackageForm 
-              tripId={selectedTripId || undefined}
-              onSuccess={handleBackToList}
-              onCancel={handleBackToTripSelection}
-            />
-          </div>
-        );
-        
-      case "edit":
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center mb-6">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mr-2"
-                onClick={handleBackToList}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Volver
-              </Button>
-              <PageTitle title="Editar Paquete" />
-            </div>
-            {/* Aquí se implementaría un componente de edición similar al de creación */}
-            <p className="text-muted-foreground">
-              La funcionalidad de edición se implementará próximamente
-            </p>
-            <Button onClick={handleBackToList}>Volver a la lista</Button>
-          </div>
-        );
-        
-      case "list":
-      default:
-        return (
-          <div className="space-y-6">
-            <PageTitle 
-              title="Gestión de Paqueterías"
-              description="Administre el envío y seguimiento de paquetes"
-            />
-            
-            <Tabs defaultValue="all" className="w-full">
-              <TabsList className="mb-4">
-                <TabsTrigger value="all">Todos los paquetes</TabsTrigger>
-                <TabsTrigger value="pending">Pendientes</TabsTrigger>
-                <TabsTrigger value="delivered">Entregados</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="all" className="mt-6">
-                <PackageList 
-                  onAddPackage={handleAddPackage}
-                  onEditPackage={handleEditPackage}
-                />
-              </TabsContent>
-              
-              <TabsContent value="pending" className="mt-6">
-                <p className="text-muted-foreground mb-4">
-                  Esta vista mostrará solo los paquetes en estado pendiente.
-                </p>
-                <PackageList 
-                  onAddPackage={handleAddPackage}
-                  onEditPackage={handleEditPackage}
-                />
-              </TabsContent>
-              
-              <TabsContent value="delivered" className="mt-6">
-                <p className="text-muted-foreground mb-4">
-                  Esta vista mostrará solo los paquetes entregados.
-                </p>
-                <PackageList 
-                  onAddPackage={handleAddPackage}
-                  onEditPackage={handleEditPackage}
-                />
-              </TabsContent>
-            </Tabs>
-          </div>
-        );
-    }
+  // Manejar cancelación de formulario
+  const handleFormCancel = () => {
+    setView("list");
+    setSelectedTripId(null);
+    setSelectedPackageId(null);
   };
+  
+  // Si el usuario no tiene permiso
+  if (!hasAccess) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Acceso Denegado</CardTitle>
+          <CardDescription>
+            No tienes permiso para acceder a la sección de paqueterías.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">
+            Por favor, contacta con el administrador del sistema si necesitas acceso a esta sección.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
   
   return (
     <div className="container mx-auto py-6">
-      {renderContent()}
+      <PageTitle 
+        title="Paqueterías" 
+        description="Gestiona los envíos de paquetes" 
+        icon={<Package />}
+      />
       
-      {/* Estilos CSS para impresión de tickets térmicos */}
-      <style jsx global>{`
-        @media print {
-          body {
-            margin: 0;
-            padding: 0;
-            background: #fff;
-          }
+      {view === "list" && (
+        <PackageList 
+          onAddPackage={handleAddPackage} 
+          onEditPackage={handleEditPackage} 
+        />
+      )}
+      
+      {view === "selectTrip" && (
+        <div className="space-y-4">
+          <div className="flex items-center">
+            <Button 
+              variant="ghost" 
+              className="mr-2" 
+              onClick={() => setView("list")}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Volver
+            </Button>
+            <h2 className="text-xl font-bold">Selecciona un viaje</h2>
+          </div>
           
-          @page {
-            size: 58mm 210mm; /* Tamaño típico de papel térmico */
-            margin: 0;
-          }
+          {tripsQuery.isLoading ? (
+            <div className="py-10 text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800"></div>
+              <p className="mt-2">Cargando viajes...</p>
+            </div>
+          ) : tripsQuery.isError ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Error</CardTitle>
+                <CardDescription>
+                  No se pudieron cargar los viajes disponibles.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-destructive">
+                  {tripsQuery.error instanceof Error 
+                    ? tripsQuery.error.message 
+                    : "Error desconocido"}
+                </p>
+                <Button onClick={() => tripsQuery.refetch()} className="mt-4">
+                  Reintentar
+                </Button>
+              </CardContent>
+            </Card>
+          ) : tripsQuery.data && tripsQuery.data.length === 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>No hay viajes disponibles</CardTitle>
+                <CardDescription>
+                  Debes crear y publicar viajes antes de registrar paquetes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  Los paquetes deben estar asociados a un viaje existente para su transporte.
+                </p>
+                <Button onClick={() => setView("list")}>
+                  Volver a Paquetes
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {tripsQuery.data.map((trip: Trip) => (
+                <Card 
+                  key={trip.id}
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => handleTripSelect(trip.id)}
+                >
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">{trip.routeName || "Viaje sin nombre"}</CardTitle>
+                    <CardDescription className="text-xs">
+                      {new Date(trip.departureDate).toLocaleDateString('es-MX')} • {trip.departureTime || 'Sin hora'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-sm flex flex-col space-y-1 text-muted-foreground">
+                      <div className="flex items-center">
+                        <span className="font-medium">Origen:</span> 
+                        <span className="ml-2">{trip.routeOrigin || trip.routeName?.split(' a ')[0]}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="font-medium">Destino:</span> 
+                        <span className="ml-2">{trip.routeDestination || trip.routeName?.split(' a ')[1]}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Truck className="w-4 h-4 mr-1" />
+                        <span>{trip.vehicleType}</span>
+                        <span className="mx-2">•</span>
+                        <span>{trip.availableSeats} asientos disponibles</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      
+      {view === "form" && (
+        <div className="space-y-4">
+          <div className="flex items-center">
+            <Button 
+              variant="ghost" 
+              className="mr-2" 
+              onClick={() => setView("list")}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Volver
+            </Button>
+            <h2 className="text-xl font-bold">
+              {selectedPackageId ? "Editar Paquete" : "Registrar Nuevo Paquete"}
+            </h2>
+          </div>
           
-          * {
-            box-sizing: border-box;
-          }
-          
-          /* Ocultar todo excepto el ticket */
-          body > :not(.print-container) {
-            display: none !important;
-          }
-          
-          .print-container {
-            display: block !important;
-            width: 100%;
-            padding: 0;
-            margin: 0;
-          }
-        }
-      `}</style>
+          <PackageForm 
+            tripId={selectedTripId || undefined} 
+            onSuccess={handleFormSuccess}
+            onCancel={handleFormCancel}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -71,10 +71,10 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
   const [packageToView, setPackageToView] = useState<any | null>(null);
   
   // Determinar si el usuario puede añadir/editar paquetes
-  const canCreateEdit = user ? hasRoleAccess(user.role, [Role.OWNER, Role.ADMIN, Role.CALL_CENTER, Role.CHECKER]) : false;
+  const canCreateEdit = user ? hasRoleAccess(user.role, [UserRole.OWNER, UserRole.ADMIN, UserRole.CALL_CENTER, UserRole.CHECKER]) : false;
   
   // Determinar si el usuario puede eliminar paquetes
-  const canDelete = user ? hasRoleAccess(user.role, [Role.OWNER, Role.ADMIN]) : false;
+  const canDelete = user ? hasRoleAccess(user.role, [UserRole.OWNER, UserRole.ADMIN]) : false;
   
   // Obtener los paquetes
   const packagesQuery = useQuery({
