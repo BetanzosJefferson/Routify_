@@ -6,7 +6,8 @@ import { UserRole } from "@shared/schema";
 // UI Components
 import { PageTitle } from "@/components/ui/page-title";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Package, ArrowLeft } from "lucide-react";
 
 // Package Components
 import { PackageList } from "@/components/packages/package-list";
