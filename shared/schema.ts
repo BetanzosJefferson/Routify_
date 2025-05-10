@@ -187,6 +187,11 @@ export type TripWithRouteInfo = Trip & {
   assignedDriver?: User;
   // Estado calculado del viaje (puede sobreescribir el valor de la BD)
   tripStatus?: string;
+  // Campos para terminales
+  originTerminal?: string;
+  destinationTerminal?: string;
+  // Nombre completo de la ruta
+  routeName?: string;
 };
 
 export type ReservationWithDetails = Reservation & {

@@ -112,16 +112,13 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
       const fetchedTrips = await response.json() as ExtendedTripInfo[];
       console.log("Trips with route info:", fetchedTrips);
       
-      // Procesar los viajes para asegurar que tienen información de terminal correcta
+      // Obtenemos datos completos, pues ahora TripWithRouteInfo incluye los campos que necesitamos
       const processedTrips = fetchedTrips.map(trip => ({
         ...trip,
-        originTerminal: trip.route?.stops && trip.route.stops.length > 0 
-          ? trip.route.stops[0] 
-          : "Terminal principal",
-        destinationTerminal: trip.route?.stops && trip.route.stops.length > 0 
-          ? trip.route.stops[trip.route.stops.length - 1] 
-          : "Terminal principal",
-        routeName: trip.route?.name || `${trip.route?.origin || ""} - ${trip.route?.destination || ""}`
+        // Fallbacks por si acaso algún dato no viene completo
+        originTerminal: trip.originTerminal || (trip.route?.stops?.length ? trip.route.stops[0] : "Terminal principal"),
+        destinationTerminal: trip.destinationTerminal || (trip.route?.stops?.length ? trip.route.stops[trip.route.stops.length - 1] : "Terminal principal"),
+        routeName: trip.routeName || trip.route?.name || `${trip.route?.origin || ""} - ${trip.route?.destination || ""}`
       }));
       
       return processedTrips;
