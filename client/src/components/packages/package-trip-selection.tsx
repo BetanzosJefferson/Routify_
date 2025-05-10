@@ -315,39 +315,9 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                 </div>
                 
                 <div className="border-t border-gray-200 pt-3 mt-2">
-                  {/* Información de ruta */}
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div>
-                      <div className="text-xs font-semibold text-gray-500">Ruta</div>
-                      <div className="text-sm font-medium">{trip.route?.name || "Sin nombre"}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-gray-500">ID del viaje</div>
-                      <div className="text-sm">{trip.id}</div>
-                    </div>
-                  </div>
 
-                  {/* Información de subviaje */}
-                  {trip.isSubTrip && (
-                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-2 mb-3 text-xs">
-                      <span className="font-medium">Nota:</span> Este es un subviaje que cubre solo un segmento de la ruta.
-                    </div>
-                  )}
-                  
-                  {/* Origen y destino de la ruta completa */}
-                  <div className="bg-gray-50 p-2 rounded-md mb-3">
-                    <div className="text-xs font-medium text-gray-500 mb-1">Ruta completa</div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="text-xs font-semibold text-gray-500">Origen</div>
-                        <div className="text-xs">{trip.route?.origin || "No especificado"}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold text-gray-500">Destino</div>
-                        <div className="text-xs">{trip.route?.destination || "No especificado"}</div>
-                      </div>
-                    </div>
-                  </div>
+
+
 
                   {/* Puntos específicos de abordaje y llegada */}
                   <div className="border-2 border-dashed border-gray-200 rounded-md p-2 mb-3">
@@ -375,122 +345,9 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                     </div>
                   </div>
                   
-                  {/* Paradas intermedias del segmento */}
-                  <div className="mb-3">
-                    <div className="text-xs font-semibold text-gray-500 mb-1">Paradas intermedias del segmento</div>
-                    <div className="text-sm">
-                      {trip.route?.stops && trip.route.stops.length > 0 ? (
-                        <div className="max-h-20 overflow-y-auto pl-2 border-l-2 border-gray-300">
-                          {(() => {
-                            // Intentamos obtener los puntos de origen y destino del segmento
-                            const segmentOrigin = trip.segmentOrigin || trip.originTerminal;
-                            const segmentDestination = trip.segmentDestination || trip.destinationTerminal;
-                            
-                            if (!segmentOrigin || !segmentDestination) {
-                              return (
-                                <span className="text-gray-500 italic">Información de segmento no disponible</span>
-                              );
-                            }
-                            
-                            // Obtenemos la lista completa de paradas incluyendo origen y destino de la ruta
-                            const allStops = [
-                              trip.route.origin,
-                              ...trip.route.stops,
-                              trip.route.destination
-                            ];
-                            
-                            // Encontramos los índices de las paradas de origen y destino del segmento
-                            const originIndex = allStops.findIndex(stop => 
-                              stop.includes(segmentOrigin.split(' - ')[0])
-                            );
-                            const destinationIndex = allStops.findIndex(stop => 
-                              stop.includes(segmentDestination.split(' - ')[0])
-                            );
-                            
-                            // Si no encontramos los índices, mostramos todas las paradas
-                            if (originIndex === -1 || destinationIndex === -1 || originIndex >= destinationIndex) {
-                              return trip.route.stops.map((stop, index) => (
-                                <div key={index} className="mb-1 text-xs flex items-center">
-                                  <div className="w-2 h-2 rounded-full bg-gray-400 mr-2"></div>
-                                  {stop}
-                                </div>
-                              ));
-                            }
-                            
-                            // Obtenemos solo las paradas entre el origen y destino del segmento
-                            const relevantStops = allStops.slice(originIndex + 1, destinationIndex);
-                            
-                            if (relevantStops.length === 0) {
-                              return (
-                                <span className="text-gray-500 italic">Viaje directo sin paradas intermedias</span>
-                              );
-                            }
-                            
-                            return relevantStops.map((stop, index) => (
-                              <div key={index} className="mb-1 text-xs flex items-center">
-                                <div className="w-2 h-2 rounded-full bg-gray-400 mr-2"></div>
-                                {stop}
-                              </div>
-                            ));
-                          })()}
-                        </div>
-                      ) : (
-                        <span className="text-gray-500 italic">Sin paradas intermedias</span>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Información de fecha y vehículo */}
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div>
-                      <div className="text-xs font-semibold text-gray-500">Fecha de salida</div>
-                      <div className="text-sm">{format(new Date(trip.departureDate), 'dd/MM/yyyy')}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-gray-500">Vehículo</div>
-                      <div className="text-sm flex items-center">
-                        <Truck className="h-4 w-4 mr-1 text-gray-500" />
-                        {trip.assignedVehicle?.plates || trip.vehicleType || "Vehículo estándar"}
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Información de capacidad y asientos */}
-                  <div className="grid grid-cols-3 gap-3 mb-3">
-                    <div>
-                      <div className="text-xs font-semibold text-gray-500">Capacidad</div>
-                      <div className="text-sm">{trip.capacity || "N/A"} asientos</div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-gray-500">Disponibles</div>
-                      <div className="text-sm">{trip.availableSeats || 0} asientos</div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-gray-500">Precio base</div>
-                      <div className="text-sm font-medium">{formatPrice(trip.price || 0)}</div>
-                    </div>
-                  </div>
 
-                  {/* Estado del viaje y conductor */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <div className="text-xs font-semibold text-gray-500">Estado</div>
-                      <div className="text-sm">
-                        {trip.tripStatus === "en_progreso" ? "En progreso" :
-                         trip.tripStatus === "finalizado" ? "Finalizado" :
-                         trip.tripStatus === "aun_no_inicia" ? "Aún no inicia" :
-                         "No especificado"}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-gray-500">Conductor</div>
-                      <div className="text-sm">
-                        {trip.assignedDriver ? 
-                          `${trip.assignedDriver.firstName || ''} ${trip.assignedDriver.lastName || ''}` : 
-                          "Sin asignar"}
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
             </Card>
