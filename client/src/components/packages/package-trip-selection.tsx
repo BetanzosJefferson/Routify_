@@ -305,7 +305,7 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
               onClick={() => onTripSelect(trip.id)}
             >
               <div className="flex flex-col md:flex-row p-4 w-full">
-                {/* Columna izquierda: Información de origen/destino y horarios */}
+                {/* Sólo información de horarios */}
                 <div className="flex-1">
                   <div className="flex justify-between items-center mb-2">
                     <div className="font-bold text-lg">{trip.departureTime}</div>
@@ -315,14 +315,7 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                     <div className="font-bold text-lg text-right">{trip.arrivalTime}</div>
                   </div>
                   
-                  <div className="flex justify-between items-start">
-                    <div className="max-w-[40%]">
-                      <div className="font-bold truncate">{trip.route?.origin || "Origen"}</div>
-                      <div className="text-xs text-gray-500">
-                        Terminal {trip.originTerminal || "principal"}
-                      </div>
-                    </div>
-                    
+                  <div className="flex justify-between items-center">
                     <div className="flex-1 flex justify-center items-center px-2">
                       <div className="border-t border-gray-300 flex-1 relative">
                         <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-white px-2 text-xs text-gray-500 md:hidden">
@@ -330,18 +323,11 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="max-w-[40%] text-right">
-                      <div className="font-bold truncate">{trip.route?.destination || "Destino"}</div>
-                      <div className="text-xs text-gray-500">
-                        Terminal {trip.destinationTerminal || "principal"}
-                      </div>
-                    </div>
                   </div>
                 </div>
                 
-                {/* Columna central: Solo información esencial */}
-                <div className="flex md:flex-col justify-between items-center mt-4 md:mt-0 md:px-4 md:border-l md:border-r border-gray-200">
+                {/* Columna con información esencial */}
+                <div className="flex md:flex-col justify-between items-center mt-4 md:mt-0 md:px-4 md:border-l border-gray-200">
                   <div className="flex flex-col items-center">
                     <div className="text-xs text-gray-500 mb-1">Fecha</div>
                     <div className="text-sm">{format(new Date(trip.departureDate), 'dd/MM/yyyy')}</div>
@@ -352,8 +338,6 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                     <span className="text-sm">{trip.vehicleType || "Vehículo estándar"}</span>
                   </div>
                 </div>
-                
-
               </div>
             </Card>
           ))}
