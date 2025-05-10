@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { HelpCircleIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { TripVisibility } from "@shared/schema";
 
 import {
   Form,
@@ -56,6 +57,8 @@ type FormValues = {
   // Nuevos campos para vehículo y conductor
   vehicleId?: number | null;
   driverId?: number | null;
+  // Campo para visibilidad del viaje
+  visibility?: string; // "publicado", "oculto", "cancelado"
 };
 
 interface EditTripFormProps {
@@ -172,6 +175,7 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       stopTimes: [],
       vehicleId: null,
       driverId: null,
+      visibility: "publicado", // Por defecto, los viajes están publicados
     },
     mode: "onChange",
   });
