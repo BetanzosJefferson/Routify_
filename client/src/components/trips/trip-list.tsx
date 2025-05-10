@@ -31,6 +31,122 @@ function abbreviateLocation(location: string): string {
   return location.substring(0, 7) + '.';
 }
 
+// Función para renderizar el indicador de visibilidad
+function renderVisibilityIndicator(visibility: string) {
+  switch (visibility) {
+    case TripVisibility.PUBLISHED:
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="bg-green-50 border-green-200 text-green-700 flex items-center">
+                <EyeIcon className="h-3 w-3 mr-1" />
+                <span className="text-xs">Publicado</span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Este viaje es visible para todos los usuarios</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    case TripVisibility.HIDDEN:
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="bg-amber-50 border-amber-200 text-amber-700 flex items-center">
+                <EyeOffIcon className="h-3 w-3 mr-1" />
+                <span className="text-xs">Oculto</span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Este viaje está oculto para los usuarios</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    case TripVisibility.CANCELLED:
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="bg-red-50 border-red-200 text-red-700 flex items-center">
+                <XCircleIcon className="h-3 w-3 mr-1" />
+                <span className="text-xs">Cancelado</span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Este viaje ha sido cancelado</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    default:
+      return null;
+  }
+}
+
+// Función para renderizar el estado del viaje
+function renderTripStatus(trip: TripWithRouteInfo) {
+  // Calcular el estado actual del viaje
+  const currentStatus = calculateTripStatus(
+    new Date(trip.departureDate), 
+    trip.departureTime, 
+    trip.arrivalTime
+  );
+  
+  switch (currentStatus) {
+    case TripStatus.NOT_STARTED:
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-700">
+                <span className="text-xs">Aún no inicia</span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Este viaje aún no ha comenzado</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    case TripStatus.IN_PROGRESS:
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="bg-purple-50 border-purple-200 text-purple-700">
+                <span className="text-xs">En progreso</span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Este viaje está en curso</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    case TripStatus.FINISHED:
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="bg-gray-50 border-gray-200 text-gray-700">
+                <span className="text-xs">Finalizado</span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Este viaje ha finalizado</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    default:
+      return null;
+  }
+}
+
 // Función para calcular la duración entre horas
 function calculateDuration(departureTime: string, arrivalTime: string): string {
   if (!departureTime || !arrivalTime) return "1h";
@@ -79,6 +195,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { LocationAdapter } from "@/components/ui/location-adapter";
 import { LocationOption } from "@/components/ui/command-combobox";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 import { TripWithRouteInfo } from "@shared/schema";
 import { ReservationStepsModal } from "./reservation-steps-modal";
 
