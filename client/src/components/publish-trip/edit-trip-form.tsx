@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { HelpCircleIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { TripVisibility } from "@shared/schema";
 
 import {
   Form,
@@ -57,8 +56,6 @@ type FormValues = {
   // Nuevos campos para vehículo y conductor
   vehicleId?: number | null;
   driverId?: number | null;
-  // Campo para visibilidad del viaje
-  visibility?: string; // "publicado", "oculto", "cancelado"
 };
 
 interface EditTripFormProps {
@@ -175,7 +172,6 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       stopTimes: [],
       vehicleId: null,
       driverId: null,
-      visibility: "publicado", // Por defecto, los viajes están publicados
     },
     mode: "onChange",
   });
@@ -252,11 +248,6 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       
       if (tripData.driverId) {
         form.setValue("driverId", tripData.driverId);
-      }
-      
-      // Establecer visibilidad del viaje si existe
-      if (tripData.visibility) {
-        form.setValue("visibility", tripData.visibility);
       }
     }
   }, [tripQuery.data, form]);
@@ -678,36 +669,6 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
                       ))} */}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {/* Visibilidad del viaje */}
-            <FormField
-              control={form.control}
-              name="visibility"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Visibilidad</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value || "publicado"}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccione la visibilidad" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="publicado">Publicado</SelectItem>
-                      <SelectItem value="oculto">Oculto</SelectItem>
-                      <SelectItem value="cancelado">Cancelado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    Controle si el viaje es visible, está oculto, o ha sido cancelado.
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
