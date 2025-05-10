@@ -150,7 +150,9 @@ export default function TripList({ onEditTrip }: TripListProps) {
   const { data: trips = [], isLoading, refetch } = useQuery({
     queryKey: ['/api/trips'],
     queryFn: async () => {
-      const res = await apiRequest('GET', '/api/trips');
+      // Incluimos el parámetro includeHidden=true para que muestre TODOS los viajes
+      // incluyendo los que están marcados como "Oculto"
+      const res = await apiRequest('GET', '/api/trips?includeHidden=true');
       return await res.json();
     }
   });
