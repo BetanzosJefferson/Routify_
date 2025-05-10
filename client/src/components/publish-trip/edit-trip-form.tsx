@@ -744,7 +744,7 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
                     <SelectContent>
                       <SelectItem value={TripStatus.NOT_STARTED}>Aún no inicia</SelectItem>
                       <SelectItem value={TripStatus.IN_PROGRESS}>En progreso</SelectItem>
-                      <SelectItem value={TripStatus.FINISHED}>Finalizado</SelectItem>
+                      <SelectItem value={TripStatus.COMPLETED}>Finalizado</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormDescription>
