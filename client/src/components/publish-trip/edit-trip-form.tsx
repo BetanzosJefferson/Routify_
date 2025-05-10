@@ -56,6 +56,9 @@ type FormValues = {
   // Nuevos campos para vehículo y conductor
   vehicleId?: number | null;
   driverId?: number | null;
+  // Campos para visibilidad y estado
+  visibility?: string;
+  tripStatus?: string;
 };
 
 interface EditTripFormProps {
@@ -248,6 +251,21 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       
       if (tripData.driverId) {
         form.setValue("driverId", tripData.driverId);
+      }
+      
+      // Establecer visibilidad y estado del viaje
+      if (tripData.visibility) {
+        form.setValue("visibility", tripData.visibility);
+      } else {
+        // Valor por defecto: publicado
+        form.setValue("visibility", TripVisibility.PUBLISHED);
+      }
+      
+      if (tripData.tripStatus) {
+        form.setValue("tripStatus", tripData.tripStatus);
+      } else {
+        // Valor por defecto: aún no inicia
+        form.setValue("tripStatus", TripStatus.NOT_STARTED);
       }
     }
   }, [tripQuery.data, form]);
