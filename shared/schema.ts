@@ -455,7 +455,7 @@ export const packages = pgTable("packages", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   createdBy: integer("created_by").references(() => users.id), // ID del usuario que registra el paquete
-  companyId: text("company_id").references(() => companies.identifier), // Para el aislamiento de datos por compañía
+  companyId: text("company_id"), // Para el aislamiento de datos por compañía
   
   // Para seguimiento de estado
   deliveryStatus: text("delivery_status").notNull().default("pendiente"), // pendiente, entregado
