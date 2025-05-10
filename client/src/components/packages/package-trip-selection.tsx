@@ -20,6 +20,7 @@ import { TripWithRouteInfo } from "@shared/schema";
 interface ExtendedTripInfo extends TripWithRouteInfo {
   originTerminal?: string;
   destinationTerminal?: string;
+  routeName?: string;
 }
 import { normalizeToStartOfDay, formatDateForInput, formatDateForApiQuery } from "@/lib/utils";
 
@@ -119,7 +120,8 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
           : "Terminal principal",
         destinationTerminal: trip.route?.stops && trip.route.stops.length > 0 
           ? trip.route.stops[trip.route.stops.length - 1] 
-          : "Terminal principal"
+          : "Terminal principal",
+        routeName: trip.route?.name || `${trip.route?.origin || ""} - ${trip.route?.destination || ""}`
       }));
       
       return processedTrips;
@@ -318,9 +320,9 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                   
                   <div className="flex justify-between items-start">
                     <div className="max-w-[40%]">
-                      <div className="font-bold truncate">{trip.route?.origin || "Origen"}</div>
+                      <div className="font-bold truncate">{trip.routeName?.split('-')[0] || trip.route?.origin || "Origen"}</div>
                       <div className="text-xs text-gray-500">
-                        {(trip as ExtendedTripInfo).originTerminal || "Terminal principal"}
+                        Terminal {trip.originTerminal || "principal"}
                       </div>
                     </div>
                     
@@ -333,9 +335,9 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                     </div>
                     
                     <div className="max-w-[40%] text-right">
-                      <div className="font-bold truncate">{trip.route?.destination || "Destino"}</div>
+                      <div className="font-bold truncate">{trip.routeName?.split('-')[1] || trip.route?.destination || "Destino"}</div>
                       <div className="text-xs text-gray-500">
-                        {(trip as ExtendedTripInfo).destinationTerminal || "Terminal principal"}
+                        Terminal {trip.destinationTerminal || "principal"}
                       </div>
                     </div>
                   </div>
