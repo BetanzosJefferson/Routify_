@@ -22,6 +22,7 @@ export const ALL_SECTIONS: Section[] = [
   { id: "reservation-requests", name: "Solicitudes", description: "Gestión de solicitudes de reservación" },
   { id: "notifications", name: "Notificaciones", description: "Centro de notificaciones del sistema" },
   { id: "coupons", name: "Cupones", description: "Gestión de cupones de descuento" },
+  { id: "packages", name: "Paqueterías", description: "Gestión de envío de paquetes" },
   { id: "settings", name: "Configuración", description: "Ajustes generales del sistema" }
 ];
 
@@ -41,7 +42,8 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "commissions",
     "reservation-requests",
     "notifications",
-    "coupons"
+    "coupons",
+    "packages"
   ],
   [UserRole.ADMIN]: [
     "routes",

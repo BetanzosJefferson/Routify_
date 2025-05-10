@@ -3830,5 +3830,234 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== RUTAS DE PAQUETERÍAS ==========
+  // Middleware para validar acceso a paqueterías según rol
+  function validatePackageAccess(req: Request, res: Response, next: Function) {
+    const { user } = req as any;
+    
+    if (!user) {
+      console.log(`[packages] Acceso denegado: Usuario no autenticado`);
+      return res.status(401).json({ message: "No autenticado" });
+    }
+    
+    if (!PACKAGE_ACCESS_ROLES.includes(user.role)) {
+      console.log(`[packages] Acceso denegado: Rol ${user.role} no tiene permisos`);
+      return res.status(403).json({ message: "Acceso denegado" });
+    }
+    
+    next();
+  }
+  
+  // 1. Obtener todas las paqueterías (con filtros)
+  app.get(apiRouter("/packages"), validatePackageAccess, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      const { tripId } = req.query;
+      
+      console.log(`[GET /packages] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
+      
+      // Extraer companyId del usuario para aislamiento de datos
+      const userCompanyId = user.companyId || user.company;
+      
+      // Si el usuario no tiene una compañía asignada, devolver lista vacía
+      if (!userCompanyId && user.role !== UserRole.SUPER_ADMIN) {
+        console.log(`[GET /packages] Usuario sin compañía asignada, no verá ninguna paquetería`);
+        return res.json([]);
+      }
+      
+      // Configurar filtros para la búsqueda
+      const filters: any = {};
+      
+      // Aplicar filtro de aislamiento por compañía excepto para superAdmin
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        filters.companyId = userCompanyId;
+      }
+      
+      // Aplicar filtro por viaje si se proporciona
+      if (tripId && !isNaN(parseInt(tripId as string))) {
+        filters.tripId = parseInt(tripId as string);
+      }
+      
+      console.log(`[GET /packages] Buscando paqueterías con filtros:`, filters);
+      
+      // Obtener paqueterías con los filtros aplicados
+      const packages = await storage.getPackages(filters);
+      
+      // Responder con las paqueterías encontradas
+      res.json(packages);
+    } catch (error: any) {
+      console.error(`[GET /packages] Error:`, error);
+      res.status(500).json({ message: error.message || "Error al obtener paqueterías" });
+    }
+  });
+  
+  // 2. Obtener una paquetería específica con detalles del viaje
+  app.get(apiRouter("/packages/:id"), validatePackageAccess, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      const { id } = req.params;
+      
+      console.log(`[GET /packages/${id}] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
+      
+      // Obtener la paquetería con información del viaje
+      const packageWithTrip = await storage.getPackageWithTripInfo(parseInt(id));
+      
+      if (!packageWithTrip) {
+        return res.status(404).json({ message: "Paquetería no encontrada" });
+      }
+      
+      // Validar aislamiento por compañía excepto para superAdmin
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        const userCompanyId = user.companyId || user.company;
+        
+        if (packageWithTrip.companyId !== userCompanyId) {
+          console.log(`[GET /packages/${id}] Acceso denegado: La paquetería pertenece a otra compañía`);
+          return res.status(403).json({ message: "Acceso denegado" });
+        }
+      }
+      
+      // Responder con la paquetería y sus detalles
+      res.json(packageWithTrip);
+    } catch (error: any) {
+      console.error(`[GET /packages/${req.params.id}] Error:`, error);
+      res.status(500).json({ message: error.message || "Error al obtener la paquetería" });
+    }
+  });
+  
+  // 3. Crear nueva paquetería
+  app.post(apiRouter("/packages"), validatePackageAccess, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      console.log(`[POST /packages] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
+      
+      // Verificar permisos para crear paqueterías
+      if (!PACKAGE_CREATE_ROLES.includes(user.role)) {
+        console.log(`[POST /packages] Acceso denegado: Rol ${user.role} no puede crear paqueterías`);
+        return res.status(403).json({ message: "No tienes permisos para crear paqueterías" });
+      }
+      
+      // Validar datos recibidos
+      try {
+        insertPackageSchema.parse(req.body);
+      } catch (validationError: any) {
+        console.error(`[POST /packages] Error de validación:`, validationError);
+        return res.status(400).json({ 
+          message: "Datos de paquetería inválidos", 
+          errors: validationError.errors 
+        });
+      }
+      
+      // Extraer companyId del usuario para aislamiento de datos
+      const userCompanyId = user.companyId || user.company;
+      
+      // Preparar datos para crear la paquetería
+      const packageData = {
+        ...req.body,
+        companyId: userCompanyId,
+        createdBy: user.id
+      };
+      
+      console.log(`[POST /packages] Creando paquetería:`, packageData);
+      
+      // Crear la paquetería
+      const newPackage = await storage.createPackage(packageData);
+      
+      // Responder con la paquetería creada
+      res.status(201).json(newPackage);
+    } catch (error: any) {
+      console.error(`[POST /packages] Error:`, error);
+      res.status(500).json({ message: error.message || "Error al crear la paquetería" });
+    }
+  });
+  
+  // 4. Actualizar una paquetería existente
+  app.patch(apiRouter("/packages/:id"), validatePackageAccess, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      const { id } = req.params;
+      
+      console.log(`[PATCH /packages/${id}] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
+      
+      // Verificar permisos para editar paqueterías
+      if (!PACKAGE_WRITE_ROLES.includes(user.role)) {
+        console.log(`[PATCH /packages/${id}] Acceso denegado: Rol ${user.role} no puede editar paqueterías`);
+        return res.status(403).json({ message: "No tienes permisos para editar paqueterías" });
+      }
+      
+      // Obtener la paquetería existente
+      const existingPackage = await storage.getPackage(parseInt(id));
+      
+      if (!existingPackage) {
+        return res.status(404).json({ message: "Paquetería no encontrada" });
+      }
+      
+      // Validar aislamiento por compañía excepto para superAdmin
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        const userCompanyId = user.companyId || user.company;
+        
+        if (existingPackage.companyId !== userCompanyId) {
+          console.log(`[PATCH /packages/${id}] Acceso denegado: La paquetería pertenece a otra compañía`);
+          return res.status(403).json({ message: "Acceso denegado" });
+        }
+      }
+      
+      // Actualizar la paquetería
+      const updatedPackage = await storage.updatePackage(parseInt(id), req.body);
+      
+      // Responder con la paquetería actualizada
+      res.json(updatedPackage);
+    } catch (error: any) {
+      console.error(`[PATCH /packages/${req.params.id}] Error:`, error);
+      res.status(500).json({ message: error.message || "Error al actualizar la paquetería" });
+    }
+  });
+  
+  // 5. Eliminar una paquetería
+  app.delete(apiRouter("/packages/:id"), validatePackageAccess, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      const { id } = req.params;
+      
+      console.log(`[DELETE /packages/${id}] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
+      
+      // Verificar permisos para eliminar paqueterías
+      if (!PACKAGE_WRITE_ROLES.includes(user.role)) {
+        console.log(`[DELETE /packages/${id}] Acceso denegado: Rol ${user.role} no puede eliminar paqueterías`);
+        return res.status(403).json({ message: "No tienes permisos para eliminar paqueterías" });
+      }
+      
+      // Obtener la paquetería existente
+      const existingPackage = await storage.getPackage(parseInt(id));
+      
+      if (!existingPackage) {
+        return res.status(404).json({ message: "Paquetería no encontrada" });
+      }
+      
+      // Validar aislamiento por compañía excepto para superAdmin
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        const userCompanyId = user.companyId || user.company;
+        
+        if (existingPackage.companyId !== userCompanyId) {
+          console.log(`[DELETE /packages/${id}] Acceso denegado: La paquetería pertenece a otra compañía`);
+          return res.status(403).json({ message: "Acceso denegado" });
+        }
+      }
+      
+      // Eliminar la paquetería
+      const deleted = await storage.deletePackage(parseInt(id));
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "No se pudo eliminar la paquetería" });
+      }
+      
+      // Responder con éxito
+      res.json({ message: "Paquetería eliminada correctamente" });
+    } catch (error: any) {
+      console.error(`[DELETE /packages/${req.params.id}] Error:`, error);
+      res.status(500).json({ message: error.message || "Error al eliminar la paquetería" });
+    }
+  });
+
   return httpServer;
 }
