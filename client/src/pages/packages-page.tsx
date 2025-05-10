@@ -1,20 +1,25 @@
 import React, { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
+import { formatDate } from "@/lib/utils";
 import { PageTitle } from "@/components/ui/page-title";
 import { PackageList } from "@/components/packages/package-list";
 import { PackageForm } from "@/components/packages/package-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Package, Calendar, MapPin, Bus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { TripWithRouteInfo } from "@shared/schema";
 
 // Posibles estados de la página
-type PackagesPageState = "list" | "create" | "edit";
+type PackagesPageState = "list" | "select-trip" | "create" | "edit";
 
 export default function PackagesPage() {
   // Estado para controlar la vista actual
   const [pageState, setPageState] = useState<PackagesPageState>("list");
   const [selectedPackageId, setSelectedPackageId] = useState<number | null>(null);
+  const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
   const [location, setLocation] = useLocation();
   const { user, isLoading } = useAuth();
   
@@ -24,9 +29,22 @@ export default function PackagesPage() {
     return null;
   }
   
+  // Consulta para obtener los viajes disponibles
+  const tripsQuery = useQuery({
+    queryKey: ["/api/trips"],
+    queryFn: async () => {
+      const response = await fetch("/api/trips");
+      if (!response.ok) {
+        throw new Error("Error al cargar viajes");
+      }
+      return response.json() as Promise<TripWithRouteInfo[]>;
+    },
+    enabled: pageState === "select-trip",
+  });
+  
   // Manejadores de eventos
   const handleAddPackage = () => {
-    setPageState("create");
+    setPageState("select-trip");
   };
   
   const handleEditPackage = (packageId: number) => {
@@ -37,12 +55,23 @@ export default function PackagesPage() {
   const handleBackToList = () => {
     setPageState("list");
     setSelectedPackageId(null);
+    setSelectedTripId(null);
+  };
+  
+  const handleSelectTrip = (tripId: number) => {
+    setSelectedTripId(tripId);
+    setPageState("create");
+  };
+  
+  const handleBackToTripSelection = () => {
+    setPageState("select-trip");
+    setSelectedPackageId(null);
   };
   
   // Renderizado condicional basado en el estado de la página
   const renderContent = () => {
     switch (pageState) {
-      case "create":
+      case "select-trip":
         return (
           <div className="space-y-4">
             <div className="flex items-center mb-6">
@@ -55,11 +84,120 @@ export default function PackagesPage() {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Volver
               </Button>
+              <PageTitle title="Seleccionar Viaje para el Paquete" />
+            </div>
+            
+            {tripsQuery.isLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : tripsQuery.isError ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Error</CardTitle>
+                  <CardDescription>No se pudieron cargar los viajes disponibles</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-destructive">
+                    {tripsQuery.error instanceof Error
+                      ? tripsQuery.error.message
+                      : "Error desconocido"}
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => tripsQuery.refetch()}
+                  >
+                    Reintentar
+                  </Button>
+                </CardFooter>
+              </Card>
+            ) : tripsQuery.data && tripsQuery.data.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {tripsQuery.data.map((trip) => (
+                  <Card 
+                    key={trip.id} 
+                    className="cursor-pointer hover:bg-accent/5 transition-colors"
+                    onClick={() => handleSelectTrip(trip.id)}
+                  >
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">{trip.route.name}</CardTitle>
+                      <CardDescription>
+                        {formatDate(trip.departureDate)} - {trip.departureTime}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pb-2">
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span>
+                            {trip.route.origin} - {trip.route.destination}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span>
+                            {formatDate(trip.departureDate)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Bus className="h-4 w-4 text-muted-foreground" />
+                          <span>
+                            {trip.vehicleType || "No especificado"}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter>
+                      <Button className="w-full">
+                        <Package className="mr-2 h-4 w-4" />
+                        Seleccionar este viaje
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>No hay viajes disponibles</CardTitle>
+                  <CardDescription>
+                    No se encontraron viajes programados para transportar paquetes.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center py-6">
+                  <Bus className="h-16 w-16 text-muted-foreground opacity-50" />
+                </CardContent>
+                <CardFooter className="flex justify-center">
+                  <Button variant="outline" onClick={handleBackToList}>
+                    Volver a la lista de paquetes
+                  </Button>
+                </CardFooter>
+              </Card>
+            )}
+          </div>
+        );
+        
+      case "create":
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center mb-6">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mr-2"
+                onClick={handleBackToTripSelection}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Volver a selección de viaje
+              </Button>
               <PageTitle title="Crear Nuevo Paquete" />
             </div>
             <PackageForm 
+              tripId={selectedTripId || undefined}
               onSuccess={handleBackToList}
-              onCancel={handleBackToList}
+              onCancel={handleBackToTripSelection}
             />
           </div>
         );
