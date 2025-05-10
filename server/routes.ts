@@ -13,6 +13,8 @@ import {
   RouteWithSegments,
   SegmentPrice,
   locationData,
+  TripVisibility,
+  TripStatus,
   UserRole
 } from "@shared/schema";
 
@@ -693,7 +695,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           segmentPrices: tripData.segmentPrices,
           isSubTrip: false,
           parentTripId: null,
-          companyId: companyId // Asignar la compañía del usuario al viaje
+          companyId: companyId, // Asignar la compañía del usuario al viaje
+          // Campos nuevos para visibilidad y estado
+          visibility: tripData.visibility || TripVisibility.PUBLISHED, // Por defecto publicado
+          tripStatus: TripStatus.NOT_STARTED // Por defecto aún no inicia
         };
         
         const mainTrip = await storage.createTrip(mainTripToCreate);
@@ -778,7 +783,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             parentTripId: mainTrip.id,
             segmentOrigin: segment.origin,
             segmentDestination: segment.destination,
-            companyId: companyId // Asignar la misma compañía del usuario a todos los sub-viajes
+            companyId: companyId, // Asignar la misma compañía del usuario a todos los sub-viajes
+            // Heredar los mismos valores de visibilidad y estado del viaje principal
+            visibility: mainTrip.visibility || TripVisibility.PUBLISHED,
+            tripStatus: TripStatus.NOT_STARTED
           };
           
           const subTrip = await storage.createTrip(subTripToCreate);
