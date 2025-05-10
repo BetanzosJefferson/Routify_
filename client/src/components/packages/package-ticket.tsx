@@ -1,5 +1,5 @@
 import React from "react";
-import { Package, User, Clock, Calendar, PhoneCall, Truck, DollarSign, CheckCircle, Armchair } from "lucide-react";
+import { Package, User, Clock, Calendar, PhoneCall, Truck, DollarSign, CheckCircle, ChevronsRight } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/utils";
 
 // Define la estructura del paquete
@@ -32,7 +32,7 @@ interface PackageTicketProps {
 export function PackageTicket({ packageData, companyName = "TransRoute" }: PackageTicketProps) {
   return (
     <div className="thermal-ticket">
-      <style jsx global>{`
+      <style>{`
         .thermal-ticket {
           width: 58mm;
           font-family: 'Courier New', monospace;
@@ -142,7 +142,7 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
         </div>
         {packageData.usesSeats && (
           <div className="ticket-row">
-            <ChairDirector size={12} />
+            <ChevronsRight size={12} />
             <span>
               Ocupa {packageData.seatsQuantity} {packageData.seatsQuantity === 1 ? 'asiento' : 'asientos'}
             </span>

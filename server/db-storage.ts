@@ -2676,6 +2676,32 @@ export class DatabaseStorage implements IStorage {
         .returning();
         
       console.log(`[createPackage] Paquetería creada con ID: ${newPackage.id}`);
+      
+      // Si el paquete ocupa asientos, actualizar la disponibilidad del viaje
+      if (newPackage.usesSeats && newPackage.seatsQuantity > 0 && newPackage.tripId) {
+        console.log(`[createPackage] El paquete ${newPackage.id} ocupa ${newPackage.seatsQuantity} asientos en el viaje ${newPackage.tripId}`);
+        
+        try {
+          // Obtener el viaje para actualizar asientos
+          const trip = await this.getTrip(newPackage.tripId);
+          if (trip) {
+            // Calcular nuevos asientos disponibles
+            const newAvailableSeats = Math.max(0, trip.availableSeats - newPackage.seatsQuantity);
+            
+            // Actualizar los asientos disponibles
+            await db
+              .update(schema.trips)
+              .set({ availableSeats: newAvailableSeats })
+              .where(eq(schema.trips.id, trip.id));
+            
+            console.log(`[createPackage] Viaje ${trip.id}: asientos disponibles actualizados de ${trip.availableSeats} a ${newAvailableSeats}`);
+          }
+        } catch (updateError) {
+          console.error(`[createPackage] Error al actualizar asientos del viaje:`, updateError);
+          // No detenemos el proceso, ya que la paquetería ya fue creada
+        }
+      }
+      
       return newPackage;
     } catch (error) {
       console.error(`[createPackage] Error al crear paquetería:`, error);
