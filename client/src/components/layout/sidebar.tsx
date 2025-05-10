@@ -208,7 +208,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           )}
           
           {/* Sección de Flota y Finanzas */}
-          {(canAccess("vehicles") || canAccess("commissions") || canAccess("my-commissions") || canAccess("coupons")) && (
+          {(canAccess("vehicles") || canAccess("commissions") || canAccess("my-commissions") || canAccess("coupons") || canAccess("packages")) && (
             <NavSection title="Flota y Finanzas">
               {canAccess("vehicles") && (
                 <NavItem 
@@ -244,6 +244,15 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   onClick={() => setLocation("/coupons")}
                 >
                   Cupones
+                </NavItem>
+              )}
+              {canAccess("packages") && (
+                <NavItem 
+                  icon={<FileTextIcon className="h-5 w-5" />} 
+                  active={location === "/packages"}
+                  onClick={() => setLocation("/packages")}
+                >
+                  Paqueterías
                 </NavItem>
               )}
             </NavSection>
