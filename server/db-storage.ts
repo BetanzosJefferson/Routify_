@@ -2524,4 +2524,140 @@ export class DatabaseStorage implements IStorage {
       };
     }
   }
+
+  // PACKAGE METHODS
+  async getPackages(filters?: { companyId?: string, tripId?: number }): Promise<schema.Package[]> {
+    try {
+      console.log(`[getPackages] Buscando paqueterías con filtros:`, filters);
+      
+      let query = db.select().from(schema.packages);
+      
+      // Aplicar filtros de seguridad
+      if (filters) {
+        // Filtro por compañía (aislamiento de datos)
+        if (filters.companyId) {
+          query = query.where(eq(schema.packages.companyId, filters.companyId));
+          console.log(`[getPackages] Aplicando filtro de compañía: ${filters.companyId}`);
+        }
+        
+        // Filtro por viaje
+        if (filters.tripId) {
+          query = query.where(eq(schema.packages.tripId, filters.tripId));
+          console.log(`[getPackages] Aplicando filtro de viaje: ${filters.tripId}`);
+        }
+      }
+      
+      // Ejecutar la consulta
+      const packages = await query;
+      console.log(`[getPackages] Encontradas ${packages.length} paqueterías`);
+      
+      return packages;
+    } catch (error) {
+      console.error(`[getPackages] Error al obtener paqueterías:`, error);
+      return [];
+    }
+  }
+  
+  async getPackage(id: number): Promise<schema.Package | undefined> {
+    try {
+      console.log(`[getPackage] Buscando paquetería con ID: ${id}`);
+      
+      const [packageItem] = await db
+        .select()
+        .from(schema.packages)
+        .where(eq(schema.packages.id, id));
+        
+      return packageItem;
+    } catch (error) {
+      console.error(`[getPackage] Error al obtener paquetería ID ${id}:`, error);
+      return undefined;
+    }
+  }
+  
+  async getPackageWithTripInfo(id: number): Promise<schema.Package & { trip?: TripWithRouteInfo } | undefined> {
+    try {
+      console.log(`[getPackageWithTripInfo] Buscando paquetería con ID: ${id}`);
+      
+      // Obtener la paquetería
+      const packageItem = await this.getPackage(id);
+      if (!packageItem) return undefined;
+      
+      // Obtener la información del viaje asociado
+      const trip = await this.getTripWithRouteInfo(packageItem.tripId);
+      
+      // Retornar paquetería con datos de viaje
+      return {
+        ...packageItem,
+        trip
+      };
+    } catch (error) {
+      console.error(`[getPackageWithTripInfo] Error al obtener paquetería con datos de viaje ID ${id}:`, error);
+      return undefined;
+    }
+  }
+  
+  async createPackage(packageData: schema.InsertPackage): Promise<schema.Package> {
+    try {
+      console.log(`[createPackage] Creando nueva paquetería:`, packageData);
+      
+      // Insertar la paquetería en la base de datos
+      const [newPackage] = await db
+        .insert(schema.packages)
+        .values(packageData)
+        .returning();
+        
+      console.log(`[createPackage] Paquetería creada con ID: ${newPackage.id}`);
+      return newPackage;
+    } catch (error) {
+      console.error(`[createPackage] Error al crear paquetería:`, error);
+      throw new Error(`Error al crear paquetería: ${error}`);
+    }
+  }
+  
+  async updatePackage(id: number, packageData: Partial<schema.Package>): Promise<schema.Package | undefined> {
+    try {
+      console.log(`[updatePackage] Actualizando paquetería ID ${id}:`, packageData);
+      
+      // Actualizar datos de la paquetería
+      const [updatedPackage] = await db
+        .update(schema.packages)
+        .set({
+          ...packageData,
+          updatedAt: new Date(), // Actualizar la fecha de modificación
+        })
+        .where(eq(schema.packages.id, id))
+        .returning();
+        
+      if (!updatedPackage) {
+        console.log(`[updatePackage] No se encontró la paquetería con ID ${id}`);
+        return undefined;
+      }
+      
+      console.log(`[updatePackage] Paquetería actualizada: ${updatedPackage.id}`);
+      return updatedPackage;
+    } catch (error) {
+      console.error(`[updatePackage] Error al actualizar paquetería ID ${id}:`, error);
+      return undefined;
+    }
+  }
+  
+  async deletePackage(id: number): Promise<boolean> {
+    try {
+      console.log(`[deletePackage] Eliminando paquetería ID ${id}`);
+      
+      // Eliminar la paquetería
+      const result = await db
+        .delete(schema.packages)
+        .where(eq(schema.packages.id, id))
+        .returning({ id: schema.packages.id });
+        
+      const success = result.length > 0;
+      console.log(`[deletePackage] Paquetería ${success ? 'eliminada' : 'no encontrada'}`);
+      
+      return success;
+    } catch (error) {
+      console.error(`[deletePackage] Error al eliminar paquetería ID ${id}:`, error);
+      return false;
+    }
+  }
 }
