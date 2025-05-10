@@ -720,13 +720,54 @@ export default function TripList({ onEditTrip }: TripListProps) {
                               </div>
                             </div>
                             
-                            {/* Reservaciones */}
-                            <div className="flex items-center mt-4">
-                              <UsersIcon className="h-4 w-4 mr-1 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground">
-                                {/* Simplificamos la lógica de reservaciones */}
-                                {trip.reservationCount || 0} reservas
-                              </span>
+                            {/* Estados del viaje y Reservaciones */}
+                            <div className="mt-4 pt-4 border-t border-gray-100">
+                              <div className="flex flex-wrap items-center justify-between">
+                                <div className="flex gap-2 mb-2">
+                                  {/* Estado de visibilidad */}
+                                  {trip.visibility && (
+                                    <span className={`text-xs px-2 py-1 rounded-full ${
+                                      trip.visibility === 'publicado' 
+                                        ? 'bg-green-100 text-green-800' 
+                                        : trip.visibility === 'oculto' 
+                                          ? 'bg-gray-100 text-gray-800' 
+                                          : 'bg-red-100 text-red-800'
+                                    }`}>
+                                      {trip.visibility === 'publicado' 
+                                        ? 'Publicado' 
+                                        : trip.visibility === 'oculto' 
+                                          ? 'Oculto' 
+                                          : 'Cancelado'}
+                                    </span>
+                                  )}
+                                  
+                                  {/* Estado del viaje */}
+                                  {trip.tripStatus && (
+                                    <span className={`text-xs px-2 py-1 rounded-full ${
+                                      trip.tripStatus === 'aun_no_inicia' 
+                                        ? 'bg-blue-100 text-blue-800' 
+                                        : trip.tripStatus === 'en_progreso' 
+                                          ? 'bg-amber-100 text-amber-800' 
+                                          : 'bg-purple-100 text-purple-800'
+                                    }`}>
+                                      {trip.tripStatus === 'aun_no_inicia' 
+                                        ? 'Aún no inicia' 
+                                        : trip.tripStatus === 'en_progreso' 
+                                          ? 'En progreso' 
+                                          : 'Finalizado'}
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                {/* Reservaciones */}
+                                <div className="flex items-center">
+                                  <UsersIcon className="h-4 w-4 mr-1 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground">
+                                    {/* Simplificamos la lógica de reservaciones */}
+                                    {trip.reservationCount || 0} reservas
+                                  </span>
+                                </div>
+                              </div>
                             </div>
                           </div>
                           
@@ -898,12 +939,53 @@ export default function TripList({ onEditTrip }: TripListProps) {
                               </div>
                             </div>
                             
-                            {/* Reservaciones para viajes archivados */}
-                            <div className="flex items-center mt-4">
-                              <UsersIcon className="h-4 w-4 mr-1 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground">
-                                {trip.reservationCount || 0} reservas
-                              </span>
+                            {/* Estados del viaje y Reservaciones para viajes archivados */}
+                            <div className="mt-4 pt-4 border-t border-gray-100">
+                              <div className="flex flex-wrap items-center justify-between">
+                                <div className="flex gap-2 mb-2">
+                                  {/* Estado de visibilidad */}
+                                  {trip.visibility && (
+                                    <span className={`text-xs px-2 py-1 rounded-full ${
+                                      trip.visibility === 'publicado' 
+                                        ? 'bg-green-100 text-green-800' 
+                                        : trip.visibility === 'oculto' 
+                                          ? 'bg-gray-100 text-gray-800' 
+                                          : 'bg-red-100 text-red-800'
+                                    }`}>
+                                      {trip.visibility === 'publicado' 
+                                        ? 'Publicado' 
+                                        : trip.visibility === 'oculto' 
+                                          ? 'Oculto' 
+                                          : 'Cancelado'}
+                                    </span>
+                                  )}
+                                  
+                                  {/* Estado del viaje */}
+                                  {trip.tripStatus && (
+                                    <span className={`text-xs px-2 py-1 rounded-full ${
+                                      trip.tripStatus === 'aun_no_inicia' 
+                                        ? 'bg-blue-100 text-blue-800' 
+                                        : trip.tripStatus === 'en_progreso' 
+                                          ? 'bg-amber-100 text-amber-800' 
+                                          : 'bg-purple-100 text-purple-800'
+                                    }`}>
+                                      {trip.tripStatus === 'aun_no_inicia' 
+                                        ? 'Aún no inicia' 
+                                        : trip.tripStatus === 'en_progreso' 
+                                          ? 'En progreso' 
+                                          : 'Finalizado'}
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                {/* Reservaciones */}
+                                <div className="flex items-center">
+                                  <UsersIcon className="h-4 w-4 mr-1 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground">
+                                    {trip.reservationCount || 0} reservas
+                                  </span>
+                                </div>
+                              </div>
                             </div>
                           </div>
                           
