@@ -4176,7 +4176,7 @@ function setupPackageRoutes(app: Express) {
       const newPackage = {
         ...packageData,
         createdBy: req.user?.id,
-        companyId: req.user?.company || req.user?.companyId,
+        companyId: req.user?.company, // Usamos solo el campo company sin la alternativa companyId
       };
       
       // Crear el paquete
