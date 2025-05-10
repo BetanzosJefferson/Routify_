@@ -144,11 +144,11 @@ export default function TripList({ onEditTrip }: TripListProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [tripToEdit, setTripToEdit] = useState<number | null>(null);
 
-  // Consulta para obtener todos los viajes
+  // Consulta para obtener todos los viajes (incluidos los ocultos) para la sección de publicación
   const { data: trips = [], isLoading, refetch } = useQuery({
-    queryKey: ['/api/trips'],
+    queryKey: ['/api/admin-trips'],
     queryFn: async () => {
-      const res = await apiRequest('GET', '/api/trips');
+      const res = await apiRequest('GET', '/api/admin-trips');
       return await res.json();
     }
   });

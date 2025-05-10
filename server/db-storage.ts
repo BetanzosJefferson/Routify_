@@ -600,8 +600,12 @@ export class DatabaseStorage implements IStorage {
     // Construir los filtros como un array de condiciones 
     const condiciones = [];
     
-    // Aplicar filtro de visibilidad si está especificado
-    if (params.visibility) {
+    // Aplicar filtro de visibilidad
+    if (params.includeAllVisibilities) {
+      // Si se solicita incluir todos los estados de visibilidad, no aplicamos filtro
+      console.log(`[searchTrips-v2] Incluyendo TODOS los estados de visibilidad (publicado/oculto/cancelado)`);
+    } else if (params.visibility) {
+      // Si se especifica un valor de visibilidad concreto, lo usamos
       console.log(`[searchTrips-v2] Filtro por visibilidad: ${params.visibility}`);
       condiciones.push(sql`visibility = ${params.visibility}`);
     } else {

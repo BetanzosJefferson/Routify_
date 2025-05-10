@@ -363,6 +363,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // TRIPS ENDPOINTS
+  
+  // Ruta para obtener todos los viajes (incluyendo ocultos) para la sección "Publicar viajes"
+  app.get(apiRouter("/admin-trips"), async (req: Request, res: Response) => {
+    try {
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      // Log para depuración
+      console.log(`[GET /admin-trips] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
+      if (user) {
+        console.log(`[GET /admin-trips] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
+      }
+      
+      // Verificar que el usuario esté autenticado y tenga permisos de administrador
+      if (!user || (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN && user.role !== UserRole.OWNER)) {
+        console.log(`[GET /admin-trips] Acceso denegado para rol: ${user?.role || 'no autenticado'}`);
+        return res.status(403).json({ error: "No autorizado para acceder a esta sección" });
+      }
+      
+      // Parámetros de búsqueda desde la query
+      const { date, driverId } = req.query;
+      const searchParams: any = {
+        // Importante: No aplicamos filtro de visibilidad para mostrar todos los viajes
+        includeAllVisibilities: true // Flag para indicar que se deben incluir todos los estados de visibilidad
+      };
+      
+      // Agregar parámetros de búsqueda si existen
+      if (date) searchParams.date = date as string;
+      
+      // Agregar filtro por conductor (driverId) si existe
+      if (driverId && !isNaN(parseInt(driverId as string, 10))) {
+        searchParams.driverId = parseInt(driverId as string, 10);
+        console.log(`[GET /admin-trips] Filtro por conductor ID: ${searchParams.driverId}`);
+      }
+      
+      // FILTRO DE COMPAÑÍA - aplicar solo para roles que no son superAdmin
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        const userCompanyId = user.companyId || user.company || null;
+        
+        if (userCompanyId) {
+          searchParams.companyId = userCompanyId;
+          console.log(`[GET /admin-trips] Filtro compañía aplicado: ${userCompanyId}`);
+        } else {
+          console.log(`[GET /admin-trips] Usuario sin compañía asignada, no verá ningún viaje`);
+          return res.json([]);
+        }
+      } else {
+        // Para superAdmin, permitir ver viajes de todas las compañías
+        searchParams.companyId = 'ALL';
+        console.log(`[GET /admin-trips] Usuario superAdmin - Acceso a viajes de todas las compañías`);
+      }
+      
+      // Ejecutar búsqueda con los parámetros
+      console.log(`[GET /admin-trips] Parámetros de búsqueda:`, searchParams);
+      const trips = await storage.searchTrips(searchParams);
+      
+      console.log(`[GET /admin-trips] Encontrados ${trips.length} viajes (todos los estados de visibilidad)`);
+      
+      return res.json(trips);
+    } catch (error) {
+      console.error("Error al obtener viajes para administración:", error);
+      res.status(500).json({ error: "Error al obtener viajes para administración" });
+    }
+  });
+  
+  // Ruta estándar para buscar viajes (solo muestra los publicados por defecto)
   app.get(apiRouter("/trips"), async (req: Request, res: Response) => {
     try {
       // Obtener el usuario autenticado
