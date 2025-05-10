@@ -373,7 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Parámetros de búsqueda desde la query
-      const { origin, destination, date, seats, driverId, includeHidden } = req.query;
+      const { origin, destination, date, seats, driverId } = req.query;
       const searchParams: any = {};
       
       // Agregar parámetros de búsqueda si existen
@@ -389,10 +389,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         searchParams.driverId = parseInt(driverId as string, 10);
         console.log(`[GET /trips] Filtro por conductor ID: ${searchParams.driverId}`);
       }
-      
-      // Determinar si incluimos o no los viajes ocultos
-      // Por defecto, sólo en la sección "publicar viajes" se mostrarán viajes ocultos
-      searchParams.includeHidden = includeHidden === 'true';
       
       // APLICAR FILTRO DE COMPAÑÍA - PARTE CRÍTICA
       // Solo superAdmin y taquilla pueden ver viajes de todas las compañías
