@@ -119,8 +119,11 @@ export function TripList() {
   const { data: trips, isLoading, isError } = useQuery({
     queryKey: ["/api/trips", searchParams],
     queryFn: async () => {
+      // Añadir el filtro de visibilidad publicado a los parámetros de búsqueda
+      const paramsWithVisibility = { ...searchParams, visibility: 'publicado' };
+      
       const queryString = new URLSearchParams(
-        Object.entries(searchParams).filter(([_, v]) => v !== undefined) as [string, string][]
+        Object.entries(paramsWithVisibility).filter(([_, v]) => v !== undefined) as [string, string][]
       ).toString();
       
       const response = await fetch(`/api/trips${queryString ? `?${queryString}` : ''}`);
