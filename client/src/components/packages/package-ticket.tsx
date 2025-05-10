@@ -1,131 +1,169 @@
 import React from "react";
-import { Package } from "@shared/schema";
-import { useAuth } from "@/hooks/use-auth";
-import { formatCurrency } from "@/lib/utils";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
-import { Badge } from "@/components/ui/badge";
+import { Package, User, Clock, Calendar, PhoneCall, Truck, DollarSign, CheckCircle } from "lucide-react";
+import { formatDate, formatCurrency } from "@/lib/utils";
 
-interface PackageTicketProps {
-  packageData: Package;
+// Define la estructura del paquete
+interface PackageData {
+  id: number;
+  tripId?: number;
+  senderName: string;
+  senderLastName: string;
+  senderPhone: string;
+  recipientName: string;
+  recipientLastName: string;
+  recipientPhone: string;
+  packageDescription: string;
+  price: number;
+  isPaid: boolean;
+  paymentMethod?: string;
+  deliveryStatus: string;
+  createdAt: string | Date;
+  updatedAt?: string | Date;
+  createdBy?: number;
 }
 
-export function PackageTicket({ packageData }: PackageTicketProps) {
-  const { user } = useAuth();
-  
-  // Formatear nombre completo
-  const formatFullName = (firstName: string, lastName: string) => {
-    return `${firstName} ${lastName}`;
-  };
-  
-  // Formatear fecha
-  const formatDate = (date: Date | string | null | undefined) => {
-    if (!date) return "";
-    return format(new Date(date), "dd/MM/yyyy HH:mm", { locale: es });
-  };
+interface PackageTicketProps {
+  packageData: PackageData;
+  companyName?: string;
+}
 
+export function PackageTicket({ packageData, companyName = "TransRoute" }: PackageTicketProps) {
   return (
-    <div className="p-2 font-mono text-xs w-[58mm] mx-auto">
-      {/* Estilos específicos para impresión térmica */}
-      <style jsx global>
-        {`
-          @media print {
-            @page {
-              size: 58mm auto;
-              margin: 0;
-            }
-            body {
-              width: 58mm;
-              margin: 0;
-              padding: 0;
-            }
-            .print-section {
-              width: 100%;
-              padding: 0;
-            }
+    <div className="thermal-ticket">
+      <style jsx global>{`
+        .thermal-ticket {
+          width: 58mm;
+          font-family: 'Courier New', monospace;
+          background-color: white;
+          padding: 0.5rem;
+          border: 1px dashed #ccc;
+          color: black;
+        }
+        .ticket-header {
+          text-align: center;
+          border-bottom: 1px dashed #ccc;
+          padding-bottom: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+        .ticket-section {
+          margin-bottom: 0.5rem;
+          font-size: 0.8rem;
+        }
+        .ticket-section h3 {
+          font-size: 0.9rem;
+          margin-bottom: 0.25rem;
+          font-weight: bold;
+          border-bottom: 1px solid #eee;
+        }
+        .ticket-row {
+          display: flex;
+          align-items: center;
+          margin-bottom: 0.25rem;
+        }
+        .ticket-row svg {
+          width: 12px;
+          height: 12px;
+          margin-right: 0.25rem;
+        }
+        .ticket-footer {
+          margin-top: 0.5rem;
+          border-top: 1px dashed #ccc;
+          padding-top: 0.5rem;
+          text-align: center;
+          font-size: 0.7rem;
+        }
+        .ticket-id {
+          text-align: center;
+          font-weight: bold;
+          margin-bottom: 0.5rem;
+        }
+        @media print {
+          body * {
+            visibility: hidden;
           }
-        `}
-      </style>
+          .thermal-ticket, .thermal-ticket * {
+            visibility: visible;
+          }
+          .thermal-ticket {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 58mm;
+            border: none;
+          }
+        }
+      `}</style>
       
-      {/* Encabezado del ticket */}
-      <div className="text-center mb-4">
-        <h1 className="text-lg font-bold uppercase">TRANSROUTE</h1>
-        <p>{user?.company || "Sistema de Paqueterías"}</p>
-        <p className="text-[10px]">
-          {formatDate(packageData.createdAt)}
-        </p>
-        <div className="border-b border-black my-2"></div>
+      <div className="ticket-header">
+        <div className="font-bold text-lg">{companyName}</div>
+        <div className="text-xs">Servicio de paquetería</div>
       </div>
       
-      {/* Información del paquete */}
-      <div className="mb-4">
-        <h2 className="font-bold text-center mb-2 uppercase">RECIBO DE PAQUETERÍA</h2>
-        <p className="font-bold">FOLIO: {packageData.id}</p>
-        
-        <div className="border-t border-black my-2"></div>
-        
-        <p className="font-bold mt-2">REMITENTE:</p>
-        <p>{formatFullName(packageData.senderName, packageData.senderLastName)}</p>
-        <p>Tel: {packageData.senderPhone}</p>
-        
-        <div className="border-t border-dashed my-2"></div>
-        
-        <p className="font-bold">DESTINATARIO:</p>
-        <p>{formatFullName(packageData.recipientName, packageData.recipientLastName)}</p>
-        <p>Tel: {packageData.recipientPhone}</p>
-        
-        <div className="border-t border-dashed my-2"></div>
-        
-        <p className="font-bold">DESCRIPCIÓN:</p>
-        <p className="whitespace-pre-wrap">{packageData.packageDescription}</p>
-        
-        <div className="border-t border-dashed my-2"></div>
-        
-        <div className="flex justify-between">
-          <span className="font-bold">PRECIO:</span>
+      <div className="ticket-id">
+        <div>PAQUETE #{packageData.id}</div>
+        <div className="text-xs">{formatDate(new Date(packageData.createdAt))}</div>
+      </div>
+      
+      <div className="ticket-section">
+        <h3>Remitente</h3>
+        <div className="ticket-row">
+          <User size={12} />
+          <span>{packageData.senderName} {packageData.senderLastName}</span>
+        </div>
+        <div className="ticket-row">
+          <PhoneCall size={12} />
+          <span>{packageData.senderPhone}</span>
+        </div>
+      </div>
+      
+      <div className="ticket-section">
+        <h3>Destinatario</h3>
+        <div className="ticket-row">
+          <User size={12} />
+          <span>{packageData.recipientName} {packageData.recipientLastName}</span>
+        </div>
+        <div className="ticket-row">
+          <PhoneCall size={12} />
+          <span>{packageData.recipientPhone}</span>
+        </div>
+      </div>
+      
+      <div className="ticket-section">
+        <h3>Detalles del Paquete</h3>
+        <div className="ticket-row">
+          <Package size={12} />
+          <span className="text-xs">{packageData.packageDescription}</span>
+        </div>
+        <div className="ticket-row">
+          <DollarSign size={12} />
           <span>{formatCurrency(packageData.price)}</span>
         </div>
-        
-        <div className="flex justify-between">
-          <span className="font-bold">ESTADO DE PAGO:</span>
-          <span>{packageData.isPaid ? "PAGADO" : "PENDIENTE"}</span>
+        <div className="ticket-row">
+          <CheckCircle size={12} />
+          <span>
+            {packageData.isPaid 
+              ? `Pagado (${packageData.paymentMethod || 'efectivo'})` 
+              : 'Pendiente de pago'}
+          </span>
         </div>
-        
-        {packageData.isPaid && packageData.paymentMethod && (
-          <div className="flex justify-between">
-            <span className="font-bold">MÉTODO DE PAGO:</span>
-            <span className="uppercase">{packageData.paymentMethod}</span>
-          </div>
-        )}
-        
-        <div className="border-t border-dashed my-2"></div>
-        
-        <div className="flex justify-between">
-          <span className="font-bold">ESTADO DE ENTREGA:</span>
-          <span>{packageData.deliveryStatus === "entregado" ? "ENTREGADO" : "PENDIENTE"}</span>
-        </div>
-        
-        {packageData.deliveryStatus === "entregado" && packageData.deliveredAt && (
-          <div className="flex justify-between">
-            <span className="font-bold">FECHA DE ENTREGA:</span>
-            <span>{formatDate(packageData.deliveredAt)}</span>
-          </div>
-        )}
       </div>
       
-      {/* Firma y pie de página */}
-      <div className="mb-4">
-        <div className="border-t border-black my-4 pt-4"></div>
-        <p className="text-center">____________________________</p>
-        <p className="text-center">Firma de recibido</p>
+      <div className="ticket-section">
+        <h3>Estado de Entrega</h3>
+        <div className="ticket-row">
+          <Truck size={12} />
+          <span>
+            {packageData.deliveryStatus === 'entregado' 
+              ? 'Entregado' 
+              : 'Pendiente de entrega'}
+          </span>
+        </div>
       </div>
       
-      {/* Pie de página */}
-      <div className="text-center text-[10px] mt-4">
-        <p>CONSERVE ESTE RECIBO</p>
-        <p>NECESARIO PARA RECLAMAR SU PAQUETE</p>
-        <div className="border-t border-black my-2"></div>
-        <p>GRACIAS POR SU PREFERENCIA</p>
+      <div className="ticket-footer">
+        <div>Gracias por confiar en {companyName}</div>
+        <div>Este ticket es su comprobante de envío</div>
+        <div>www.transroute.mx</div>
       </div>
     </div>
   );

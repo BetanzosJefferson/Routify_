@@ -42,6 +42,7 @@ const packageFormSchema = insertPackageSchema.extend({
   price: z.number().min(1, "El precio es requerido"),
   isPaid: z.boolean().default(false),
   paymentMethod: z.string().optional(),
+  deliveryStatus: z.string().default("pendiente"),
 });
 
 // Tipo para el formulario
