@@ -148,7 +148,7 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
       };
       
       // Si tenemos ID de paquete, estamos actualizando, de lo contrario creando nuevo
-      const method = packageId ? "PUT" : "POST";
+      const method = packageId ? "PATCH" : "POST";
       const url = packageId ? `/api/packages/${packageId}` : "/api/packages";
       
       const response = await apiRequest(method, url, packageData);
