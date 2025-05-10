@@ -202,11 +202,13 @@ export default function TripList({ onEditTrip }: TripListProps) {
       } catch (error) {
         console.error(`Error en la solicitud de eliminación del viaje ${tripId}:`, error);
         // Invalidamos la consulta de todos modos para refrescar la lista
+        queryClient.invalidateQueries({ queryKey: ['/api/admin-trips'] });
         queryClient.invalidateQueries({ queryKey: ['/api/trips'] });
         throw error;
       }
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin-trips'] });
       queryClient.invalidateQueries({ queryKey: ['/api/trips'] });
       toast({
         title: "Viaje eliminado",
