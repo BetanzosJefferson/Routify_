@@ -622,140 +622,15 @@ export default function TripList({ onEditTrip }: TripListProps) {
                   
                   <div className="space-y-4">
                     {trips.map((trip: Trip) => (
-                      <div key={trip.id} className="border rounded-lg overflow-hidden bg-card">
-                        <div className="flex flex-col lg:flex-row">
-                          <div className="p-4 lg:p-6 flex-1">
-                            <div className="flex justify-between items-start">
-                              <div className="flex">
-                                {/* Logo de la compañía (si existe) */}
-                                {trip.companyLogo ? (
-                                  <div className="mr-3 h-12 w-12 flex-shrink-0">
-                                    <img 
-                                      src={trip.companyLogo} 
-                                      alt={trip.companyName || "Logo de transportista"} 
-                                      className="h-full w-full object-cover rounded-full border border-gray-100"
-                                      onError={(e) => {
-                                        // Si falla la carga, ocultar la imagen
-                                        const target = e.currentTarget as HTMLImageElement;
-                                        target.style.display = 'none';
-                                      }} 
-                                    />
-                                  </div>
-                                ) : null}
-                                
-                                <div>
-                                  <h4 className="text-base font-medium mb-1">
-                                    {trip.route?.name || trip.routeName || `Ruta #${trip.routeId}`}
-                                  </h4>
-                                  {trip.companyName && (
-                                    <div className="text-xs text-gray-500 mb-1">
-                                      {trip.companyName}
-                                    </div>
-                                  )}
-                                  <div className="flex items-center text-sm text-muted-foreground">
-                                    <CalendarIcon className="h-4 w-4 mr-1" />
-                                    <span>
-                                      {format(normalizeToStartOfDay(trip.departureDate), "dd/MM/yyyy")}
-                                    </span>
-                                    <ClockIcon className="h-4 w-4 ml-4 mr-1" />
-                                    <span>{formatTime(trip.departureTime)} - {formatTime(trip.arrivalTime)}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                              {/* Primera columna: Ruta */}
-                              <div className="bg-muted/50 p-3 rounded-md">
-                                <div className="flex items-start mb-2">
-                                  <MapPinIcon className="h-5 w-5 mr-2 text-primary shrink-0 mt-0.5" />
-                                  <div>
-                                    <p className="text-sm font-medium">Ruta</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      Terminal {trip.origin?.split(' - ')[1] || ''} → {trip.destination?.split(' - ')[1] || ''}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      {getStopsCount(trip)} paradas intermedias
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              {/* Segunda columna: Vehículo */}
-                              <div className="bg-muted/50 p-3 rounded-md">
-                                <div className="flex items-start">
-                                  <CarIcon className="h-5 w-5 mr-2 text-primary shrink-0 mt-0.5" />
-                                  <div>
-                                    <p className="text-sm font-medium">Vehículo</p>
-                                    {trip.vehicleId || trip.assignedVehicle ? (
-                                      <p className="text-xs text-green-600 font-medium">
-                                        {trip.assignedVehicle ? 
-                                          `${trip.assignedVehicle.brand} ${trip.assignedVehicle.model} - ${trip.assignedVehicle.plates}` :
-                                          `${vehicles.find(v => v.id === trip.vehicleId)?.brand || ''} ${vehicles.find(v => v.id === trip.vehicleId)?.model || ''} - ${vehicles.find(v => v.id === trip.vehicleId)?.plates || ''}`
-                                        }
-                                      </p>
-                                    ) : (
-                                      <p className="text-xs text-red-500 font-medium">No asignado</p>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              {/* Tercera columna: Conductor */}
-                              <div className="bg-muted/50 p-3 rounded-md">
-                                <div className="flex items-start">
-                                  <UserIcon className="h-5 w-5 mr-2 text-primary shrink-0 mt-0.5" />
-                                  <div>
-                                    <p className="text-sm font-medium">Conductor</p>
-                                    {trip.driverId || trip.assignedDriver ? (
-                                      <p className="text-xs text-green-600 font-medium">
-                                        {trip.assignedDriver ? 
-                                          `${trip.assignedDriver.firstName} ${trip.assignedDriver.lastName}` :
-                                          `${drivers.find(d => d.id === trip.driverId)?.firstName || ''} ${drivers.find(d => d.id === trip.driverId)?.lastName || ''}`
-                                        }
-                                      </p>
-                                    ) : (
-                                      <p className="text-xs text-red-500 font-medium">No asignado</p>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {/* Reservaciones */}
-                            <div className="flex items-center mt-4">
-                              <UsersIcon className="h-4 w-4 mr-1 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground">
-                                {/* Simplificamos la lógica de reservaciones */}
-                                {trip.reservationCount || 0} reservas
-                              </span>
-                            </div>
-                          </div>
-                          
-                          <div className="p-4 lg:p-6 flex flex-row lg:flex-col items-center justify-between border-t lg:border-t-0 lg:border-l bg-muted/20">
-                            <div className="flex gap-2 mt-0 lg:mt-4">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  window.location.href = `/edit-trip/${trip.id}`;
-                                }}
-                                className="h-8 w-8"
-                              >
-                                <PencilIcon className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteClick(trip.id)}
-                                className="h-8 w-8 text-destructive hover:text-destructive/80"
-                              >
-                                <TrashIcon className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      <TripCard
+                        key={trip.id}
+                        trip={trip}
+                        drivers={drivers}
+                        onEditClick={(id) => window.location.href = `/edit-trip/${id}`}
+                        onDeleteClick={(id) => handleDeleteClick(id)}
+                        onAssignVehicle={(id) => handleOpenAssignVehicleDialog(id)}
+                        onAssignDriver={(id) => handleOpenAssignDriverDialog(id)}
+                      />
                     ))}
                   </div>
                 </div>
