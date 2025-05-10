@@ -238,8 +238,15 @@ export function TripList() {
   const { data: trips, isLoading, isError } = useQuery({
     queryKey: ["/api/trips", searchParams],
     queryFn: async () => {
+      // Incluye los parámetros de búsqueda pero NO incluye los viajes ocultos
+      const params = { ...searchParams };
+      
+      // Aquí incluimos parámetros específicos que no son parte de searchParams 
+      // pero que necesitamos para controlar el comportamiento del servidor
+      params.includeHidden = "false"; // NO mostrar viajes ocultos en la sección Trips
+      
       const queryString = new URLSearchParams(
-        Object.entries(searchParams).filter(([_, v]) => v !== undefined) as [string, string][]
+        Object.entries(params).filter(([_, v]) => v !== undefined) as [string, string][]
       ).toString();
       
       const response = await fetch(`/api/trips${queryString ? `?${queryString}` : ''}`);
