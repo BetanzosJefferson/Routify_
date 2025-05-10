@@ -4197,6 +4197,39 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
+  // PATCH /api/packages/:id/deliver - Marcar un paquete como entregado
+  app.patch(apiRouter('/packages/:id/deliver'), isAuthenticated, hasPackageWriteAccess, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Verificar que el paquete existe
+      const existingPackage = await storage.getPackageById(id);
+      if (!existingPackage) {
+        return res.status(404).json({ message: 'Paquete no encontrado' });
+      }
+      
+      // Verificar permisos de compañía
+      if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
+        const userCompanyId = req.user.companyId || req.user.company;
+        
+        if (existingPackage.companyId !== userCompanyId) {
+          return res.status(403).json({ message: "Acceso denegado" });
+        }
+      }
+      
+      // Actualizar solo el estado de entrega
+      const updatedPackage = await storage.updatePackage(id, {
+        deliveryStatus: "entregado",
+        updatedAt: new Date()
+      });
+      
+      res.json(updatedPackage);
+    } catch (error) {
+      console.error('Error al marcar paquete como entregado:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
+  
   // PATCH /api/packages/:id - Actualizar un paquete
   app.patch(apiRouter('/packages/:id'), isAuthenticated, hasPackageWriteAccess, async (req, res) => {
     try {
