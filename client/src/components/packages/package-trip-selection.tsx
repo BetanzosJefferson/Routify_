@@ -76,13 +76,11 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
   const today = formatDateForInput(new Date());
   
   const [searchParams, setSearchParams] = useState<SearchParams>({ date: today });
-  const [sortMethod, setSortMethod] = useState<"departure" | "price" | "duration">("departure");
   
   // Form state
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
   const [date, setDate] = useState(today);
-  const [seats, setSeats] = useState("");
   
   // Query for all trips to build autocomplete options
   const { data: allTrips, isLoading: isLoadingAll } = useQuery({
@@ -126,78 +124,31 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
       if (origin) params.origin = origin;
       if (destination) params.destination = destination;
       if (date) params.date = formatDateForApiQuery(date);
-      if (seats && !isNaN(parseInt(seats, 10))) {
-        params.seats = parseInt(seats, 10);
-      }
       
       setSearchParams(params);
     }, 300); // 300ms debounce
     
     return () => clearTimeout(debounceTimer);
-  }, [origin, destination, date, seats]);
+  }, [origin, destination, date]);
   
-  // Función para ordenar los viajes según el criterio seleccionado
+  // Obtener los viajes ordenados por hora de salida 
   const sortedTrips = useMemo(() => {
     if (!trips) return [];
     
     return [...trips].sort((a, b) => {
       // Ordenar por hora de salida (más temprano primero)
-      if (sortMethod === "departure") {
-        // Extraer hora de salida
-        const getTimeValue = (timeStr: string) => {
-          const [time, period] = timeStr.split(' ');
-          const [hours, minutes] = time.split(':').map(Number);
-          let value = hours * 60 + minutes;
-          if (period === 'PM' && hours < 12) value += 12 * 60;
-          if (period === 'AM' && hours === 12) value = minutes;
-          return value;
-        };
-        
-        return getTimeValue(a.departureTime) - getTimeValue(b.departureTime);
-      }
+      const getTimeValue = (timeStr: string) => {
+        const [time, period] = timeStr.split(' ');
+        const [hours, minutes] = time.split(':').map(Number);
+        let value = hours * 60 + minutes;
+        if (period === 'PM' && hours < 12) value += 12 * 60;
+        if (period === 'AM' && hours === 12) value = minutes;
+        return value;
+      };
       
-      // Ordenar por precio (más barato primero)
-      if (sortMethod === "price") {
-        const priceA = a.isSubTrip && Array.isArray(a.segmentPrices) && a.segmentPrices.length > 0 
-          ? a.segmentPrices[0]?.price || a.price 
-          : a.price;
-        
-        const priceB = b.isSubTrip && Array.isArray(b.segmentPrices) && b.segmentPrices.length > 0 
-          ? b.segmentPrices[0]?.price || b.price 
-          : b.price;
-        
-        return priceA - priceB;
-      }
-      
-      // Ordenar por duración (más corto primero)
-      if (sortMethod === "duration") {
-        // Calcular las duraciones
-        const durationA = calculateDuration(a.departureTime, a.arrivalTime);
-        const durationB = calculateDuration(b.departureTime, b.arrivalTime);
-        
-        // Convertir a minutos para comparar
-        const getMinutes = (duration: string) => {
-          let minutes = 0;
-          if (duration.includes('h')) {
-            const hours = parseInt(duration.split('h')[0], 10);
-            minutes += hours * 60;
-            
-            if (duration.includes('m')) {
-              const mins = parseInt(duration.split('h ')[1].split('m')[0], 10);
-              minutes += mins;
-            }
-          } else if (duration.includes('m')) {
-            minutes = parseInt(duration.split('m')[0], 10);
-          }
-          return minutes;
-        };
-        
-        return getMinutes(durationA) - getMinutes(durationB);
-      }
-      
-      return 0;
+      return getTimeValue(a.departureTime) - getTimeValue(b.departureTime);
     });
-  }, [trips, sortMethod]);
+  }, [trips]);
   
   return (
     <div className="space-y-8">
@@ -222,7 +173,7 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="originFilter" className="block text-sm font-medium text-gray-700 mb-1">Origen</Label>
               {locationOptions.length > 0 ? (
@@ -278,25 +229,6 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                 />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="seatsFilter" className="block text-sm font-medium text-gray-700 mb-1">Asientos</label>
-              <Input
-                id="seatsFilter"
-                type="number"
-                min="1"
-                placeholder="Número de asientos"
-                value={seats}
-                onChange={(e) => setSeats(e.target.value)}
-              />
-            </div>
-            <div className="flex items-end">
-              <div className="w-full p-2 border rounded-md bg-gray-50 text-center">
-                <div className="flex items-center justify-center">
-                  <FilterIcon className="h-4 w-4 mr-2 text-gray-500" />
-                  <span className="text-sm text-gray-500">Búsqueda en tiempo real...</span>
-                </div>
               </div>
             </div>
           </div>
