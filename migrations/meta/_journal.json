@@ -8,6 +8,13 @@
       "when": 1745394016035,
       "tag": "0000_productive_mother_askani",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1746920650604,
+      "tag": "0001_red_jackpot",
+      "breakpoints": true
     }
   ]
 }

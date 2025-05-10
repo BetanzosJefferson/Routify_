@@ -452,6 +452,10 @@ export const packages = pgTable("packages", {
   packageDescription: text("package_description").notNull(),
   price: doublePrecision("price").notNull(),
   
+  // Uso de asientos
+  usesSeats: boolean("uses_seats").default(false).notNull(),
+  seatsQuantity: integer("seats_quantity").default(0),
+  
   // Estado del pago
   isPaid: boolean("is_paid").default(false).notNull(),
   paymentMethod: text("payment_method"), // efectivo, transferencia, etc.
