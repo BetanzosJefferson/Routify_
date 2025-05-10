@@ -2558,7 +2558,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getPackagesWithTripInfo(filters?: { companyId?: string, tripId?: number }): Promise<(schema.Package & { tripOrigin?: string, tripDestination?: string })[]> {
+  async getPackagesWithTripInfo(filters?: { companyId?: string, tripId?: number }): Promise<(schema.Package & { tripOrigin?: string, tripDestination?: string, segmentOrigin?: string, segmentDestination?: string })[]> {
     try {
       // Primero obtenemos los paquetes
       const packages = await this.getPackages(filters);
@@ -2574,7 +2574,9 @@ export class DatabaseStorage implements IStorage {
       // Obtenemos todos los viajes necesarios con un solo query
       const trips = await db.select({
         id: schema.trips.id,
-        routeId: schema.trips.routeId
+        routeId: schema.trips.routeId,
+        segmentOrigin: schema.trips.segmentOrigin,
+        segmentDestination: schema.trips.segmentDestination
       }).from(schema.trips)
         .where(inArray(schema.trips.id, tripIds));
       
@@ -2606,8 +2608,11 @@ export class DatabaseStorage implements IStorage {
         
         return {
           ...pkg,
+          // Priorizar los segmentos si están disponibles, luego usar la ruta completa
           tripOrigin: routeInfo?.origin || "No disponible",
-          tripDestination: routeInfo?.destination || "No disponible"
+          tripDestination: routeInfo?.destination || "No disponible",
+          segmentOrigin: tripInfo?.segmentOrigin || routeInfo?.origin || "No disponible",
+          segmentDestination: tripInfo?.segmentDestination || routeInfo?.destination || "No disponible"
         };
       });
     } catch (error) {
