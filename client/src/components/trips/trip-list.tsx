@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2Icon, MapPinIcon, CalendarIcon, FilterIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { Loader2Icon, MapPinIcon, CalendarIcon, FilterIcon, ChevronLeftIcon, ChevronRightIcon, EyeIcon, EyeOffIcon, XCircleIcon } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { format } from "date-fns";
-import { extractLocationsFromTrips } from "@/lib/trip-utils";
+import { extractLocationsFromTrips, calculateTripStatus } from "@/lib/trip-utils";
+import { TripStatus, TripVisibility } from "@shared/schema";
 
 // Función para abreviar ubicaciones en móvil
 function abbreviateLocation(location: string): string {
