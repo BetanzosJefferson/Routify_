@@ -2632,7 +2632,11 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getPackageWithTripInfo(id: number): Promise<schema.Package & { trip?: TripWithRouteInfo } | undefined> {
+  async getPackageWithTripInfo(id: number): Promise<schema.Package & { 
+    trip?: TripWithRouteInfo;
+    tripOrigin?: string;
+    tripDestination?: string;
+  } | undefined> {
     try {
       console.log(`[getPackageWithTripInfo] Buscando paquetería con ID: ${id}`);
       
@@ -2646,7 +2650,9 @@ export class DatabaseStorage implements IStorage {
       // Retornar paquetería con datos de viaje
       return {
         ...packageItem,
-        trip
+        trip,
+        tripOrigin: trip?.route.origin || "No disponible",
+        tripDestination: trip?.route.destination || "No disponible"
       };
     } catch (error) {
       console.error(`[getPackageWithTripInfo] Error al obtener paquetería con datos de viaje ID ${id}:`, error);
