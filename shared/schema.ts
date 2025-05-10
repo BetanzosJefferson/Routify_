@@ -20,18 +20,18 @@ export type UserRoleType = typeof UserRole[keyof typeof UserRole];
 
 // TRIP VISIBILITY ENUM
 export const TripVisibility = {
-  PUBLISHED: "publicado",
-  HIDDEN: "oculto",
-  CANCELLED: "cancelado",
+  PUBLISHED: "publicado", // Por defecto al publicar un viaje
+  HIDDEN: "oculto",      // Oculto (no aparece en listados)
+  CANCELLED: "cancelado", // Cancelado (no aparece pero no elimina reservas)
 } as const;
 
 export type TripVisibilityType = typeof TripVisibility[keyof typeof TripVisibility];
 
 // TRIP STATUS ENUM
 export const TripStatus = {
-  NOT_STARTED: "aun_no_inicia",
-  IN_PROGRESS: "en_progreso",
-  FINISHED: "finalizado",
+  NOT_STARTED: "aun_no_inicia", // Fecha/hora actual < fecha/hora inicio
+  IN_PROGRESS: "en_progreso",   // Fecha/hora inicio <= fecha/hora actual < fecha/hora fin
+  FINISHED: "finalizado",      // Fecha/hora actual >= fecha/hora fin
 } as const;
 
 export type TripStatusType = typeof TripStatus[keyof typeof TripStatus];
@@ -73,8 +73,8 @@ export const trips = pgTable("trips", {
   // Nuevo campo para aislamiento de datos por compañía
   companyId: text("company_id"),
   // Campos para estado y visibilidad del viaje
-  visibility: text("visibility").notNull().default(TripVisibility.PUBLISHED),
-  status: text("status").notNull().default(TripStatus.NOT_STARTED)
+  visibility: text("visibility").notNull().default("publicado"), // Publicado, Oculto, Cancelado
+  tripStatus: text("trip_status").notNull().default("aun_no_inicia") // Aun no inicia, En progreso, Finalizado
 });
 
 export const insertTripSchema = createInsertSchema(trips);
@@ -99,8 +99,8 @@ export interface TripWithTimes {
   vehicleId?: number | null;
   driverId?: number | null;
   companyId?: string | null;
-  visibility?: TripVisibilityType;
-  status?: TripStatusType;
+  visibility?: string; // "publicado", "oculto", "cancelado"
+  tripStatus?: string; // "aun_no_inicia", "en_progreso", "finalizado"
 }
 export type Trip = typeof trips.$inferSelect;
 
