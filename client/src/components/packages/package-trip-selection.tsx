@@ -169,7 +169,7 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
         <CardHeader className="pb-4">
           <CardTitle className="text-lg">Busca el viaje ideal para tu paquete</CardTitle>
           <CardDescription>
-            Filtra por origen, destino, fecha y asientos disponibles
+            Filtra por origen, destino y fecha para encontrar el viaje
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -235,44 +235,7 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
         </CardContent>
       </Card>
       
-      {/* Opciones de ordenamiento */}
-      <div className="mb-6">
-        <div className="flex flex-col md:flex-row gap-2 items-start">
-          <div className="text-sm font-medium text-gray-700">Ordenar por:</div>
-          <div className="flex flex-wrap gap-2">
-            <button 
-              className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                sortMethod === "departure" 
-                  ? "bg-blue-50 text-blue-600" 
-                  : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-              }`}
-              onClick={() => setSortMethod("departure")}
-            >
-              Salida más temprana
-            </button>
-            <button 
-              className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                sortMethod === "price" 
-                  ? "bg-blue-50 text-blue-600" 
-                  : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-              }`}
-              onClick={() => setSortMethod("price")}
-            >
-              Precio más bajo
-            </button>
-            <button 
-              className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                sortMethod === "duration" 
-                  ? "bg-blue-50 text-blue-600" 
-                  : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-              }`}
-              onClick={() => setSortMethod("duration")}
-            >
-              Duración más corta
-            </button>
-          </div>
-        </div>
-      </div>
+
       
       {/* Estado de carga */}
       {isLoading && (
@@ -335,8 +298,11 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                   
                   <div className="flex justify-between items-start">
                     <div className="max-w-[40%]">
-                      <div className="font-bold truncate">{trip.routeOrigin || trip.routeName?.split(' a ')[0]}</div>
-                      <div className="text-xs text-gray-500">{trip.originTerminal || "Terminal principal"}</div>
+                      <div className="font-bold truncate">{trip.routeOrigin || trip.route?.origin || trip.routeName?.split(' a ')[0]}</div>
+                      <div className="text-xs text-gray-500">
+                        {trip.originTerminal || 
+                         (trip.route?.stops?.length > 0 ? trip.route.stops[0] : "Terminal principal")}
+                      </div>
                     </div>
                     
                     <div className="flex-1 flex justify-center items-center px-2">
@@ -348,31 +314,33 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                     </div>
                     
                     <div className="max-w-[40%] text-right">
-                      <div className="font-bold truncate">{trip.routeDestination || trip.routeName?.split(' a ')[1]}</div>
-                      <div className="text-xs text-gray-500">{trip.destinationTerminal || "Terminal principal"}</div>
+                      <div className="font-bold truncate">{trip.routeDestination || trip.route?.destination || trip.routeName?.split(' a ')[1]}</div>
+                      <div className="text-xs text-gray-500">
+                        {trip.destinationTerminal || 
+                         (trip.route?.stops?.length > 0 ? trip.route.stops[trip.route.stops.length-1] : "Terminal principal")}
+                      </div>
                     </div>
                   </div>
                 </div>
                 
-                {/* Columna central: Información adicional */}
+                {/* Columna central: Solo información esencial */}
                 <div className="flex md:flex-col justify-between items-center mt-4 md:mt-0 md:px-4 md:border-l md:border-r border-gray-200">
                   <div className="flex flex-col items-center">
                     <div className="text-xs text-gray-500 mb-1">Fecha</div>
                     <div className="text-sm">{format(new Date(trip.departureDate), 'dd/MM/yyyy')}</div>
                   </div>
                   
-                  <div className="flex items-center">
+                  <div className="flex items-center mt-2">
                     <Truck className="h-4 w-4 mr-1 text-gray-500" />
-                    <span className="text-sm">{trip.vehicleType}</span>
+                    <span className="text-sm">{trip.vehicleType || "Vehículo estándar"}</span>
                   </div>
                 </div>
                 
-                {/* Columna derecha: Precio y botón */}
+                {/* Columna derecha: Solo fecha de operación */}
                 <div className="flex justify-between items-center mt-4 md:mt-0 md:ml-4 min-w-[140px]">
                   <div className="text-right">
-                    <div className="text-xs text-gray-500 mb-1">Precio</div>
-                    <div className="font-bold text-xl">${trip.price}</div>
-                    <div className="text-xs text-gray-500">{trip.availableSeats} asientos disponibles</div>
+                    <div className="text-xs text-gray-500 mb-1">Operación</div>
+                    <div className="font-bold text-lg">Paquetería</div>
                   </div>
                 </div>
               </div>
