@@ -11,6 +11,7 @@ import { es } from "date-fns/locale";
 import { Trip, TripWithRouteInfo, Reservation, Passenger } from "@shared/schema";
 import { useTrips } from "@/hooks/use-trips";
 import { useReservations } from "@/hooks/use-reservations";
+import { usePackages, Package } from "@/hooks/use-packages";
 
 type TripSummaryProps = {
   className?: string;
@@ -58,6 +59,15 @@ export default function TripSummary({ className }: TripSummaryProps) {
     data: reservations, 
     isLoading: isLoadingReservations 
   } = useReservations();
+  
+  // Consultar paqueterías solo cuando hay un viaje seleccionado
+  const {
+    data: packages,
+    isLoading: isLoadingPackages
+  } = usePackages({
+    tripId: selectedTrip || undefined,
+    enabled: !!selectedTrip
+  });
   
   // Función helper para procesar fecha de viaje en formato consistente
   const getTripDateStr = (tripDate: any): string => {
