@@ -235,7 +235,10 @@ export const publishTripValidationSchema = z.object({
   stopTimes: z.array(stopTimeSchema).optional(),
   // Campos para asignación de vehículos y conductores
   vehicleId: z.number().optional().nullable(), // ID del vehículo asignado
-  driverId: z.number().optional().nullable()   // ID del conductor asignado
+  driverId: z.number().optional().nullable(),  // ID del conductor asignado
+  // Campos para visibilidad y estado del viaje
+  visibility: z.enum([TripVisibility.PUBLISHED, TripVisibility.HIDDEN, TripVisibility.CANCELLED])
+    .default(TripVisibility.PUBLISHED).optional(), // Estado de visibilidad (publicado, oculto, cancelado)
 });
 
 export const createReservationValidationSchema = z.object({
