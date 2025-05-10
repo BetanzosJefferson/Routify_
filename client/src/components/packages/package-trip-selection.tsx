@@ -15,6 +15,12 @@ import { LocationAdapter } from "@/components/ui/location-adapter";
 
 // Utilities
 import { TripWithRouteInfo } from "@shared/schema";
+
+// Extendemos la interfaz TripWithRouteInfo para incluir los campos específicos que necesitamos
+interface ExtendedTripInfo extends TripWithRouteInfo {
+  originTerminal?: string;
+  destinationTerminal?: string;
+}
 import { normalizeToStartOfDay, formatDateForInput, formatDateForApiQuery } from "@/lib/utils";
 
 interface SearchParams {
@@ -88,7 +94,7 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
     queryFn: async () => {
       const response = await fetch("/api/trips");
       if (!response.ok) throw new Error("Failed to fetch trips");
-      return await response.json() as TripWithRouteInfo[];
+      return await response.json() as ExtendedTripInfo[];
     },
   });
   
@@ -102,9 +108,21 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
       
       const response = await fetch(`/api/trips${queryString ? `?${queryString}` : ''}`);
       if (!response.ok) throw new Error("Failed to fetch trips");
-      const fetchedTrips = await response.json() as TripWithRouteInfo[];
+      const fetchedTrips = await response.json() as ExtendedTripInfo[];
       console.log("Trips with route info:", fetchedTrips);
-      return fetchedTrips;
+      
+      // Procesar los viajes para asegurar que tienen información de terminal correcta
+      const processedTrips = fetchedTrips.map(trip => ({
+        ...trip,
+        originTerminal: trip.route?.stops && trip.route.stops.length > 0 
+          ? trip.route.stops[0] 
+          : "Terminal principal",
+        destinationTerminal: trip.route?.stops && trip.route.stops.length > 0 
+          ? trip.route.stops[trip.route.stops.length - 1] 
+          : "Terminal principal"
+      }));
+      
+      return processedTrips;
     },
     enabled: Object.keys(searchParams).length > 0 // Only run if there are search params
   });
@@ -302,7 +320,7 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                     <div className="max-w-[40%]">
                       <div className="font-bold truncate">{trip.route?.origin || "Origen"}</div>
                       <div className="text-xs text-gray-500">
-                        {trip.originTerminal || "Terminal principal"}
+                        {(trip as ExtendedTripInfo).originTerminal || "Terminal principal"}
                       </div>
                     </div>
                     
@@ -317,7 +335,7 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                     <div className="max-w-[40%] text-right">
                       <div className="font-bold truncate">{trip.route?.destination || "Destino"}</div>
                       <div className="text-xs text-gray-500">
-                        {trip.destinationTerminal || "Terminal principal"}
+                        {(trip as ExtendedTripInfo).destinationTerminal || "Terminal principal"}
                       </div>
                     </div>
                   </div>
