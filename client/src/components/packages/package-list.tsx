@@ -262,10 +262,10 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                   </div>
                 </TableCell>
                 <TableCell>
-                  {pkg.tripOrigin || "No disponible"}
+                  {pkg.segmentOrigin || pkg.tripOrigin || "No disponible"}
                 </TableCell>
                 <TableCell>
-                  {pkg.tripDestination || "No disponible"}
+                  {pkg.segmentDestination || pkg.tripDestination || "No disponible"}
                 </TableCell>
                 <TableCell>{formatCurrency(pkg.price)}</TableCell>
                 <TableCell>
