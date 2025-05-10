@@ -47,6 +47,8 @@ const packageFormSchema = z.object({
   recipientPhone: z.string().min(10, { message: "El teléfono debe tener al menos 10 dígitos" }),
   packageDescription: z.string().min(5, { message: "La descripción debe tener al menos 5 caracteres" }),
   price: z.coerce.number().min(0, { message: "El precio no puede ser negativo" }),
+  usesSeats: z.boolean().default(false),
+  seatsQuantity: z.coerce.number().min(0).default(0),
   isPaid: z.boolean().default(false),
   paymentMethod: z.string().optional(),
   deliveryStatus: z.string().default("pendiente"),
@@ -78,6 +80,8 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
     recipientPhone: "",
     packageDescription: "",
     price: 0,
+    usesSeats: false,
+    seatsQuantity: 0,
     isPaid: false,
     paymentMethod: "efectivo",
     deliveryStatus: "pendiente",
@@ -112,6 +116,8 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
           recipientPhone: packageData.recipientPhone,
           packageDescription: packageData.packageDescription,
           price: packageData.price,
+          usesSeats: packageData.usesSeats || false,
+          seatsQuantity: packageData.seatsQuantity || 0,
           isPaid: packageData.isPaid,
           paymentMethod: packageData.paymentMethod || "efectivo",
           deliveryStatus: packageData.deliveryStatus || "pendiente",
@@ -136,8 +142,9 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
     fetchPackageData();
   }, [packageId, form, toast]);
   
-  // Obtener el estado del pago para condicionar campos
+  // Obtener valores para condicionar campos
   const isPaid = form.watch("isPaid");
+  const usesSeats = form.watch("usesSeats");
   
   // Mutación para guardar el paquete
   const saveMutation = useMutation({
@@ -353,6 +360,52 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
                   </FormItem>
                 )}
               />
+              
+              <FormField
+                control={form.control}
+                name="usesSeats"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Ocupar asientos</FormLabel>
+                      <FormDescription>
+                        ¿El paquete requiere ocupar asientos de pasajeros?
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              
+              {usesSeats && (
+                <FormField
+                  control={form.control}
+                  name="seatsQuantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cantidad de asientos</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="1" 
+                          {...field} 
+                          type="number"
+                          min="1"
+                          max="10"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Indique cuántos asientos ocupará este paquete
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               
               <FormField
                 control={form.control}
