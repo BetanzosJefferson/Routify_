@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { hasRoleAccess } from "@/lib/role-based-permissions";
 import { UserRole } from "@shared/schema";
+import { DefaultLayout } from "@/components/layout/default-layout";
+import { TabType } from "@/hooks/use-active-tab";
 
 // UI Components
 import { PageTitle } from "@/components/ui/page-title";
@@ -19,6 +21,7 @@ export default function PackagesPage() {
   const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
   const [selectedPackageId, setSelectedPackageId] = useState<number | null>(null);
   const [view, setView] = useState<"list" | "selectTrip" | "form">("list");
+  const [activeTab] = useState<TabType>("packages");
   
   // Verificar permisos para acceder a esta página
   const hasAccess = user ? hasRoleAccess(user.role, [
