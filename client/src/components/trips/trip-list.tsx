@@ -540,11 +540,17 @@ export function TripList() {
                     </div>
                   </div>
                 </div>
-                <div className="text-base font-medium">
-                  {formatPrice(trip.isSubTrip && Array.isArray(trip.segmentPrices) && trip.segmentPrices.length > 0 
-                    ? trip.segmentPrices[0]?.price || trip.price 
-                    : trip.price)}
-                  <span className="text-xs text-gray-500 ml-1">MXN</span>
+                <div className="flex flex-col items-end">
+                  <div className="text-base font-medium">
+                    {formatPrice(trip.isSubTrip && Array.isArray(trip.segmentPrices) && trip.segmentPrices.length > 0 
+                      ? trip.segmentPrices[0]?.price || trip.price 
+                      : trip.price)}
+                    <span className="text-xs text-gray-500 ml-1">MXN</span>
+                  </div>
+                  <div className="flex space-x-1 mt-1">
+                    {trip.visibility && renderVisibilityIndicator(trip.visibility)}
+                    {renderTripStatus(trip)}
+                  </div>
                 </div>
               </div>
 
@@ -581,9 +587,9 @@ export function TripList() {
                 </div>
                 
                 <div className="mt-4 flex items-center justify-between">
-                  {trip.vehicle?.name && (
+                  {trip.assignedVehicle?.model && (
                     <div className="text-sm">
-                      <span className="capitalize">{trip.vehicle.name}</span>
+                      <span className="capitalize">{trip.assignedVehicle.model} - {trip.assignedVehicle.plates}</span>
                     </div>
                   )}
                   
