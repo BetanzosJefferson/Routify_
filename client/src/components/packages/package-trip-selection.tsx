@@ -327,42 +327,112 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                     </div>
                   </div>
 
-                  {/* Origen y destino de la ruta completa */}
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div>
-                      <div className="text-xs font-semibold text-gray-500">Origen de ruta</div>
-                      <div className="text-sm">{trip.route?.origin || "No especificado"}</div>
+                  {/* Información de subviaje */}
+                  {trip.isSubTrip && (
+                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-2 mb-3 text-xs">
+                      <span className="font-medium">Nota:</span> Este es un subviaje que cubre solo un segmento de la ruta.
                     </div>
-                    <div>
-                      <div className="text-xs font-semibold text-gray-500">Destino de ruta</div>
-                      <div className="text-sm">{trip.route?.destination || "No especificado"}</div>
+                  )}
+                  
+                  {/* Origen y destino de la ruta completa */}
+                  <div className="bg-gray-50 p-2 rounded-md mb-3">
+                    <div className="text-xs font-medium text-gray-500 mb-1">Ruta completa</div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-xs font-semibold text-gray-500">Origen</div>
+                        <div className="text-xs">{trip.route?.origin || "No especificado"}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-gray-500">Destino</div>
+                        <div className="text-xs">{trip.route?.destination || "No especificado"}</div>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Terminales específicas para este viaje */}
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div>
-                      <div className="text-xs font-semibold text-gray-500">Punto de abordaje</div>
-                      <div className="text-sm font-medium text-green-700">{trip.originTerminal || "Terminal principal"}</div>
+                  {/* Puntos específicos de abordaje y llegada */}
+                  <div className="border-2 border-dashed border-gray-200 rounded-md p-2 mb-3">
+                    <div className="text-xs font-medium text-gray-600 mb-1">
+                      <span className="inline-flex items-center">
+                        <MapPinIcon className="h-3 w-3 mr-1" />
+                        Puntos específicos de este viaje
+                      </span>
                     </div>
-                    <div>
-                      <div className="text-xs font-semibold text-gray-500">Punto de llegada</div>
-                      <div className="text-sm font-medium text-red-700">{trip.destinationTerminal || "Terminal principal"}</div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-xs font-semibold text-gray-600">Punto de abordaje</div>
+                        <div className="text-sm font-medium text-green-700 flex items-center">
+                          <div className="w-2 h-2 rounded-full bg-green-600 mr-2"></div>
+                          {trip.segmentOrigin || trip.originTerminal || "Terminal principal"}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-gray-600">Punto de llegada</div>
+                        <div className="text-sm font-medium text-red-700 flex items-center">
+                          <div className="w-2 h-2 rounded-full bg-red-600 mr-2"></div>
+                          {trip.segmentDestination || trip.destinationTerminal || "Terminal principal"}
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
-                  {/* Paradas intermedias */}
+                  {/* Paradas intermedias del segmento */}
                   <div className="mb-3">
-                    <div className="text-xs font-semibold text-gray-500 mb-1">Paradas intermedias</div>
+                    <div className="text-xs font-semibold text-gray-500 mb-1">Paradas intermedias del segmento</div>
                     <div className="text-sm">
                       {trip.route?.stops && trip.route.stops.length > 0 ? (
                         <div className="max-h-20 overflow-y-auto pl-2 border-l-2 border-gray-300">
-                          {trip.route.stops.map((stop, index) => (
-                            <div key={index} className="mb-1 text-xs flex items-center">
-                              <div className="w-2 h-2 rounded-full bg-gray-400 mr-2"></div>
-                              {stop}
-                            </div>
-                          ))}
+                          {(() => {
+                            // Intentamos obtener los puntos de origen y destino del segmento
+                            const segmentOrigin = trip.segmentOrigin || trip.originTerminal;
+                            const segmentDestination = trip.segmentDestination || trip.destinationTerminal;
+                            
+                            if (!segmentOrigin || !segmentDestination) {
+                              return (
+                                <span className="text-gray-500 italic">Información de segmento no disponible</span>
+                              );
+                            }
+                            
+                            // Obtenemos la lista completa de paradas incluyendo origen y destino de la ruta
+                            const allStops = [
+                              trip.route.origin,
+                              ...trip.route.stops,
+                              trip.route.destination
+                            ];
+                            
+                            // Encontramos los índices de las paradas de origen y destino del segmento
+                            const originIndex = allStops.findIndex(stop => 
+                              stop.includes(segmentOrigin.split(' - ')[0])
+                            );
+                            const destinationIndex = allStops.findIndex(stop => 
+                              stop.includes(segmentDestination.split(' - ')[0])
+                            );
+                            
+                            // Si no encontramos los índices, mostramos todas las paradas
+                            if (originIndex === -1 || destinationIndex === -1 || originIndex >= destinationIndex) {
+                              return trip.route.stops.map((stop, index) => (
+                                <div key={index} className="mb-1 text-xs flex items-center">
+                                  <div className="w-2 h-2 rounded-full bg-gray-400 mr-2"></div>
+                                  {stop}
+                                </div>
+                              ));
+                            }
+                            
+                            // Obtenemos solo las paradas entre el origen y destino del segmento
+                            const relevantStops = allStops.slice(originIndex + 1, destinationIndex);
+                            
+                            if (relevantStops.length === 0) {
+                              return (
+                                <span className="text-gray-500 italic">Viaje directo sin paradas intermedias</span>
+                              );
+                            }
+                            
+                            return relevantStops.map((stop, index) => (
+                              <div key={index} className="mb-1 text-xs flex items-center">
+                                <div className="w-2 h-2 rounded-full bg-gray-400 mr-2"></div>
+                                {stop}
+                              </div>
+                            ));
+                          })()}
                         </div>
                       ) : (
                         <span className="text-gray-500 italic">Sin paradas intermedias</span>
