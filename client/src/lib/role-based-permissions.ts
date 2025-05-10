@@ -110,3 +110,14 @@ export function getAllowedSections(userRole: string): Section[] {
   const allowedSectionIds = ROLE_SECTION_PERMISSIONS[userRole] || [];
   return ALL_SECTIONS.filter(section => allowedSectionIds.includes(section.id));
 }
+
+/**
+ * Comprueba si un rol de usuario tiene acceso a las funciones reservadas para ciertos roles
+ * @param userRole - Rol del usuario actual
+ * @param allowedRoles - Array de roles que tienen acceso
+ * @returns Verdadero si el usuario tiene acceso, falso en caso contrario
+ */
+export function hasRoleAccess(userRole: string, allowedRoles: string[]): boolean {
+  if (!userRole) return false;
+  return allowedRoles.includes(userRole);
+}
