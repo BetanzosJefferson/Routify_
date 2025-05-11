@@ -104,9 +104,9 @@ export default function PackageVerifyPage() {
 
   // Determinar si el usuario puede marcar el paquete
   const canMark = user && packageQuery.data && canUserAccessPackage(
-    user.role,
-    user.company,
-    packageQuery.data.companyId
+    user.role || '',
+    user.company || '',
+    packageQuery.data.companyId || ''
   );
 
   if (packageQuery.isLoading) {
