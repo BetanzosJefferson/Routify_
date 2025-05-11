@@ -37,8 +37,8 @@ import {
 } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 
-// Esquema de validación para el formulario (se configurará dinámicamente)
-const createPackageFormSchema = (maxSeats?: number) => z.object({
+// Esquema de validación para el formulario
+const packageFormSchema = z.object({
   senderName: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres" }),
   senderLastName: z.string().min(2, { message: "El apellido debe tener al menos 2 caracteres" }),
   senderPhone: z.string().min(10, { message: "El teléfono debe tener al menos 10 dígitos" }),
@@ -50,18 +50,11 @@ const createPackageFormSchema = (maxSeats?: number) => z.object({
   usesSeats: z.boolean().default(false),
   seatsQuantity: z.coerce.number()
     .min(0, { message: "La cantidad no puede ser negativa" })
-    .refine(
-      (val) => !maxSeats || val <= maxSeats, 
-      { message: `No hay suficientes asientos disponibles (máximo ${maxSeats})` }
-    )
     .default(0),
   isPaid: z.boolean().default(false),
   paymentMethod: z.string().optional(),
   deliveryStatus: z.string().default("pendiente"),
 });
-
-// Inicializamos con un esquema básico
-const packageFormSchema = createPackageFormSchema();
 
 // Tipo para los valores del formulario
 type PackageFormValues = z.infer<typeof packageFormSchema>;
@@ -98,33 +91,35 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
   };
   
   // Crear el esquema de validación actualizado con los asientos disponibles
-  const [validationSchema, setValidationSchema] = useState(packageFormSchema);
-  const [maxSeats, setMaxSeats] = useState<number | undefined>(undefined);
-  const [currentSeatsQuantity, setCurrentSeatsQuantity] = useState(0);
+  // Usaremos una variable para almacenar el máximo de asientos disponibles
+  const [maxAvailableSeats, setMaxAvailableSeats] = useState<number>(10);
   
-  // Configuración del formulario
+  // Configuración del formulario con el esquema básico
   const form = useForm<PackageFormValues>({
-    resolver: zodResolver(validationSchema),
+    resolver: zodResolver(packageFormSchema),
     defaultValues,
   });
   
-  // Actualizar el esquema cuando cambia la información del viaje
+  // Actualizar la cantidad máxima de asientos cuando se carga la información del viaje
   useEffect(() => {
     if (tripInfo) {
-      // Si estamos editando, incluir los asientos actuales en el cálculo
-      const maxAvailableSeats = packageId ? 
-        tripInfo.availableSeats + currentSeatsQuantity :
-        tripInfo.availableSeats;
+      // Obtener la cantidad de asientos que usa actualmente este paquete (si estamos editando)
+      let currentPackageSeats = 0;
       
-      setMaxSeats(maxAvailableSeats);
+      // Si estamos editando un paquete existente, necesitamos saber cuántos asientos usaba anteriormente
+      if (packageId && form.getValues().usesSeats) {
+        currentPackageSeats = form.getValues().seatsQuantity || 0;
+      }
       
-      // Crear nuevo esquema con el límite adecuado
-      const newSchema = createPackageFormSchema(maxAvailableSeats);
-      setValidationSchema(newSchema);
+      // Calcular el máximo disponible: asientos del viaje + los que ya usaba este paquete (si es edición)
+      const maxSeats = tripInfo.availableSeats + currentPackageSeats;
       
-      console.log(`Actualizando esquema de validación con máximo de ${maxAvailableSeats} asientos (actual: ${currentSeatsQuantity})`);
+      console.log(`Viaje con ${tripInfo.availableSeats} asientos disponibles, paquete usa ${currentPackageSeats}, máximo: ${maxSeats}`);
+      
+      // Actualizar el estado con el máximo calculado
+      setMaxAvailableSeats(maxSeats);
     }
-  }, [tripInfo, packageId, currentSeatsQuantity]);
+  }, [tripInfo, packageId, form]);
   
   // Cargar datos del viaje seleccionado
   useEffect(() => {
@@ -261,6 +256,18 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
   
   // Manejar el envío del formulario
   const onSubmit = (data: PackageFormValues) => {
+    // Validación adicional para asientos
+    if (data.usesSeats && data.seatsQuantity > 0) {
+      // Verificar que no exceda los asientos disponibles
+      if (data.seatsQuantity > maxAvailableSeats) {
+        form.setError("seatsQuantity", {
+          type: "manual",
+          message: `No hay suficientes asientos disponibles (máximo ${maxAvailableSeats})`
+        });
+        return;
+      }
+    }
+    
     setIsSubmitting(true);
     saveMutation.mutate(data);
   };
@@ -467,22 +474,21 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
                           {...field} 
                           type="number"
                           min="1"
-                          max={
-                            // Si estamos editando un paquete, sumar los asientos actuales del paquete
-                            // a los disponibles en el viaje, para permitir mantener o reducir la cantidad
-                            packageId && tripInfo ? 
-                              tripInfo.availableSeats + (form.getValues().seatsQuantity || 0) : 
-                              tripInfo?.availableSeats || 10
-                          }
+                          max={maxAvailableSeats}
+                          onChange={(e) => {
+                            // Limitar el valor al máximo disponible
+                            const value = parseInt(e.target.value);
+                            if (value > maxAvailableSeats) {
+                              field.onChange(maxAvailableSeats);
+                            } else {
+                              field.onChange(value);
+                            }
+                          }}
                         />
                       </FormControl>
                       <FormDescription>
                         {tripInfo ? 
-                          `Máximo ${
-                            packageId ? 
-                              tripInfo.availableSeats + (form.getValues().seatsQuantity || 0) : 
-                              tripInfo.availableSeats
-                            } asientos disponibles en este viaje` : 
+                          `Máximo ${maxAvailableSeats} asientos disponibles en este viaje` : 
                           'Cargando asientos disponibles...'}
                       </FormDescription>
                       <FormMessage />
