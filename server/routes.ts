@@ -270,11 +270,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`${i+1}. ${s.origin} -> ${s.viaLocation} -> ${s.destination}`);
       });
 
-      // Devolver todos los segmentos, incluyendo los que tienen paradas intermedias
-      res.json({
+      // Log para ver toda la estructura antes de enviarla
+      console.log("=== ESTRUCTURA COMPLETA DE RESPUESTA ===");
+      console.log("Cantidad de segmentos normales:", validSegments.length);
+      console.log("Cantidad de segmentos con paradas intermedias:", conVia.length);
+      console.log("Cantidad de segmentos totales:", segmentosFinales.length);
+      
+      // Log detallado de todos los segmentos finales con formato para verificar
+      console.log("=== SEGMENTOS FINALES (DETALLE) ===");
+      segmentosFinales.forEach((segmento, index) => {
+        const viaInfo = segmento.viaLocation ? ` vía ${segmento.viaLocation}` : '';
+        console.log(`${index + 1}. ${segmento.origin} -> ${segmento.destination}${viaInfo}`);
+      });
+      
+      // Log de la estructura JSON que se va a enviar como respuesta
+      const respuestaFinal = {
         ...routeWithSegments,
         segments: segmentosFinales
-      });
+      };
+      
+      console.log("=== OBJETO DE RESPUESTA JSON (PRIMEROS 2 SEGMENTOS) ===");
+      console.log(JSON.stringify({
+        ...respuestaFinal,
+        segments: respuestaFinal.segments.slice(0, 2)
+      }, null, 2));
+      
+      // Descomponemos la respuesta para verificar cada parte
+      const jsonString = JSON.stringify(respuestaFinal);
+      const parseBack = JSON.parse(jsonString);
+      
+      console.log("=== VERIFICACIÓN DE SERIALIZACIÓN ===");
+      console.log("Número de segmentos después de serialización:", parseBack.segments.length);
+      
+      const viaSegmentosDespuesJSON = parseBack.segments.filter(s => s.viaLocation);
+      console.log("Segmentos con viaLocation después de JSON:", viaSegmentosDespuesJSON.length);
+      
+      // Finalmente enviamos la respuesta
+      res.json(respuestaFinal);
     } catch (error) {
       console.error("Error al obtener segmentos de ruta:", error);
       res.status(500).json({ error: "Failed to fetch route segments" });
