@@ -3010,4 +3010,88 @@ export class DatabaseStorage implements IStorage {
       return false;
     }
   }
+  
+  /**
+   * Determina si un viaje contiene un segmento específico de ruta
+   * Esta función mejorada verifica si un segmento de ruta (con o sin parada intermedia)
+   * forma parte de un viaje o subviaje específico
+   */
+  private tripContainsSegment(trip: schema.Trip, segment: { 
+    origin: string; 
+    destination: string; 
+    viaLocation?: string 
+  }): boolean {
+    // Si el viaje no tiene información de segmento (viaje principal completo)
+    // y no especifica origen y destino de segmento, consideramos que cubre toda la ruta
+    if (!trip.segmentOrigin && !trip.segmentDestination) {
+      // Es un viaje principal que cubre toda la ruta
+      return true;
+    }
+    
+    // Obtener puntos de inicio y fin para la comparación
+    const tripOrigin = trip.segmentOrigin || trip.origin;
+    const tripDestination = trip.segmentDestination || trip.destination;
+    
+    // Caso 1: Coincidencia exacta (misma origen y destino)
+    const exactMatch = tripOrigin === segment.origin && tripDestination === segment.destination;
+    if (exactMatch) {
+      console.log(`[tripContainsSegment] Coincidencia exacta: ${tripOrigin} -> ${tripDestination}`);
+      return true;
+    }
+    
+    // Caso 2: Si el viaje cubre completamente el segmento
+    // Necesitaríamos tener la ruta completa con todas las paradas para saber esto con certeza
+    // En ausencia de esa información, hacemos una verificación simplificada por ciudad
+    
+    // Extraer el nombre de la ciudad de cada ubicación
+    const extractCity = (location: string): string => {
+      const parts = location.split(' - ');
+      return parts[0].trim(); // Ej: "Acapulco de Juárez, Guerrero"
+    };
+    
+    const tripOriginCity = extractCity(tripOrigin);
+    const tripDestinationCity = extractCity(tripDestination);
+    const segmentOriginCity = extractCity(segment.origin);
+    const segmentDestinationCity = extractCity(segment.destination);
+    
+    // Considerar la parada intermedia si existe
+    const hasViaLocation = !!segment.viaLocation;
+    const viaLocationCity = hasViaLocation ? extractCity(segment.viaLocation!) : '';
+    
+    // Caso especial: Si el segmento tiene una parada intermedia (viaLocation)
+    if (hasViaLocation) {
+      // Verificar si el viaje cubre el segmento completo incluyendo la parada intermedia
+      const coversOriginToVia = tripOriginCity === segmentOriginCity || 
+                               (tripOriginCity === viaLocationCity && tripDestinationCity === segmentDestinationCity);
+      
+      const coversViaToDestination = tripDestinationCity === segmentDestinationCity || 
+                                    (tripOriginCity === segmentOriginCity && tripDestinationCity === viaLocationCity);
+      
+      // También considerar si el viaje exactamente coincide con una parte del segmento con parada intermedia
+      const matchesSegmentPart = (tripOriginCity === segmentOriginCity && tripDestinationCity === viaLocationCity) || 
+                                (tripOriginCity === viaLocationCity && tripDestinationCity === segmentDestinationCity);
+      
+      // Un viaje contiene un segmento con parada intermedia si cubre ambas partes o al menos una parte exacta
+      const containsWithVia = (tripOriginCity === segmentOriginCity && tripDestinationCity === segmentDestinationCity) || 
+                             matchesSegmentPart;
+      
+      if (containsWithVia) {
+        console.log(`[tripContainsSegment] Viaje contiene segmento con parada intermedia: ${tripOrigin} -> ${tripDestination} contiene ${segment.origin} -> ${segment.viaLocation} -> ${segment.destination}`);
+        return true;
+      }
+    }
+    
+    // Caso 3: Verificación general de superposición basada en ciudades
+    // Un viaje contiene un segmento si:
+    // a) Tiene las mismas ciudades de origen y destino
+    // b) El origen del viaje es igual al origen del segmento y el destino está más allá
+    // c) El destino del viaje es igual al destino del segmento y el origen está antes
+    // d) El segmento está completamente contenido en el viaje
+    
+    const sameCities = (tripOriginCity === segmentOriginCity && tripDestinationCity === segmentDestinationCity);
+    const coversFromOrigin = (tripOriginCity === segmentOriginCity);
+    const coversToDestination = (tripDestinationCity === segmentDestinationCity);
+    
+    return sameCities || coversFromOrigin || coversToDestination;
+  }
 }
