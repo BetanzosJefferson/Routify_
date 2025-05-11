@@ -83,6 +83,35 @@ export async function generatePackageTicketPDF(packageData: PackageData, company
   // Configuración de fuentes
   doc.setFont("courier", "normal");
   doc.setFontSize(10);
+  
+  // Función para manejar texto largo y wrap automático
+  const renderWrappedText = (text: string, x: number, startY: number, maxWidth: number): number => {
+    let currentY = startY;
+    
+    if (doc.getStringUnitWidth(text) * doc.getFontSize() / doc.internal.scaleFactor > maxWidth) {
+      const words = text.split(' ');
+      let line = '';
+      
+      for (let i = 0; i < words.length; i++) {
+        const testLine = line + words[i] + ' ';
+        if (doc.getStringUnitWidth(testLine) * doc.getFontSize() / doc.internal.scaleFactor > maxWidth) {
+          doc.text(line, x, currentY);
+          line = words[i] + ' ';
+          currentY += 3;
+        } else {
+          line = testLine;
+        }
+      }
+      
+      if (line.trim()) {
+        doc.text(line, x, currentY);
+      }
+    } else {
+      doc.text(text, x, currentY);
+    }
+    
+    return currentY + 4; // Devolvemos la nueva posición Y con un pequeño margen
+  };
 
   // Margen superior
   let y = 10;
@@ -156,10 +185,13 @@ export async function generatePackageTicketPDF(packageData: PackageData, company
   const origen = packageData.segmentOrigin || packageData.tripOrigin || "Origen no especificado";
   const destino = packageData.segmentDestination || packageData.tripDestination || "Destino no especificado";
   
-  doc.text(`De: ${origen}`, 5, y);
+  // Renderizamos el origen con posible salto de línea
+  doc.text("De:", 5, y);
+  y = renderWrappedText(origen, 12, y, 40);
   
-  y += 4;
-  doc.text(`A: ${destino}`, 5, y);
+  // Renderizamos el destino con posible salto de línea
+  doc.text("A:", 5, y);
+  y = renderWrappedText(destino, 12, y, 40);
   
   // Detalles del paquete
   y += 6;
@@ -172,27 +204,10 @@ export async function generatePackageTicketPDF(packageData: PackageData, company
   doc.setFont("courier", "normal");
   const descripcion = packageData.packageDescription || "Sin descripción";
   
-  // Dividir descripción larga en múltiples líneas si es necesario
-  const maxWidth = 48; // Ancho máximo en mm
-  if (doc.getStringUnitWidth(descripcion) * 8 / doc.internal.scaleFactor > maxWidth) {
-    const words = descripcion.split(' ');
-    let line = '';
-    for (let i = 0; i < words.length; i++) {
-      const testLine = line + words[i] + ' ';
-      if (doc.getStringUnitWidth(testLine) * 8 / doc.internal.scaleFactor > maxWidth) {
-        doc.text(line, 5, y);
-        line = words[i] + ' ';
-        y += 3;
-      } else {
-        line = testLine;
-      }
-    }
-    doc.text(line, 5, y);
-  } else {
-    doc.text(descripcion, 5, y);
-  }
+  // Usar la función de texto con wrap para la descripción
+  y = renderWrappedText(descripcion, 5, y, 48);
   
-  y += 4;
+  y += 1; // Pequeño margen adicional
   doc.text(`Precio: ${formatCurrency(packageData.price)}`, 5, y);
   
   if (packageData.usesSeats) {
