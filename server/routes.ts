@@ -1126,23 +1126,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint de diagnóstico temporal para verificar subviajes
   app.get(apiRouter("/debug/subtrips"), async (req: Request, res: Response) => {
     try {
-      // Hacer un query más simple
+      // Hacer un query más simple sin buscar via_location que no existe
       const trips = await db.execute(sql`
         SELECT 
           id, 
           segment_origin as origin, 
           segment_destination as destination, 
-          via_location as "viaLocation",
           parent_trip_id as "parentId"
         FROM trips 
         WHERE is_sub_trip = true
       `);
       
-      // Agrupar por origen-destino-viaLocation para detectar duplicados
+      // Agrupar solo por origen-destino para detectar duplicados
       const grouped = new Map();
       
       trips.forEach(trip => {
-        const key = `${trip.origin}|${trip.destination}${trip.viaLocation ? '|' + trip.viaLocation : ''}`;
+        const key = `${trip.origin}|${trip.destination}`;
         if (!grouped.has(key)) {
           grouped.set(key, []);
         }
