@@ -931,6 +931,29 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`[updateRelatedTripsAvailability] Actualizando viaje ${tripId} con cambio de ${seatChange} asientos (${isAddingSeats ? 'añadiendo' : 'reduciendo'})`);
     
+    // PRIMERO: Actualizar el viaje actual (ya sea principal o sub-viaje)
+    let newAvailableSeatsForTrip;
+    
+    if (isAddingSeats) {
+      // Al añadir asientos, no exceder la capacidad máxima
+      newAvailableSeatsForTrip = Math.min(trip.availableSeats + absoluteChange, trip.capacity);
+    } else if (isReducingSeats) {
+      // Al reducir asientos, no permitir negativos
+      newAvailableSeatsForTrip = Math.max(trip.availableSeats - absoluteChange, 0);
+    } else {
+      // Si no hay cambio, mantener igual
+      newAvailableSeatsForTrip = trip.availableSeats;
+    }
+    
+    console.log(`[updateRelatedTripsAvailability] Actualizando viaje actual ${trip.id}: asientos ${trip.availableSeats} a ${newAvailableSeatsForTrip} (capacidad máxima: ${trip.capacity})`);
+    
+    // Actualizar el viaje actual
+    await db
+      .update(schema.trips)
+      .set({ availableSeats: newAvailableSeatsForTrip })
+      .where(eq(schema.trips.id, trip.id));
+    
+    // LUEGO: Actualizar viajes relacionados
     if (trip.isSubTrip && trip.parentTripId && trip.segmentOrigin && trip.segmentDestination) {
       // Este es un sub-viaje, actualizar el viaje principal
       const mainTrip = await this.getTrip(trip.parentTripId);
