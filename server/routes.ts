@@ -1,6 +1,9 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db";
+import { eq, sql } from "drizzle-orm";
+import * as schema from "@shared/schema";
 import { z } from "zod";
 import { 
   insertRouteSchema, 
@@ -1120,6 +1123,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint de diagnóstico temporal para verificar subviajes
+  app.get(apiRouter("/debug/subtrips"), async (req: Request, res: Response) => {
+    try {
+      // Hacer un query más simple
+      const trips = await db.execute(sql`
+        SELECT 
+          id, 
+          segment_origin as origin, 
+          segment_destination as destination, 
+          via_location as "viaLocation",
+          parent_trip_id as "parentId"
+        FROM trips 
+        WHERE is_sub_trip = true
+      `);
+      
+      // Agrupar por origen-destino-viaLocation para detectar duplicados
+      const grouped = new Map();
+      
+      trips.forEach(trip => {
+        const key = `${trip.origin}|${trip.destination}${trip.viaLocation ? '|' + trip.viaLocation : ''}`;
+        if (!grouped.has(key)) {
+          grouped.set(key, []);
+        }
+        grouped.get(key).push(trip);
+      });
+      
+      // Convertir el Map a un Array de objetos para facilitar análisis
+      const groupsArray = [];
+      for (const [key, tripsInGroup] of grouped) {
+        if (tripsInGroup.length > 1) {
+          // Solo añadir grupos con duplicados
+          groupsArray.push({
+            route: key,
+            count: tripsInGroup.length,
+            tripIds: tripsInGroup.map(t => t.id),
+            parentIds: tripsInGroup.map(t => t.parentId).filter((v, i, a) => a.indexOf(v) === i), // Valores únicos
+            firstFewTrips: tripsInGroup.slice(0, 3)
+          });
+        }
+      }
+      
+      // Ordenar de mayor a menor número de duplicados
+      groupsArray.sort((a, b) => b.count - a.count);
+      
+      // Estadísticas para buscar patrones
+      const stats = {
+        totalSubTrips: trips.length,
+        uniqueRoutes: grouped.size,
+        routesWithDuplicates: groupsArray.length,
+        totalDuplicateCount: groupsArray.reduce((sum, group) => sum + group.count - 1, 0),
+        duplicateGroups: groupsArray
+      };
+      
+      res.json(stats);
+    } catch (error) {
+      console.error("Error en debug de subviajes:", error);
+      res.status(500).json({ error: "Error al analizar subviajes" });
+    }
+  });
+
   // Helper function to generate all possible segments between stops
   function generateAllPossibleSegments(route: RouteWithSegments) {
     const allPoints = [route.origin, ...route.stops, route.destination];
