@@ -979,6 +979,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             tripStatus: TripStatus.NOT_STARTED
           };
           
+          // Imprimir lista detallada de segmentos para facilitar la depuración
+          console.log(`SubTrip "${segment.origin} -> ${segment.destination}" con ${segmentPrice.length} segmentos de precios:`);
+          segmentPrice.forEach((sp: any, index: number) => {
+            const viaText = sp.viaLocation ? ` vía ${sp.viaLocation}` : '';
+            console.log(`  ${index + 1}. ${sp.origin} -> ${sp.destination}${viaText}`);
+            console.log(`     Salida: ${sp.departureTime}, Llegada: ${sp.arrivalTime}, Precio: $${sp.price}`);
+          });
+          
           const subTrip = await storage.createTrip(subTripToCreate);
           createdTrips.push(subTrip);
         }
@@ -999,7 +1007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`Generando todos los segmentos para la ruta ${route.id}`);
     console.log(`Puntos en la ruta: ${allPoints.join(' -> ')}`);
     
-    // Approach 1: Generate all possible combinations (not just consecutive stops)
+    // ENFOQUE 1: Generar todas las combinaciones directas posibles entre paradas
     for (let i = 0; i < allPoints.length - 1; i++) {
       for (let j = i + 1; j < allPoints.length; j++) {
         // Skip the main route (origin to destination) as it's already created separately
@@ -1014,38 +1022,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
         
-        // Verificar si este es un segmento corto (solo una parada de diferencia)
-        const isShortSegment = j === i + 1;
-        const isFirstToSecond = i === 0 && j === 1; // Origen a primera parada
-        const isSecondToLast = j === allPoints.length - 1 && i === allPoints.length - 2; // Última parada a destino
-        
-        // NOTA: Comentamos esta condición para incluir TODOS los segmentos posibles,
-        // incluyendo "Acapulco - Plaza Caracol - Chilpancingo" y otros segmentos intermedios
-        /*
-        if (isShortSegment && !isFirstToSecond && !isSecondToLast && allPoints.length > 3) {
-          console.log(`Saltando segmento corto no significativo: ${allPoints[i]} -> ${allPoints[j]}`);
-          continue;
-        }
-        */
-        
         allSegments.push({
           origin: allPoints[i],
           destination: allPoints[j],
           price: 0
         });
         
-        console.log(`  + Segmento: ${allPoints[i]} -> ${allPoints[j]}`);
+        console.log(`  + Segmento directo: ${allPoints[i]} -> ${allPoints[j]}`);
       }
     }
     
-    console.log(`Generados ${allSegments.length} segmentos válidos (excluyendo misma ciudad y ruta principal) para la ruta ${route.id}`);
+    // ENFOQUE 2: Generar segmentos con paradas intermedias explícitas
+    // Esto es lo que necesitamos para "Acapulco - Plaza Caracol - Chilpancingo"
+    for (let i = 0; i < allPoints.length - 2; i++) {
+      for (let j = i + 1; j < allPoints.length - 1; j++) {
+        for (let k = j + 1; k < allPoints.length; k++) {
+          // Evitar duplicados con la ruta principal
+          if (i === 0 && k === allPoints.length - 1) {
+            continue;
+          }
+          
+          // Verificar que no sean paradas en la misma ciudad
+          if (isSameCity(allPoints[i], allPoints[j]) || isSameCity(allPoints[j], allPoints[k]) || isSameCity(allPoints[i], allPoints[k])) {
+            continue;
+          }
+          
+          // En rutas con muchas paradas, solo crear segmentos con paradas intermedias relevantes
+          // Evitar generar combinaciones excesivas para rutas largas
+          const distancia = k - i;
+          if (distancia > 3 && allPoints.length > 5) {
+            continue;
+          }
+          
+          // Crear segmento con parada intermedia explícita (ejemplo: "Acapulco - Plaza Caracol - Chilpancingo")
+          const segmentoConParada = {
+            origin: allPoints[i],
+            destination: allPoints[k],
+            viaLocation: allPoints[j], // Parada intermedia explícita
+            price: 0
+          };
+          
+          console.log(`  + Segmento con parada intermedia: ${allPoints[i]} -> ${allPoints[j]} -> ${allPoints[k]}`);
+          allSegments.push(segmentoConParada);
+        }
+      }
+    }
+    
+    console.log(`Generados ${allSegments.length} segmentos válidos (incluyendo segmentos con paradas intermedias) para la ruta ${route.id}`);
     
     return allSegments;
   }
   
   // Helper function to calculate segment departure and arrival times
   function calculateSegmentTimes(
-    segments: { origin: string; destination: string; price: number; stopTimes?: any[]; segmentPrices?: any[] }[],
+    segments: { origin: string; destination: string; viaLocation?: string; price: number; stopTimes?: any[]; segmentPrices?: any[] }[],
     mainDepartureTime: string,
     mainArrivalTime: string,
     route: RouteWithSegments
@@ -1065,9 +1095,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Recorrer cada segmentPrice para extraer los tiempos explícitamente configurados
       segments.forEach(segment => {
-        const segmentData = segmentPrices.find(
+        let segmentData = segmentPrices.find(
           (sp: any) => sp.origin === segment.origin && sp.destination === segment.destination
         );
+        
+        // Si no encontramos un segmento directo, pero tenemos un segmento con parada intermedia
+        if (!segmentData && segment.viaLocation) {
+          console.log(`Buscando segmento con vía intermedia: ${segment.origin} -> ${segment.viaLocation} -> ${segment.destination}`);
+          
+          // Buscamos los segmentos origen->parada y parada->destino para calcular tiempos
+          const primerTramo = segmentPrices.find(
+            (sp: any) => sp.origin === segment.origin && sp.destination === segment.viaLocation
+          );
+          
+          const segundoTramo = segmentPrices.find(
+            (sp: any) => sp.origin === segment.viaLocation && sp.destination === segment.destination
+          );
+          
+          if (primerTramo && segundoTramo) {
+            segmentData = {
+              origin: segment.origin,
+              destination: segment.destination,
+              departureTime: primerTramo.departureTime,
+              arrivalTime: segundoTramo.arrivalTime
+            };
+            console.log(`Generando tiempo para el segmento compuesto: Salida ${segmentData.departureTime}, Llegada ${segmentData.arrivalTime}`);
+          }
+        }
         
         if (segmentData) {
           let departureTime, arrivalTime;
