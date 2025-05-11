@@ -988,25 +988,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdTrips.push(mainTrip);
         
         // Create all sub-trips
+        // Primero crearemos un mapa para asegurar que no haya duplicados de subviajes
+        // La clave será una combinación de origen y destino
+        const subTripsToCreate = new Map();
+        
+        // Actualizar la definición del tipo de segmentPrices para incluir los tiempos
+        type ExtendedSegmentPrice = {
+          origin: string;
+          destination: string;
+          price: number;
+          viaLocation?: string;
+          // Tiempo en formato string "HH:MM AM/PM"
+          departureTime?: string;
+          arrivalTime?: string;
+          // Componentes individuales de tiempo
+          departureHour?: string;
+          departureMinute?: string;
+          departureAmPm?: string;
+          arrivalHour?: string;
+          arrivalMinute?: string;
+          arrivalAmPm?: string;
+        };
+        
+        // Generar todos los posibles subviajes basados en segmentos únicos
+        console.log(`Generando ${allSegments.length} posibles subviajes para el viaje principal ID ${mainTrip.id}`);
+        
         for (const segment of allSegments) {
-          // Find the segment data (price and times) from user input or calculate proportionally
-          // Actualizar la definición del tipo de segmentPrices para incluir los tiempos
-          type ExtendedSegmentPrice = {
-            origin: string;
-            destination: string;
-            price: number;
-            // Tiempo en formato string "HH:MM AM/PM"
-            departureTime?: string;
-            arrivalTime?: string;
-            // Componentes individuales de tiempo
-            departureHour?: string;
-            departureMinute?: string;
-            departureAmPm?: string;
-            arrivalHour?: string;
-            arrivalMinute?: string;
-            arrivalAmPm?: string;
-          };
+          // Ignorar la ruta principal, ya que ya se creó un viaje para ella
+          if (segment.origin === route.origin && segment.destination === route.destination) {
+            console.log(`Ignorando segmento principal ${segment.origin} -> ${segment.destination} (ya creado como viaje principal)`);
+            continue;
+          }
           
+          // Generar una clave única para cada subviaje
+          const segmentKey = `${segment.origin}|${segment.destination}${segment.viaLocation ? '|' + segment.viaLocation : ''}`;
+          
+          // Si este segmento ya está en el mapa, omitirlo (evitar duplicados)
+          if (subTripsToCreate.has(segmentKey)) {
+            console.log(`Ignorando segmento duplicado: ${segment.origin} -> ${segment.destination}${segment.viaLocation ? ' vía ' + segment.viaLocation : ''}`);
+            continue;
+          }
+          
+          // Find the segment data (price and times) from user input or calculate proportionally
           const segmentData = tripData.segmentPrices.find(
             (sp: any) => sp.origin === segment.origin && sp.destination === segment.destination
           ) as ExtendedSegmentPrice | undefined;
@@ -1021,35 +1044,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (segmentData.departureTime) {
               // Formato explícito "HH:MM AM/PM"
               departureTime = segmentData.departureTime;
-              console.log(`Usando tiempo de salida explícito para ${segment.origin} -> ${segment.destination}: ${departureTime}`);
             } else if (segmentData.departureHour && segmentData.departureMinute && segmentData.departureAmPm) {
               // Formato de componentes (hora, minuto, AM/PM)
               departureTime = `${segmentData.departureHour}:${segmentData.departureMinute} ${segmentData.departureAmPm}`;
-              console.log(`Usando tiempo de salida por componentes para ${segment.origin} -> ${segment.destination}: ${departureTime}`);
             } else {
               // Fallback al tiempo calculado
-              departureTime = segmentTimes[`${segment.origin}-${segment.destination}`].departureTime;
-              console.log(`Fallback: Usando tiempo de salida calculado para ${segment.origin} -> ${segment.destination}: ${departureTime}`);
+              departureTime = segmentTimes[`${segment.origin}-${segment.destination}`]?.departureTime || mainTripToCreate.departureTime;
             }
             
             if (segmentData.arrivalTime) {
               // Formato explícito "HH:MM AM/PM"
               arrivalTime = segmentData.arrivalTime;
-              console.log(`Usando tiempo de llegada explícito para ${segment.origin} -> ${segment.destination}: ${arrivalTime}`);
             } else if (segmentData.arrivalHour && segmentData.arrivalMinute && segmentData.arrivalAmPm) {
               // Formato de componentes (hora, minuto, AM/PM)
               arrivalTime = `${segmentData.arrivalHour}:${segmentData.arrivalMinute} ${segmentData.arrivalAmPm}`;
-              console.log(`Usando tiempo de llegada por componentes para ${segment.origin} -> ${segment.destination}: ${arrivalTime}`);
             } else {
               // Fallback al tiempo calculado
-              arrivalTime = segmentTimes[`${segment.origin}-${segment.destination}`].arrivalTime;
-              console.log(`Fallback: Usando tiempo de llegada calculado para ${segment.origin} -> ${segment.destination}: ${arrivalTime}`);
+              arrivalTime = segmentTimes[`${segment.origin}-${segment.destination}`]?.arrivalTime || mainTripToCreate.arrivalTime;
             }
           } else {
             // Fallback: usar tiempos calculados proporcionalmente
             price = calculateProportionalPrice(segment, route, tripData.price || 0);
-            departureTime = segmentTimes[`${segment.origin}-${segment.destination}`].departureTime;
-            arrivalTime = segmentTimes[`${segment.origin}-${segment.destination}`].arrivalTime;
+            departureTime = segmentTimes[`${segment.origin}-${segment.destination}`]?.departureTime || mainTripToCreate.departureTime;
+            arrivalTime = segmentTimes[`${segment.origin}-${segment.destination}`]?.arrivalTime || mainTripToCreate.arrivalTime;
           }
           
           const subTripToCreate = {
@@ -1061,27 +1078,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
             availableSeats: tripData.capacity,
             price,
             // vehicleType: ya no se utiliza
-            segmentPrices: [{ origin: segment.origin, destination: segment.destination, price }],
+            segmentPrices: [{ 
+              origin: segment.origin, 
+              destination: segment.destination,
+              viaLocation: segment.viaLocation, // Incluir viaLocation si existe
+              price 
+            }],
             isSubTrip: true,
             parentTripId: mainTrip.id,
             segmentOrigin: segment.origin,
             segmentDestination: segment.destination,
+            // Si hay una viaLocation, agregarla también al subviaje
+            viaLocation: segment.viaLocation,
             companyId: companyId, // Asignar la misma compañía del usuario a todos los sub-viajes
             // Heredar los mismos valores de visibilidad y estado del viaje principal
             visibility: mainTrip.visibility || TripVisibility.PUBLISHED,
             tripStatus: TripStatus.NOT_STARTED
           };
           
-          // Imprimir lista detallada de segmentos para facilitar la depuración
-          console.log(`SubTrip "${segment.origin} -> ${segment.destination}" con ${segmentPrice.length} segmentos de precios:`);
-          segmentPrice.forEach((sp: any, index: number) => {
-            const viaText = sp.viaLocation ? ` vía ${sp.viaLocation}` : '';
-            console.log(`  ${index + 1}. ${sp.origin} -> ${sp.destination}${viaText}`);
-            console.log(`     Salida: ${sp.departureTime}, Llegada: ${sp.arrivalTime}, Precio: $${sp.price}`);
-          });
+          // Agregar este subviaje al mapa para evitar duplicados
+          subTripsToCreate.set(segmentKey, subTripToCreate);
           
+          const viaText = segment.viaLocation ? ` vía ${segment.viaLocation}` : '';
+          console.log(`Preparado subviaje: ${segment.origin} -> ${segment.destination}${viaText} ($${price})`);
+        }
+        
+        // Ahora crear todos los subviajes únicos
+        console.log(`Creando ${subTripsToCreate.size} subviajes únicos para el viaje principal ID ${mainTrip.id}`);
+        
+        for (const [key, subTripToCreate] of subTripsToCreate.entries()) {
           const subTrip = await storage.createTrip(subTripToCreate);
           createdTrips.push(subTrip);
+          console.log(`Creado subviaje ID ${subTrip.id} para la ruta ${subTripToCreate.segmentOrigin} -> ${subTripToCreate.segmentDestination}${subTripToCreate.viaLocation ? ' vía ' + subTripToCreate.viaLocation : ''}`);
         }
       }
       
