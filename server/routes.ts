@@ -230,38 +230,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Agregar manualmente los segmentos con paradas intermedias
-      // Si aún no tenemos el segmento específico, lo agregamos explícitamente
-      const acapulco = routeWithSegments.origin.includes("Acapulco") ? routeWithSegments.origin : routeWithSegments.stops.find(s => s.includes("Acapulco"));
-      const plazaCaracol = routeWithSegments.stops.find(s => s.includes("Plaza Caracol"));
-      const chilpancingo = routeWithSegments.stops.find(s => s.includes("Chilpancingo"));
+      // No agregamos segmentos manualmente, ya que generateAllPossibleSegments ya los está generando
       
-      // Manualmente crear los segmentos que necesitamos que el cliente pueda ver
-      const segmentosFinales = [...validSegments];
+      // Eliminamos duplicados basados en la combinación única de origin, destination y viaLocation
+      const uniqueSegments = Array.from(
+        validSegments.reduce((map, segment) => {
+          // Crear una clave única para cada segmento basada en sus propiedades
+          const key = `${segment.origin}|${segment.destination}${segment.viaLocation ? '|' + segment.viaLocation : ''}`;
+          // Solo agregar si no existe ya un segmento con la misma clave
+          if (!map.has(key)) {
+            map.set(key, segment);
+          }
+          return map;
+        }, new Map()).values()
+      );
       
-      // Segmento Acapulco - Plaza Caracol - Chilpancingo
-      if (acapulco && plazaCaracol && chilpancingo) {
-        console.log(`Añadiendo segmento manualmente: ${acapulco} -> ${plazaCaracol} -> ${chilpancingo}`);
-        segmentosFinales.push({
-          origin: acapulco,
-          viaLocation: plazaCaracol,
-          destination: chilpancingo
-        });
-      }
-      
-      // Segmento Chilpancingo - Polvorin
-      const polvorin = routeWithSegments.stops.find(s => s.includes("Polvorin"));
-      if (chilpancingo && polvorin) {
-        const galerias = routeWithSegments.stops.find(s => s.includes("Galerias"));
-        if (galerias) {
-          console.log(`Añadiendo segmento manualmente: ${chilpancingo} -> ${galerias} -> ${polvorin}`);
-          segmentosFinales.push({
-            origin: chilpancingo,
-            viaLocation: galerias,
-            destination: polvorin
-          });
-        }
-      }
+      console.log(`Eliminados ${validSegments.length - uniqueSegments.length} segmentos duplicados`);
+      const segmentosFinales = uniqueSegments;
       
       // Verificar que tengamos los segmentos con paradas intermedias
       const conVia = segmentosFinales.filter(s => s.viaLocation);
