@@ -1014,17 +1014,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
         
-        // Para evitar duplicados, omitiremos los segmentos con solo una parada de diferencia
-        // si no es un segmento significativo (como origen a primera parada o última parada a destino)
-        const isShortSegment = j === i + 1;
-        const isFirstToSecond = i === 0 && j === 1; // Origen a primera parada
-        const isSecondToLast = j === allPoints.length - 1 && i === allPoints.length - 2; // Última parada a destino
-        
-        // Solo incluir segmentos cortos si son significativos o si la ruta tiene pocas paradas
-        if (isShortSegment && !isFirstToSecond && !isSecondToLast && allPoints.length > 3) {
-          console.log(`Saltando segmento corto no significativo: ${allPoints[i]} -> ${allPoints[j]}`);
-          continue;
-        }
+        // ACTUALIZACIÓN: Eliminamos el filtro de segmentos cortos no significativos
+        // para generar los mismos segmentos que se muestran en la interfaz de usuario
         
         allSegments.push({
           origin: allPoints[i],
@@ -1036,7 +1027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
     
-    console.log(`Generados ${allSegments.length} segmentos válidos (excluyendo misma ciudad y ruta principal) para la ruta ${route.id}`);
+    console.log(`Generados ${allSegments.length} segmentos válidos para la ruta ${route.id} (coincidiendo con la cantidad mostrada en la interfaz)`);
     
     return allSegments;
   }
