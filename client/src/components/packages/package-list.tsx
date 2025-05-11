@@ -131,7 +131,13 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
         description: "El paquete ha sido eliminado exitosamente",
         variant: "default",
       });
+      
+      // Invalidar la caché de paquetes
       queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
+      
+      // Invalidar también la caché de viajes para actualizar los asientos disponibles
+      queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
+      
       setPackageToDelete(null);
     },
     onError: (error: Error) => {
