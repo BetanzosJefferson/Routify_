@@ -2667,7 +2667,10 @@ export class DatabaseStorage implements IStorage {
   
   async createPackage(packageData: schema.InsertPackage): Promise<schema.Package> {
     try {
-      console.log(`[createPackage] Creando nueva paquetería:`, packageData);
+      console.log(`[createPackage] Creando nueva paquetería:`, JSON.stringify(packageData, null, 2));
+      
+      // Verificamos explícitamente los campos de asientos
+      console.log(`[createPackage] Datos de asientos: usesSeats=${packageData.usesSeats}, seatsQuantity=${packageData.seatsQuantity}`);
       
       // Insertar la paquetería en la base de datos
       const [newPackage] = await db
@@ -2676,6 +2679,7 @@ export class DatabaseStorage implements IStorage {
         .returning();
         
       console.log(`[createPackage] Paquetería creada con ID: ${newPackage.id}`);
+      console.log(`[createPackage] Datos guardados: usesSeats=${newPackage.usesSeats}, seatsQuantity=${newPackage.seatsQuantity}`);
       
       // Si el paquete ocupa asientos, actualizar la disponibilidad del viaje
       if (newPackage.usesSeats && newPackage.seatsQuantity > 0 && newPackage.tripId) {
@@ -2685,21 +2689,33 @@ export class DatabaseStorage implements IStorage {
           // Obtener el viaje para actualizar asientos
           const trip = await this.getTrip(newPackage.tripId);
           if (trip) {
+            console.log(`[createPackage] Estado actual del viaje ${trip.id}: disponibles=${trip.availableSeats}, capacidad=${trip.capacity}`);
+            
             // Calcular nuevos asientos disponibles
             const newAvailableSeats = Math.max(0, trip.availableSeats - newPackage.seatsQuantity);
+            console.log(`[createPackage] Cálculo: ${trip.availableSeats} - ${newPackage.seatsQuantity} = ${newAvailableSeats}`);
             
             // Actualizar los asientos disponibles
-            await db
+            const [updatedTrip] = await db
               .update(schema.trips)
               .set({ availableSeats: newAvailableSeats })
-              .where(eq(schema.trips.id, trip.id));
-            
-            console.log(`[createPackage] Viaje ${trip.id}: asientos disponibles actualizados de ${trip.availableSeats} a ${newAvailableSeats}`);
+              .where(eq(schema.trips.id, trip.id))
+              .returning();
+              
+            if (updatedTrip) {
+              console.log(`[createPackage] Viaje ${trip.id}: asientos disponibles actualizados de ${trip.availableSeats} a ${updatedTrip.availableSeats}`);
+            } else {
+              console.error(`[createPackage] No se pudo actualizar el viaje ${trip.id}`);
+            }
+          } else {
+            console.error(`[createPackage] No se encontró el viaje ${newPackage.tripId}`);
           }
         } catch (updateError) {
           console.error(`[createPackage] Error al actualizar asientos del viaje:`, updateError);
           // No detenemos el proceso, ya que la paquetería ya fue creada
         }
+      } else {
+        console.log(`[createPackage] El paquete ${newPackage.id} NO ocupa asientos o tiene valores inválidos: usesSeats=${newPackage.usesSeats}, seatsQuantity=${newPackage.seatsQuantity}, tripId=${newPackage.tripId}`);
       }
       
       return newPackage;
@@ -2711,7 +2727,7 @@ export class DatabaseStorage implements IStorage {
   
   async updatePackage(id: number, packageData: Partial<schema.Package>): Promise<schema.Package | undefined> {
     try {
-      console.log(`[updatePackage] Actualizando paquetería ID ${id}:`, packageData);
+      console.log(`[updatePackage] Actualizando paquetería ID ${id}:`, JSON.stringify(packageData, null, 2));
       
       // Obtener el paquete original para comparar cambios en los asientos
       const originalPackage = await this.getPackage(id);
@@ -2719,6 +2735,8 @@ export class DatabaseStorage implements IStorage {
         console.log(`[updatePackage] No se encontró la paquetería original con ID ${id}`);
         return undefined;
       }
+      
+      console.log(`[updatePackage] Paquete original: usesSeats=${originalPackage.usesSeats}, seatsQuantity=${originalPackage.seatsQuantity}`);
       
       // Actualizar datos de la paquetería
       const [updatedPackage] = await db
@@ -2736,11 +2754,14 @@ export class DatabaseStorage implements IStorage {
       }
       
       console.log(`[updatePackage] Paquetería actualizada: ${updatedPackage.id}`);
+      console.log(`[updatePackage] Datos actualizados: usesSeats=${updatedPackage.usesSeats}, seatsQuantity=${updatedPackage.seatsQuantity}`);
       
       // Verificar si hubo cambios en el uso de asientos
       const originalSeatsUsed = originalPackage.usesSeats ? (originalPackage.seatsQuantity || 0) : 0;
       const updatedSeatsUsed = updatedPackage.usesSeats ? (updatedPackage.seatsQuantity || 0) : 0;
       const seatsDifference = updatedSeatsUsed - originalSeatsUsed;
+      
+      console.log(`[updatePackage] Cálculo de diferencia: ${originalSeatsUsed} -> ${updatedSeatsUsed} = ${seatsDifference} asientos`);
       
       // Si hay una diferencia en asientos, actualizar la disponibilidad del viaje
       if (seatsDifference !== 0 && updatedPackage.tripId) {
@@ -2750,23 +2771,35 @@ export class DatabaseStorage implements IStorage {
           // Obtener el viaje para actualizar asientos
           const trip = await this.getTrip(updatedPackage.tripId);
           if (trip) {
+            console.log(`[updatePackage] Estado actual del viaje ${trip.id}: disponibles=${trip.availableSeats}, capacidad=${trip.capacity}`);
+            
             // Calcular nuevos asientos disponibles
             // Si seatsDifference es positivo, se están usando más asientos (reducir disponibles)
             // Si seatsDifference es negativo, se están liberando asientos (aumentar disponibles)
             const newAvailableSeats = Math.max(0, Math.min(trip.capacity, trip.availableSeats - seatsDifference));
+            console.log(`[updatePackage] Cálculo: ${trip.availableSeats} - (${seatsDifference}) = ${newAvailableSeats}`);
             
             // Actualizar los asientos disponibles
-            await db
+            const [updatedTrip] = await db
               .update(schema.trips)
               .set({ availableSeats: newAvailableSeats })
-              .where(eq(schema.trips.id, trip.id));
+              .where(eq(schema.trips.id, trip.id))
+              .returning();
             
-            console.log(`[updatePackage] Viaje ${trip.id}: asientos disponibles actualizados de ${trip.availableSeats} a ${newAvailableSeats}`);
+            if (updatedTrip) {
+              console.log(`[updatePackage] Viaje ${trip.id}: asientos disponibles actualizados de ${trip.availableSeats} a ${updatedTrip.availableSeats}`);
+            } else {
+              console.error(`[updatePackage] No se pudo actualizar el viaje ${trip.id}`);
+            }
+          } else {
+            console.error(`[updatePackage] No se encontró el viaje ${updatedPackage.tripId}`);
           }
         } catch (updateError) {
           console.error(`[updatePackage] Error al actualizar asientos del viaje:`, updateError);
           // No detenemos el proceso, ya que la paquetería ya fue actualizada
         }
+      } else {
+        console.log(`[updatePackage] No hay cambios en asientos o valores inválidos: seatsDifference=${seatsDifference}, tripId=${updatedPackage.tripId}`);
       }
       
       return updatedPackage;
@@ -2787,6 +2820,8 @@ export class DatabaseStorage implements IStorage {
         return false;
       }
       
+      console.log(`[deletePackage] Paquete a eliminar: usesSeats=${packageToDelete.usesSeats}, seatsQuantity=${packageToDelete.seatsQuantity || 0}, tripId=${packageToDelete.tripId}`);
+      
       // Eliminar la paquetería
       const result = await db
         .delete(schema.packages)
@@ -2797,29 +2832,41 @@ export class DatabaseStorage implements IStorage {
       console.log(`[deletePackage] Paquetería ${success ? 'eliminada' : 'no encontrada'}`);
       
       // Si el paquete usaba asientos, actualizar la disponibilidad del viaje
-      if (success && packageToDelete.usesSeats && packageToDelete.seatsQuantity > 0 && packageToDelete.tripId) {
+      if (success && packageToDelete.usesSeats && packageToDelete.seatsQuantity && packageToDelete.seatsQuantity > 0 && packageToDelete.tripId) {
         console.log(`[deletePackage] El paquete eliminado ocupaba ${packageToDelete.seatsQuantity} asientos en el viaje ${packageToDelete.tripId}`);
         
         try {
           // Obtener el viaje para actualizar asientos
           const trip = await this.getTrip(packageToDelete.tripId);
           if (trip) {
+            console.log(`[deletePackage] Estado actual del viaje ${trip.id}: disponibles=${trip.availableSeats}, capacidad=${trip.capacity}`);
+            
             // Calcular nuevos asientos disponibles (liberar los asientos que ocupaba el paquete)
-            const seatsToAdd = packageToDelete.seatsQuantity;
+            const seatsToAdd = packageToDelete.seatsQuantity || 0;
             const newAvailableSeats = Math.min(trip.capacity, trip.availableSeats + seatsToAdd);
+            console.log(`[deletePackage] Cálculo: ${trip.availableSeats} + ${seatsToAdd} = ${newAvailableSeats}`);
             
             // Actualizar los asientos disponibles
-            await db
+            const [updatedTrip] = await db
               .update(schema.trips)
               .set({ availableSeats: newAvailableSeats })
-              .where(eq(schema.trips.id, trip.id));
+              .where(eq(schema.trips.id, trip.id))
+              .returning();
             
-            console.log(`[deletePackage] Viaje ${trip.id}: asientos disponibles actualizados de ${trip.availableSeats} a ${newAvailableSeats}`);
+            if (updatedTrip) {
+              console.log(`[deletePackage] Viaje ${trip.id}: asientos disponibles actualizados de ${trip.availableSeats} a ${updatedTrip.availableSeats}`);
+            } else {
+              console.error(`[deletePackage] No se pudo actualizar el viaje ${trip.id}`);
+            }
+          } else {
+            console.error(`[deletePackage] No se encontró el viaje ${packageToDelete.tripId}`);
           }
         } catch (updateError) {
           console.error(`[deletePackage] Error al actualizar asientos del viaje:`, updateError);
           // No detenemos el proceso, ya que la paquetería ya fue eliminada
         }
+      } else {
+        console.log(`[deletePackage] El paquete eliminado NO ocupaba asientos o tiene valores inválidos: usesSeats=${packageToDelete.usesSeats}, seatsQuantity=${packageToDelete.seatsQuantity}, tripId=${packageToDelete.tripId}`);
       }
       
       return success;
