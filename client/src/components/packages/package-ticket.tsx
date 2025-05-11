@@ -2,6 +2,7 @@ import React, { useRef } from "react";
 import { Package, User, Clock, Calendar, PhoneCall, Truck, DollarSign, CheckCircle, ChevronsRight } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { jsPDF } from "jspdf";
+import QRCode from "qrcode";
 
 // Define la estructura del paquete
 interface PackageData {
@@ -23,6 +24,10 @@ interface PackageData {
   createdAt: string | Date;
   updatedAt?: string | Date;
   createdBy?: number;
+  segmentOrigin?: string;
+  segmentDestination?: string;
+  tripOrigin?: string;
+  tripDestination?: string;
 }
 
 interface PackageTicketProps {
@@ -30,8 +35,44 @@ interface PackageTicketProps {
   companyName?: string;
 }
 
+// Función para generar el QR y agregarlo al PDF
+async function addQRCodeToPDF(doc: jsPDF, packageId: number, yPosition: number): Promise<void> {
+  try {
+    // Crear URL para verificación y entrega del paquete
+    const verificationUrl = `${window.location.origin}/package-verify/${packageId}`;
+    
+    // Generar código QR como data URL
+    const qrDataUrl = await QRCode.toDataURL(verificationUrl, {
+      width: 120,
+      margin: 0,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    });
+    
+    // Calcular el tamaño y posición del QR
+    const qrSize = 25; // Tamaño en mm
+    const xPosition = (58 - qrSize) / 2; // Centrar horizontalmente
+    
+    // Añadir el código QR al PDF
+    doc.addImage(qrDataUrl, 'PNG', xPosition, yPosition, qrSize, qrSize);
+    
+    // Añadir texto explicativo debajo del QR
+    const textY = yPosition + qrSize + 3;
+    doc.setFontSize(6);
+    doc.setFont("courier", "normal");
+    doc.text("Escanea para verificar o entregar", 29, textY, { align: "center" });
+    
+    return Promise.resolve();
+  } catch (error) {
+    console.error("Error al generar código QR:", error);
+    return Promise.reject(error);
+  }
+}
+
 // Función para generar el PDF con dimensiones de ticket térmico
-export function generatePackageTicketPDF(packageData: PackageData, companyName: string) {
+export async function generatePackageTicketPDF(packageData: PackageData, companyName: string) {
   // Crear un documento PDF con las dimensiones de un ticket térmico (58mm x 160mm)
   const doc = new jsPDF({
     orientation: "portrait",
@@ -101,6 +142,25 @@ export function generatePackageTicketPDF(packageData: PackageData, companyName: 
   y += 4;
   doc.text(`Tel: ${packageData.recipientPhone}`, 5, y);
   
+  // Origen y destino del paquete
+  y += 6;
+  doc.setFontSize(9);
+  doc.setFont("courier", "bold");
+  doc.text("Ruta", 5, y);
+  
+  y += 4;
+  doc.setFontSize(8);
+  doc.setFont("courier", "normal");
+  
+  // Usar los segmentos específicos si están disponibles, si no usar los de la ruta completa
+  const origen = packageData.segmentOrigin || packageData.tripOrigin || "Origen no especificado";
+  const destino = packageData.segmentDestination || packageData.tripDestination || "Destino no especificado";
+  
+  doc.text(`De: ${origen}`, 5, y);
+  
+  y += 4;
+  doc.text(`A: ${destino}`, 5, y);
+  
   // Detalles del paquete
   y += 6;
   doc.setFontSize(9);
@@ -166,21 +226,20 @@ export function generatePackageTicketPDF(packageData: PackageData, companyName: 
     y
   );
   
-  // Pie de página
-  y += 8;
+  // Línea separadora antes del pie de página
+  y += 6;
   doc.setDrawColor(200, 200, 200);
   doc.line(5, y, 53, y);
   
+  // Pie de página (simplificado)
   y += 5;
   doc.setFontSize(7);
   doc.text(`Gracias por confiar en ${companyName}`, 29, y, { align: "center" });
   
-  y += 3;
-  doc.text("Este ticket es su comprobante de envío", 29, y, { align: "center" });
+  // Añadir código QR
+  y += 8;
+  await addQRCodeToPDF(doc, packageData.id, y);
   
-  y += 3;
-  doc.text("www.transroute.mx", 29, y, { align: "center" });
-
   // Abrir en una nueva ventana e imprimir automáticamente
   window.open(URL.createObjectURL(doc.output('blob')));
   
@@ -239,6 +298,15 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
           font-weight: bold;
           margin-bottom: 0.5rem;
         }
+        .qr-code {
+          text-align: center;
+          margin-top: 0.5rem;
+        }
+        .qr-code-caption {
+          font-size: 0.6rem;
+          text-align: center;
+          margin-top: 0.25rem;
+        }
         @media print {
           body * {
             visibility: hidden;
@@ -290,6 +358,19 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
         </div>
       </div>
       
+      {/* Información de origen y destino */}
+      <div className="ticket-section">
+        <h3>Ruta</h3>
+        <div className="ticket-row">
+          <ChevronsRight size={12} />
+          <span>De: {packageData.segmentOrigin || packageData.tripOrigin || "Origen no especificado"}</span>
+        </div>
+        <div className="ticket-row">
+          <ChevronsRight size={12} />
+          <span>A: {packageData.segmentDestination || packageData.tripDestination || "Destino no especificado"}</span>
+        </div>
+      </div>
+      
       <div className="ticket-section">
         <h3>Detalles del Paquete</h3>
         <div className="ticket-row">
@@ -332,8 +413,6 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
       
       <div className="ticket-footer">
         <div>Gracias por confiar en {companyName}</div>
-        <div>Este ticket es su comprobante de envío</div>
-        <div>www.transroute.mx</div>
       </div>
     </div>
   );
