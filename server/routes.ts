@@ -4198,6 +4198,126 @@ function setupPackageRoutes(app: Express) {
       if (!existingPackage) {
         return res.status(404).json({ message: 'Paquete no encontrado' });
       }
+  
+  // GET /api/packages/:id/verify - Obtener información del paquete para verificación por QR
+  app.get(apiRouter('/packages/:id/verify'), isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Obtener el paquete
+      const packageData = await storage.getPackage(id);
+      
+      if (!packageData) {
+        return res.status(404).json({ message: 'Paquete no encontrado' });
+      }
+      
+      // Obtener información adicional (nombre de empresa)
+      const companies = await storage.getCompanies();
+      const company = companies.find(c => c.id === packageData.companyId);
+      const companyName = company ? company.name : "";
+      
+      // Obtener información de la ruta/viaje si está disponible
+      let tripOrigin = "";
+      let tripDestination = "";
+      
+      if (packageData.tripId) {
+        const trip = await storage.getTrip(packageData.tripId);
+        if (trip) {
+          const route = await storage.getRoute(trip.routeId);
+          if (route) {
+            tripOrigin = route.origin;
+            tripDestination = route.destination;
+          }
+        }
+      }
+      
+      // Devolver datos enriquecidos
+      res.json({
+        ...packageData,
+        companyName,
+        tripOrigin,
+        tripDestination
+      });
+    } catch (error) {
+      console.error('Error al verificar paquete:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
+  
+  // POST /api/packages/:id/mark-paid - Marcar un paquete como pagado
+  app.post(apiRouter('/packages/:id/mark-paid'), isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Obtener el paquete
+      const packageData = await storage.getPackage(id);
+      
+      if (!packageData) {
+        return res.status(404).json({ message: 'Paquete no encontrado' });
+      }
+      
+      // Verificar permisos (misma compañía)
+      const user = req.user as Express.User;
+      if (user.company !== packageData.companyId && user.role !== "superAdmin") {
+        return res.status(403).json({ message: 'No tiene permisos para actualizar este paquete' });
+      }
+      
+      // Verificar que no esté ya pagado
+      if (packageData.isPaid) {
+        return res.status(400).json({ message: 'El paquete ya está marcado como pagado' });
+      }
+      
+      // Actualizar el estado de pago
+      const updatedPackage = await storage.updatePackage(id, {
+        ...packageData,
+        isPaid: true,
+        paymentMethod: packageData.paymentMethod || "efectivo",
+        updatedAt: new Date()
+      });
+      
+      res.json(updatedPackage);
+    } catch (error) {
+      console.error('Error al marcar paquete como pagado:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
+  
+  // POST /api/packages/:id/mark-delivered - Marcar un paquete como entregado
+  app.post(apiRouter('/packages/:id/mark-delivered'), isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Obtener el paquete
+      const packageData = await storage.getPackage(id);
+      
+      if (!packageData) {
+        return res.status(404).json({ message: 'Paquete no encontrado' });
+      }
+      
+      // Verificar permisos (misma compañía)
+      const user = req.user as Express.User;
+      if (user.company !== packageData.companyId && user.role !== "superAdmin") {
+        return res.status(403).json({ message: 'No tiene permisos para actualizar este paquete' });
+      }
+      
+      // Verificar que no esté ya entregado
+      if (packageData.deliveryStatus === "entregado") {
+        return res.status(400).json({ message: 'El paquete ya está marcado como entregado' });
+      }
+      
+      // Actualizar el estado de entrega
+      const updatedPackage = await storage.updatePackage(id, {
+        ...packageData,
+        deliveryStatus: "entregado",
+        updatedAt: new Date()
+      });
+      
+      res.json(updatedPackage);
+    } catch (error) {
+      console.error('Error al marcar paquete como entregado:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
       
       // Verificar permisos de compañía
       if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
