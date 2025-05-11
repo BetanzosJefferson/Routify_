@@ -4200,7 +4200,8 @@ function setupPackageRoutes(app: Express) {
       }
   
   // GET /api/packages/:id/verify - Obtener información del paquete para verificación por QR
-  app.get(apiRouter('/packages/:id/verify'), isAuthenticated, async (req, res) => {
+  // No requerimos autenticación para ver la información básica, pero sí para operaciones
+  app.get(apiRouter('/packages/:id/verify'), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       

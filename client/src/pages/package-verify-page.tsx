@@ -53,7 +53,7 @@ export default function PackageVerifyPage() {
   const packageQuery = useQuery({
     queryKey: ["/api/packages/verify", packageId],
     queryFn: () => apiRequest("GET", `/api/packages/${packageId}/verify`).then(res => res.json()),
-    enabled: packageId > 0 && user !== null,
+    enabled: packageId > 0, // Habilitamos sin necesidad de autenticación para ver información básica
   });
 
   // Mutación para marcar como pagado
