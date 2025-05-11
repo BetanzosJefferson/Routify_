@@ -5,7 +5,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { canUserAccessPackage } from "@/lib/role-based-permissions";
+// Función auxiliar para verificar permisos de acceso a paquetes
+function canUserAccessPackage(userRole: string, userCompany: string, packageCompany: string): boolean {
+  // El superAdmin siempre tiene acceso
+  if (userRole === "superAdmin") return true;
+  
+  // Los demás roles solo tienen acceso si es de su compañía
+  return userCompany === packageCompany;
+}
 
 // Components
 import {
@@ -19,7 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { PackageCheck, CreditCard, User, TruckDelivery, Clock, Package, PhoneCall, MapPin } from "lucide-react";
+import { PackageCheck, CreditCard, User, Truck, Clock, Package, PhoneCall, MapPin } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Página de verificación de paquetes (accesible por QR)
@@ -153,7 +160,7 @@ export default function PackageVerifyPage() {
         <CardHeader className="pb-4">
           <div className="flex justify-between items-center">
             <CardTitle className="text-xl">Paquete #{packageData.id}</CardTitle>
-            <Badge variant={packageData.isPaid ? "success" : "destructive"}>
+            <Badge variant={packageData.isPaid ? "default" : "destructive"}>
               {packageData.isPaid ? "Pagado" : "Pendiente de pago"}
             </Badge>
           </div>
@@ -220,14 +227,14 @@ export default function PackageVerifyPage() {
                 <p>Ocupa {packageData.seatsQuantity} {packageData.seatsQuantity === 1 ? 'asiento' : 'asientos'}</p>
               )}
               <div className="flex gap-2 flex-wrap mt-2">
-                <Badge variant={packageData.isPaid ? "success" : "outline"} className="flex gap-1 items-center">
+                <Badge variant={packageData.isPaid ? "default" : "outline"} className="flex gap-1 items-center">
                   <CreditCard className="h-3 w-3" />
                   {packageData.isPaid 
                     ? `Pagado (${packageData.paymentMethod || 'efectivo'})` 
                     : 'Pendiente de pago'}
                 </Badge>
-                <Badge variant={packageData.deliveryStatus === 'entregado' ? "success" : "outline"} className="flex gap-1 items-center">
-                  <TruckDelivery className="h-3 w-3" />
+                <Badge variant={packageData.deliveryStatus === 'entregado' ? "default" : "outline"} className="flex gap-1 items-center">
+                  <Truck className="h-3 w-3" />
                   {packageData.deliveryStatus === 'entregado' 
                     ? 'Entregado' 
                     : 'Pendiente de entrega'}
