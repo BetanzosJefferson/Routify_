@@ -1,9 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { db } from "./db";
-import { eq, sql } from "drizzle-orm";
-import * as schema from "@shared/schema";
 import { z } from "zod";
 import { 
   insertRouteSchema, 
@@ -51,13 +48,17 @@ import { setupAuthentication } from "./auth-session";
 // Utility function to check if two locations are in the same city
 function isSameCity(location1: string, location2: string): boolean {
   // Validar que ambas ubicaciones tienen el formato esperado
-  if (!location1?.includes(' - ') || !location2?.includes(' - ')) {
+  if (!location1.includes(' - ') || !location2.includes(' - ')) {
+    console.warn(`Formato de ubicación inesperado: "${location1}" o "${location2}"`);
     return false;
   }
   
   // Extract city name (assuming format "City, State - Location")
   const city1 = location1.split(' - ')[0].trim();
   const city2 = location2.split(' - ')[0].trim();
+  
+  // Debugging
+  console.log(`Comparando ciudades: "${city1}" y "${city2}" => ${city1 === city2}`);
   
   return city1 === city2;
 }
@@ -186,113 +187,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Route not found" });
       }
       
-      // Generar todos los segmentos posibles usando la misma función que usamos para trips
-      const allPossibleSegments = generateAllPossibleSegments(routeWithSegments);
-      
-      // Debugging: Verificar los segmentos generados antes de filtrar
-      console.log("===> SEGMENTOS GENERADOS (ANTES DE FILTRAR/MAPEAR): <===");
-      allPossibleSegments.forEach((segment, index) => {
-        const via = segment.viaLocation ? ` vía ${segment.viaLocation}` : '';
-        console.log(`  Segmento #${index + 1}: ${segment.origin} -> ${segment.destination}${via}`);
-      });
-      
-      // Convertir los segmentos al formato esperado por el cliente
-      const validSegments = allPossibleSegments
-        .filter(segment => !isSameCity(segment.origin, segment.destination))
-        .map(segment => {
-          // Crear un nuevo objeto para cada segmento
-          const result: any = {
-            origin: segment.origin,
-            destination: segment.destination
-          };
-          
-          // Si tiene una parada intermedia, incluirla como viaLocation
-          if (segment.viaLocation) {
-            console.log(`Incluyendo segmento con parada: ${segment.origin} -> ${segment.viaLocation} -> ${segment.destination}`);
-            result.viaLocation = segment.viaLocation;
-          }
-          
-          return result;
-        });
-      
-      console.log(`Generados ${validSegments.length} segmentos válidos para la ruta ${id}, incluyendo con paradas intermedias`);
-      
-      // Opcional: Listar algunos segmentos con viaLocation para depuración
-      const viaSegments = validSegments.filter(s => s.viaLocation);
-      if (viaSegments.length > 0) {
-        console.log(`Segmentos con paradas intermedias (${viaSegments.length} total):`);
-        viaSegments.slice(0, 5).forEach((s, i) => {
-          console.log(`  ${i+1}. ${s.origin} -> ${s.viaLocation} -> ${s.destination}`);
-        });
-        if (viaSegments.length > 5) {
-          console.log(`  ... y ${viaSegments.length - 5} más`);
-        }
-      }
-      
-      // No agregamos segmentos manualmente, ya que generateAllPossibleSegments ya los está generando
-      
-      // Eliminamos duplicados basados en la combinación única de origin, destination y viaLocation
-      const uniqueSegments = Array.from(
-        validSegments.reduce((map, segment) => {
-          // Crear una clave única para cada segmento basada en sus propiedades
-          const key = `${segment.origin}|${segment.destination}${segment.viaLocation ? '|' + segment.viaLocation : ''}`;
-          // Solo agregar si no existe ya un segmento con la misma clave
-          if (!map.has(key)) {
-            map.set(key, segment);
-          }
-          return map;
-        }, new Map()).values()
+      // Check for same-city segments and filter them out
+      const validSegments = routeWithSegments.segments.filter(
+        segment => !isSameCity(segment.origin, segment.destination)
       );
       
-      console.log(`Eliminados ${validSegments.length - uniqueSegments.length} segmentos duplicados`);
-      const segmentosFinales = uniqueSegments;
-      
-      // Verificar que tengamos los segmentos con paradas intermedias
-      const conVia = segmentosFinales.filter(s => s.viaLocation);
-      console.log(`Segmentos finales con paradas intermedias: ${conVia.length}`);
-      conVia.forEach((s, i) => {
-        console.log(`${i+1}. ${s.origin} -> ${s.viaLocation} -> ${s.destination}`);
-      });
-
-      // Log para ver toda la estructura antes de enviarla
-      console.log("=== ESTRUCTURA COMPLETA DE RESPUESTA ===");
-      console.log("Cantidad de segmentos normales:", validSegments.length);
-      console.log("Cantidad de segmentos con paradas intermedias:", conVia.length);
-      console.log("Cantidad de segmentos totales:", segmentosFinales.length);
-      
-      // Log detallado de todos los segmentos finales con formato para verificar
-      console.log("=== SEGMENTOS FINALES (DETALLE) ===");
-      segmentosFinales.forEach((segmento, index) => {
-        const viaInfo = segmento.viaLocation ? ` vía ${segmento.viaLocation}` : '';
-        console.log(`${index + 1}. ${segmento.origin} -> ${segmento.destination}${viaInfo}`);
-      });
-      
-      // Log de la estructura JSON que se va a enviar como respuesta
-      const respuestaFinal = {
+      res.json({
         ...routeWithSegments,
-        segments: segmentosFinales
-      };
-      
-      console.log("=== OBJETO DE RESPUESTA JSON (PRIMEROS 2 SEGMENTOS) ===");
-      console.log(JSON.stringify({
-        ...respuestaFinal,
-        segments: respuestaFinal.segments.slice(0, 2)
-      }, null, 2));
-      
-      // Descomponemos la respuesta para verificar cada parte
-      const jsonString = JSON.stringify(respuestaFinal);
-      const parseBack = JSON.parse(jsonString);
-      
-      console.log("=== VERIFICACIÓN DE SERIALIZACIÓN ===");
-      console.log("Número de segmentos después de serialización:", parseBack.segments.length);
-      
-      const viaSegmentosDespuesJSON = parseBack.segments.filter(s => s.viaLocation);
-      console.log("Segmentos con viaLocation después de JSON:", viaSegmentosDespuesJSON.length);
-      
-      // Finalmente enviamos la respuesta
-      res.json(respuestaFinal);
+        segments: validSegments
+      });
     } catch (error) {
-      console.error("Error al obtener segmentos de ruta:", error);
       res.status(500).json({ error: "Failed to fetch route segments" });
     }
   });
@@ -991,48 +895,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdTrips.push(mainTrip);
         
         // Create all sub-trips
-        // Primero crearemos un mapa para asegurar que no haya duplicados de subviajes
-        // La clave será una combinación de origen y destino
-        const subTripsToCreate = new Map();
-        
-        // Actualizar la definición del tipo de segmentPrices para incluir los tiempos
-        type ExtendedSegmentPrice = {
-          origin: string;
-          destination: string;
-          price: number;
-          viaLocation?: string;
-          // Tiempo en formato string "HH:MM AM/PM"
-          departureTime?: string;
-          arrivalTime?: string;
-          // Componentes individuales de tiempo
-          departureHour?: string;
-          departureMinute?: string;
-          departureAmPm?: string;
-          arrivalHour?: string;
-          arrivalMinute?: string;
-          arrivalAmPm?: string;
-        };
-        
-        // Generar todos los posibles subviajes basados en segmentos únicos
-        console.log(`Generando ${allSegments.length} posibles subviajes para el viaje principal ID ${mainTrip.id}`);
-        
         for (const segment of allSegments) {
-          // Ignorar la ruta principal, ya que ya se creó un viaje para ella
-          if (segment.origin === route.origin && segment.destination === route.destination) {
-            console.log(`Ignorando segmento principal ${segment.origin} -> ${segment.destination} (ya creado como viaje principal)`);
-            continue;
-          }
-          
-          // Generar una clave única para cada subviaje
-          const segmentKey = `${segment.origin}|${segment.destination}${segment.viaLocation ? '|' + segment.viaLocation : ''}`;
-          
-          // Si este segmento ya está en el mapa, omitirlo (evitar duplicados)
-          if (subTripsToCreate.has(segmentKey)) {
-            console.log(`Ignorando segmento duplicado: ${segment.origin} -> ${segment.destination}${segment.viaLocation ? ' vía ' + segment.viaLocation : ''}`);
-            continue;
-          }
-          
           // Find the segment data (price and times) from user input or calculate proportionally
+          // Actualizar la definición del tipo de segmentPrices para incluir los tiempos
+          type ExtendedSegmentPrice = {
+            origin: string;
+            destination: string;
+            price: number;
+            // Tiempo en formato string "HH:MM AM/PM"
+            departureTime?: string;
+            arrivalTime?: string;
+            // Componentes individuales de tiempo
+            departureHour?: string;
+            departureMinute?: string;
+            departureAmPm?: string;
+            arrivalHour?: string;
+            arrivalMinute?: string;
+            arrivalAmPm?: string;
+          };
+          
           const segmentData = tripData.segmentPrices.find(
             (sp: any) => sp.origin === segment.origin && sp.destination === segment.destination
           ) as ExtendedSegmentPrice | undefined;
@@ -1047,29 +928,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (segmentData.departureTime) {
               // Formato explícito "HH:MM AM/PM"
               departureTime = segmentData.departureTime;
+              console.log(`Usando tiempo de salida explícito para ${segment.origin} -> ${segment.destination}: ${departureTime}`);
             } else if (segmentData.departureHour && segmentData.departureMinute && segmentData.departureAmPm) {
               // Formato de componentes (hora, minuto, AM/PM)
               departureTime = `${segmentData.departureHour}:${segmentData.departureMinute} ${segmentData.departureAmPm}`;
+              console.log(`Usando tiempo de salida por componentes para ${segment.origin} -> ${segment.destination}: ${departureTime}`);
             } else {
               // Fallback al tiempo calculado
-              departureTime = segmentTimes[`${segment.origin}-${segment.destination}`]?.departureTime || mainTripToCreate.departureTime;
+              departureTime = segmentTimes[`${segment.origin}-${segment.destination}`].departureTime;
+              console.log(`Fallback: Usando tiempo de salida calculado para ${segment.origin} -> ${segment.destination}: ${departureTime}`);
             }
             
             if (segmentData.arrivalTime) {
               // Formato explícito "HH:MM AM/PM"
               arrivalTime = segmentData.arrivalTime;
+              console.log(`Usando tiempo de llegada explícito para ${segment.origin} -> ${segment.destination}: ${arrivalTime}`);
             } else if (segmentData.arrivalHour && segmentData.arrivalMinute && segmentData.arrivalAmPm) {
               // Formato de componentes (hora, minuto, AM/PM)
               arrivalTime = `${segmentData.arrivalHour}:${segmentData.arrivalMinute} ${segmentData.arrivalAmPm}`;
+              console.log(`Usando tiempo de llegada por componentes para ${segment.origin} -> ${segment.destination}: ${arrivalTime}`);
             } else {
               // Fallback al tiempo calculado
-              arrivalTime = segmentTimes[`${segment.origin}-${segment.destination}`]?.arrivalTime || mainTripToCreate.arrivalTime;
+              arrivalTime = segmentTimes[`${segment.origin}-${segment.destination}`].arrivalTime;
+              console.log(`Fallback: Usando tiempo de llegada calculado para ${segment.origin} -> ${segment.destination}: ${arrivalTime}`);
             }
           } else {
             // Fallback: usar tiempos calculados proporcionalmente
             price = calculateProportionalPrice(segment, route, tripData.price || 0);
-            departureTime = segmentTimes[`${segment.origin}-${segment.destination}`]?.departureTime || mainTripToCreate.departureTime;
-            arrivalTime = segmentTimes[`${segment.origin}-${segment.destination}`]?.arrivalTime || mainTripToCreate.arrivalTime;
+            departureTime = segmentTimes[`${segment.origin}-${segment.destination}`].departureTime;
+            arrivalTime = segmentTimes[`${segment.origin}-${segment.destination}`].arrivalTime;
           }
           
           const subTripToCreate = {
@@ -1081,38 +968,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             availableSeats: tripData.capacity,
             price,
             // vehicleType: ya no se utiliza
-            segmentPrices: [{ 
-              origin: segment.origin, 
-              destination: segment.destination,
-              viaLocation: segment.viaLocation, // Incluir viaLocation si existe
-              price 
-            }],
+            segmentPrices: [{ origin: segment.origin, destination: segment.destination, price }],
             isSubTrip: true,
             parentTripId: mainTrip.id,
             segmentOrigin: segment.origin,
             segmentDestination: segment.destination,
-            // Si hay una viaLocation, agregarla también al subviaje
-            viaLocation: segment.viaLocation,
             companyId: companyId, // Asignar la misma compañía del usuario a todos los sub-viajes
             // Heredar los mismos valores de visibilidad y estado del viaje principal
             visibility: mainTrip.visibility || TripVisibility.PUBLISHED,
             tripStatus: TripStatus.NOT_STARTED
           };
           
-          // Agregar este subviaje al mapa para evitar duplicados
-          subTripsToCreate.set(segmentKey, subTripToCreate);
-          
-          const viaText = segment.viaLocation ? ` vía ${segment.viaLocation}` : '';
-          console.log(`Preparado subviaje: ${segment.origin} -> ${segment.destination}${viaText} ($${price})`);
-        }
-        
-        // Ahora crear todos los subviajes únicos
-        console.log(`Creando ${subTripsToCreate.size} subviajes únicos para el viaje principal ID ${mainTrip.id}`);
-        
-        for (const [key, subTripToCreate] of subTripsToCreate.entries()) {
           const subTrip = await storage.createTrip(subTripToCreate);
           createdTrips.push(subTrip);
-          console.log(`Creado subviaje ID ${subTrip.id} para la ruta ${subTripToCreate.segmentOrigin} -> ${subTripToCreate.segmentDestination}${subTripToCreate.viaLocation ? ' vía ' + subTripToCreate.viaLocation : ''}`);
         }
       }
       
@@ -1123,251 +991,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Endpoint de diagnóstico temporal para verificar subviajes
-  app.get(apiRouter("/debug/subtrips"), async (req: Request, res: Response) => {
-    try {
-      // Usando Drizzle para obtener datos más completos
-      const result = await db.query.trips.findMany({
-        where: eq(trips.isSubTrip, true),
-        columns: {
-          id: true,
-          segmentOrigin: true,
-          segmentDestination: true,
-          viaLocation: true,
-          parentTripId: true,
-          departureDate: true
-        }
-      });
-      
-      console.log(`Encontrados ${result.length} subviajes en la base de datos`);
-      
-      // Aseguramos de que tenemos datos para procesar
-      if (!result || result.length === 0) {
-        return res.json({
-          totalSubTrips: 0,
-          uniqueRoutes: 0,
-          routesWithDuplicates: 0,
-          totalDuplicateCount: 0,
-          duplicateGroups: []
-        });
-      }
-      
-      // Agrupar por origen-destino-via para detectar duplicados
-      const grouped = new Map();
-      
-      result.forEach(trip => {
-        // Incluir viaLocation en la clave si existe
-        const key = `${trip.segmentOrigin}|${trip.segmentDestination}${trip.viaLocation ? '|' + trip.viaLocation : ''}`;
-        if (!grouped.has(key)) {
-          grouped.set(key, []);
-        }
-        grouped.get(key).push(trip);
-      });
-      
-      // Convertir el Map a un Array de objetos para facilitar análisis
-      const groupsArray = [];
-      for (const [key, tripsInGroup] of grouped.entries()) {
-        if (tripsInGroup.length > 1) {
-          // Separar por fecha para entender mejor el problema
-          const byDate = new Map();
-          tripsInGroup.forEach(trip => {
-            const dateStr = trip.departureDate ? trip.departureDate.toISOString().split('T')[0] : 'unknown';
-            if (!byDate.has(dateStr)) {
-              byDate.set(dateStr, []);
-            }
-            byDate.get(dateStr).push(trip);
-          });
-          
-          // Solo añadir grupos con duplicados
-          groupsArray.push({
-            route: key,
-            count: tripsInGroup.length,
-            tripIds: tripsInGroup.map(t => t.id),
-            parentIds: [...new Set(tripsInGroup.map(t => t.parentTripId))], // Valores únicos
-            dateDistribution: Array.from(byDate.entries()).map(([date, trips]) => ({
-              date,
-              count: trips.length
-            })),
-            firstFewTrips: tripsInGroup.slice(0, 3).map(t => ({
-              id: t.id,
-              parentTripId: t.parentTripId,
-              segmentOrigin: t.segmentOrigin,
-              segmentDestination: t.segmentDestination,
-              viaLocation: t.viaLocation,
-              departureDate: t.departureDate ? t.departureDate.toISOString().split('T')[0] : null
-            }))
-          });
-        }
-      }
-      
-      // Ordenar de mayor a menor número de duplicados
-      groupsArray.sort((a, b) => b.count - a.count);
-      
-      // Estadísticas para buscar patrones
-      const stats = {
-        totalSubTrips: result.length,
-        uniqueRoutes: grouped.size,
-        routesWithDuplicates: groupsArray.length,
-        totalDuplicateCount: groupsArray.reduce((sum, group) => sum + group.count - 1, 0),
-        duplicateGroups: groupsArray
-      };
-      
-      res.json(stats);
-    } catch (error) {
-      console.error("Error en debug de subviajes:", error);
-      res.status(500).json({ error: "Error al analizar subviajes" });
-    }
-  });
-
   // Helper function to generate all possible segments between stops
   function generateAllPossibleSegments(route: RouteWithSegments) {
     const allPoints = [route.origin, ...route.stops, route.destination];
-    // Usaremos un Map para asegurar que no haya duplicados
-    const segmentsMap = new Map();
+    const allSegments = [];
     
     console.log(`Generando todos los segmentos para la ruta ${route.id}`);
     console.log(`Puntos en la ruta: ${allPoints.join(' -> ')}`);
     
-    // Función auxiliar para extraer la ciudad de una ubicación (para restricciones)
-    const extractCity = (location: string): string => {
-      const parts = location.split(' - ');
-      return parts[0].trim(); // Ej: "Acapulco de Juárez, Guerrero"
-    };
-    
-    // Función para agregar un segmento al mapa, usando una clave única
-    const addSegment = (segment: any) => {
-      // Verificar si el origen y destino son de la misma ciudad (no permitido)
-      if (isSameCity(segment.origin, segment.destination)) {
-        return;
-      }
-      
-      // Clave única para cada segmento basada en sus propiedades
-      const key = `${segment.origin}|${segment.destination}${segment.viaLocation ? '|' + segment.viaLocation : ''}`;
-      
-      // Solo agregar si no existe ya
-      if (!segmentsMap.has(key)) {
-        segmentsMap.set(key, segment);
-        
-        // Log para debugging
-        const via = segment.viaLocation ? ` vía ${segment.viaLocation}` : '';
-        console.log(`  + Agregado: ${segment.origin} -> ${segment.destination}${via}`);
-      }
-    };
-    
-    // PASO 1: Generar segmentos directos (sin paradas intermedias)
-    console.log("=== GENERANDO SEGMENTOS DIRECTOS ===");
+    // Approach 1: Generate all possible combinations (not just consecutive stops)
     for (let i = 0; i < allPoints.length - 1; i++) {
       for (let j = i + 1; j < allPoints.length; j++) {
-        // Verificar restricciones
-        // 1. No duplicar la ruta principal completa (se procesa aparte)
+        // Skip the main route (origin to destination) as it's already created separately
         if (i === 0 && j === allPoints.length - 1) {
+          console.log(`Saltando ruta principal: ${allPoints[i]} -> ${allPoints[j]} (se crea por separado)`);
           continue;
         }
         
-        // 2. No generar segmentos entre paradas de la misma ciudad
+        // Skip segments where origin and destination are in the same city
         if (isSameCity(allPoints[i], allPoints[j])) {
+          console.log(`Saltando segmento en misma ciudad: ${allPoints[i]} -> ${allPoints[j]}`);
           continue;
         }
         
-        // Agregar segmento directo
-        addSegment({
+        // Para evitar duplicados, omitiremos los segmentos con solo una parada de diferencia
+        // si no es un segmento significativo (como origen a primera parada o última parada a destino)
+        const isShortSegment = j === i + 1;
+        const isFirstToSecond = i === 0 && j === 1; // Origen a primera parada
+        const isSecondToLast = j === allPoints.length - 1 && i === allPoints.length - 2; // Última parada a destino
+        
+        // Solo incluir segmentos cortos si son significativos o si la ruta tiene pocas paradas
+        if (isShortSegment && !isFirstToSecond && !isSecondToLast && allPoints.length > 3) {
+          console.log(`Saltando segmento corto no significativo: ${allPoints[i]} -> ${allPoints[j]}`);
+          continue;
+        }
+        
+        allSegments.push({
           origin: allPoints[i],
           destination: allPoints[j],
           price: 0
         });
+        
+        console.log(`  + Segmento: ${allPoints[i]} -> ${allPoints[j]}`);
       }
     }
     
-    // PASO 2: Generar segmentos con UNA parada intermedia
-    console.log("=== GENERANDO SEGMENTOS CON PARADA INTERMEDIA ===");
-    
-    // Casos especiales para los casos más importantes que necesitamos:
-    
-    // 1. Terminal Condesa -> Plaza Caracol -> Chilpancingo
-    const addSpecialSegment = (originKeyword: string, viaKeyword: string, destKeyword: string) => {
-      const originIndex = allPoints.findIndex(stop => stop.includes(originKeyword));
-      const viaIndex = allPoints.findIndex(stop => stop.includes(viaKeyword));
-      const destIndex = allPoints.findIndex(stop => stop.includes(destKeyword));
-      
-      if (originIndex >= 0 && viaIndex >= 0 && destIndex >= 0) {
-        // Verificar que estén en el orden correcto en la ruta
-        if ((originIndex < viaIndex && viaIndex < destIndex) || 
-            (destIndex < viaIndex && viaIndex < originIndex)) {
-          addSegment({
-            origin: allPoints[originIndex],
-            destination: allPoints[destIndex],
-            viaLocation: allPoints[viaIndex],
-            price: 0
-          });
-        }
-      }
-    };
-    
-    // Añadir casos específicos que necesitamos asegurar
-    addSpecialSegment("Terminal Condesa", "Plaza Caracol", "Chilpancingo");
-    addSpecialSegment("Renacimiento", "Plaza Caracol", "Chilpancingo");
-    addSpecialSegment("Chilpancingo", "Polvorin", "Taxqueña");
-    addSpecialSegment("Chilpancingo", "Galerias", "Taxqueña");
-    
-    // Generar sistemáticamente segmentos con paradas intermedias (siguiente parada secuencial)
-    for (let i = 0; i < allPoints.length - 2; i++) {
-      for (let k = i + 2; k < allPoints.length; k++) {
-        // Para cada par de origen-destino que no sean adyacentes
-        // considerar cada parada intermedia que esté entre ellos
-        for (let j = i + 1; j < k; j++) {
-          // No generar segmentos entre paradas de la misma ciudad
-          if (isSameCity(allPoints[i], allPoints[j]) || 
-              isSameCity(allPoints[j], allPoints[k]) || 
-              isSameCity(allPoints[i], allPoints[k])) {
-            continue;
-          }
-          
-          // Limitar la creación de segmentos con paradas intermedias distantes
-          // para evitar combinaciones excesivas en rutas largas
-          if ((k - i) > 3 && allPoints.length > 5) {
-            continue;
-          }
-          
-          // Agregar el segmento con parada intermedia
-          addSegment({
-            origin: allPoints[i],
-            destination: allPoints[k],
-            viaLocation: allPoints[j],
-            price: 0
-          });
-        }
-      }
-    }
-    
-    // Convertir el mapa a un array de segmentos
-    const allSegments = Array.from(segmentsMap.values());
-    
-    // Debugging final
-    console.log(`Generados ${allSegments.length} segmentos únicos para la ruta ${route.id}`);
-    
-    // Verificar segmentos con paradas intermedias
-    const segmentosConVia = allSegments.filter(seg => 'viaLocation' in seg);
-    console.log(`Segmentos con paradas intermedias: ${segmentosConVia.length}`);
-    
-    if (segmentosConVia.length > 0 && segmentosConVia.length <= 10) {
-      // Mostrar todos si son pocos
-      segmentosConVia.forEach((s, i) => {
-        console.log(`  ${i+1}. ${s.origin} -> ${s.viaLocation} -> ${s.destination}`);
-      });
-    } else if (segmentosConVia.length > 10) {
-      // Mostrar solo los primeros 5 si son muchos
-      segmentosConVia.slice(0, 5).forEach((s, i) => {
-        console.log(`  ${i+1}. ${s.origin} -> ${s.viaLocation} -> ${s.destination}`);
-      });
-      console.log(`  ... y ${segmentosConVia.length - 5} más`);
-    }
+    console.log(`Generados ${allSegments.length} segmentos válidos (excluyendo misma ciudad y ruta principal) para la ruta ${route.id}`);
     
     return allSegments;
   }
   
   // Helper function to calculate segment departure and arrival times
   function calculateSegmentTimes(
-    segments: { origin: string; destination: string; viaLocation?: string; price: number; stopTimes?: any[]; segmentPrices?: any[] }[],
+    segments: { origin: string; destination: string; price: number; stopTimes?: any[]; segmentPrices?: any[] }[],
     mainDepartureTime: string,
     mainArrivalTime: string,
     route: RouteWithSegments
@@ -1387,33 +1063,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Recorrer cada segmentPrice para extraer los tiempos explícitamente configurados
       segments.forEach(segment => {
-        let segmentData = segmentPrices.find(
+        const segmentData = segmentPrices.find(
           (sp: any) => sp.origin === segment.origin && sp.destination === segment.destination
         );
-        
-        // Si no encontramos un segmento directo, pero tenemos un segmento con parada intermedia
-        if (!segmentData && segment.viaLocation) {
-          console.log(`Buscando segmento con vía intermedia: ${segment.origin} -> ${segment.viaLocation} -> ${segment.destination}`);
-          
-          // Buscamos los segmentos origen->parada y parada->destino para calcular tiempos
-          const primerTramo = segmentPrices.find(
-            (sp: any) => sp.origin === segment.origin && sp.destination === segment.viaLocation
-          );
-          
-          const segundoTramo = segmentPrices.find(
-            (sp: any) => sp.origin === segment.viaLocation && sp.destination === segment.destination
-          );
-          
-          if (primerTramo && segundoTramo) {
-            segmentData = {
-              origin: segment.origin,
-              destination: segment.destination,
-              departureTime: primerTramo.departureTime,
-              arrivalTime: segundoTramo.arrivalTime
-            };
-            console.log(`Generando tiempo para el segmento compuesto: Salida ${segmentData.departureTime}, Llegada ${segmentData.arrivalTime}`);
-          }
-        }
         
         if (segmentData) {
           let departureTime, arrivalTime;
