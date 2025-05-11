@@ -1126,22 +1126,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint de diagnóstico temporal para verificar subviajes
   app.get(apiRouter("/debug/subtrips"), async (req: Request, res: Response) => {
     try {
-      // Hacer un query más simple sin buscar via_location que no existe
-      const trips = await db.execute(sql`
-        SELECT 
-          id, 
-          segment_origin as origin, 
-          segment_destination as destination, 
-          parent_trip_id as "parentId"
-        FROM trips 
-        WHERE is_sub_trip = true
-      `);
+      // Usando Drizzle para obtener datos más completos
+      const result = await db.query.trips.findMany({
+        where: eq(trips.isSubTrip, true),
+        columns: {
+          id: true,
+          segmentOrigin: true,
+          segmentDestination: true,
+          viaLocation: true,
+          parentTripId: true,
+          departureDate: true
+        }
+      });
       
-      // Agrupar solo por origen-destino para detectar duplicados
+      console.log(`Encontrados ${result.length} subviajes en la base de datos`);
+      
+      // Aseguramos de que tenemos datos para procesar
+      if (!result || result.length === 0) {
+        return res.json({
+          totalSubTrips: 0,
+          uniqueRoutes: 0,
+          routesWithDuplicates: 0,
+          totalDuplicateCount: 0,
+          duplicateGroups: []
+        });
+      }
+      
+      // Agrupar por origen-destino-via para detectar duplicados
       const grouped = new Map();
       
-      trips.forEach(trip => {
-        const key = `${trip.origin}|${trip.destination}`;
+      result.forEach(trip => {
+        // Incluir viaLocation en la clave si existe
+        const key = `${trip.segmentOrigin}|${trip.segmentDestination}${trip.viaLocation ? '|' + trip.viaLocation : ''}`;
         if (!grouped.has(key)) {
           grouped.set(key, []);
         }
@@ -1150,15 +1166,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Convertir el Map a un Array de objetos para facilitar análisis
       const groupsArray = [];
-      for (const [key, tripsInGroup] of grouped) {
+      for (const [key, tripsInGroup] of grouped.entries()) {
         if (tripsInGroup.length > 1) {
+          // Separar por fecha para entender mejor el problema
+          const byDate = new Map();
+          tripsInGroup.forEach(trip => {
+            const dateStr = trip.departureDate ? trip.departureDate.toISOString().split('T')[0] : 'unknown';
+            if (!byDate.has(dateStr)) {
+              byDate.set(dateStr, []);
+            }
+            byDate.get(dateStr).push(trip);
+          });
+          
           // Solo añadir grupos con duplicados
           groupsArray.push({
             route: key,
             count: tripsInGroup.length,
             tripIds: tripsInGroup.map(t => t.id),
-            parentIds: tripsInGroup.map(t => t.parentId).filter((v, i, a) => a.indexOf(v) === i), // Valores únicos
-            firstFewTrips: tripsInGroup.slice(0, 3)
+            parentIds: [...new Set(tripsInGroup.map(t => t.parentTripId))], // Valores únicos
+            dateDistribution: Array.from(byDate.entries()).map(([date, trips]) => ({
+              date,
+              count: trips.length
+            })),
+            firstFewTrips: tripsInGroup.slice(0, 3).map(t => ({
+              id: t.id,
+              parentTripId: t.parentTripId,
+              segmentOrigin: t.segmentOrigin,
+              segmentDestination: t.segmentDestination,
+              viaLocation: t.viaLocation,
+              departureDate: t.departureDate ? t.departureDate.toISOString().split('T')[0] : null
+            }))
           });
         }
       }
@@ -1168,7 +1205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Estadísticas para buscar patrones
       const stats = {
-        totalSubTrips: trips.length,
+        totalSubTrips: result.length,
         uniqueRoutes: grouped.size,
         routesWithDuplicates: groupsArray.length,
         totalDuplicateCount: groupsArray.reduce((sum, group) => sum + group.count - 1, 0),
