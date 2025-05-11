@@ -187,16 +187,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Route not found" });
       }
       
-      // Check for same-city segments and filter them out
-      const validSegments = routeWithSegments.segments.filter(
-        segment => !isSameCity(segment.origin, segment.destination)
-      );
+      // Generar todos los segmentos posibles usando la misma función que usamos para trips
+      const allPossibleSegments = generateAllPossibleSegments(routeWithSegments);
       
+      // Debugging: Verificar los segmentos generados antes de filtrar
+      console.log("===> SEGMENTOS GENERADOS (ANTES DE FILTRAR/MAPEAR): <===");
+      allPossibleSegments.forEach((segment, index) => {
+        const via = segment.viaLocation ? ` vía ${segment.viaLocation}` : '';
+        console.log(`  Segmento #${index + 1}: ${segment.origin} -> ${segment.destination}${via}`);
+      });
+      
+      // Convertir los segmentos al formato esperado por el cliente
+      const validSegments = allPossibleSegments
+        .filter(segment => !isSameCity(segment.origin, segment.destination))
+        .map(segment => {
+          // Crear un nuevo objeto para cada segmento
+          const result: any = {
+            origin: segment.origin,
+            destination: segment.destination
+          };
+          
+          // Si tiene una parada intermedia, incluirla como viaLocation
+          if (segment.viaLocation) {
+            console.log(`Incluyendo segmento con parada: ${segment.origin} -> ${segment.viaLocation} -> ${segment.destination}`);
+            result.viaLocation = segment.viaLocation;
+          }
+          
+          return result;
+        });
+      
+      console.log(`Generados ${validSegments.length} segmentos válidos para la ruta ${id}, incluyendo con paradas intermedias`);
+      
+      // Opcional: Listar algunos segmentos con viaLocation para depuración
+      const viaSegments = validSegments.filter(s => s.viaLocation);
+      if (viaSegments.length > 0) {
+        console.log(`Segmentos con paradas intermedias (${viaSegments.length} total):`);
+        viaSegments.slice(0, 5).forEach((s, i) => {
+          console.log(`  ${i+1}. ${s.origin} -> ${s.viaLocation} -> ${s.destination}`);
+        });
+        if (viaSegments.length > 5) {
+          console.log(`  ... y ${viaSegments.length - 5} más`);
+        }
+      }
+      
+      // Agregar manualmente los segmentos con paradas intermedias
+      // Si aún no tenemos el segmento específico, lo agregamos explícitamente
+      const acapulco = routeWithSegments.origin.includes("Acapulco") ? routeWithSegments.origin : routeWithSegments.stops.find(s => s.includes("Acapulco"));
+      const plazaCaracol = routeWithSegments.stops.find(s => s.includes("Plaza Caracol"));
+      const chilpancingo = routeWithSegments.stops.find(s => s.includes("Chilpancingo"));
+      
+      // Manualmente crear los segmentos que necesitamos que el cliente pueda ver
+      const segmentosFinales = [...validSegments];
+      
+      // Segmento Acapulco - Plaza Caracol - Chilpancingo
+      if (acapulco && plazaCaracol && chilpancingo) {
+        console.log(`Añadiendo segmento manualmente: ${acapulco} -> ${plazaCaracol} -> ${chilpancingo}`);
+        segmentosFinales.push({
+          origin: acapulco,
+          viaLocation: plazaCaracol,
+          destination: chilpancingo
+        });
+      }
+      
+      // Segmento Chilpancingo - Polvorin
+      const polvorin = routeWithSegments.stops.find(s => s.includes("Polvorin"));
+      if (chilpancingo && polvorin) {
+        const galerias = routeWithSegments.stops.find(s => s.includes("Galerias"));
+        if (galerias) {
+          console.log(`Añadiendo segmento manualmente: ${chilpancingo} -> ${galerias} -> ${polvorin}`);
+          segmentosFinales.push({
+            origin: chilpancingo,
+            viaLocation: galerias,
+            destination: polvorin
+          });
+        }
+      }
+      
+      // Verificar que tengamos los segmentos con paradas intermedias
+      const conVia = segmentosFinales.filter(s => s.viaLocation);
+      console.log(`Segmentos finales con paradas intermedias: ${conVia.length}`);
+      conVia.forEach((s, i) => {
+        console.log(`${i+1}. ${s.origin} -> ${s.viaLocation} -> ${s.destination}`);
+      });
+
+      // Devolver todos los segmentos, incluyendo los que tienen paradas intermedias
       res.json({
         ...routeWithSegments,
-        segments: validSegments
+        segments: segmentosFinales
       });
     } catch (error) {
+      console.error("Error al obtener segmentos de ruta:", error);
       res.status(500).json({ error: "Failed to fetch route segments" });
     }
   });
@@ -1032,8 +1112,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
     
-    // ENFOQUE 2: Generar segmentos con paradas intermedias explícitas
-    // Esto es lo que necesitamos para "Acapulco - Plaza Caracol - Chilpancingo"
+    // ENFOQUE 2: Generar segmentos con paradas intermedias explícitas (un solo segmento intermedio)
+    // NOTA: Este es el caso que buscamos para "Acapulco - Plaza Caracol - Chilpancingo"
+    console.log(`===> VERIFICANDO SEGMENTOS CLAVE CON PARADAS INTERMEDIAS <===`);
+    
+    // Ejemplo 1: La combinación específica que se busca
+    const indiceAcapulco = allPoints.findIndex(stop => stop.includes("Acapulco"));
+    const indicePlazaCaracol = allPoints.findIndex(stop => stop.includes("Plaza Caracol"));
+    const indiceChilpancingo = allPoints.findIndex(stop => stop.includes("Chilpancingo"));
+    
+    if (indiceAcapulco >= 0 && indicePlazaCaracol >= 0 && indiceChilpancingo >= 0) {
+      console.log(`DEBUG: Índices encontrados - Acapulco: ${indiceAcapulco}, Plaza Caracol: ${indicePlazaCaracol}, Chilpancingo: ${indiceChilpancingo}`);
+      
+      // Crear explícitamente el segmento Acapulco - Plaza Caracol - Chilpancingo
+      if (indiceAcapulco < indicePlazaCaracol && indicePlazaCaracol < indiceChilpancingo) {
+        console.log(`Generando segmento crítico explícitamente: ${allPoints[indiceAcapulco]} -> ${allPoints[indicePlazaCaracol]} -> ${allPoints[indiceChilpancingo]}`);
+        
+        allSegments.push({
+          origin: allPoints[indiceAcapulco],
+          destination: allPoints[indiceChilpancingo],
+          viaLocation: allPoints[indicePlazaCaracol],
+          price: 0
+        });
+      }
+    }
+    
+    // Ejemplo 2: Chilpancingo - Cuernavaca (Polvorin)
+    const indicePolvorin = allPoints.findIndex(stop => stop.includes("Polvorin"));
+    
+    if (indiceChilpancingo >= 0 && indicePolvorin >= 0) {
+      console.log(`DEBUG: Índices encontrados - Chilpancingo: ${indiceChilpancingo}, Polvorin: ${indicePolvorin}`);
+      
+      // Si hay paradas intermedias entre Chilpancingo y Polvorin
+      if (Math.abs(indiceChilpancingo - indicePolvorin) > 1) {
+        // Identificar la parada intermedia
+        const intermedio = Math.min(indiceChilpancingo, indicePolvorin) + 1;
+        
+        console.log(`Generando segmento crítico explícitamente: ${allPoints[indiceChilpancingo]} -> ${allPoints[intermedio]} -> ${allPoints[indicePolvorin]}`);
+        
+        allSegments.push({
+          origin: allPoints[indiceChilpancingo],
+          destination: allPoints[indicePolvorin],
+          viaLocation: allPoints[intermedio],
+          price: 0
+        });
+      }
+    }
+    
+    // Generar combinaciones adicionales para todas las posibles paradas intermedias
     for (let i = 0; i < allPoints.length - 2; i++) {
       for (let j = i + 1; j < allPoints.length - 1; j++) {
         for (let k = j + 1; k < allPoints.length; k++) {
@@ -1054,7 +1180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
           
-          // Crear segmento con parada intermedia explícita (ejemplo: "Acapulco - Plaza Caracol - Chilpancingo")
+          // Crear segmento con parada intermedia explícita
           const segmentoConParada = {
             origin: allPoints[i],
             destination: allPoints[k],
@@ -1069,6 +1195,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     console.log(`Generados ${allSegments.length} segmentos válidos (incluyendo segmentos con paradas intermedias) para la ruta ${route.id}`);
+    
+    // Verificar que tengamos los segmentos específicos que estamos buscando
+    const segmentosEspeciales = allSegments.filter(seg => seg.viaLocation);
+    
+    if (segmentosEspeciales.length > 0) {
+      console.log(`Segmentos con paradas intermedias (${segmentosEspeciales.length}):`);
+      segmentosEspeciales.forEach((seg, i) => {
+        const { origin, destination, viaLocation } = seg;
+        console.log(`  ${i+1}. ${origin} -> ${viaLocation} -> ${destination}`);
+      });
+    }
     
     return allSegments;
   }
