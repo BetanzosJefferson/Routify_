@@ -955,10 +955,31 @@ export class DatabaseStorage implements IStorage {
     
     // LUEGO: Actualizar viajes relacionados
     if (trip.isSubTrip && trip.parentTripId && trip.segmentOrigin && trip.segmentDestination) {
-      // Este es un sub-viaje, actualizar el viaje principal
+      // Este es un sub-viaje, necesitamos actualizar:
+      // 1. El viaje principal
+      // 2. Otros sub-viajes del mismo viaje principal que intersecten
+      // 3. Otros viajes principales que compartan ruta
+      // 4. Sub-viajes de otros viajes principales que intersecten 
+      
       const mainTrip = await this.getTrip(trip.parentTripId);
       if (!mainTrip) return;
       
+      // Obtener información de la ruta principal para determinar todas las paradas
+      const routeInfo = await this.getRouteWithSegments(mainTrip.routeId);
+      if (!routeInfo) return;
+      
+      // Crear un array con todas las paradas en orden
+      const allStops = [routeInfo.origin, ...routeInfo.stops, routeInfo.destination];
+      
+      // Encontrar índices para este segmento
+      const segmentOriginIdx = allStops.indexOf(trip.segmentOrigin);
+      const segmentDestinationIdx = allStops.indexOf(trip.segmentDestination);
+      
+      if (segmentOriginIdx === -1 || segmentDestinationIdx === -1) return;
+      
+      console.log(`[updateRelatedTripsAvailability] Segment range: ${segmentOriginIdx} a ${segmentDestinationIdx}`);
+      
+      // 1. Actualizar el viaje principal si corresponde (siempre se afecta)
       // Calcular nuevos asientos disponibles
       let newAvailableSeats;
       
@@ -980,21 +1001,8 @@ export class DatabaseStorage implements IStorage {
         .update(schema.trips)
         .set({ availableSeats: newAvailableSeats })
         .where(eq(schema.trips.id, mainTrip.id));
-      
-      // Obtener información de la ruta principal para determinar todas las paradas
-      const routeInfo = await this.getRouteWithSegments(mainTrip.routeId);
-      if (!routeInfo) return;
-      
-      // Crear un array con todas las paradas en orden
-      const allStops = [routeInfo.origin, ...routeInfo.stops, routeInfo.destination];
-      
-      // Encontrar índices para este segmento
-      const segmentOriginIdx = allStops.indexOf(trip.segmentOrigin);
-      const segmentDestinationIdx = allStops.indexOf(trip.segmentDestination);
-      
-      if (segmentOriginIdx === -1 || segmentDestinationIdx === -1) return;
-      
-      // Obtener todos los sub-viajes relacionados con el viaje principal
+        
+      // 2. Actualizar otros sub-viajes del mismo viaje principal que intersecten
       const subTrips = await db
         .select()
         .from(schema.trips)
@@ -1021,8 +1029,12 @@ export class DatabaseStorage implements IStorage {
           // Si alguna parte del segmento actual está dentro del otro segmento
           (segmentOriginIdx >= subOriginIdx && segmentOriginIdx < subDestinationIdx) ||
           (segmentDestinationIdx > subOriginIdx && segmentDestinationIdx <= subDestinationIdx) ||
-          // O si el otro segmento está completamente dentro del segmento actual
-          (subOriginIdx >= segmentOriginIdx && subDestinationIdx <= segmentDestinationIdx)
+          // Si el otro segmento está completamente dentro del segmento actual
+          (subOriginIdx >= segmentOriginIdx && subDestinationIdx <= segmentDestinationIdx) ||
+          // Si el segmento actual está completamente dentro del otro segmento
+          (segmentOriginIdx >= subOriginIdx && segmentDestinationIdx <= subDestinationIdx) ||
+          // Si ambos segmentos comparten al menos un tramo de ruta
+          (Math.max(segmentOriginIdx, subOriginIdx) < Math.min(segmentDestinationIdx, subDestinationIdx))
         );
         
         if (hasOverlap) {
@@ -1048,8 +1060,106 @@ export class DatabaseStorage implements IStorage {
             .where(eq(schema.trips.id, subTrip.id));
         }
       }
+      
+      // 3 y 4. Buscar otros viajes principales en la misma ruta y sus sub-viajes
+      const otherMainTrips = await db
+        .select()
+        .from(schema.trips)
+        .where(
+          and(
+            eq(schema.trips.routeId, mainTrip.routeId),
+            eq(schema.trips.isSubTrip, false),
+            sql`id != ${mainTrip.id}`
+          )
+        );
+      
+      console.log(`[updateRelatedTripsAvailability] Encontrados ${otherMainTrips.length} viajes principales adicionales en la misma ruta`);
+      
+      // Para cada viaje principal, actualizarlo y sus sub-viajes relevantes
+      for (const otherMainTrip of otherMainTrips) {
+        // Actualizar el viaje principal
+        let newOtherMainAvailableSeats;
+        
+        if (isAddingSeats) {
+          newOtherMainAvailableSeats = Math.min(otherMainTrip.availableSeats + absoluteChange, otherMainTrip.capacity);
+        } else if (isReducingSeats) {
+          newOtherMainAvailableSeats = Math.max(otherMainTrip.availableSeats - absoluteChange, 0);
+        } else {
+          newOtherMainAvailableSeats = otherMainTrip.availableSeats;
+        }
+        
+        console.log(`[updateRelatedTripsAvailability] Actualizando viaje principal adicional ${otherMainTrip.id}: asientos ${otherMainTrip.availableSeats} a ${newOtherMainAvailableSeats}`);
+        
+        await db
+          .update(schema.trips)
+          .set({ availableSeats: newOtherMainAvailableSeats })
+          .where(eq(schema.trips.id, otherMainTrip.id));
+        
+        // Obtener y actualizar los sub-viajes relevantes de este viaje principal
+        const otherSubTrips = await db
+          .select()
+          .from(schema.trips)
+          .where(eq(schema.trips.parentTripId, otherMainTrip.id));
+          
+        for (const otherSubTrip of otherSubTrips) {
+          if (!otherSubTrip.segmentOrigin || !otherSubTrip.segmentDestination) continue;
+          
+          // Encontrar índices para este sub-viaje
+          const otherSubOriginIdx = allStops.indexOf(otherSubTrip.segmentOrigin);
+          const otherSubDestinationIdx = allStops.indexOf(otherSubTrip.segmentDestination);
+          
+          if (otherSubOriginIdx === -1 || otherSubDestinationIdx === -1) continue;
+          
+          // Verificar si hay superposición con el segmento original
+          const hasOtherOverlap = (
+            // Si alguna parte del segmento actual está dentro del otro segmento
+            (segmentOriginIdx >= otherSubOriginIdx && segmentOriginIdx < otherSubDestinationIdx) ||
+            (segmentDestinationIdx > otherSubOriginIdx && segmentDestinationIdx <= otherSubDestinationIdx) ||
+            // Si el otro segmento está completamente dentro del segmento actual
+            (otherSubOriginIdx >= segmentOriginIdx && otherSubDestinationIdx <= segmentDestinationIdx) ||
+            // Si el segmento actual está completamente dentro del otro segmento
+            (segmentOriginIdx >= otherSubOriginIdx && segmentDestinationIdx <= otherSubDestinationIdx) ||
+            // Si ambos segmentos comparten al menos un tramo de ruta
+            (Math.max(segmentOriginIdx, otherSubOriginIdx) < Math.min(segmentDestinationIdx, otherSubDestinationIdx))
+          );
+          
+          if (hasOtherOverlap) {
+            // Calcular nuevos asientos disponibles
+            let newOtherSubAvailableSeats;
+            
+            if (isAddingSeats) {
+              newOtherSubAvailableSeats = Math.min(otherSubTrip.availableSeats + absoluteChange, otherSubTrip.capacity);
+            } else if (isReducingSeats) {
+              newOtherSubAvailableSeats = Math.max(otherSubTrip.availableSeats - absoluteChange, 0);
+            } else {
+              newOtherSubAvailableSeats = otherSubTrip.availableSeats;
+            }
+            
+            console.log(`[updateRelatedTripsAvailability] Actualizando sub-viaje adicional ${otherSubTrip.id}: asientos ${otherSubTrip.availableSeats} a ${newOtherSubAvailableSeats}`);
+            
+            await db
+              .update(schema.trips)
+              .set({ availableSeats: newOtherSubAvailableSeats })
+              .where(eq(schema.trips.id, otherSubTrip.id));
+          }
+        }
+      }
     } else {
-      // Es un viaje principal, actualizar todos sus sub-viajes
+      // Es un viaje principal, necesitamos analizar todos los viajes potencialmente afectados
+      const routeInfo = await this.getRouteWithSegments(trip.routeId);
+      if (!routeInfo) return;
+      
+      // Crear un array con todas las paradas en orden
+      const allStops = [routeInfo.origin, ...routeInfo.stops, routeInfo.destination];
+      
+      // En caso de ser un viaje principal sin segmento específico, afecta a toda la ruta
+      // Buscar todos los viajes que comparten la misma ruta y pueden ser afectados
+      // Esto incluye:
+      // 1. Sub-viajes directos de este viaje principal
+      // 2. Otros viajes principales en la misma ruta
+      // 3. Sub-viajes de otros viajes principales que intersectan con esta ruta
+      
+      // 1. Primero, actualizar los sub-viajes directos
       const subTrips = await db
         .select()
         .from(schema.trips)
@@ -1076,6 +1186,74 @@ export class DatabaseStorage implements IStorage {
           .update(schema.trips)
           .set({ availableSeats: newSubAvailableSeats })
           .where(eq(schema.trips.id, subTrip.id));
+      }
+      
+      // 2 y 3. Buscar otros viajes principales y sus sub-viajes que comparten esta ruta
+      // Obtenemos todos los viajes principales para esta ruta (excepto el actual)
+      const relatedMainTrips = await db
+        .select()
+        .from(schema.trips)
+        .where(
+          and(
+            eq(schema.trips.routeId, trip.routeId),
+            eq(schema.trips.isSubTrip, false),
+            sql`id != ${trip.id}`
+          )
+        );
+      
+      // Para cada viaje principal relacionado, actualizar su disponibilidad
+      for (const mainTrip of relatedMainTrips) {
+        // Calcular nuevos asientos disponibles
+        let newMainAvailableSeats;
+        
+        if (isAddingSeats) {
+          newMainAvailableSeats = Math.min(mainTrip.availableSeats + absoluteChange, mainTrip.capacity);
+        } else if (isReducingSeats) {
+          newMainAvailableSeats = Math.max(mainTrip.availableSeats - absoluteChange, 0);
+        } else {
+          newMainAvailableSeats = mainTrip.availableSeats;
+        }
+        
+        console.log(`[updateRelatedTripsAvailability] Actualizando viaje principal relacionado ${mainTrip.id}: asientos ${mainTrip.availableSeats} a ${newMainAvailableSeats}`);
+        
+        await db
+          .update(schema.trips)
+          .set({ availableSeats: newMainAvailableSeats })
+          .where(eq(schema.trips.id, mainTrip.id));
+        
+        // Actualizar sus sub-viajes
+        const relatedSubTrips = await db
+          .select()
+          .from(schema.trips)
+          .where(eq(schema.trips.parentTripId, mainTrip.id));
+          
+        for (const subTrip of relatedSubTrips) {
+          if (!subTrip.segmentOrigin || !subTrip.segmentDestination) continue;
+          
+          // Encontrar índices para el sub-viaje
+          const subOriginIdx = allStops.indexOf(subTrip.segmentOrigin);
+          const subDestinationIdx = allStops.indexOf(subTrip.segmentDestination);
+          
+          if (subOriginIdx === -1 || subDestinationIdx === -1) continue;
+          
+          // Calcular nuevos asientos disponibles
+          let newSubAvailableSeats;
+          
+          if (isAddingSeats) {
+            newSubAvailableSeats = Math.min(subTrip.availableSeats + absoluteChange, subTrip.capacity);
+          } else if (isReducingSeats) {
+            newSubAvailableSeats = Math.max(subTrip.availableSeats - absoluteChange, 0);
+          } else {
+            newSubAvailableSeats = subTrip.availableSeats;
+          }
+          
+          console.log(`[updateRelatedTripsAvailability] Actualizando sub-viaje relacionado ${subTrip.id}: asientos ${subTrip.availableSeats} a ${newSubAvailableSeats}`);
+          
+          await db
+            .update(schema.trips)
+            .set({ availableSeats: newSubAvailableSeats })
+            .where(eq(schema.trips.id, subTrip.id));
+        }
       }
     }
   }
