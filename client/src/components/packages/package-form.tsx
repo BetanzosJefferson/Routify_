@@ -241,7 +241,13 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
         variant: "default",
       });
       form.reset(defaultValues);
+      
+      // Invalidar la caché de paquetes
       queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
+      
+      // Invalidar también la caché de viajes para actualizar los asientos disponibles
+      queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
+      
       if (onSuccess) onSuccess();
     },
     onError: (error: Error) => {
