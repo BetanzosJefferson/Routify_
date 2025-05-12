@@ -1,7 +1,8 @@
-import React, { useRef } from "react";
-import { Package, User, Clock, Calendar, PhoneCall, Truck, DollarSign, CheckCircle, ChevronsRight } from "lucide-react";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import React, { useRef, useEffect, useState } from "react";
+import { Package, User, Clock, Calendar, PhoneCall, Truck, DollarSign, CheckCircle, ChevronsRight, MapPin } from "lucide-react";
+import { formatDate, formatCurrency, formatTime } from "@/lib/utils";
 import { jsPDF } from "jspdf";
+import QRCode from "qrcode";
 
 // Define la estructura del paquete
 interface PackageData {
@@ -23,6 +24,12 @@ interface PackageData {
   createdAt: string | Date;
   updatedAt?: string | Date;
   createdBy?: number;
+  tripOrigin?: string;
+  tripDestination?: string;
+  segmentOrigin?: string;
+  segmentDestination?: string;
+  tripDate?: string | Date;
+  companyId?: string;
 }
 
 interface PackageTicketProps {
@@ -31,7 +38,17 @@ interface PackageTicketProps {
 }
 
 // Función para generar el PDF con dimensiones de ticket térmico
-export function generatePackageTicketPDF(packageData: PackageData, companyName: string) {
+export async function generatePackageTicketPDF(packageData: PackageData, companyName: string) {
+  // Generar código QR para añadir al PDF
+  let qrCodeDataUrl;
+  try {
+    const verificationUrl = `${window.location.origin}/package/${packageData.id}`;
+    qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, { width: 100 });
+  } catch (error) {
+    console.error("Error al generar código QR:", error);
+    qrCodeDataUrl = null;
+  }
+
   // Crear un documento PDF con las dimensiones de un ticket térmico (58mm x 160mm)
   const doc = new jsPDF({
     orientation: "portrait",
@@ -101,6 +118,42 @@ export function generatePackageTicketPDF(packageData: PackageData, companyName: 
   y += 4;
   doc.text(`Tel: ${packageData.recipientPhone}`, 5, y);
   
+  // Ruta y Origen/Destino (Nuevo)
+  if ((packageData.segmentOrigin || packageData.tripOrigin) && 
+      (packageData.segmentDestination || packageData.tripDestination)) {
+    y += 6;
+    doc.setFontSize(9);
+    doc.setFont("courier", "bold");
+    doc.text("Ruta", 5, y);
+    
+    y += 4;
+    doc.setFontSize(8);
+    doc.setFont("courier", "normal");
+    
+    // Origen
+    const origen = packageData.segmentOrigin || packageData.tripOrigin || "";
+    doc.text(`Origen: ${origen}`, 5, y);
+    
+    y += 4;
+    // Destino
+    const destino = packageData.segmentDestination || packageData.tripDestination || "";
+    doc.text(`Destino: ${destino}`, 5, y);
+    
+    // Fecha del viaje
+    if (packageData.tripDate) {
+      y += 4;
+      doc.text(`Fecha: ${formatDate(new Date(packageData.tripDate))}`, 5, y);
+    }
+    
+    // Hora de envío
+    if (packageData.createdAt) {
+      y += 4;
+      const date = new Date(packageData.createdAt);
+      const timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+      doc.text(`Hora de envío: ${timeStr}`, 5, y);
+    }
+  }
+  
   // Detalles del paquete
   y += 6;
   doc.setFontSize(9);
@@ -149,34 +202,27 @@ export function generatePackageTicketPDF(packageData: PackageData, companyName: 
     y
   );
   
-  // Estado de entrega
-  y += 6;
-  doc.setFontSize(9);
-  doc.setFont("courier", "bold");
-  doc.text("Estado de Entrega", 5, y);
-  
-  y += 4;
-  doc.setFontSize(8);
-  doc.setFont("courier", "normal");
-  doc.text(
-    packageData.deliveryStatus === 'entregado' 
-      ? 'Entregado' 
-      : 'Pendiente de entrega',
-    5,
-    y
-  );
+  // Código QR
+  if (qrCodeDataUrl) {
+    y += 8;
+    const qrX = (58 - 25) / 2; // Centrar el QR (25mm de ancho)
+    try {
+      doc.addImage(qrCodeDataUrl, 'PNG', qrX, y, 25, 25);
+      y += 27; // Espacio para el QR + margen
+    } catch (error) {
+      console.error("Error al añadir QR al PDF:", error);
+      y += 5;
+    }
+  }
   
   // Pie de página
-  y += 8;
+  y += 3;
   doc.setDrawColor(200, 200, 200);
   doc.line(5, y, 53, y);
   
   y += 5;
   doc.setFontSize(7);
-  doc.text(`Gracias por confiar en ${companyName}`, 29, y, { align: "center" });
-  
-  y += 3;
-  doc.text("Este ticket es su comprobante de envío", 29, y, { align: "center" });
+  doc.text("Escanee el código QR para verificar el paquete", 29, y, { align: "center" });
   
   y += 3;
   doc.text("www.transroute.mx", 29, y, { align: "center" });
@@ -189,7 +235,29 @@ export function generatePackageTicketPDF(packageData: PackageData, companyName: 
 
 export function PackageTicket({ packageData, companyName = "TransRoute" }: PackageTicketProps) {
   const ticketRef = useRef<HTMLDivElement>(null);
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
+  
+  // Generar el código QR para el enlace de verificación del paquete
+  useEffect(() => {
+    if (packageData && packageData.id) {
+      const verificationUrl = `${window.location.origin}/package/${packageData.id}`;
+      QRCode.toDataURL(verificationUrl, { width: 100 })
+        .then(url => {
+          setQrUrl(url);
+        })
+        .catch(err => {
+          console.error("Error al generar código QR:", err);
+        });
+    }
+  }, [packageData]);
 
+  // Obtener la hora de la fecha de creación
+  const getCreationTime = () => {
+    if (!packageData.createdAt) return "";
+    const date = new Date(packageData.createdAt);
+    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+  };
+  
   return (
     <div className="thermal-ticket" ref={ticketRef}>
       <style>{`
@@ -227,7 +295,20 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
           height: 12px;
           margin-right: 0.25rem;
         }
-        .ticket-footer {
+        .ticket-qr {
+          display: flex;
+          justify-content: center;
+          margin-top: 10px;
+          margin-bottom: 10px;
+        }
+        .ticket-qr img {
+          width: 100px;
+          height: 100px;
+        }
+        .ticket-route {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
           margin-top: 0.5rem;
           border-top: 1px dashed #ccc;
           padding-top: 0.5rem;
@@ -290,6 +371,30 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
         </div>
       </div>
       
+      {(packageData.segmentOrigin || packageData.tripOrigin) && (packageData.segmentDestination || packageData.tripDestination) && (
+        <div className="ticket-section">
+          <h3>Ruta</h3>
+          <div className="ticket-row">
+            <MapPin size={12} />
+            <span>Origen: {packageData.segmentOrigin || packageData.tripOrigin}</span>
+          </div>
+          <div className="ticket-row">
+            <MapPin size={12} />
+            <span>Destino: {packageData.segmentDestination || packageData.tripDestination}</span>
+          </div>
+          {packageData.tripDate && (
+            <div className="ticket-row">
+              <Calendar size={12} />
+              <span>Fecha: {formatDate(new Date(packageData.tripDate))}</span>
+            </div>
+          )}
+          <div className="ticket-row">
+            <Clock size={12} />
+            <span>Hora de envío: {getCreationTime()}</span>
+          </div>
+        </div>
+      )}
+      
       <div className="ticket-section">
         <h3>Detalles del Paquete</h3>
         <div className="ticket-row">
@@ -318,21 +423,16 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
         </div>
       </div>
       
-      <div className="ticket-section">
-        <h3>Estado de Entrega</h3>
-        <div className="ticket-row">
-          <Truck size={12} />
-          <span>
-            {packageData.deliveryStatus === 'entregado' 
-              ? 'Entregado' 
-              : 'Pendiente de entrega'}
-          </span>
+      {/* Código QR */}
+      {qrUrl && (
+        <div className="ticket-qr">
+          <img src={qrUrl} alt="Código QR de verificación" />
         </div>
-      </div>
+      )}
       
-      <div className="ticket-footer">
-        <div>Gracias por confiar en {companyName}</div>
-        <div>Este ticket es su comprobante de envío</div>
+      {/* URL de seguimiento */}
+      <div className="ticket-route">
+        <div>Escanee el código QR para verificar el paquete</div>
         <div>www.transroute.mx</div>
       </div>
     </div>
