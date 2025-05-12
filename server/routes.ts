@@ -4496,18 +4496,29 @@ function setupPackageRoutes(app: Express) {
   // GET /api/cash-register - Obtener reservaciones pagadas por el usuario actual
   app.get(apiRouter('/cash-register'), isAuthenticated, async (req, res) => {
     try {
-      // Verificar que el usuario está autenticado (ya verificado por middleware isAuthenticated)
-      const userId = req.user!.id;
+      const { user } = req as any;
+      console.log(`[GET /cash-register] Usuario ${user.firstName} ${user.lastName} solicitando datos de caja`);
       
-      console.log(`[GET /cash-register] Usuario ${req.user!.firstName} ${req.user!.lastName} solicitando datos de caja`);
+      // Si el usuario es dueño o administrador, mostrar todas las reservaciones de la compañía
+      if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
+        // Obtener ID de la compañía
+        const companyId = user.companyId || user.company;
+        
+        if (!companyId) {
+          console.log(`[GET /cash-register] Usuario dueño/admin sin compañía asignada. Usando vista limitada.`);
+          const paidReservations = await storage.getPaidReservationsByUser(user.id);
+          return res.json(paidReservations);
+        }
+        
+        console.log(`[GET /cash-register] Usuario dueño/admin: mostrando todas las reservaciones pagadas de la compañía ${companyId}`);
+        const companyReservations = await storage.getPaidReservationsByCompany(companyId);
+        return res.json(companyReservations);
+      }
       
-      // Obtener las reservaciones pagadas por este usuario
-      const paidReservations = await storage.getPaidReservationsByUser(userId);
-      
-      console.log(`[GET /cash-register] Enviando ${paidReservations.length} reservaciones pagadas por el usuario ${userId}`);
-      
-      // Devolver las reservaciones
-      res.json(paidReservations);
+      // Para otros roles, mostrar solo sus propias reservaciones
+      const paidReservations = await storage.getPaidReservationsByUser(user.id);
+      console.log(`[GET /cash-register] Enviando ${paidReservations.length} reservaciones pagadas por el usuario ${user.id}`);
+      return res.json(paidReservations);
     } catch (error) {
       console.error('[GET /cash-register] Error:', error);
       res.status(500).json({ message: 'Error al cargar datos de caja' });
