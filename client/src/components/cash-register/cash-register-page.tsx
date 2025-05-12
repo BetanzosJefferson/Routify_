@@ -314,7 +314,11 @@ export function CashRegisterPage() {
           ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableCaption>Lista de pagos registrados por {user?.firstName}</TableCaption>
+                <TableCaption>
+                  {isAdminView 
+                    ? 'Lista de pagos registrados por todos los usuarios de la empresa' 
+                    : `Lista de pagos registrados por ${user?.firstName}`}
+                </TableCaption>
                 <TableHeader>
                   <TableRow>
                     <TableHead>ID Reservación</TableHead>
@@ -355,6 +359,18 @@ export function CashRegisterPage() {
                           {reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}
                         </Badge>
                       </TableCell>
+                      {isAdminView && (
+                        <TableCell>
+                          {reservation.paidByUserInfo ? (
+                            <div className="flex flex-col">
+                              <span className="font-medium">{reservation.paidByUserInfo.firstName} {reservation.paidByUserInfo.lastName}</span>
+                              <span className="text-xs text-gray-500 capitalize">{reservation.paidByUserInfo.role}</span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">Usuario desconocido</span>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell className="text-right font-medium">
                         {formatPrice(reservation.totalAmount)}
                       </TableCell>
