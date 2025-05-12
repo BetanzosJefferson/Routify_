@@ -29,7 +29,6 @@ interface PackageData {
   segmentOrigin?: string;
   segmentDestination?: string;
   tripDate?: string | Date;
-  departure_date?: string | Date; // Nueva propiedad con la fecha exacta de salida
   companyId?: string;
 }
 
@@ -434,15 +433,10 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
               <span style={{ display: 'block', wordBreak: 'break-word' }}>Destino: {packageData.segmentDestination || packageData.tripDestination}</span>
             </div>
           </div>
-          {(packageData.departure_date || packageData.tripDate) && (
+          {packageData.tripDate && (
             <div className="ticket-row">
               <Calendar size={12} />
-              <span>Fecha: {
-                // Usar directamente la fecha sin formato, o formatearla pero sin normalización
-                packageData.departure_date 
-                  ? new Date(packageData.departure_date).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: 'numeric'})
-                  : new Date(packageData.tripDate).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: 'numeric'})
-              }</span>
+              <span>Fecha: {formatDate(new Date(packageData.tripDate))}</span>
             </div>
           )}
           <div className="ticket-row">
