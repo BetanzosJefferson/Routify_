@@ -57,6 +57,50 @@ export default function PackageDetailPage() {
     },
     enabled: !!packageId,
   });
+  
+  // Consultar datos del usuario autenticado
+  const userQuery = useQuery({
+    queryKey: ['/api/auth/user'],
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/auth/user');
+        if (response.status === 401) {
+          // Usuario no autenticado, retornamos null
+          return null;
+        }
+        if (!response.ok) {
+          throw new Error("Error al obtener datos del usuario");
+        }
+        return await response.json();
+      } catch (error) {
+        console.error("Error al consultar datos del usuario:", error);
+        return null;
+      }
+    },
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+  
+  // Determinar si el usuario puede editar el paquete
+  const canEditPackage = () => {
+    if (userQuery.isLoading || !userQuery.data || packageQuery.isLoading || !packageQuery.data) {
+      return false;
+    }
+    
+    const user = userQuery.data;
+    const packageData = packageQuery.data;
+    
+    console.log("Usuario:", user);
+    console.log("Paquete:", packageData);
+    
+    // Verificar que el usuario esté autenticado y que pertenezca a la misma compañía que el paquete
+    return (
+      user && 
+      user.company && 
+      packageData.companyId && 
+      user.company === packageData.companyId
+    );
+  };
 
   // Generar código QR con la URL para verificar el paquete
   React.useEffect(() => {
@@ -400,27 +444,31 @@ export default function PackageDetailPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-wrap gap-3 justify-center">
-            {/* Botones condicionales para marcado de estado */}
-            {!packageData.isPaid && (
-              <Button 
-                variant="default" 
-                className="bg-green-600 hover:bg-green-700 w-full md:w-auto" 
-                onClick={handleMarkAsPaid}
-              >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Marcar como pagado
-              </Button>
-            )}
-            
-            {packageData.deliveryStatus !== 'entregado' && (
-              <Button 
-                variant="default" 
-                className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto" 
-                onClick={handleMarkAsDelivered}
-              >
-                <Truck className="mr-2 h-4 w-4" />
-                Marcar como entregado
-              </Button>
+            {/* Botones condicionales para marcado de estado - solo visibles para usuario de la misma compañía */}
+            {canEditPackage() && (
+              <>
+                {!packageData.isPaid && (
+                  <Button 
+                    variant="default" 
+                    className="bg-green-600 hover:bg-green-700 w-full md:w-auto" 
+                    onClick={handleMarkAsPaid}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Marcar como pagado
+                  </Button>
+                )}
+                
+                {packageData.deliveryStatus !== 'entregado' && (
+                  <Button 
+                    variant="default" 
+                    className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto" 
+                    onClick={handleMarkAsDelivered}
+                  >
+                    <Truck className="mr-2 h-4 w-4" />
+                    Marcar como entregado
+                  </Button>
+                )}
+              </>
             )}
           </CardFooter>
         </Card>
