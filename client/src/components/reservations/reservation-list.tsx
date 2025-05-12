@@ -459,7 +459,9 @@ export function ReservationList() {
                 {filteredReservations.map((reservation) => (
                   <tr 
                     key={reservation.id} 
-                    className="cursor-pointer hover:bg-gray-50"
+                    className={`cursor-pointer hover:bg-gray-50 ${
+                      reservation.status === 'canceled' ? 'bg-gray-50' : ''
+                    }`}
                     onClick={() => {
                       setSelectedReservationId(reservation.id);
                       setIsDetailsModalOpen(true);
@@ -620,7 +622,9 @@ export function ReservationList() {
               {filteredReservations.map((reservation) => (
                 <div 
                   key={reservation.id} 
-                  className="p-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors duration-150"
+                  className={`p-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors duration-150 ${
+                    reservation.status === 'canceled' ? 'bg-gray-50 border-l-4 border-red-300' : ''
+                  }`}
                   onClick={() => {
                     setSelectedReservationId(reservation.id);
                     setIsDetailsModalOpen(true);
@@ -631,14 +635,24 @@ export function ReservationList() {
                       <div className="text-sm font-medium text-gray-900">
                         #{generateReservationId(reservation.id)}
                       </div>
-                      <Badge 
-                        variant={reservation.paymentStatus === 'pagado' ? "outline" : "secondary"}
-                        className={reservation.paymentStatus === 'pagado' 
-                          ? "bg-green-100 text-green-800 border-green-200 mt-1" 
-                          : "bg-amber-100 text-amber-800 border-amber-200 mt-1"}
-                      >
-                        {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
-                      </Badge>
+                      <div className="flex flex-col gap-1">
+                        <Badge 
+                          variant={reservation.paymentStatus === 'pagado' ? "outline" : "secondary"}
+                          className={reservation.paymentStatus === 'pagado' 
+                            ? "bg-green-100 text-green-800 border-green-200" 
+                            : "bg-amber-100 text-amber-800 border-amber-200"}
+                        >
+                          {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+                        </Badge>
+                        <Badge 
+                          variant="outline"
+                          className={reservation.status === 'confirmed' 
+                            ? "bg-blue-100 text-blue-800 border-blue-200" 
+                            : "bg-red-100 text-red-800 border-red-200"}
+                        >
+                          {reservation.status === 'confirmed' ? 'CONFIRMADA' : 'CANCELADA'}
+                        </Badge>
+                      </div>
                     </div>
                     
                     <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>

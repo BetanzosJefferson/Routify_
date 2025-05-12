@@ -164,6 +164,9 @@ export default function ReservationDetailsModal({
               <DialogHeader>
                 <DialogTitle>
                   Detalles de la Reservación #{generateReservationId(reservation.id)}
+                  {reservation.status === 'canceled' && (
+                    <span className="ml-2 text-sm text-red-600 font-normal">(CANCELADA)</span>
+                  )}
                 </DialogTitle>
                 <p className="text-sm text-muted-foreground">
                   Información completa de la reservación
@@ -246,6 +249,19 @@ export default function ReservationDetailsModal({
                   <div className="bg-gray-50 p-3 sm:p-4 rounded-md">
                     <h3 className="font-medium text-sm sm:text-base border-b pb-2 mb-3 sm:mb-4">Información de pago</h3>
                     <div className="space-y-2 sm:space-y-3">
+                      <div className="grid grid-cols-2 items-center">
+                        <div className="text-sm text-gray-500 font-medium">ESTADO DE RESERVACIÓN</div>
+                        <div className="text-right">
+                          <Badge 
+                            className={reservation.status === 'confirmed' 
+                              ? 'bg-blue-100 text-blue-800 border-blue-200' 
+                              : 'bg-red-100 text-red-800 border-red-200'}
+                          >
+                            {reservation.status === 'confirmed' ? 'CONFIRMADA' : 'CANCELADA'}
+                          </Badge>
+                        </div>
+                      </div>
+                      
                       <div className="grid grid-cols-2 items-center">
                         <div className="text-sm text-gray-500 font-medium">ESTADO DE PAGO</div>
                         <div className="text-right">
