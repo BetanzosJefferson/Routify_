@@ -70,16 +70,20 @@ export default function PackageDetailPage() {
     
     const packageData = packageQuery.data;
     
-    console.log("Usuario autenticado:", user);
-    console.log("Datos del paquete:", packageData);
+    // Mostramos todos los campos del usuario y del paquete para depuración
+    console.log("Usuario autenticado:", JSON.stringify(user, null, 2));
+    console.log("Datos del paquete:", JSON.stringify(packageData, null, 2));
     
     // Verificar que el usuario esté autenticado y que pertenezca a la misma compañía que el paquete
-    return (
-      user && 
-      user.company && 
+    // Nota: basándonos en el log anterior, parece que necesitamos comparar user.company con packageData.companyId
+    const hasMatch = user && 
+      packageData && 
       packageData.companyId && 
-      user.company === packageData.companyId
-    );
+      ((user.companyId === packageData.companyId) || (user.company === packageData.companyId));
+    
+    console.log("¿Coincide la compañía?", hasMatch);
+    
+    return hasMatch;
   };
 
   // Generar código QR con la URL para verificar el paquete
@@ -425,30 +429,52 @@ export default function PackageDetailPage() {
           </CardContent>
           <CardFooter className="flex flex-wrap gap-3 justify-center">
             {/* Botones condicionales para marcado de estado - solo visibles para usuario de la misma compañía */}
-            {canEditPackage() && (
+            {user && packageData ? (
               <>
-                {!packageData.isPaid && (
-                  <Button 
-                    variant="default" 
-                    className="bg-green-600 hover:bg-green-700 w-full md:w-auto" 
-                    onClick={handleMarkAsPaid}
-                  >
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Marcar como pagado
-                  </Button>
-                )}
+                <div className="w-full text-center mb-2">
+                  <p className="text-sm text-gray-500">
+                    Usuario: {user.firstName} {user.lastName} ({user.company}) 
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Paquete empresa: {packageData.companyId}
+                  </p>
+                  <p className="text-sm font-bold">
+                    {user.company === packageData.companyId ? 
+                      "✅ Coinciden las empresas" : 
+                      "❌ No coinciden las empresas"}
+                  </p>
+                </div>
                 
-                {packageData.deliveryStatus !== 'entregado' && (
-                  <Button 
-                    variant="default" 
-                    className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto" 
-                    onClick={handleMarkAsDelivered}
-                  >
-                    <Truck className="mr-2 h-4 w-4" />
-                    Marcar como entregado
-                  </Button>
+                {user.company === packageData.companyId && (
+                  <>
+                    {!packageData.isPaid && (
+                      <Button 
+                        variant="default" 
+                        className="bg-green-600 hover:bg-green-700 w-full md:w-auto" 
+                        onClick={handleMarkAsPaid}
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Marcar como pagado
+                      </Button>
+                    )}
+                    
+                    {packageData.deliveryStatus !== 'entregado' && (
+                      <Button 
+                        variant="default" 
+                        className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto" 
+                        onClick={handleMarkAsDelivered}
+                      >
+                        <Truck className="mr-2 h-4 w-4" />
+                        Marcar como entregado
+                      </Button>
+                    )}
+                  </>
                 )}
               </>
+            ) : (
+              <p className="text-sm text-gray-500">
+                {user ? "Cargando datos del paquete..." : "Inicia sesión para gestionar este paquete"}
+              </p>
             )}
           </CardFooter>
         </Card>
