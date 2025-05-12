@@ -315,7 +315,6 @@ export function CashRegisterPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>ID Reservación</TableHead>
-                    <TableHead>Fecha pago</TableHead>
                     <TableHead>Pasajero</TableHead>
                     <TableHead>Ruta</TableHead>
                     <TableHead>Método</TableHead>
@@ -328,16 +327,6 @@ export function CashRegisterPage() {
                       <TableCell className="font-medium">RES{reservation.id}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4 text-gray-500" />
-                          <span>{formatDate(reservation.markedAsPaidAt)}</span>
-                        </div>
-                        <div className="text-xs text-gray-500 ml-5 mt-1 flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {new Date(reservation.markedAsPaidAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
                           <User className="h-4 w-4 text-gray-500" />
                           <span>{reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}</span>
                         </div>
@@ -347,26 +336,20 @@ export function CashRegisterPage() {
                           </div>
                         )}
                       </TableCell>
-                      <TableCell>{reservation.trip.route.name}</TableCell>
                       <TableCell>
-                        {reservation.advanceAmount && reservation.advanceAmount > 0 ? (
-                          <div>
-                            <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                              {reservation.advancePaymentMethod === 'efectivo' ? 'Anticipo: Efectivo' : 'Anticipo: Transferencia'} 
-                            </Badge>
-                            {reservation.advanceAmount < reservation.totalAmount && (
-                              <Badge className="mt-1 bg-green-100 text-green-800 border-green-200">
-                                {reservation.paymentMethod === 'efectivo' ? 'Resto: Efectivo' : 'Resto: Transferencia'}
-                              </Badge>
-                            )}
-                          </div>
-                        ) : (
-                          <Badge className={reservation.paymentMethod === 'efectivo' 
-                            ? 'bg-green-100 text-green-800 border-green-200' 
-                            : 'bg-blue-100 text-blue-800 border-blue-200'}>
-                            {reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}
-                          </Badge>
-                        )}
+                        <div className="font-medium">
+                          {reservation.trip.segmentOrigin || reservation.trip.route.origin}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                          <span>→</span> {reservation.trip.segmentDestination || reservation.trip.route.destination}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={reservation.paymentMethod === 'efectivo' 
+                          ? 'bg-green-100 text-green-800 border-green-200' 
+                          : 'bg-blue-100 text-blue-800 border-blue-200'}>
+                          {reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         {formatPrice(reservation.totalAmount)}
