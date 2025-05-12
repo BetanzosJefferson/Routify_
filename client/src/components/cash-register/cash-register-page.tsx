@@ -42,6 +42,9 @@ export function CashRegisterPage() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showLoadingDelay, setShowLoadingDelay] = useState(false);
   
+  // Estado para saber si estamos en modo administrador (viendo pagos de otros usuarios)
+  const isAdminView = user?.role === 'dueño' || user?.role === 'administrador';
+  
   // Obtener las reservaciones marcadas como pagadas por el usuario actual
   const { 
     data: paidReservations, 
@@ -318,6 +321,7 @@ export function CashRegisterPage() {
                     <TableHead>Pasajero</TableHead>
                     <TableHead>Ruta</TableHead>
                     <TableHead>Método</TableHead>
+                    {isAdminView && <TableHead>Registrado por</TableHead>}
                     <TableHead className="text-right">Monto</TableHead>
                   </TableRow>
                 </TableHeader>

@@ -1660,6 +1660,134 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
   
+  async getPaidReservationsByCompany(companyId: string): Promise<ReservationWithDetails[]> {
+    console.log(`[getPaidReservationsByCompany] Buscando reservaciones pagadas para la compañía ${companyId}`);
+    
+    try {
+      // Primero obtener todos los usuarios de esta compañía
+      const companyUsers = await db
+        .select()
+        .from(schema.users)
+        .where(
+          or(
+            eq(schema.users.companyId, companyId),
+            eq(schema.users.company, companyId)
+          )
+        );
+      
+      console.log(`[getPaidReservationsByCompany] Encontrados ${companyUsers.length} usuarios de la compañía ${companyId}`);
+      
+      if (companyUsers.length === 0) {
+        return [];
+      }
+      
+      // Obtener los IDs de usuarios
+      const userIds = companyUsers.map(user => user.id);
+      
+      // Obtener todas las reservaciones pagadas por usuarios de esta compañía
+      const reservations = await db
+        .select()
+        .from(schema.reservations)
+        .where(
+          and(
+            inArray(schema.reservations.paidBy, userIds),
+            eq(schema.reservations.paymentStatus, schema.PaymentStatus.PAID)
+          )
+        )
+        .orderBy(desc(schema.reservations.markedAsPaidAt));
+      
+      console.log(`[getPaidReservationsByCompany] Encontradas ${reservations.length} reservaciones pagadas por usuarios de la compañía ${companyId}`);
+      
+      if (reservations.length === 0) {
+        return [];
+      }
+      
+      // Para cada reservación, obtener detalles adicionales incluyendo quién la pagó
+      const detailedReservations = await Promise.all(
+        reservations.map(async (reservation) => {
+          // Encontrar el usuario que pagó
+          const paidByUser = companyUsers.find(user => user.id === reservation.paidBy);
+          
+          // Resto del código igual que en getPaidReservationsByUser...
+          // Obtener pasajeros, viaje, etc.
+          
+          // Incluir información del usuario que pagó
+          return {
+            ...await this.getReservationDetails(reservation),
+            paidByUserInfo: paidByUser ? {
+              id: paidByUser.id,
+              firstName: paidByUser.firstName,
+              lastName: paidByUser.lastName,
+              role: paidByUser.role
+            } : undefined
+          };
+        })
+      );
+      
+      return detailedReservations;
+    } catch (error) {
+      console.error(`[getPaidReservationsByCompany] Error al obtener reservaciones:`, error);
+      return [];
+    }
+  }
+
+  // Función auxiliar para obtener los detalles de una reservación
+  private async getReservationDetails(reservation: schema.Reservation): Promise<ReservationWithDetails> {
+    // Obtener pasajeros
+    const passengers = await this.getPassengers(reservation.id);
+    
+    // Obtener información del viaje
+    const trip = await this.getTripWithRouteInfo(reservation.tripId);
+    
+    if (!trip) {
+      console.log(`No se encontró el viaje ${reservation.tripId} asociado a la reserva ${reservation.id}`);
+      
+      // Si no se encuentra el viaje, aún devolvemos la reserva pero con un trip vacío
+      return {
+        ...reservation,
+        passengers,
+        trip: {
+          id: reservation.tripId,
+          route: { id: 0, name: "Viaje no disponible", origin: "", destination: "", stops: [] }
+        }
+      } as ReservationWithDetails;
+    }
+    
+    // Obtener usuario que creó la reservación
+    let createdByUser: schema.User | undefined;
+    if (reservation.createdBy) {
+      const [user] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.id, reservation.createdBy));
+      
+      if (user) {
+        createdByUser = user;
+      }
+    }
+    
+    // Obtener usuario que escaneó la reservación
+    let checkedByUser: schema.User | undefined;
+    if (reservation.checkedBy) {
+      const [user] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.id, reservation.checkedBy));
+      
+      if (user) {
+        checkedByUser = user;
+      }
+    }
+    
+    return {
+      ...reservation,
+      passengers,
+      trip,
+      createdByUser,
+      checkedByUser
+    } as ReservationWithDetails;
+  }
+
   async getPaidReservationsByUser(userId: number): Promise<ReservationWithDetails[]> {
     console.log(`[getPaidReservationsByUser] Buscando reservaciones pagadas por usuario ${userId}`);
     
