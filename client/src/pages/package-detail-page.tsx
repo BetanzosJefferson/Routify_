@@ -4,7 +4,6 @@ import { useRoute } from "wouter";
 import { PackageTicket, generatePackageTicketPDF } from "@/components/packages/package-ticket";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
 
 // UI Components
 import {
@@ -58,33 +57,6 @@ export default function PackageDetailPage() {
     },
     enabled: !!packageId,
   });
-  
-  // Utilizar el hook de autenticación
-  const { user } = useAuth();
-  
-  // Determinar si el usuario puede editar el paquete
-  const canEditPackage = () => {
-    if (!user || !packageQuery.data) {
-      return false;
-    }
-    
-    const packageData = packageQuery.data;
-    
-    // Mostramos todos los campos del usuario y del paquete para depuración
-    console.log("Usuario autenticado:", JSON.stringify(user, null, 2));
-    console.log("Datos del paquete:", JSON.stringify(packageData, null, 2));
-    
-    // Verificar que el usuario esté autenticado y que pertenezca a la misma compañía que el paquete
-    // Nota: basándonos en el log anterior, parece que necesitamos comparar user.company con packageData.companyId
-    const hasMatch = user && 
-      packageData && 
-      packageData.companyId && 
-      ((user.companyId === packageData.companyId) || (user.company === packageData.companyId));
-    
-    console.log("¿Coincide la compañía?", hasMatch);
-    
-    return hasMatch;
-  };
 
   // Generar código QR con la URL para verificar el paquete
   React.useEffect(() => {
@@ -428,53 +400,27 @@ export default function PackageDetailPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-wrap gap-3 justify-center">
-            {/* Botones condicionales para marcado de estado - solo visibles para usuario de la misma compañía */}
-            {user && packageData ? (
-              <>
-                <div className="w-full text-center mb-2">
-                  <p className="text-sm text-gray-500">
-                    Usuario: {user.firstName} {user.lastName} ({user.company}) 
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Paquete empresa: {packageData.companyId}
-                  </p>
-                  <p className="text-sm font-bold">
-                    {user.company === packageData.companyId ? 
-                      "✅ Coinciden las empresas" : 
-                      "❌ No coinciden las empresas"}
-                  </p>
-                </div>
-                
-                {user.company === packageData.companyId && (
-                  <>
-                    {!packageData.isPaid && (
-                      <Button 
-                        variant="default" 
-                        className="bg-green-600 hover:bg-green-700 w-full md:w-auto" 
-                        onClick={handleMarkAsPaid}
-                      >
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Marcar como pagado
-                      </Button>
-                    )}
-                    
-                    {packageData.deliveryStatus !== 'entregado' && (
-                      <Button 
-                        variant="default" 
-                        className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto" 
-                        onClick={handleMarkAsDelivered}
-                      >
-                        <Truck className="mr-2 h-4 w-4" />
-                        Marcar como entregado
-                      </Button>
-                    )}
-                  </>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-gray-500">
-                {user ? "Cargando datos del paquete..." : "Inicia sesión para gestionar este paquete"}
-              </p>
+            {/* Botones condicionales para marcado de estado */}
+            {!packageData.isPaid && (
+              <Button 
+                variant="default" 
+                className="bg-green-600 hover:bg-green-700 w-full md:w-auto" 
+                onClick={handleMarkAsPaid}
+              >
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Marcar como pagado
+              </Button>
+            )}
+            
+            {packageData.deliveryStatus !== 'entregado' && (
+              <Button 
+                variant="default" 
+                className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto" 
+                onClick={handleMarkAsDelivered}
+              >
+                <Truck className="mr-2 h-4 w-4" />
+                Marcar como entregado
+              </Button>
             )}
           </CardFooter>
         </Card>
