@@ -273,10 +273,6 @@ export async function generatePackageTicketPDF(packageData: PackageData, company
   y += 3;
   doc.setDrawColor(200, 200, 200);
   doc.line(5, y, 53, y);
-  
-  y += 5;
-  doc.setFontSize(7);
-  doc.text("www.transroute.mx", 29, y, { align: "center" });
 
   // Abrir en una nueva ventana e imprimir automáticamente
   window.open(URL.createObjectURL(doc.output('blob')));
@@ -485,10 +481,8 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
         </div>
       )}
       
-      {/* URL de seguimiento */}
-      <div className="ticket-route">
-        <div>www.transroute.mx</div>
-      </div>
+      {/* Línea separadora */}
+      <div className="ticket-route"></div>
     </div>
   );
 }
