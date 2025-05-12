@@ -2602,12 +2602,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Actualizar el estado de pago
+      console.log(`[POST /public/packages/${packageId}/mark-paid] Estado actual de pago:`, packageData.isPaid);
       const updatedPackage = await storage.updatePackage(packageId, {
-        ...packageData,
         isPaid: true,
         paymentMethod: packageData.paymentMethod || 'efectivo',
         updatedAt: new Date()
       });
+      console.log(`[POST /public/packages/${packageId}/mark-paid] Nuevo estado de pago:`, updatedPackage?.isPaid);
       
       console.log(`[POST /public/packages/${packageId}/mark-paid] Paquete actualizado con éxito`);
       res.json(updatedPackage);
@@ -2631,11 +2632,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Actualizar el estado de entrega
+      console.log(`[POST /public/packages/${packageId}/mark-delivered] Estado actual de entrega:`, packageData.deliveryStatus);
       const updatedPackage = await storage.updatePackage(packageId, {
-        ...packageData,
         deliveryStatus: 'entregado',
         updatedAt: new Date()
       });
+      console.log(`[POST /public/packages/${packageId}/mark-delivered] Nuevo estado de entrega:`, updatedPackage?.deliveryStatus);
       
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Paquete actualizado con éxito`);
       res.json(updatedPackage);
