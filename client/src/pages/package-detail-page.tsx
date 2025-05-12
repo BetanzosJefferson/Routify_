@@ -296,7 +296,9 @@ export default function PackageDetailPage() {
               <div>
                 <CardTitle className="text-2xl font-bold">Paquete #{packageData.id}</CardTitle>
                 <CardDescription>
-                  Creado el {formatDate(new Date(packageData.createdAt))}
+                  Fecha de envío: {packageData.shippingDate ? formatDate(new Date(packageData.shippingDate)) : 
+                    (packageData.tripDate ? formatDate(new Date(packageData.tripDate)) : 
+                     formatDate(new Date(packageData.createdAt)))}
                 </CardDescription>
               </div>
               <Badge
