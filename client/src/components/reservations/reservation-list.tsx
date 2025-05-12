@@ -154,7 +154,46 @@ export function ReservationList() {
     return matchesSearch && matchesDate;
   });
   
-  // Delete reservation mutation
+  // Cancel reservation mutation (soft delete)
+  const cancelReservationMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/reservations/${id}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al cancelar la reservación');
+      }
+      
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Reservación cancelada",
+        description: "La reservación ha sido cancelada exitosamente. Los asientos han sido liberados.",
+      });
+      
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
+      
+      // Close confirmation dialog
+      setConfirmingDelete(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error al cancelar reservación",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Delete reservation mutation (hard delete)
   const deleteReservationMutation = useMutation({
     mutationFn: async (id: number) => {
       // Importante: No intentamos parsear JSON para una respuesta 204 (sin contenido)
@@ -168,7 +207,7 @@ export function ReservationList() {
       if (!response.ok) {
         // Si hay un error, intentamos extraer el mensaje
         const errorData = response.status !== 204 ? await response.json() : { error: 'Unknown error' };
-        throw new Error(errorData.error || 'Failed to cancel reservation');
+        throw new Error(errorData.error || 'Failed to delete reservation completely');
       }
       
       // Retornamos un valor simple ya que la respuesta no tiene cuerpo
@@ -176,8 +215,8 @@ export function ReservationList() {
     },
     onSuccess: () => {
       toast({
-        title: "Reservation cancelled",
-        description: "The reservation has been successfully cancelled.",
+        title: "Reservación eliminada",
+        description: "La reservación ha sido eliminada completamente del sistema.",
       });
       
       // Invalidate queries
@@ -189,7 +228,7 @@ export function ReservationList() {
     },
     onError: (error) => {
       toast({
-        title: "Error cancelling reservation",
+        title: "Error al eliminar reservación",
         description: error.message,
         variant: "destructive",
       });
@@ -270,13 +309,20 @@ export function ReservationList() {
   };
   
   // Confirmation dialog handlers
-  const openDeleteConfirm = (id: number) => {
+  const [confirmationType, setConfirmationType] = useState<'cancel' | 'delete'>('cancel');
+  
+  const openDeleteConfirm = (id: number, type: 'cancel' | 'delete' = 'cancel') => {
     setConfirmingDelete(id);
+    setConfirmationType(type);
   };
   
   const handleDeleteConfirm = () => {
     if (confirmingDelete !== null) {
-      deleteReservationMutation.mutate(confirmingDelete);
+      if (confirmationType === 'cancel') {
+        cancelReservationMutation.mutate(confirmingDelete);
+      } else {
+        deleteReservationMutation.mutate(confirmingDelete);
+      }
     }
   };
   
@@ -727,18 +773,26 @@ export function ReservationList() {
       <AlertDialog open={confirmingDelete !== null} onOpenChange={() => setConfirmingDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancelar Reservación</AlertDialogTitle>
+            <AlertDialogTitle>
+              {confirmationType === 'cancel' ? 'Cancelar Reservación' : 'Eliminar Reservación'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              ¿Estás seguro que deseas cancelar esta reservación? Esta acción no se puede deshacer.
+              {confirmationType === 'cancel' 
+                ? "¿Estás seguro que deseas cancelar esta reservación? La reservación quedará registrada en el sistema pero los asientos serán liberados para que otros pasajeros puedan reservarlos."
+                : "¿Estás seguro que deseas eliminar completamente esta reservación? Esta acción no se puede deshacer y la reservación será eliminada de la base de datos."
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Volver</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
+              className={confirmationType === 'cancel' 
+                ? "bg-amber-600 hover:bg-amber-700" 
+                : "bg-red-600 hover:bg-red-700"
+              }
               onClick={handleDeleteConfirm}
             >
-              Confirmar
+              {confirmationType === 'cancel' ? 'Cancelar Reservación' : 'Eliminar Permanentemente'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
