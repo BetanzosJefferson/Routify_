@@ -1,10 +1,10 @@
 import { CashRegisterPage } from "@/components/cash-register/cash-register-page";
-import MainLayout from "@/components/layout/main-layout";
+import { DefaultLayout } from "@/components/layout/default-layout";
 
 export default function CashRegisterPageRoute() {
   return (
-    <MainLayout>
+    <DefaultLayout activeTab="cash-register">
       <CashRegisterPage />
-    </MainLayout>
+    </DefaultLayout>
   );
 }
