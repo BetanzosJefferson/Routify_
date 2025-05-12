@@ -117,18 +117,38 @@ export default function PackageVerifyPage() {
   // Mutación para marcar como pagado
   const markAsPaidMutation = useMutation({
     mutationFn: async () => {
+      console.log(`Intentando marcar paquete ${packageId} como pagado...`);
       const res = await apiRequest("POST", `/api/packages/${packageId}/mark-paid`);
+      
+      if (!res.ok) {
+        console.error(`Error HTTP ${res.status} al marcar como pagado:`, res.statusText);
+        let errorMessage = "Error al marcar como pagado";
+        
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          // Si no hay un cuerpo JSON, usamos el mensaje por defecto
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Paquete marcado como pagado:", data);
       toast({
         title: "Éxito",
         description: "Paquete marcado como pagado correctamente",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/packages/verify", packageId] });
+      
+      // Actualizamos la clave de consulta correcta basada en la URL real usada en el queryFn
+      queryClient.invalidateQueries({ queryKey: [`/api/packages/${packageId}/verify`] });
       queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
     },
     onError: (error: Error) => {
+      console.error("Error al marcar como pagado:", error);
       toast({
         title: "Error",
         description: error.message || "No se pudo marcar el paquete como pagado",
@@ -140,18 +160,38 @@ export default function PackageVerifyPage() {
   // Mutación para marcar como entregado
   const markAsDeliveredMutation = useMutation({
     mutationFn: async () => {
+      console.log(`Intentando marcar paquete ${packageId} como entregado...`);
       const res = await apiRequest("POST", `/api/packages/${packageId}/mark-delivered`);
+      
+      if (!res.ok) {
+        console.error(`Error HTTP ${res.status} al marcar como entregado:`, res.statusText);
+        let errorMessage = "Error al marcar como entregado";
+        
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          // Si no hay un cuerpo JSON, usamos el mensaje por defecto
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Paquete marcado como entregado:", data);
       toast({
         title: "Éxito",
         description: "Paquete marcado como entregado correctamente",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/packages/verify", packageId] });
+      
+      // Actualizamos la clave de consulta correcta basada en la URL real usada en el queryFn
+      queryClient.invalidateQueries({ queryKey: [`/api/packages/${packageId}/verify`] });
       queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
     },
     onError: (error: Error) => {
+      console.error("Error al marcar como entregado:", error);
       toast({
         title: "Error",
         description: error.message || "No se pudo marcar el paquete como entregado",
