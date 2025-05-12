@@ -31,6 +31,7 @@ export default function ReservationDetailsModal({
   const { toast } = useToast();
   const { user } = useAuth();
   const [isMarkingAsPaid, setIsMarkingAsPaid] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [ticketCheckResult, setTicketCheckResult] = useState<{
@@ -138,6 +139,46 @@ export default function ReservationDetailsModal({
       });
     } finally {
       setIsMarkingAsPaid(false);
+    }
+  };
+
+  // Cancelar reservación
+  const cancelReservation = async () => {
+    if (!reservationId) return;
+    
+    setIsCanceling(true);
+    try {
+      const response = await apiRequest(
+        "PUT", 
+        `/api/reservations/${reservationId}`, 
+        { status: "canceled" }
+      );
+      
+      if (!response.ok) {
+        toast({
+          title: "Autenticación requerida",
+          description: "Para cancelar una reservación necesita iniciar sesión con una cuenta autorizada.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Reservación cancelada",
+        description: "La reservación ha sido cancelada correctamente.",
+        variant: "default",
+      });
+      
+      // Recargar los datos
+      refetch();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Ha ocurrido un error al cancelar la reservación",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCanceling(false);
     }
   };
 
