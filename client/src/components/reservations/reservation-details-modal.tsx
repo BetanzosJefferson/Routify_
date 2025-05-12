@@ -290,18 +290,7 @@ export default function ReservationDetailsModal({
                   <div className="bg-gray-50 p-3 sm:p-4 rounded-md">
                     <h3 className="font-medium text-sm sm:text-base border-b pb-2 mb-3 sm:mb-4">Información de pago</h3>
                     <div className="space-y-2 sm:space-y-3">
-                      <div className="grid grid-cols-2 items-center">
-                        <div className="text-sm text-gray-500 font-medium">ESTADO DE RESERVACIÓN</div>
-                        <div className="text-right">
-                          <Badge 
-                            className={reservation.status === 'confirmed' 
-                              ? 'bg-blue-100 text-blue-800 border-blue-200' 
-                              : 'bg-red-100 text-red-800 border-red-200'}
-                          >
-                            {reservation.status === 'confirmed' ? 'CONFIRMADA' : 'CANCELADA'}
-                          </Badge>
-                        </div>
-                      </div>
+                      {/* Estado de reservación eliminado como solicitado */}
                       
                       <div className="grid grid-cols-2 items-center">
                         <div className="text-sm text-gray-500 font-medium">ESTADO DE PAGO</div>
@@ -412,65 +401,32 @@ export default function ReservationDetailsModal({
                     </div>
                   </div>
                   
-                  {/* Bitácora del ticket */}
-                  <div className="bg-gray-50 p-3 sm:p-4 rounded-md">
-                    <h3 className="font-medium text-sm sm:text-base border-b pb-2 mb-3 sm:mb-4">Bitácora</h3>
-                    
-                    {reservation.checkedBy && reservation.checkedByUser && (
-                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
-                        <div className="text-sm text-gray-500 font-medium">VERIFICADO POR:</div>
-                        <div className="font-medium text-right">
-                          {reservation.checkedByUser.firstName} {reservation.checkedByUser.lastName}
-                          <div className="text-xs text-gray-500">({reservation.checkedByUser.role})</div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {reservation.paymentStatus === 'pagado' && reservation.paidBy && reservation.paidByUser && (
-                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
-                        <div className="text-sm text-gray-500 font-medium">COBRADO POR:</div>
-                        <div className="font-medium text-right">
-                          {reservation.paidByUser.firstName} {reservation.paidByUser.lastName}
-                          <div className="text-xs text-gray-500">({reservation.paidByUser.role})</div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {(!reservation.checkedBy && !reservation.paidBy) && (
-                      <div className="text-sm text-gray-500 text-center mb-3">
-                        No hay registros de verificación o cobro
-                      </div>
-                    )}
-                    
-                    <Button
-                      variant="secondary"
-                      className="w-full text-sm"
-                      onClick={handleCheckTicket}
-                      disabled={isChecking || reservation.status === 'canceled'}
-                    >
-                      {isChecking ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Verificando...
-                        </>
-                      ) : reservation.status === 'canceled' ? (
-                        <>
-                          <X className="mr-2 h-4 w-4" />
-                          Ticket cancelado
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          Verificar ticket
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                  {/* Sección de Bitácora eliminada como solicitado */}
                 </div>
               </div>
               
-              <DialogFooter className="mt-2 sm:mt-4">
+              <DialogFooter className="mt-2 sm:mt-4 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
                 <Button className="w-full sm:w-auto text-sm" onClick={handleClose}>Cerrar</Button>
+                
+                {user && reservation.status !== 'canceled' && (
+                  <Button 
+                    className="w-full sm:w-auto text-sm bg-red-600 hover:bg-red-700"
+                    onClick={cancelReservation}
+                    disabled={isCanceling}
+                  >
+                    {isCanceling ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Procesando...
+                      </>
+                    ) : (
+                      <>
+                        <X className="mr-2 h-4 w-4" />
+                        Cancelar Reservación
+                      </>
+                    )}
+                  </Button>
+                )}
               </DialogFooter>
             </>
           )}
