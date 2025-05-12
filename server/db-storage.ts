@@ -971,13 +971,18 @@ export class DatabaseStorage implements IStorage {
       // Crear un array con todas las paradas en orden
       const allStops = [routeInfo.origin, ...routeInfo.stops, routeInfo.destination];
       
+      console.log(`[updateRelatedTripsAvailability] Ruta completa: ${allStops.join(' -> ')}`);
+      
       // Encontrar índices para este segmento
       const segmentOriginIdx = allStops.indexOf(trip.segmentOrigin);
       const segmentDestinationIdx = allStops.indexOf(trip.segmentDestination);
       
-      if (segmentOriginIdx === -1 || segmentDestinationIdx === -1) return;
+      if (segmentOriginIdx === -1 || segmentDestinationIdx === -1) {
+        console.error(`[updateRelatedTripsAvailability] Error: No se pudo encontrar el segmento ${trip.segmentOrigin} a ${trip.segmentDestination} en la ruta.`);
+        return;
+      }
       
-      console.log(`[updateRelatedTripsAvailability] Segment range: ${segmentOriginIdx} a ${segmentDestinationIdx}`);
+      console.log(`[updateRelatedTripsAvailability] Segment range: ${segmentOriginIdx} a ${segmentDestinationIdx} (${trip.segmentOrigin} -> ${trip.segmentDestination})`);
       
       // 1. Actualizar el viaje principal si corresponde (siempre se afecta)
       // Calcular nuevos asientos disponibles
@@ -1034,8 +1039,13 @@ export class DatabaseStorage implements IStorage {
           // Si el segmento actual está completamente dentro del otro segmento
           (segmentOriginIdx >= subOriginIdx && segmentDestinationIdx <= subDestinationIdx) ||
           // Si ambos segmentos comparten al menos un tramo de ruta
-          (Math.max(segmentOriginIdx, subOriginIdx) < Math.min(segmentDestinationIdx, subDestinationIdx))
+          (Math.max(segmentOriginIdx, subOriginIdx) < Math.min(segmentDestinationIdx, subDestinationIdx)) ||
+          // Si hay intersección entre las paradas (para casos como Cuernavaca a Taxqueña)
+          (segmentOriginIdx <= subDestinationIdx && segmentDestinationIdx >= subOriginIdx)
         );
+        
+        // Imprimir detalles de la comparación para depuración
+        console.log(`[updateRelatedTripsAvailability] Comparando segmentos: ${trip.segmentOrigin}(${segmentOriginIdx}) a ${trip.segmentDestination}(${segmentDestinationIdx}) vs ${subTrip.segmentOrigin}(${subOriginIdx}) a ${subTrip.segmentDestination}(${subDestinationIdx}) - Intersección: ${hasOverlap ? 'SÍ' : 'NO'}`);
         
         if (hasOverlap) {
           // Calcular nuevos asientos disponibles para el sub-viaje
@@ -1120,8 +1130,13 @@ export class DatabaseStorage implements IStorage {
             // Si el segmento actual está completamente dentro del otro segmento
             (segmentOriginIdx >= otherSubOriginIdx && segmentDestinationIdx <= otherSubDestinationIdx) ||
             // Si ambos segmentos comparten al menos un tramo de ruta
-            (Math.max(segmentOriginIdx, otherSubOriginIdx) < Math.min(segmentDestinationIdx, otherSubDestinationIdx))
+            (Math.max(segmentOriginIdx, otherSubOriginIdx) < Math.min(segmentDestinationIdx, otherSubDestinationIdx)) ||
+            // Si hay intersección entre las paradas (para casos como Cuernavaca a Taxqueña)
+            (segmentOriginIdx <= otherSubDestinationIdx && segmentDestinationIdx >= otherSubOriginIdx)
           );
+          
+          // Imprimir detalles de la comparación para depuración
+          console.log(`[updateRelatedTripsAvailability] Comparando segmentos adicionales: ${trip.segmentOrigin}(${segmentOriginIdx}) a ${trip.segmentDestination}(${segmentDestinationIdx}) vs ${otherSubTrip.segmentOrigin}(${otherSubOriginIdx}) a ${otherSubTrip.segmentDestination}(${otherSubDestinationIdx}) - Intersección: ${hasOtherOverlap ? 'SÍ' : 'NO'}`);
           
           if (hasOtherOverlap) {
             // Calcular nuevos asientos disponibles
