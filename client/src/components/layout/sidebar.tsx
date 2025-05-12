@@ -69,16 +69,22 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const { user } = useAuth();
   
   const handleTabClick = (tab: TabType) => {
+    // Primero actualizamos la URL para evitar cambios visuales no deseados
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    
     // Verificar si estamos en una URL distinta a '/' y volver al dashboard
     if (location !== '/' && location !== '/dashboard') {
+      // Prevenir actualización de estado antes de la navegación
+      window.history.pushState({}, '', url.toString());
       setLocation('/?tab=' + tab);
     } else {
-      onTabChange(tab);
-      
       // Actualizar el URL pero sin hacer una redirección completa
-      const url = new URL(window.location.href);
-      url.searchParams.set('tab', tab);
       window.history.pushState({}, '', url.toString());
+      // Solo después de actualizar la URL, actualizamos el estado
+      setTimeout(() => {
+        onTabChange(tab);
+      }, 0);
     }
   };
 
