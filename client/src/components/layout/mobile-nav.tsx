@@ -29,12 +29,12 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
     url.searchParams.set('tab', tab);
     window.history.pushState({}, '', url.toString());
     
-    // Usamos setTimeout para asegurar que la actualización del estado ocurra después
-    // de que el navegador haya procesado el cambio de URL
-    setTimeout(() => {
+    // Usamos requestAnimationFrame para asegurar que la navegación
+    // ocurra después de que se complete el ciclo de renderizado actual
+    requestAnimationFrame(() => {
       onTabChange(tab);
       setOpen(false);
-    }, 0);
+    });
   };
   
   return (
