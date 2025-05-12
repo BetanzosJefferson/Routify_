@@ -137,6 +137,9 @@ export interface IStorage {
   createPackage(packageData: schema.InsertPackage): Promise<schema.Package>;
   updatePackage(id: number, packageData: Partial<schema.Package>): Promise<schema.Package | undefined>;
   deletePackage(id: number): Promise<boolean>;
+  
+  // Company methods
+  getCompanyById(companyId: string): Promise<{id: string, name: string} | null>;
 }
 
 export class MemStorage implements IStorage {
