@@ -2544,6 +2544,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Error al obtener la reservación" });
     }
   });
+  
+  // Endpoint público para acceder a los detalles de un paquete (para escaneo de QR)
+  app.get(apiRouter("/public/packages/:id"), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      
+      console.log(`[GET /public/packages/${id}] Acceso público solicitado`);
+      
+      // Obtener el paquete sin filtrado por compañía (es acceso público)
+      const packageData = await storage.getPackage(id);
+      
+      if (!packageData) {
+        console.log(`[GET /public/packages/${id}] Paquete no encontrado`);
+        return res.status(404).json({ error: "Paquete no encontrado" });
+      }
+      
+      // Si tiene tripId, obtener la información del viaje
+      let tripInfo = null;
+      if (packageData.tripId) {
+        const trip = await storage.getTrip(packageData.tripId);
+        if (trip) {
+          const route = await storage.getRoute(trip.routeId);
+          if (route) {
+            tripInfo = {
+              tripOrigin: route.origin,
+              tripDestination: route.destination,
+              tripDate: trip.departureDate,
+              companyName: trip.companyName || route.companyName
+            };
+          }
+        }
+      }
+      
+      console.log(`[GET /public/packages/${id}] Acceso público concedido`);
+      res.json({
+        ...packageData,
+        ...tripInfo
+      });
+    } catch (error) {
+      console.error(`[GET /public/packages/:id] Error: ${error}`);
+      res.status(500).json({ error: "Error al obtener el paquete" });
+    }
+  });
 
   const httpServer = createServer(app);
   // Endpoint para obtener reservaciones creadas por comisionistas
