@@ -1891,6 +1891,109 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
+  async getPaidReservationsByCompany(companyId: string): Promise<ReservationWithDetails[]> {
+    console.log(`[getPaidReservationsByCompany] Buscando reservaciones pagadas para compañía: ${companyId}`);
+    
+    try {
+      // Obtener reservaciones marcadas como pagadas y que pertenecen a la compañía
+      const reservations = await db
+        .select()
+        .from(schema.reservations)
+        .where(
+          and(
+            eq(schema.reservations.companyId, companyId),
+            eq(schema.reservations.paymentStatus, schema.PaymentStatus.PAID),
+            not(isNull(schema.reservations.markedAsPaidAt))
+          )
+        )
+        .orderBy(desc(schema.reservations.markedAsPaidAt));
+      
+      console.log(`[getPaidReservationsByCompany] Encontradas ${reservations.length} reservaciones pagadas para compañía ${companyId}`);
+      
+      if (reservations.length === 0) {
+        return [];
+      }
+      
+      // Para cada reservación, obtener detalles adicionales
+      const detailedReservations = await Promise.all(
+        reservations.map(async (reservation) => {
+          // Obtener pasajeros
+          const passengers = await this.getPassengers(reservation.id);
+          
+          // Obtener información del viaje
+          const trip = await this.getTripWithRouteInfo(reservation.tripId);
+          
+          if (!trip) {
+            console.log(`[getPaidReservationsByCompany] No se encontró el viaje ${reservation.tripId} asociado a la reserva ${reservation.id}`);
+            
+            // Si no se encuentra el viaje, aún devolvemos la reserva pero con un trip vacío
+            return {
+              ...reservation,
+              passengers,
+              trip: {
+                id: reservation.tripId,
+                route: { id: 0, name: "Viaje no disponible", origin: "", destination: "", stops: [] }
+              }
+            } as ReservationWithDetails;
+          }
+          
+          // Obtener usuario que creó la reservación
+          let createdByUser: User | undefined;
+          if (reservation.createdBy) {
+            const [user] = await db
+              .select()
+              .from(schema.users)
+              .where(eq(schema.users.id, reservation.createdBy));
+            
+            if (user) {
+              createdByUser = user;
+            }
+          }
+          
+          // Obtener usuario que escaneó la reservación
+          let checkedByUser: User | undefined;
+          if (reservation.checkedBy) {
+            const [user] = await db
+              .select()
+              .from(schema.users)
+              .where(eq(schema.users.id, reservation.checkedBy));
+            
+            if (user) {
+              checkedByUser = user;
+            }
+          }
+          
+          // Obtener usuario que marcó como pagada la reservación
+          let paidByUser: User | undefined;
+          if (reservation.paidBy) {
+            const [user] = await db
+              .select()
+              .from(schema.users)
+              .where(eq(schema.users.id, reservation.paidBy));
+            
+            if (user) {
+              paidByUser = user;
+            }
+          }
+          
+          return {
+            ...reservation,
+            trip,
+            passengers,
+            createdByUser,
+            checkedByUser,
+            paidByUser
+          };
+        })
+      );
+      
+      return detailedReservations;
+    } catch (error) {
+      console.error(`[getPaidReservationsByCompany] Error al obtener reservaciones pagadas para compañía ${companyId}:`, error);
+      return [];
+    }
+  }
+  
   async getPassengers(reservationId: number): Promise<Passenger[]> {
     return await db
       .select()

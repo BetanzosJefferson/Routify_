@@ -4,6 +4,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { ReservationWithDetails } from "@shared/schema";
+
+// Interfaz para las reservaciones con información de compañía
+interface ReservationWithCompany extends ReservationWithDetails {
+  companyInfo?: {
+    id: string;
+    name: string;
+  }
+}
 import { 
   DollarSign, 
   Search, 
@@ -42,8 +50,9 @@ export function CashRegisterPage() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showLoadingDelay, setShowLoadingDelay] = useState(false);
   
-  // Estado para saber si estamos en modo administrador (viendo pagos de otros usuarios)
+  // Estado para saber si estamos en modo administrador o taquillero
   const isAdminView = user?.role === 'dueño' || user?.role === 'administrador';
+  const isTicketOfficeView = user?.role === 'taquilla';
   
   // Obtener las reservaciones marcadas como pagadas por el usuario actual
   const { 
@@ -76,7 +85,7 @@ export function CashRegisterPage() {
   }, [isLoading]);
   
   // Filtrar las reservaciones
-  const filteredReservations = paidReservations?.filter((reservation: ReservationWithDetails) => {
+  const filteredReservations = paidReservations?.filter((reservation: ReservationWithCompany) => {
     // Aplicar filtro de búsqueda
     let matchesSearch = true;
     if (searchTerm) {
