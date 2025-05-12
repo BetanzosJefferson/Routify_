@@ -42,7 +42,10 @@ function createVerificationUrl(packageId: number): string {
   const base = window.location.origin; // Ej. https://example.com
   const path = `/package-verify/${packageId}`; // Path debe coincidir con la ruta en App.tsx
   
-  const fullUrl = `${base}${path}`;
+  // Agregamos un timestamp como parámetro de consulta para evitar cachés y garantizar la unicidad
+  const timestamp = Date.now();
+  const fullUrl = `${base}${path}?t=${timestamp}`;
+  
   console.log("URL generada para verificación de paquete:", fullUrl);
   
   return fullUrl;
@@ -56,8 +59,8 @@ async function addQRCodeToPDF(doc: jsPDF, packageId: number, yPosition: number):
     
     // Generamos el código QR con configuraciones optimizadas para escaneo
     const qrDataUrl = await QRCode.toDataURL(verificationUrl, {
-      width: 180, // Aumentamos el tamaño para mejor resolución
-      margin: 1,   // Margen mínimo
+      width: 250, // Tamaño optimizado para mejor resolución y facilidad de escaneo
+      margin: 0,   // Sin margen adicional para maximizar el área del código
       errorCorrectionLevel: 'H', // Nivel alto de corrección de errores para mejorar escaneo
       color: {
         dark: '#000000', // Negro para máximo contraste
@@ -66,7 +69,7 @@ async function addQRCodeToPDF(doc: jsPDF, packageId: number, yPosition: number):
     });
     
     // Optimizamos el tamaño y posición del QR
-    const qrSize = 30; // Tamaño en mm (aumentado para mejor visibilidad)
+    const qrSize = 35; // Tamaño en mm (maximizado para visibilidad óptima)
     const xPosition = (58 - qrSize) / 2; // Centrado horizontalmente
     
     // Añadir el código QR al PDF

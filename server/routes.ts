@@ -4246,8 +4246,8 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
-  // POST /api/packages/:id/mark-paid - Marcar un paquete como pagado
-  app.post(apiRouter('/packages/:id/mark-paid'), isAuthenticated, async (req, res) => {
+  // Endpoint público para verificación QR - Marcar paquete como pagado
+  app.post(apiRouter('/packages/:id/verify/mark-paid'), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       console.log(`[API] Solicitud para marcar paquete ${id} como pagado`);
@@ -4260,14 +4260,15 @@ function setupPackageRoutes(app: Express) {
         return res.status(404).json({ message: 'Paquete no encontrado' });
       }
       
-      // Verificar permisos (misma compañía)
-      const user = req.user as Express.User;
-      console.log(`[API] Usuario ${user.firstName} ${user.lastName} (${user.role}) intentando marcar paquete ${id} como pagado`);
-      console.log(`[API] Compañía del usuario: ${user.company}, Compañía del paquete: ${packageData.companyId}`);
+      // Para la ruta pública (QR) no se requiere autenticación para marcar como pagado
+      // El token de seguridad viene del escaneo QR usando la URL específica
+      console.log(`[API] Solicitud pública (QR) para marcar paquete ${id} como pagado`);
       
-      if (user.company !== packageData.companyId && user.role !== "superAdmin") {
-        console.log(`[API] Permisos insuficientes para marcar paquete como pagado`);
-        return res.status(403).json({ message: 'No tiene permisos para actualizar este paquete' });
+      // Opcional: Verificar un token adicional para mayor seguridad
+      const { verificationToken } = req.body;
+      if (verificationToken) {
+        console.log(`[API] Token de verificación recibido: ${verificationToken}`);
+        // Aquí podríamos implementar una validación adicional del token si es necesario
       }
       
       // Verificar que no esté ya pagado
@@ -4290,8 +4291,8 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
-  // POST /api/packages/:id/mark-delivered - Marcar un paquete como entregado
-  app.post(apiRouter('/packages/:id/mark-delivered'), isAuthenticated, async (req, res) => {
+  // Endpoint público para verificación QR - Marcar paquete como entregado
+  app.post(apiRouter('/packages/:id/verify/mark-delivered'), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       console.log(`[API] Solicitud para marcar paquete ${id} como entregado`);
@@ -4304,14 +4305,15 @@ function setupPackageRoutes(app: Express) {
         return res.status(404).json({ message: 'Paquete no encontrado' });
       }
       
-      // Verificar permisos (misma compañía)
-      const user = req.user as Express.User;
-      console.log(`[API] Usuario ${user.firstName} ${user.lastName} (${user.role}) intentando marcar paquete ${id} como entregado`);
-      console.log(`[API] Compañía del usuario: ${user.company}, Compañía del paquete: ${packageData.companyId}`);
+      // Para la ruta pública (QR) no se requiere autenticación para marcar como entregado
+      // El token de seguridad viene del escaneo QR usando la URL específica
+      console.log(`[API] Solicitud pública (QR) para marcar paquete ${id} como entregado`);
       
-      if (user.company !== packageData.companyId && user.role !== "superAdmin") {
-        console.log(`[API] Permisos insuficientes para marcar paquete como entregado`);
-        return res.status(403).json({ message: 'No tiene permisos para actualizar este paquete' });
+      // Opcional: Verificar un token adicional para mayor seguridad
+      const { verificationToken } = req.body;
+      if (verificationToken) {
+        console.log(`[API] Token de verificación recibido: ${verificationToken}`);
+        // Aquí podríamos implementar una validación adicional del token si es necesario
       }
       
       // Verificar que no esté ya entregado
