@@ -3252,4 +3252,30 @@ export class DatabaseStorage implements IStorage {
       return false;
     }
   }
+
+  // Company methods
+  async getCompanyById(companyId: string): Promise<{id: string, name: string} | null> {
+    try {
+      console.log(`[getCompanyById] Buscando compañía con ID: ${companyId}`);
+      
+      const [company] = await db
+        .select({
+          id: schema.companies.identifier,
+          name: schema.companies.name
+        })
+        .from(schema.companies)
+        .where(eq(schema.companies.identifier, companyId));
+      
+      if (!company) {
+        console.log(`[getCompanyById] No se encontró la compañía con ID: ${companyId}`);
+        return null;
+      }
+      
+      console.log(`[getCompanyById] Compañía encontrada: ${JSON.stringify(company)}`);
+      return company;
+    } catch (error) {
+      console.error(`[getCompanyById] Error al buscar compañía ID ${companyId}:`, error);
+      return null;
+    }
+  }
 }
