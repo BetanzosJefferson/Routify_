@@ -24,14 +24,17 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
   };
   
   const handleNavClick = (tab: TabType) => {
-    onTabChange(tab);
-    
-    // Actualizar el URL pero sin hacer una redirección completa
+    // Primero actualizamos la URL para evitar cambios visuales no deseados
     const url = new URL(window.location.href);
     url.searchParams.set('tab', tab);
     window.history.pushState({}, '', url.toString());
     
-    setOpen(false);
+    // Usamos setTimeout para asegurar que la actualización del estado ocurra después
+    // de que el navegador haya procesado el cambio de URL
+    setTimeout(() => {
+      onTabChange(tab);
+      setOpen(false);
+    }, 0);
   };
   
   return (
