@@ -531,6 +531,16 @@ export function ReservationList() {
                       </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge 
+                        variant="outline"
+                        className={reservation.status === 'confirmed' 
+                          ? "bg-blue-100 text-blue-800 border-blue-200" 
+                          : "bg-red-100 text-red-800 border-red-200"}
+                      >
+                        {reservation.status === 'confirmed' ? 'CONFIRMADA' : 'CANCELADA'}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       {reservation.createdByUser ? (
                         <div>
                           <div className="text-sm font-medium text-gray-900">
@@ -643,17 +653,31 @@ export function ReservationList() {
                       >
                         Editar
                       </Button>
-                      <Button 
-                        size="sm"
-                        variant="link" 
-                        className="text-red-600 hover:text-red-800 p-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openDeleteConfirm(reservation.id);
-                        }}
-                      >
-                        Cancelar
-                      </Button>
+                      {reservation.status === 'canceled' ? (
+                        <Button 
+                          size="sm"
+                          variant="link" 
+                          className="text-red-800 hover:text-red-900 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDeleteConfirm(reservation.id, 'delete');
+                          }}
+                        >
+                          Eliminar
+                        </Button>
+                      ) : (
+                        <Button 
+                          size="sm"
+                          variant="link" 
+                          className="text-amber-600 hover:text-amber-800 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDeleteConfirm(reservation.id, 'cancel');
+                          }}
+                        >
+                          Cancelar
+                        </Button>
+                      )}
                     </div>
                   </div>
                   
