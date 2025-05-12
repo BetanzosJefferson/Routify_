@@ -1639,6 +1639,7 @@ export class DatabaseStorage implements IStorage {
         .set({
           paidBy: userId,
           paymentStatus: 'PAID', // Establecer estado a PAGADO
+          markedAsPaidAt: now, // Registrar cuándo se marcó como pagado
           updatedAt: now
         })
         .where(eq(schema.reservations.id, id))
