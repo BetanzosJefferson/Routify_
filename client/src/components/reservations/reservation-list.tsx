@@ -97,9 +97,18 @@ export function ReservationList() {
   
   // Ahora usamos funciones inline para manejar las comparaciones de fechas
   
-  // Separar reservaciones en actuales y archivadas usando nuestras funciones de utilidad
+  // Separar reservaciones en actuales, archivadas y canceladas
+  // Primero, separamos las canceladas (tendrán su propia pestaña)
+  const canceledReservations = reservations?.filter(
+    (reservation) => reservation.status === 'canceled'
+  ) || [];
+  
+  // Luego filtramos las reservaciones activas y archivadas (que no estén canceladas)
   const upcomingReservations = reservations?.filter(
     (reservation) => {
+      // Solo incluir reservaciones confirmadas (no canceladas)
+      if (reservation.status !== 'confirmed') return false;
+      
       // Usar normalizeToStartOfDay para obtener la fecha normalizada del viaje
       const tripDate = normalizeToStartOfDay(reservation.trip.departureDate);
       // Normalizar la fecha actual también para hacer una comparación correcta
@@ -110,6 +119,9 @@ export function ReservationList() {
   
   const archivedReservations = reservations?.filter(
     (reservation) => {
+      // Solo incluir reservaciones confirmadas (no canceladas)
+      if (reservation.status !== 'confirmed') return false;
+      
       // Usar normalizeToStartOfDay para obtener la fecha normalizada del viaje
       const tripDate = normalizeToStartOfDay(reservation.trip.departureDate);
       // Normalizar la fecha actual también para hacer una comparación correcta
@@ -119,7 +131,12 @@ export function ReservationList() {
   ) || [];
   
   // Obtener las reservaciones según la pestaña activa
-  const activeReservations = activeTab === "upcoming" ? upcomingReservations : archivedReservations;
+  const activeReservations = 
+    activeTab === "upcoming" 
+      ? upcomingReservations 
+      : activeTab === "archived" 
+        ? archivedReservations 
+        : canceledReservations;
   
   // Filter reservations based on search term and date filter
   const filteredReservations = activeReservations.filter((reservation) => {
@@ -400,6 +417,14 @@ export function ReservationList() {
                     <span className="font-medium">Archivadas</span>
                     <Badge className="ml-2 bg-muted text-muted-foreground">{archivedReservations.length}</Badge>
                   </TabsTrigger>
+                  <TabsTrigger 
+                    value="canceled" 
+                    className="flex-1 items-center gap-1 px-0 py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                  >
+                    <XIcon className="h-5 w-5 mr-2" />
+                    <span className="font-medium">Canceladas</span>
+                    <Badge className="ml-2 bg-red-100 text-red-800 border-red-200">{canceledReservations.length}</Badge>
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
@@ -415,17 +440,24 @@ export function ReservationList() {
                 <CalendarIcon className="h-5 w-5 text-primary" />
                 <CardTitle className="text-md">Reservaciones actuales y futuras</CardTitle>
               </>
-            ) : (
+            ) : activeTab === "archived" ? (
               <>
                 <ArchiveIcon className="h-5 w-5 text-muted-foreground" />
                 <CardTitle className="text-md">Reservaciones archivadas</CardTitle>
+              </>
+            ) : (
+              <>
+                <XIcon className="h-5 w-5 text-red-600" />
+                <CardTitle className="text-md">Reservaciones canceladas</CardTitle>
               </>
             )}
           </div>
           <CardDescription className="mt-1">
             {activeTab === "upcoming" 
               ? "Mostrando reservaciones a partir de hoy" 
-              : "Mostrando reservaciones anteriores a hoy"}
+              : activeTab === "archived"
+                ? "Mostrando reservaciones anteriores a hoy"
+                : "Mostrando reservaciones que han sido canceladas"}
           </CardDescription>
         </CardHeader>
         
