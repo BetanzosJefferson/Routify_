@@ -114,11 +114,15 @@ export default function PackageVerifyPage() {
     retry: 1, // Limitamos el número de reintentos
   });
 
-  // Mutación para marcar como pagado
+  // Mutación para marcar como pagado (endpoint público)
   const markAsPaidMutation = useMutation({
     mutationFn: async () => {
       console.log(`Intentando marcar paquete ${packageId} como pagado...`);
-      const res = await apiRequest("POST", `/api/packages/${packageId}/mark-paid`);
+      // Usamos la ruta pública que no requiere autenticación
+      const res = await apiRequest("POST", `/api/packages/${packageId}/verify/mark-paid`, {
+        // Podríamos enviar un token adicional de verificación si es necesario
+        verificationToken: `qr-verify-${Date.now()}`
+      });
       
       if (!res.ok) {
         console.error(`Error HTTP ${res.status} al marcar como pagado:`, res.statusText);
@@ -161,7 +165,11 @@ export default function PackageVerifyPage() {
   const markAsDeliveredMutation = useMutation({
     mutationFn: async () => {
       console.log(`Intentando marcar paquete ${packageId} como entregado...`);
-      const res = await apiRequest("POST", `/api/packages/${packageId}/mark-delivered`);
+      // Usamos la ruta pública que no requiere autenticación
+      const res = await apiRequest("POST", `/api/packages/${packageId}/verify/mark-delivered`, {
+        // Podríamos enviar un token adicional de verificación si es necesario
+        verificationToken: `qr-verify-${Date.now()}`
+      });
       
       if (!res.ok) {
         console.error(`Error HTTP ${res.status} al marcar como entregado:`, res.statusText);
