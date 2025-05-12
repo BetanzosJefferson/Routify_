@@ -117,6 +117,14 @@ export const PaymentMethod = {
 
 export type PaymentMethodType = typeof PaymentMethod[keyof typeof PaymentMethod];
 
+// RESERVATION STATUS ENUM
+export const ReservationStatus = {
+  CONFIRMED: "confirmed",
+  CANCELED: "canceled",
+} as const;
+
+export type ReservationStatusType = typeof ReservationStatus[keyof typeof ReservationStatus];
+
 // TRIP VISIBILITY ENUM
 export const TripVisibility = {
   PUBLISHED: "publicado",
@@ -145,7 +153,7 @@ export const reservations = pgTable("reservations", {
   notes: text("notes"),
   // Campos de pago actualizados
   paymentMethod: text("payment_method").notNull().default(PaymentMethod.CASH), // 'efectivo' o 'transferencia'
-  status: text("status").notNull().default("confirmed"), // Estado de la reservación (confirmed, cancelled)
+  status: text("status").notNull().default(ReservationStatus.CONFIRMED), // Estado de la reservación (confirmed, canceled)
   paymentStatus: text("payment_status").notNull().default(PaymentStatus.PENDING), // Estado del pago (pendiente, pagado, cancelado)
   advanceAmount: doublePrecision("advance_amount").default(0), // Monto del anticipo
   advancePaymentMethod: text("advance_payment_method").default(PaymentMethod.CASH), // Método del anticipo
