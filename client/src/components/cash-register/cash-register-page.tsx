@@ -153,6 +153,24 @@ export function CashRegisterPage() {
     }
   });
   
+  // Agrupar reservaciones por compañía para taquilleros
+  const reservationsByCompany = isTicketOfficeView 
+    ? sortedReservations.reduce<Record<string, { name: string, reservations: ReservationWithCompany[] }>>((groups, reservation) => {
+        const companyId = reservation.companyInfo?.id || 'sin-empresa';
+        const companyName = reservation.companyInfo?.name || 'Sin empresa asignada';
+        
+        if (!groups[companyId]) {
+          groups[companyId] = {
+            name: companyName,
+            reservations: []
+          };
+        }
+        
+        groups[companyId].reservations.push(reservation);
+        return groups;
+      }, {})
+    : {};
+  
   // Calcular totales
   const totalAmount = sortedReservations.reduce((sum, reservation) => sum + (reservation.totalAmount || 0), 0);
   const totalCash = sortedReservations
@@ -170,6 +188,38 @@ export function CashRegisterPage() {
       return sum + cashAmount;
     }, 0);
   const totalTransfer = totalAmount - totalCash;
+  
+  // Calcular totales por compañía para taquilleros
+  const companyTotals = isTicketOfficeView 
+    ? Object.entries(reservationsByCompany).reduce<Record<string, { totalAmount: number, totalCash: number, totalTransfer: number }>>((totals, [companyId, companyData]) => {
+        const companyTotalAmount = companyData.reservations.reduce((sum: number, r: ReservationWithCompany) => 
+          sum + (r.totalAmount || 0), 0);
+        
+        const companyTotalCash = companyData.reservations
+          .filter((r: ReservationWithCompany) => 
+            (r.advancePaymentMethod === 'efectivo' || r.paymentMethod === 'efectivo'))
+          .reduce((sum: number, r: ReservationWithCompany) => {
+            let cashAmount = 0;
+            if (r.advancePaymentMethod === 'efectivo') {
+              cashAmount += r.advanceAmount || 0;
+            }
+            if (r.paymentMethod === 'efectivo') {
+              cashAmount += (r.totalAmount || 0) - (r.advanceAmount || 0);
+            }
+            return sum + cashAmount;
+          }, 0);
+        
+        const companyTotalTransfer = companyTotalAmount - companyTotalCash;
+        
+        totals[companyId] = {
+          totalAmount: companyTotalAmount,
+          totalCash: companyTotalCash, 
+          totalTransfer: companyTotalTransfer
+        };
+        
+        return totals;
+      }, {})
+    : {};
   
   const toggleSortDirection = () => {
     setSortDirection(prev => prev === "asc" ? "desc" : "asc");
@@ -310,7 +360,7 @@ export function CashRegisterPage() {
               <p>Error al cargar los datos: {error instanceof Error ? error.message : "Error desconocido"}</p>
               <p className="text-sm mt-2">Por favor, intenta de nuevo más tarde.</p>
             </div>
-          ) : sortedReservations.length === 0 ? (
+          ) : ((isTicketOfficeView ? Object.keys(reservationsByCompany).length : sortedReservations.length) === 0) ? (
             <div className="text-center p-10 bg-gray-50 rounded-lg">
               <FilterIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-gray-600">No hay pagos registrados</h3>
@@ -319,6 +369,95 @@ export function CashRegisterPage() {
                   ? "No se encontraron pagos con los filtros aplicados."
                   : "Todavía no has marcado ninguna reservación como pagada."}
               </p>
+            </div>
+          ) : isTicketOfficeView ? (
+            <div className="space-y-8">
+              {Object.entries(reservationsByCompany).map(([companyId, companyData]) => (
+                <div key={companyId} className="mb-8">
+                  <h3 className="text-lg font-semibold mb-3 text-primary border-b pb-2">
+                    Empresa: {companyData.name}
+                  </h3>
+                  
+                  {/* Tarjetas resumen por empresa */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center">
+                          <DollarSign className="h-5 w-5 mr-2 text-green-500" />
+                          <div>
+                            <p className="text-sm font-medium">Total</p>
+                            <p className="text-xl font-bold">{formatPrice(companyTotals[companyId]?.totalAmount || 0)}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center">
+                          <DollarSign className="h-5 w-5 mr-2 text-blue-500" />
+                          <div>
+                            <p className="text-sm font-medium">Efectivo</p>
+                            <p className="text-xl font-bold">{formatPrice(companyTotals[companyId]?.totalCash || 0)}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center">
+                          <DollarSign className="h-5 w-5 mr-2 text-purple-500" />
+                          <div>
+                            <p className="text-sm font-medium">Transferencia</p>
+                            <p className="text-xl font-bold">{formatPrice(companyTotals[companyId]?.totalTransfer || 0)}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableCaption>
+                        Pagos registrados para {companyData.name}
+                      </TableCaption>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID Reservación</TableHead>
+                          <TableHead>Pasajero</TableHead>
+                          <TableHead>Ruta</TableHead>
+                          <TableHead>Método</TableHead>
+                          <TableHead className="text-right">Monto</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {companyData.reservations.map((reservation: ReservationWithCompany) => (
+                          <TableRow key={reservation.id}>
+                            <TableCell className="font-medium">RES{reservation.id}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <User className="h-4 w-4 text-gray-500" />
+                                <span>{reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>{reservation.trip?.route?.name || 'No disponible'}</TableCell>
+                            <TableCell>
+                              {reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}
+                              {reservation.advancePaymentMethod && (
+                                <span className="text-xs text-gray-500 block">
+                                  Anticipo: {reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">{formatPrice(reservation.totalAmount || 0)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="overflow-x-auto">
