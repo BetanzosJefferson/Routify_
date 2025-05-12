@@ -444,7 +444,7 @@ export function CashRegisterPage() {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
-                                <span>{reservation.trip?.company?.name || companyData.name || 'No disponible'}</span>
+                                <span>{companyData.name || 'No disponible'}</span>
                               </div>
                             </TableCell>
                             <TableCell>{reservation.trip?.route?.name || 'No disponible'}</TableCell>
@@ -477,6 +477,7 @@ export function CashRegisterPage() {
                   <TableRow>
                     <TableHead>ID Reservación</TableHead>
                     <TableHead>Pasajero</TableHead>
+                    <TableHead>Empresa</TableHead>
                     <TableHead>Ruta</TableHead>
                     <TableHead>Método</TableHead>
                     {isAdminView && <TableHead>Registrado por</TableHead>}
@@ -497,6 +498,11 @@ export function CashRegisterPage() {
                             +{reservation.passengers.length - 1} pasajeros más
                           </div>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <span>{reservation.companyInfo?.name || reservation.trip.route.companyId || 'No disponible'}</span>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="font-medium">
