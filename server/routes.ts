@@ -2633,11 +2633,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Actualizar el estado de entrega
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Estado actual de entrega:`, packageData.deliveryStatus);
+      const currentDate = new Date();
       const updatedPackage = await storage.updatePackage(packageId, {
         deliveryStatus: 'entregado',
-        updatedAt: new Date()
+        deliveredAt: currentDate,
+        updatedAt: currentDate
       });
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Nuevo estado de entrega:`, updatedPackage?.deliveryStatus);
+      console.log(`[POST /public/packages/${packageId}/mark-delivered] Fecha de entrega:`, updatedPackage?.deliveredAt);
       
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Paquete actualizado con éxito`);
       res.json(updatedPackage);
