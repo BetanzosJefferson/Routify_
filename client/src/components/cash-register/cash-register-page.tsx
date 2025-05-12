@@ -4,14 +4,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { ReservationWithDetails } from "@shared/schema";
-
-// Interfaz para las reservaciones con información de compañía
-interface ReservationWithCompany extends ReservationWithDetails {
-  companyInfo?: {
-    id: string;
-    name: string;
-  }
-}
 import { 
   DollarSign, 
   Search, 
@@ -23,6 +15,14 @@ import {
   ArrowDownUp,
   FilterIcon
 } from "lucide-react";
+
+// Interfaz para las reservaciones con información de compañía
+interface ReservationWithCompany extends ReservationWithDetails {
+  companyInfo?: {
+    id: string;
+    name: string;
+  }
+}
 import {
   Table,
   TableBody,
