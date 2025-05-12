@@ -131,18 +131,28 @@ export function isSameLocalDay(dateA: Date | string, dateB: Date | string): bool
  * @param date - Fecha a formatear
  * @returns Fecha formateada como string
  */
-export function formatDate(date: Date | string): string {
-  // Para depuración: imprimir la fecha antes de procesarla
-  console.log(`[formatDate] Fecha original: ${date instanceof Date ? date.toISOString() : date}`);
+export function formatDate(date: Date | string | null | undefined): string {
+  // Si la fecha es null o undefined, devolver un valor por defecto
+  if (date === null || date === undefined) {
+    return 'N/A';
+  }
   
-  const normalizedDate = normalizeToStartOfDay(date);
-  
-  // Para depuración: imprimir la fecha normalizada
-  console.log(`[formatDate] Fecha normalizada: ${normalizedDate.toISOString()}`);
-  
-  const result = format(normalizedDate, 'dd/MM/yyyy', { locale: es });
-  console.log(`[formatDate] Resultado: ${result}`);
-  return result;
+  try {
+    // Para depuración: imprimir la fecha antes de procesarla
+    console.log(`[formatDate] Fecha original: ${date instanceof Date ? date.toISOString() : date}`);
+    
+    const normalizedDate = normalizeToStartOfDay(date);
+    
+    // Para depuración: imprimir la fecha normalizada
+    console.log(`[formatDate] Fecha normalizada: ${normalizedDate.toISOString()}`);
+    
+    const result = format(normalizedDate, 'dd/MM/yyyy', { locale: es });
+    console.log(`[formatDate] Resultado: ${result}`);
+    return result;
+  } catch (error) {
+    console.error(`[formatDate] Error al formatear fecha:`, error);
+    return 'Fecha inválida';
+  }
 }
 
 /**
