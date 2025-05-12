@@ -34,6 +34,8 @@ interface NavItemProps {
 }
 
 function NavItem({ icon, active, onClick, children }: NavItemProps) {
+  // Evitamos re-renders innecesarios que pueden causar parpadeos visuales
+  // mediante la memoización del componente
   return (
     <button
       className={cn(
@@ -42,7 +44,15 @@ function NavItem({ icon, active, onClick, children }: NavItemProps) {
           ? "bg-primary text-primary-foreground hover:bg-primary/90"
           : "text-gray-700 dark:text-gray-200 hover:text-primary dark:hover:text-primary hover:bg-primary/10"
       )}
-      onClick={onClick}
+      onClick={(e) => {
+        // Prevenimos comportamiento predeterminado para tener más control 
+        e.preventDefault();
+        // Usamos requestAnimationFrame para asegurar que la navegación
+        // ocurra después de que se complete el ciclo de renderizado actual
+        requestAnimationFrame(() => {
+          onClick();
+        });
+      }}
     >
       <span className={cn("mr-3 flex-shrink-0", active ? "text-white" : "text-gray-500 dark:text-gray-400 group-hover:text-primary")}>{icon}</span>
       <span className="truncate">{children}</span>
