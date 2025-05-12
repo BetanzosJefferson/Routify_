@@ -919,6 +919,19 @@ export class DatabaseStorage implements IStorage {
     return tripsWithRouteInfo;
   }
   
+  // Función auxiliar para verificar si dos segmentos se superponen
+  // Esta función toma los índices de origen y destino de dos segmentos y determina si se superponen
+  private checkSegmentsOverlap(
+    segment1OriginIdx: number, 
+    segment1DestinationIdx: number,
+    segment2OriginIdx: number,
+    segment2DestinationIdx: number
+  ): boolean {
+    // Dos segmentos se solapan si uno comienza antes de que el otro termine,
+    // y termina después de que el otro comienza.
+    return segment1OriginIdx < segment2DestinationIdx && segment1DestinationIdx > segment2OriginIdx;
+  }
+  
   async updateRelatedTripsAvailability(tripId: number, seatChange: number): Promise<void> {
     // Obtener el viaje original
     const trip = await this.getTrip(tripId);
@@ -1029,19 +1042,10 @@ export class DatabaseStorage implements IStorage {
         
         if (subOriginIdx === -1 || subDestinationIdx === -1) continue;
         
-        // Verificar si hay superposición de segmentos
-        const hasOverlap = (
-          // Si alguna parte del segmento actual está dentro del otro segmento
-          (segmentOriginIdx >= subOriginIdx && segmentOriginIdx < subDestinationIdx) ||
-          (segmentDestinationIdx > subOriginIdx && segmentDestinationIdx <= subDestinationIdx) ||
-          // Si el otro segmento está completamente dentro del segmento actual
-          (subOriginIdx >= segmentOriginIdx && subDestinationIdx <= segmentDestinationIdx) ||
-          // Si el segmento actual está completamente dentro del otro segmento
-          (segmentOriginIdx >= subOriginIdx && segmentDestinationIdx <= subDestinationIdx) ||
-          // Si ambos segmentos comparten al menos un tramo de ruta
-          (Math.max(segmentOriginIdx, subOriginIdx) < Math.min(segmentDestinationIdx, subDestinationIdx)) ||
-          // Si hay intersección entre las paradas (para casos como Cuernavaca a Taxqueña)
-          (segmentOriginIdx <= subDestinationIdx && segmentDestinationIdx >= subOriginIdx)
+        // Verificar si hay superposición de segmentos usando nuestra función auxiliar
+        const hasOverlap = this.checkSegmentsOverlap(
+          segmentOriginIdx, segmentDestinationIdx,
+          subOriginIdx, subDestinationIdx
         );
         
         // Imprimir detalles de la comparación para depuración
@@ -1120,19 +1124,10 @@ export class DatabaseStorage implements IStorage {
           
           if (otherSubOriginIdx === -1 || otherSubDestinationIdx === -1) continue;
           
-          // Verificar si hay superposición con el segmento original
-          const hasOtherOverlap = (
-            // Si alguna parte del segmento actual está dentro del otro segmento
-            (segmentOriginIdx >= otherSubOriginIdx && segmentOriginIdx < otherSubDestinationIdx) ||
-            (segmentDestinationIdx > otherSubOriginIdx && segmentDestinationIdx <= otherSubDestinationIdx) ||
-            // Si el otro segmento está completamente dentro del segmento actual
-            (otherSubOriginIdx >= segmentOriginIdx && otherSubDestinationIdx <= segmentDestinationIdx) ||
-            // Si el segmento actual está completamente dentro del otro segmento
-            (segmentOriginIdx >= otherSubOriginIdx && segmentDestinationIdx <= otherSubDestinationIdx) ||
-            // Si ambos segmentos comparten al menos un tramo de ruta
-            (Math.max(segmentOriginIdx, otherSubOriginIdx) < Math.min(segmentDestinationIdx, otherSubDestinationIdx)) ||
-            // Si hay intersección entre las paradas (para casos como Cuernavaca a Taxqueña)
-            (segmentOriginIdx <= otherSubDestinationIdx && segmentDestinationIdx >= otherSubOriginIdx)
+          // Verificar si hay superposición con el segmento original usando nuestra función auxiliar
+          const hasOtherOverlap = this.checkSegmentsOverlap(
+            segmentOriginIdx, segmentDestinationIdx,
+            otherSubOriginIdx, otherSubDestinationIdx
           );
           
           // Imprimir detalles de la comparación para depuración
