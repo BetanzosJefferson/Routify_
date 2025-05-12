@@ -35,7 +35,7 @@ export function CashRegisterPage() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("");
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState("");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState("todos"); // Valor por defecto
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   
   // Estados adicionales para mejorar la UX
@@ -110,7 +110,7 @@ export function CashRegisterPage() {
     
     // Aplicar filtro de método de pago
     let matchesPaymentMethod = true;
-    if (paymentMethodFilter) {
+    if (paymentMethodFilter && paymentMethodFilter !== 'todos') {
       // Verificar si el pago fue con anticipio o pago completo
       if (reservation.advanceAmount && reservation.advanceAmount > 0) {
         // Si hay anticipo, verificar ambos métodos
@@ -221,7 +221,7 @@ export function CashRegisterPage() {
                     <SelectValue placeholder="Todos los métodos" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos los métodos</SelectItem>
+                    <SelectItem value="todos">Todos los métodos</SelectItem>
                     <SelectItem value="efectivo">Efectivo</SelectItem>
                     <SelectItem value="transferencia">Transferencia</SelectItem>
                   </SelectContent>
