@@ -151,33 +151,25 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
   });
   
   // Manejar la impresión del ticket usando jsPDF para el formato térmico
-  const handlePrintTicket = async () => {
+  const handlePrintTicket = () => {
     if (packageToView) {
-      try {
-        // Mostrar mensaje de carga
-        toast({
-          title: "Generando ticket",
-          description: "Preparando ticket para impresión...",
-        });
-        
-        // Importar la función de generación de PDF de manera dinámica
-        const { generatePackageTicketPDF } = await import('./package-ticket');
-        
+      // Importar la función de generación de PDF de manera dinámica
+      import('./package-ticket').then(({ generatePackageTicketPDF }) => {
         // Generar el PDF con dimensiones de ticket térmico (58mm x 160mm)
-        await generatePackageTicketPDF(packageToView, user?.company || "TransRoute");
+        generatePackageTicketPDF(packageToView, user?.company || "TransRoute");
         
         // Cerrar el diálogo automáticamente después de abrir la ventana del PDF
         setTimeout(() => {
           setPackageToView(null);
         }, 500);
-      } catch (error) {
+      }).catch(error => {
         console.error("Error al generar el ticket PDF:", error);
         toast({
           title: "Error",
           description: "No se pudo generar el ticket PDF. Intente nuevamente.",
           variant: "destructive",
         });
-      }
+      });
     }
   };
   

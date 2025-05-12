@@ -21,7 +21,6 @@ import ReservationRequestsPage from "@/pages/reservation-requests-page";
 import NotificationsPage from "@/pages/notifications-page";
 import CouponsPage from "@/pages/coupons-page";
 import PackagesPage from "@/pages/packages-page";
-import PackageVerifyPage from "@/pages/package-verify-page";
 import EditTripPage from "@/pages/edit-trip-page";
 import { UsersPage } from "@/components/users/users-page";
 
@@ -42,7 +41,6 @@ function Router() {
       <Route path="/register/:token" component={RegisterPage} />
       <Route path="/reservation-details" component={ReservationDetails} />
       <Route path="/reservation-details/:id" component={ReservationDetails} />
-      <Route path="/package-verify/:id" component={PackageVerifyPage} />
       <Route component={NotFound} />
     </Switch>
   );

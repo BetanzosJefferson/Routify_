@@ -2,7 +2,6 @@ import React, { useRef } from "react";
 import { Package, User, Clock, Calendar, PhoneCall, Truck, DollarSign, CheckCircle, ChevronsRight } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { jsPDF } from "jspdf";
-import QRCode from "qrcode";
 
 // Define la estructura del paquete
 interface PackageData {
@@ -24,10 +23,6 @@ interface PackageData {
   createdAt: string | Date;
   updatedAt?: string | Date;
   createdBy?: number;
-  segmentOrigin?: string;
-  segmentDestination?: string;
-  tripOrigin?: string;
-  tripDestination?: string;
 }
 
 interface PackageTicketProps {
@@ -35,104 +30,21 @@ interface PackageTicketProps {
   companyName?: string;
 }
 
-// Función para generar la URL de verificación del paquete
-function createVerificationUrl(packageId: number): string {
-  // Construimos la URL absoluta completa para evitar problemas de redirección
-  // Aseguramos que coincida exactamente con cómo está definida la ruta en App.tsx
-  const base = window.location.origin; // Ej. https://example.com
-  const path = `/package-verify/${packageId}`; // Path debe coincidir con la ruta en App.tsx
-  
-  // Agregamos un timestamp como parámetro de consulta para evitar cachés y garantizar la unicidad
-  const timestamp = Date.now();
-  const fullUrl = `${base}${path}?t=${timestamp}`;
-  
-  console.log("URL generada para verificación de paquete:", fullUrl);
-  
-  return fullUrl;
-}
-
-// Función para generar el QR y agregarlo al PDF
-async function addQRCodeToPDF(doc: jsPDF, packageId: number, yPosition: number): Promise<void> {
-  try {
-    // Obtenemos la URL de verificación
-    const verificationUrl = createVerificationUrl(packageId);
-    
-    // Generamos el código QR con configuraciones optimizadas para escaneo
-    const qrDataUrl = await QRCode.toDataURL(verificationUrl, {
-      width: 250, // Tamaño optimizado para mejor resolución y facilidad de escaneo
-      margin: 0,   // Sin margen adicional para maximizar el área del código
-      errorCorrectionLevel: 'H', // Nivel alto de corrección de errores para mejorar escaneo
-      color: {
-        dark: '#000000', // Negro para máximo contraste
-        light: '#FFFFFF'  // Fondo blanco
-      }
-    });
-    
-    // Optimizamos el tamaño y posición del QR
-    const qrSize = 35; // Tamaño en mm (maximizado para visibilidad óptima)
-    const xPosition = (58 - qrSize) / 2; // Centrado horizontalmente
-    
-    // Añadir el código QR al PDF
-    doc.addImage(qrDataUrl, 'PNG', xPosition, yPosition, qrSize, qrSize);
-    
-    // Añadir texto explicativo debajo del QR
-    const textY = yPosition + qrSize + 3;
-    doc.setFontSize(6);
-    doc.setFont("courier", "normal");
-    doc.text("Escanea para verificar", 29, textY, { align: "center" });
-    
-    return Promise.resolve();
-  } catch (error) {
-    console.error("Error al generar código QR:", error);
-    return Promise.reject(error);
-  }
-}
-
 // Función para generar el PDF con dimensiones de ticket térmico
-export async function generatePackageTicketPDF(packageData: PackageData, companyName: string) {
-  // Crear un documento PDF con las dimensiones de un ticket térmico (58mm x 170mm)
-  // Aumentamos un poco la altura para asegurar suficiente espacio para el QR
+export function generatePackageTicketPDF(packageData: PackageData, companyName: string) {
+  // Crear un documento PDF con las dimensiones de un ticket térmico (58mm x 160mm)
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
-    format: [58, 170], 
+    format: [58, 160], // 58mm de ancho, 160mm de alto (formato estándar para tickets térmicos)
   });
 
   // Configuración de fuentes
   doc.setFont("courier", "normal");
   doc.setFontSize(10);
-  
-  // Función para manejar texto largo y wrap automático
-  const renderWrappedText = (text: string, x: number, startY: number, maxWidth: number): number => {
-    let currentY = startY;
-    
-    if (doc.getStringUnitWidth(text) * doc.getFontSize() / doc.internal.scaleFactor > maxWidth) {
-      const words = text.split(' ');
-      let line = '';
-      
-      for (let i = 0; i < words.length; i++) {
-        const testLine = line + words[i] + ' ';
-        if (doc.getStringUnitWidth(testLine) * doc.getFontSize() / doc.internal.scaleFactor > maxWidth) {
-          doc.text(line, x, currentY);
-          line = words[i] + ' ';
-          currentY += 3;
-        } else {
-          line = testLine;
-        }
-      }
-      
-      if (line.trim()) {
-        doc.text(line, x, currentY);
-      }
-    } else {
-      doc.text(text, x, currentY);
-    }
-    
-    return currentY + 4; // Devolvemos la nueva posición Y con un pequeño margen
-  };
 
-  // Margen superior reducido para centrar mejor el contenido
-  let y = 5;
+  // Margen superior
+  let y = 10;
 
   // Encabezado
   doc.setFontSize(12);
@@ -189,28 +101,6 @@ export async function generatePackageTicketPDF(packageData: PackageData, company
   y += 4;
   doc.text(`Tel: ${packageData.recipientPhone}`, 5, y);
   
-  // Origen y destino del paquete
-  y += 6;
-  doc.setFontSize(9);
-  doc.setFont("courier", "bold");
-  doc.text("Ruta", 5, y);
-  
-  y += 4;
-  doc.setFontSize(8);
-  doc.setFont("courier", "normal");
-  
-  // Usar los segmentos específicos si están disponibles, si no usar los de la ruta completa
-  const origen = packageData.segmentOrigin || packageData.tripOrigin || "Origen no especificado";
-  const destino = packageData.segmentDestination || packageData.tripDestination || "Destino no especificado";
-  
-  // Renderizamos el origen con posible salto de línea
-  doc.text("De:", 5, y);
-  y = renderWrappedText(origen, 12, y, 40);
-  
-  // Renderizamos el destino con posible salto de línea
-  doc.text("A:", 5, y);
-  y = renderWrappedText(destino, 12, y, 40);
-  
   // Detalles del paquete
   y += 6;
   doc.setFontSize(9);
@@ -222,10 +112,27 @@ export async function generatePackageTicketPDF(packageData: PackageData, company
   doc.setFont("courier", "normal");
   const descripcion = packageData.packageDescription || "Sin descripción";
   
-  // Usar la función de texto con wrap para la descripción
-  y = renderWrappedText(descripcion, 5, y, 48);
+  // Dividir descripción larga en múltiples líneas si es necesario
+  const maxWidth = 48; // Ancho máximo en mm
+  if (doc.getStringUnitWidth(descripcion) * 8 / doc.internal.scaleFactor > maxWidth) {
+    const words = descripcion.split(' ');
+    let line = '';
+    for (let i = 0; i < words.length; i++) {
+      const testLine = line + words[i] + ' ';
+      if (doc.getStringUnitWidth(testLine) * 8 / doc.internal.scaleFactor > maxWidth) {
+        doc.text(line, 5, y);
+        line = words[i] + ' ';
+        y += 3;
+      } else {
+        line = testLine;
+      }
+    }
+    doc.text(line, 5, y);
+  } else {
+    doc.text(descripcion, 5, y);
+  }
   
-  y += 1; // Pequeño margen adicional
+  y += 4;
   doc.text(`Precio: ${formatCurrency(packageData.price)}`, 5, y);
   
   if (packageData.usesSeats) {
@@ -242,25 +149,38 @@ export async function generatePackageTicketPDF(packageData: PackageData, company
     y
   );
   
-  // Línea separadora antes del pie de página - eliminamos la sección de "Estado de Entrega"
+  // Estado de entrega
   y += 6;
+  doc.setFontSize(9);
+  doc.setFont("courier", "bold");
+  doc.text("Estado de Entrega", 5, y);
+  
+  y += 4;
+  doc.setFontSize(8);
+  doc.setFont("courier", "normal");
+  doc.text(
+    packageData.deliveryStatus === 'entregado' 
+      ? 'Entregado' 
+      : 'Pendiente de entrega',
+    5,
+    y
+  );
+  
+  // Pie de página
+  y += 8;
   doc.setDrawColor(200, 200, 200);
   doc.line(5, y, 53, y);
   
-  // Pie de página (simplificado)
   y += 5;
   doc.setFontSize(7);
   doc.text(`Gracias por confiar en ${companyName}`, 29, y, { align: "center" });
   
-  // Añadir código QR - Aumentamos el espacio
-  y += 6;
-  await addQRCodeToPDF(doc, packageData.id, y);
+  y += 3;
+  doc.text("Este ticket es su comprobante de envío", 29, y, { align: "center" });
   
-  // Aseguramos un margen inferior después del QR para evitar cortes
-  doc.setFont("courier", "normal");
-  doc.setFontSize(1); // Texto muy pequeño solo para forzar un margen
-  doc.text(" ", 29, y + 35, { align: "center" });
-  
+  y += 3;
+  doc.text("www.transroute.mx", 29, y, { align: "center" });
+
   // Abrir en una nueva ventana e imprimir automáticamente
   window.open(URL.createObjectURL(doc.output('blob')));
   
@@ -319,15 +239,6 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
           font-weight: bold;
           margin-bottom: 0.5rem;
         }
-        .qr-code {
-          text-align: center;
-          margin-top: 0.5rem;
-        }
-        .qr-code-caption {
-          font-size: 0.6rem;
-          text-align: center;
-          margin-top: 0.25rem;
-        }
         @media print {
           body * {
             visibility: hidden;
@@ -379,19 +290,6 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
         </div>
       </div>
       
-      {/* Información de origen y destino */}
-      <div className="ticket-section">
-        <h3>Ruta</h3>
-        <div className="ticket-row">
-          <ChevronsRight size={12} />
-          <span>De: {packageData.segmentOrigin || packageData.tripOrigin || "Origen no especificado"}</span>
-        </div>
-        <div className="ticket-row">
-          <ChevronsRight size={12} />
-          <span>A: {packageData.segmentDestination || packageData.tripDestination || "Destino no especificado"}</span>
-        </div>
-      </div>
-      
       <div className="ticket-section">
         <h3>Detalles del Paquete</h3>
         <div className="ticket-row">
@@ -420,10 +318,22 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
         </div>
       </div>
       
-      {/* Eliminamos la sección de Estado de Entrega para mantener consistencia con el PDF */}
+      <div className="ticket-section">
+        <h3>Estado de Entrega</h3>
+        <div className="ticket-row">
+          <Truck size={12} />
+          <span>
+            {packageData.deliveryStatus === 'entregado' 
+              ? 'Entregado' 
+              : 'Pendiente de entrega'}
+          </span>
+        </div>
+      </div>
       
       <div className="ticket-footer">
         <div>Gracias por confiar en {companyName}</div>
+        <div>Este ticket es su comprobante de envío</div>
+        <div>www.transroute.mx</div>
       </div>
     </div>
   );
