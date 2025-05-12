@@ -356,11 +356,11 @@ export default function PackageDetailPage() {
                 <div className="pl-7 space-y-1">
                   <p className="text-sm flex items-center">
                     <span className="font-medium mr-2">Origen:</span> 
-                    {packageData.segmentOrigin || packageData.tripOrigin || "No disponible"}
+                    {packageData.segmentOrigin || "No disponible"}
                   </p>
                   <p className="text-sm flex items-center">
                     <span className="font-medium mr-2">Destino:</span> 
-                    {packageData.segmentDestination || packageData.tripDestination || "No disponible"}
+                    {packageData.segmentDestination || "No disponible"}
                   </p>
                   {packageData.tripDate && (
                     <p className="text-sm flex items-center">

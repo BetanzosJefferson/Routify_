@@ -133,24 +133,6 @@ export function formatDate(date: Date | string): string {
   // Para depuración: imprimir la fecha antes de procesarla
   console.log(`[formatDate] Fecha original: ${date instanceof Date ? date.toISOString() : date}`);
   
-  // Si es una cadena ISO, extraer manualmente los componentes para evitar problemas de zona horaria
-  if (typeof date === 'string' && date.includes('T')) {
-    const parts = date.split('T')[0].split('-');
-    if (parts.length === 3) {
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10);
-      const day = parseInt(parts[2], 10);
-      
-      console.log(`[formatDate] Componentes manuales: año=${year}, mes=${month}, día=${day}`);
-      
-      // Formatear directamente usando los componentes extraídos
-      const result = `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
-      console.log(`[formatDate] Resultado manual: ${result}`);
-      return result;
-    }
-  }
-  
-  // Fallback al método anterior si no es un formato ISO o no se pueden extraer componentes
   const normalizedDate = normalizeToStartOfDay(date);
   
   // Para depuración: imprimir la fecha normalizada
@@ -170,26 +152,6 @@ export function formatDateLong(date: Date | string): string {
   // Para depuración: imprimir la fecha antes de procesarla
   console.log(`[formatDateLong] Fecha original: ${date instanceof Date ? date.toISOString() : date}`);
   
-  // Si es una cadena ISO, extraer manualmente los componentes para evitar problemas de zona horaria
-  if (typeof date === 'string' && date.includes('T')) {
-    const parts = date.split('T')[0].split('-');
-    if (parts.length === 3) {
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1; // Para usar en Date (0-11)
-      const day = parseInt(parts[2], 10);
-      
-      console.log(`[formatDateLong] Componentes manuales: año=${year}, mes=${month+1}, día=${day}`);
-      
-      // Crear fecha usando los componentes
-      const dateObj = new Date(year, month, day);
-      // Formatear usando format pero con la fecha manipulada manualmente
-      const result = format(dateObj, "d 'de' MMMM 'de' yyyy", { locale: es });
-      console.log(`[formatDateLong] Resultado manual: ${result}`);
-      return result;
-    }
-  }
-  
-  // Fallback al método anterior
   const normalizedDate = normalizeToStartOfDay(date);
   
   // Para depuración: imprimir la fecha normalizada

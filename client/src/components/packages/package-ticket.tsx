@@ -196,52 +196,14 @@ export async function generatePackageTicketPDF(packageData: PackageData, company
     // Fecha del viaje
     if (packageData.tripDate) {
       y += 4;
-      
-      // Si es una cadena ISO, extraer los componentes directamente para evitar problemas de zona horaria
-      let dateStr = "";
-      if (typeof packageData.tripDate === 'string' && packageData.tripDate.includes('T')) {
-        const datePart = packageData.tripDate.split('T')[0];
-        if (datePart) {
-          const parts = datePart.split('-');
-          if (parts.length === 3) {
-            const year = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10);
-            const day = parseInt(parts[2], 10);
-            dateStr = `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
-          }
-        }
-      }
-      
-      // Si no se pudo extraer del string ISO, usar el método anterior
-      if (!dateStr) {
-        dateStr = formatDate(new Date(packageData.tripDate));
-      }
-      
-      doc.text(`Fecha: ${dateStr}`, 5, y);
+      doc.text(`Fecha: ${formatDate(new Date(packageData.tripDate))}`, 5, y);
     }
     
     // Hora de envío
     if (packageData.createdAt) {
       y += 4;
-      
-      // Extraer directamente la hora del string ISO para evitar problemas de zona horaria
-      let timeStr = "";
-      if (typeof packageData.createdAt === 'string' && packageData.createdAt.includes('T')) {
-        const timePart = packageData.createdAt.split('T')[1];
-        if (timePart) {
-          const hourMin = timePart.split(':');
-          if (hourMin.length >= 2) {
-            timeStr = `${hourMin[0]}:${hourMin[1]}`; // Ya está en formato HH:MM
-          }
-        }
-      }
-      
-      // Si no se pudo extraer del string ISO, usar el método anterior
-      if (!timeStr) {
-        const date = new Date(packageData.createdAt);
-        timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-      }
-      
+      const date = new Date(packageData.createdAt);
+      const timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
       doc.text(`Hora de envío: ${timeStr}`, 5, y);
     }
   }
@@ -339,19 +301,6 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
   // Obtener la hora de la fecha de creación
   const getCreationTime = () => {
     if (!packageData.createdAt) return "";
-    
-    // Si es cadena ISO, extraer directamente la hora del string para evitar problemas de zona horaria
-    if (typeof packageData.createdAt === 'string' && packageData.createdAt.includes('T')) {
-      const timePart = packageData.createdAt.split('T')[1];
-      if (timePart) {
-        const hourMin = timePart.split(':');
-        if (hourMin.length >= 2) {
-          return `${hourMin[0]}:${hourMin[1]}`; // Ya está en formato HH:MM
-        }
-      }
-    }
-    
-    // Fallback a la implementación anterior
     const date = new Date(packageData.createdAt);
     return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
