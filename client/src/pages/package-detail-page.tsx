@@ -283,13 +283,13 @@ export default function PackageDetailPage() {
   };
 
   return (
-    <div className="container py-8">
-      <div className="max-w-3xl mx-auto">
-        <Card>
-          <CardHeader className="bg-primary/5">
+    <div className="container py-6">
+      <div className="max-w-lg mx-auto">
+        <Card className="shadow-md">
+          <CardHeader className="bg-primary/5 pb-3">
             <div className="flex items-start justify-between">
               <div>
-                <CardTitle className="text-2xl">Paquete #{packageData.id}</CardTitle>
+                <CardTitle className="text-2xl font-bold">Paquete #{packageData.id}</CardTitle>
                 <CardDescription>
                   Creado el {formatDate(new Date(packageData.createdAt))}
                 </CardDescription>
@@ -305,11 +305,12 @@ export default function PackageDetailPage() {
               </Badge>
             </div>
           </CardHeader>
-          <CardContent className="pt-6">
-            <div className="space-y-6">
+
+          <CardContent className="pt-5 px-6">
+            <div className="space-y-5">
               {/* Sección de remitente */}
-              <div>
-                <h3 className="text-lg font-semibold mb-2 flex items-center">
+              <div className="bg-slate-50 p-3 rounded-md">
+                <h3 className="text-md font-semibold mb-2 flex items-center">
                   <User className="mr-2 h-5 w-5 text-primary" />
                   Remitente
                 </h3>
@@ -324,11 +325,9 @@ export default function PackageDetailPage() {
                 </div>
               </div>
               
-              <Separator />
-              
               {/* Sección de destinatario */}
-              <div>
-                <h3 className="text-lg font-semibold mb-2 flex items-center">
+              <div className="bg-slate-50 p-3 rounded-md">
+                <h3 className="text-md font-semibold mb-2 flex items-center">
                   <User className="mr-2 h-5 w-5 text-primary" />
                   Destinatario
                 </h3>
@@ -343,11 +342,9 @@ export default function PackageDetailPage() {
                 </div>
               </div>
               
-              <Separator />
-              
               {/* Detalles del viaje */}
-              <div>
-                <h3 className="text-lg font-semibold mb-2 flex items-center">
+              <div className="bg-slate-50 p-3 rounded-md">
+                <h3 className="text-md font-semibold mb-2 flex items-center">
                   <Truck className="mr-2 h-5 w-5 text-primary" />
                   Detalles del Viaje
                 </h3>
@@ -369,11 +366,9 @@ export default function PackageDetailPage() {
                 </div>
               </div>
               
-              <Separator />
-              
               {/* Detalles del paquete */}
-              <div>
-                <h3 className="text-lg font-semibold mb-2 flex items-center">
+              <div className="bg-slate-50 p-3 rounded-md">
+                <h3 className="text-md font-semibold mb-2 flex items-center">
                   <Package className="mr-2 h-5 w-5 text-primary" />
                   Descripción del Paquete
                 </h3>
@@ -429,7 +424,8 @@ export default function PackageDetailPage() {
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex flex-wrap gap-3 justify-center">
+          
+          <CardFooter className="flex flex-wrap gap-3 justify-center pt-2 pb-4">
             {/* Botones condicionales para marcado de estado - solo visibles si coincide la compañía */}
             {isSameCompany && (
               <>
