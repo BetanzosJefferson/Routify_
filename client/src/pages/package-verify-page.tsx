@@ -31,20 +31,45 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 // Página de verificación de paquetes (accesible por QR)
 export default function PackageVerifyPage() {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ id: string }>();
   const [location, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Extraemos el ID del paquete de la URL
-  const packageId = parseInt(id || "0");
+  // Intentamos varias estrategias para obtener el ID
+  const extractIdFromUrl = () => {
+    // Estrategia 1: Usar useParams
+    if (params.id && !isNaN(parseInt(params.id))) {
+      return parseInt(params.id);
+    }
+    
+    // Estrategia 2: Extraer de la ruta directamente
+    const pathParts = location.split('/');
+    const lastPart = pathParts[pathParts.length - 1];
+    if (lastPart && !isNaN(parseInt(lastPart))) {
+      return parseInt(lastPart);
+    }
+    
+    // Estrategia 3: Buscar en los parámetros de consulta
+    const urlSearchParams = new URLSearchParams(window.location.search);
+    const idParam = urlSearchParams.get('id');
+    if (idParam && !isNaN(parseInt(idParam))) {
+      return parseInt(idParam);
+    }
+    
+    // Si no encontramos un ID válido, devolvemos 0
+    return 0;
+  };
   
-  console.log("Verificando paquete ID:", packageId, "desde URL:", location);
+  const packageId = extractIdFromUrl();
+  
+  console.log("Verificando paquete ID:", packageId, "desde URL:", location, "params:", params);
 
   // Verificar que el ID sea válido
   useEffect(() => {
-    if (!id || isNaN(packageId) || packageId <= 0) {
+    if (packageId <= 0) {
       toast({
         title: "Error",
         description: "ID de paquete inválido",
@@ -52,19 +77,33 @@ export default function PackageVerifyPage() {
       });
       navigate("/");
     }
-  }, [id, packageId, navigate, toast]);
+  }, [packageId, navigate, toast]);
 
   // Obtener la información del paquete
   const packageQuery = useQuery({
-    queryKey: ["/api/packages/verify", packageId],
+    queryKey: [`/api/packages/${packageId}/verify`],
     queryFn: async () => {
       try {
+        console.log(`Solicitando información del paquete ${packageId} a la API...`);
         const res = await apiRequest("GET", `/api/packages/${packageId}/verify`);
+        
         if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.message || "Error al cargar el paquete");
+          console.error(`Error HTTP ${res.status} al verificar paquete:`, res.statusText);
+          let errorMessage = "Error al cargar el paquete";
+          
+          try {
+            const errorData = await res.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            // Si no hay un cuerpo JSON, usamos el mensaje por defecto
+          }
+          
+          throw new Error(errorMessage);
         }
-        return res.json();
+        
+        const data = await res.json();
+        console.log("Datos recibidos del paquete:", data);
+        return data;
       } catch (error) {
         console.error("Error al cargar información del paquete:", error);
         setErrorMessage(error instanceof Error ? error.message : "Error desconocido");
