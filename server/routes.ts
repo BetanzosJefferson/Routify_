@@ -4499,6 +4499,47 @@ function setupPackageRoutes(app: Express) {
       const { user } = req as any;
       console.log(`[GET /cash-register] Usuario ${user.firstName} ${user.lastName} solicitando datos de caja`);
       
+      // Si el usuario es taquillero (puede ver todas las empresas)
+      if (user.role === UserRole.TICKET_OFFICE) {
+        console.log(`[GET /cash-register] Usuario taquillero: mostrando todas las reservaciones pagadas agrupadas por empresa`);
+        
+        // Obtener todas las reservaciones marcadas como pagadas por este taquillero
+        const taquilleroReservations = await storage.getPaidReservationsByUser(user.id);
+        
+        // Agregar información adicional para identificar a qué empresa pertenece cada reserva
+        const enrichedReservations = await Promise.all(
+          taquilleroReservations.map(async (reservation) => {
+            // Obtener la compañía del viaje
+            let companyId = null;
+            let companyName = "Desconocida";
+            
+            if (reservation.trip && reservation.trip.companyId) {
+              companyId = reservation.trip.companyId;
+              
+              // Intentar obtener el nombre de la compañía si está disponible
+              try {
+                const company = await storage.getCompanyById(companyId);
+                if (company) {
+                  companyName = company.name || companyId;
+                }
+              } catch (err) {
+                console.error(`Error al obtener información de la compañía ${companyId}:`, err);
+              }
+            }
+            
+            return {
+              ...reservation,
+              companyInfo: {
+                id: companyId,
+                name: companyName
+              }
+            };
+          })
+        );
+        
+        return res.json(enrichedReservations);
+      }
+      
       // Si el usuario es dueño o administrador, mostrar todas las reservaciones de la compañía
       if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
         // Obtener ID de la compañía
