@@ -23,6 +23,7 @@ import CouponsPage from "@/pages/coupons-page";
 import PackagesPage from "@/pages/packages-page";
 import PackageDetailPage from "@/pages/package-detail-page";
 import EditTripPage from "@/pages/edit-trip-page";
+import CashRegisterPageRoute from "@/pages/cash-register-page";
 import { UsersPage } from "@/components/users/users-page";
 
 function Router() {
