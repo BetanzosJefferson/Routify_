@@ -301,6 +301,19 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
   // Obtener la hora de la fecha de creación
   const getCreationTime = () => {
     if (!packageData.createdAt) return "";
+    
+    // Si es cadena ISO, extraer directamente la hora del string para evitar problemas de zona horaria
+    if (typeof packageData.createdAt === 'string' && packageData.createdAt.includes('T')) {
+      const timePart = packageData.createdAt.split('T')[1];
+      if (timePart) {
+        const hourMin = timePart.split(':');
+        if (hourMin.length >= 2) {
+          return `${hourMin[0]}:${hourMin[1]}`; // Ya está en formato HH:MM
+        }
+      }
+    }
+    
+    // Fallback a la implementación anterior
     const date = new Date(packageData.createdAt);
     return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
