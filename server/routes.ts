@@ -2571,6 +2571,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               tripOrigin: route.origin,
               tripDestination: route.destination,
               tripDate: trip.departureDate,
+              segmentOrigin: trip.segmentOrigin || route.origin,
+              segmentDestination: trip.segmentDestination || route.destination,
               companyName: trip.companyName || route.companyName
             };
           }
