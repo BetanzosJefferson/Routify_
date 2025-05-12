@@ -2587,6 +2587,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Error al obtener el paquete" });
     }
   });
+  
+  // Endpoint público para marcar un paquete como pagado
+  app.post(apiRouter("/public/packages/:id/mark-paid"), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      console.log(`[POST /public/packages/${id}/mark-paid] Marcando paquete como pagado`);
+      
+      // Verificar que el paquete existe
+      const packageData = await storage.getPackage(id);
+      if (!packageData) {
+        console.log(`[POST /public/packages/${id}/mark-paid] Paquete no encontrado`);
+        return res.status(404).json({ error: "Paquete no encontrado" });
+      }
+      
+      // Actualizar el estado de pago
+      const updatedPackage = await storage.updatePackage(id, {
+        ...packageData,
+        isPaid: true,
+        paymentMethod: packageData.paymentMethod || 'efectivo',
+        updatedAt: new Date()
+      });
+      
+      console.log(`[POST /public/packages/${id}/mark-paid] Paquete actualizado con éxito`);
+      res.json(updatedPackage);
+    } catch (error) {
+      console.error(`[POST /public/packages/${id}/mark-paid] Error: ${error}`);
+      res.status(500).json({ error: "Error al actualizar el estado de pago del paquete" });
+    }
+  });
+  
+  // Endpoint público para marcar un paquete como entregado
+  app.post(apiRouter("/public/packages/:id/mark-delivered"), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      console.log(`[POST /public/packages/${id}/mark-delivered] Marcando paquete como entregado`);
+      
+      // Verificar que el paquete existe
+      const packageData = await storage.getPackage(id);
+      if (!packageData) {
+        console.log(`[POST /public/packages/${id}/mark-delivered] Paquete no encontrado`);
+        return res.status(404).json({ error: "Paquete no encontrado" });
+      }
+      
+      // Actualizar el estado de entrega
+      const updatedPackage = await storage.updatePackage(id, {
+        ...packageData,
+        deliveryStatus: 'entregado',
+        checkedAt: new Date(),
+        updatedAt: new Date()
+      });
+      
+      console.log(`[POST /public/packages/${id}/mark-delivered] Paquete actualizado con éxito`);
+      res.json(updatedPackage);
+    } catch (error) {
+      console.error(`[POST /public/packages/${id}/mark-delivered] Error: ${error}`);
+      res.status(500).json({ error: "Error al actualizar el estado de entrega del paquete" });
+    }
+  });
 
   const httpServer = createServer(app);
   // Endpoint para obtener reservaciones creadas por comisionistas
