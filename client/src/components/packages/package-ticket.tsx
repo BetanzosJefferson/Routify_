@@ -193,13 +193,15 @@ export async function generatePackageTicketPDF(packageData: PackageData, company
       y += 4;
     }
     
-    // Fecha del viaje
-    if (packageData.tripDate) {
+    // Fecha del viaje (siempre mostrar la fecha de salida del viaje)
+    if (packageData.shippingDate || packageData.tripDate) {
       y += 4;
-      doc.text(`Fecha: ${formatDate(new Date(packageData.tripDate))}`, 5, y);
+      const dateToUse = packageData.shippingDate ? new Date(packageData.shippingDate) : 
+                        (packageData.tripDate ? new Date(packageData.tripDate) : new Date());
+      doc.text(`Fecha de envío: ${formatDate(dateToUse)}`, 5, y);
     }
     
-    // Hora de envío
+    // Hora de envío (usando la hora de la creación del paquete)
     if (packageData.createdAt) {
       y += 4;
       const date = new Date(packageData.createdAt);
