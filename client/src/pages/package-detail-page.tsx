@@ -4,6 +4,7 @@ import { useRoute } from "wouter";
 import { PackageTicket, generatePackageTicketPDF } from "@/components/packages/package-ticket";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 // UI Components
 import {
@@ -58,40 +59,19 @@ export default function PackageDetailPage() {
     enabled: !!packageId,
   });
   
-  // Consultar datos del usuario autenticado
-  const userQuery = useQuery({
-    queryKey: ['/api/auth/user'],
-    queryFn: async () => {
-      try {
-        const response = await fetch('/api/auth/user');
-        if (response.status === 401) {
-          // Usuario no autenticado, retornamos null
-          return null;
-        }
-        if (!response.ok) {
-          throw new Error("Error al obtener datos del usuario");
-        }
-        return await response.json();
-      } catch (error) {
-        console.error("Error al consultar datos del usuario:", error);
-        return null;
-      }
-    },
-    refetchOnWindowFocus: false,
-    retry: false,
-  });
+  // Utilizar el hook de autenticación
+  const { user } = useAuth();
   
   // Determinar si el usuario puede editar el paquete
   const canEditPackage = () => {
-    if (userQuery.isLoading || !userQuery.data || packageQuery.isLoading || !packageQuery.data) {
+    if (!user || !packageQuery.data) {
       return false;
     }
     
-    const user = userQuery.data;
     const packageData = packageQuery.data;
     
-    console.log("Usuario:", user);
-    console.log("Paquete:", packageData);
+    console.log("Usuario autenticado:", user);
+    console.log("Datos del paquete:", packageData);
     
     // Verificar que el usuario esté autenticado y que pertenezca a la misma compañía que el paquete
     return (
