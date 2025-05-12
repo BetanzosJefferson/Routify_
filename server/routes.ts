@@ -2575,7 +2575,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               segmentDestination: trip.segmentDestination || route.destination,
               companyName: trip.companyName || route.companyName,
               // Para asegurar que se usa la fecha del viaje como fecha de envío
-              shippingDate: trip.departureDate
+              shippingDate: trip.departureDate,
+              // Incluir la hora de salida del viaje
+              departureTime: trip.departureTime
             };
           }
         }

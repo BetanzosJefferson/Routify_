@@ -370,6 +370,12 @@ export default function PackageDetailPage() {
                       {formatDate(new Date(packageData.tripDate))}
                     </p>
                   )}
+                  {packageData.departureTime && (
+                    <p className="text-sm flex items-center">
+                      <Clock className="mr-2 h-4 w-4" /> 
+                      Hora de salida: {packageData.departureTime}
+                    </p>
+                  )}
                 </div>
               </div>
               

@@ -30,6 +30,7 @@ interface PackageData {
   segmentDestination?: string;
   tripDate?: string | Date;
   shippingDate?: string | Date;
+  departureTime?: string;
   companyId?: string;
 }
 
@@ -202,8 +203,12 @@ export async function generatePackageTicketPDF(packageData: PackageData, company
       doc.text(`Fecha de envío: ${formatDate(dateToUse)}`, 5, y);
     }
     
-    // Hora de envío (usando la hora de la creación del paquete)
-    if (packageData.createdAt) {
+    // Hora de envío (usando la hora de salida del viaje)
+    if (packageData.departureTime) {
+      y += 4;
+      doc.text(`Hora de salida: ${packageData.departureTime}`, 5, y);
+    } else if (packageData.createdAt) {
+      // Si no hay hora de salida disponible, usar la hora de creación como fallback
       y += 4;
       const date = new Date(packageData.createdAt);
       const timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
