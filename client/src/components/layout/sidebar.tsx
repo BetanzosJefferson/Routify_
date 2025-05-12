@@ -169,6 +169,15 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   Bitácora
                 </NavItem>
               )}
+              {canAccess("cash-register") && (
+                <NavItem 
+                  icon={<DollarSignIcon className="h-5 w-5" />} 
+                  active={(location === '/cash-register') || ((location === '/' || location === '/dashboard') && activeTab === "cash-register")}
+                  onClick={() => navigate("/cash-register")}
+                >
+                  Caja
+                </NavItem>
+              )}
               {canAccess("boarding-list") && (
                 <NavItem 
                   icon={<UsersIcon className="h-5 w-5" />} 

@@ -38,6 +38,7 @@ function Router() {
       <ProtectedRoute path="/notifications" component={NotificationsPage} />
       <ProtectedRoute path="/coupons" component={CouponsPage} />
       <ProtectedRoute path="/packages" component={PackagesPage} />
+      <ProtectedRoute path="/cash-register" component={CashRegisterPageRoute} />
       <ProtectedRoute path="/edit-trip/:id" component={EditTripPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register/:token" component={RegisterPage} />
