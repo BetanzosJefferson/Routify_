@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { PackageTicket, generatePackageTicketPDF } from "@/components/packages/package-ticket";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 // UI Components
 import {
@@ -41,7 +42,9 @@ import QRCode from "qrcode";
 export default function PackageDetailPage() {
   const [match, params] = useRoute("/package/:id");
   const { toast } = useToast();
+  const { user } = useAuth();
   const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [isSameCompany, setIsSameCompany] = useState<boolean>(false);
   const packageId = params?.id ? parseInt(params.id) : 0;
 
   // Consultar los detalles del paquete desde la API
@@ -71,6 +74,33 @@ export default function PackageDetailPage() {
         });
     }
   }, [packageQuery.data, packageId]);
+  
+  // Efecto para comprobar si el usuario pertenece a la misma compañía que el paquete
+  useEffect(() => {
+    if (user && packageQuery.data) {
+      // Si el usuario tiene rol superAdmin, siempre tiene acceso
+      if (user.role === 'superAdmin') {
+        setIsSameCompany(true);
+        console.log("¿Coincide la compañía?", true, "(superAdmin)");
+        return;
+      }
+      
+      // Para otros roles, comprobar si el companyId coincide
+      // Convertimos el company a un formato similar al companyId (slug)
+      const userCompanySlug = user.company ? user.company.toLowerCase().replace(/\s+/g, '-') : null;
+      
+      // Comparación con el companyId del paquete
+      const matchesCompany = userCompanySlug ? 
+        (packageQuery.data.companyId === userCompanySlug || packageQuery.data.companyId === `${userCompanySlug}-456`) : false;
+      
+      console.log("Datos del paquete:", JSON.stringify(packageQuery.data, null, 2));
+      console.log("¿Coincide la compañía?", matchesCompany);
+      
+      setIsSameCompany(matchesCompany);
+    } else {
+      setIsSameCompany(false);
+    }
+  }, [user, packageQuery.data]);
 
   // Manejar la impresión del ticket
   const handlePrintTicket = () => {
@@ -400,27 +430,31 @@ export default function PackageDetailPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-wrap gap-3 justify-center">
-            {/* Botones condicionales para marcado de estado */}
-            {!packageData.isPaid && (
-              <Button 
-                variant="default" 
-                className="bg-green-600 hover:bg-green-700 w-full md:w-auto" 
-                onClick={handleMarkAsPaid}
-              >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Marcar como pagado
-              </Button>
-            )}
-            
-            {packageData.deliveryStatus !== 'entregado' && (
-              <Button 
-                variant="default" 
-                className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto" 
-                onClick={handleMarkAsDelivered}
-              >
-                <Truck className="mr-2 h-4 w-4" />
-                Marcar como entregado
-              </Button>
+            {/* Botones condicionales para marcado de estado - solo visibles si coincide la compañía */}
+            {isSameCompany && (
+              <>
+                {!packageData.isPaid && (
+                  <Button 
+                    variant="default" 
+                    className="bg-green-600 hover:bg-green-700 w-full md:w-auto" 
+                    onClick={handleMarkAsPaid}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Marcar como pagado
+                  </Button>
+                )}
+                
+                {packageData.deliveryStatus !== 'entregado' && (
+                  <Button 
+                    variant="default" 
+                    className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto" 
+                    onClick={handleMarkAsDelivered}
+                  >
+                    <Truck className="mr-2 h-4 w-4" />
+                    Marcar como entregado
+                  </Button>
+                )}
+              </>
             )}
           </CardFooter>
         </Card>
