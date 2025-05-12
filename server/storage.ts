@@ -57,6 +57,7 @@ export interface IStorage {
   updateReservation(id: number, reservation: Partial<Reservation>): Promise<Reservation | undefined>;
   deleteReservation(id: number): Promise<boolean>;
   getPaidReservationsByUser(userId: number): Promise<ReservationWithDetails[]>;
+  getPaidReservationsByCompany(companyId: string): Promise<ReservationWithDetails[]>;
   
   // Passenger methods
   getPassengers(reservationId: number): Promise<Passenger[]>;
