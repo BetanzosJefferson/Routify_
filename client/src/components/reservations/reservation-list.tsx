@@ -556,16 +556,29 @@ export function ReservationList() {
                         >
                           Editar
                         </Button>
-                        <Button 
-                          variant="link" 
-                          className="text-red-600 hover:text-red-800 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDeleteConfirm(reservation.id);
-                          }}
-                        >
-                          Cancelar
-                        </Button>
+                        {reservation.status === 'canceled' ? (
+                          <Button 
+                            variant="link" 
+                            className="text-red-800 hover:text-red-900 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDeleteConfirm(reservation.id, 'delete');
+                            }}
+                          >
+                            Eliminar
+                          </Button>
+                        ) : (
+                          <Button 
+                            variant="link" 
+                            className="text-amber-600 hover:text-amber-800 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDeleteConfirm(reservation.id, 'cancel');
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
