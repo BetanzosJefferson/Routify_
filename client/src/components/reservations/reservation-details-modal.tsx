@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Loader2, User, Mail, Phone, MapPin, Calendar, Clock, CheckCircle, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import TicketCheckedModal from "@/components/reservations/ticket-checked-modal";
 
@@ -149,14 +149,14 @@ export default function ReservationDetailsModal({
     setIsCanceling(true);
     try {
       const response = await apiRequest(
-        "PUT", 
-        `/api/reservations/${reservationId}`, 
-        { status: "canceled" }
+        "POST", 
+        `/api/reservations/${reservationId}/cancel`, 
+        {}
       );
       
       if (!response.ok) {
         toast({
-          title: "Autenticación requerida",
+          title: "Error al cancelar reservación",
           description: "Para cancelar una reservación necesita iniciar sesión con una cuenta autorizada.",
           variant: "destructive",
         });
@@ -165,12 +165,12 @@ export default function ReservationDetailsModal({
       
       toast({
         title: "Reservación cancelada",
-        description: "La reservación ha sido cancelada correctamente.",
+        description: "La reservación ha sido cancelada correctamente y los asientos han sido liberados.",
         variant: "default",
       });
       
       // Recargar los datos
-      refetch();
+      await refetch();
     } catch (error) {
       toast({
         title: "Error",
@@ -179,6 +179,10 @@ export default function ReservationDetailsModal({
       });
     } finally {
       setIsCanceling(false);
+      
+      // Invalidar todas las consultas de reservaciones para actualizar la lista
+      queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
     }
   };
 
