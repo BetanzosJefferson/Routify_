@@ -270,172 +270,128 @@ export default function PackageDetailPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-6">
-            <Tabs defaultValue="details">
-              <TabsList className="mb-4">
-                <TabsTrigger value="details">Detalles</TabsTrigger>
-                <TabsTrigger value="tracking">Seguimiento</TabsTrigger>
-              </TabsList>
-              <TabsContent value="details">
-                <div className="space-y-6">
-                  {/* Sección de remitente */}
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2 flex items-center">
-                      <User className="mr-2 h-5 w-5 text-primary" />
-                      Remitente
-                    </h3>
-                    <div className="pl-7 space-y-1">
-                      <p className="text-base">
-                        {packageData.senderName} {packageData.senderLastName}
-                      </p>
-                      <p className="text-sm text-muted-foreground flex items-center">
-                        <Phone className="mr-2 h-4 w-4" /> 
-                        {packageData.senderPhone}
-                      </p>
-                    </div>
+            <div className="space-y-6">
+              {/* Sección de remitente */}
+              <div>
+                <h3 className="text-lg font-semibold mb-2 flex items-center">
+                  <User className="mr-2 h-5 w-5 text-primary" />
+                  Remitente
+                </h3>
+                <div className="pl-7 space-y-1">
+                  <p className="text-base">
+                    {packageData.senderName} {packageData.senderLastName}
+                  </p>
+                  <p className="text-sm text-muted-foreground flex items-center">
+                    <Phone className="mr-2 h-4 w-4" /> 
+                    {packageData.senderPhone}
+                  </p>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              {/* Sección de destinatario */}
+              <div>
+                <h3 className="text-lg font-semibold mb-2 flex items-center">
+                  <User className="mr-2 h-5 w-5 text-primary" />
+                  Destinatario
+                </h3>
+                <div className="pl-7 space-y-1">
+                  <p className="text-base">
+                    {packageData.recipientName} {packageData.recipientLastName}
+                  </p>
+                  <p className="text-sm text-muted-foreground flex items-center">
+                    <Phone className="mr-2 h-4 w-4" /> 
+                    {packageData.recipientPhone}
+                  </p>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              {/* Detalles del viaje */}
+              <div>
+                <h3 className="text-lg font-semibold mb-2 flex items-center">
+                  <Truck className="mr-2 h-5 w-5 text-primary" />
+                  Detalles del Viaje
+                </h3>
+                <div className="pl-7 space-y-1">
+                  <p className="text-sm flex items-center">
+                    <span className="font-medium mr-2">Origen:</span> 
+                    {packageData.segmentOrigin || packageData.tripOrigin || "No disponible"}
+                  </p>
+                  <p className="text-sm flex items-center">
+                    <span className="font-medium mr-2">Destino:</span> 
+                    {packageData.segmentDestination || packageData.tripDestination || "No disponible"}
+                  </p>
+                  {packageData.tripDate && (
+                    <p className="text-sm flex items-center">
+                      <Calendar className="mr-2 h-4 w-4" /> 
+                      {formatDate(new Date(packageData.tripDate))}
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              <Separator />
+              
+              {/* Detalles del paquete */}
+              <div>
+                <h3 className="text-lg font-semibold mb-2 flex items-center">
+                  <Package className="mr-2 h-5 w-5 text-primary" />
+                  Descripción del Paquete
+                </h3>
+                <div className="pl-7 space-y-1">
+                  <p className="text-base">
+                    {packageData.packageDescription}
+                  </p>
+                  <p className="text-sm mt-2 flex items-center">
+                    <DollarSign className="mr-2 h-4 w-4" /> 
+                    <span className="font-medium">Precio:</span> 
+                    <span className="ml-1">{formatCurrency(packageData.price)}</span>
+                  </p>
+                  
+                  {packageData.usesSeats && (
+                    <p className="text-sm flex items-center">
+                      <ChevronsRight className="mr-2 h-4 w-4" /> 
+                      <span>
+                        Ocupa {packageData.seatsQuantity} {packageData.seatsQuantity === 1 ? 'asiento' : 'asientos'}
+                      </span>
+                    </p>
+                  )}
+                  
+                  <div className="flex items-center mt-2">
+                    <span className="font-medium mr-2">Estado de pago:</span>
+                    {packageData.isPaid ? (
+                      <Badge className="bg-green-500 hover:bg-green-600">
+                        <CheckCircle className="mr-1 h-3 w-3" /> 
+                        Pagado {packageData.paymentMethod ? `(${packageData.paymentMethod})` : ''}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline">
+                        <Clock className="mr-1 h-3 w-3" /> 
+                        Pendiente de pago
+                      </Badge>
+                    )}
                   </div>
                   
-                  <Separator />
-                  
-                  {/* Sección de destinatario */}
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2 flex items-center">
-                      <User className="mr-2 h-5 w-5 text-primary" />
-                      Destinatario
-                    </h3>
-                    <div className="pl-7 space-y-1">
-                      <p className="text-base">
-                        {packageData.recipientName} {packageData.recipientLastName}
-                      </p>
-                      <p className="text-sm text-muted-foreground flex items-center">
-                        <Phone className="mr-2 h-4 w-4" /> 
-                        {packageData.recipientPhone}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <Separator />
-                  
-                  {/* Detalles del viaje */}
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2 flex items-center">
-                      <Truck className="mr-2 h-5 w-5 text-primary" />
-                      Detalles del Viaje
-                    </h3>
-                    <div className="pl-7 space-y-1">
-                      <p className="text-sm flex items-center">
-                        <span className="font-medium mr-2">Origen:</span> 
-                        {packageData.segmentOrigin || packageData.tripOrigin || "No disponible"}
-                      </p>
-                      <p className="text-sm flex items-center">
-                        <span className="font-medium mr-2">Destino:</span> 
-                        {packageData.segmentDestination || packageData.tripDestination || "No disponible"}
-                      </p>
-                      {packageData.tripDate && (
-                        <p className="text-sm flex items-center">
-                          <Calendar className="mr-2 h-4 w-4" /> 
-                          {formatDate(new Date(packageData.tripDate))}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <Separator />
-                  
-                  {/* Detalles del paquete */}
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2 flex items-center">
-                      <Package className="mr-2 h-5 w-5 text-primary" />
-                      Descripción del Paquete
-                    </h3>
-                    <div className="pl-7 space-y-1">
-                      <p className="text-base">
-                        {packageData.packageDescription}
-                      </p>
-                      <p className="text-sm mt-2 flex items-center">
-                        <DollarSign className="mr-2 h-4 w-4" /> 
-                        <span className="font-medium">Precio:</span> 
-                        <span className="ml-1">{formatCurrency(packageData.price)}</span>
-                      </p>
-                      
-                      {packageData.usesSeats && (
-                        <p className="text-sm flex items-center">
-                          <ChevronsRight className="mr-2 h-4 w-4" /> 
-                          <span>
-                            Ocupa {packageData.seatsQuantity} {packageData.seatsQuantity === 1 ? 'asiento' : 'asientos'}
-                          </span>
-                        </p>
-                      )}
-                      
-                      <div className="flex items-center mt-2">
-                        <span className="font-medium mr-2">Estado de pago:</span>
-                        {packageData.isPaid ? (
-                          <Badge className="bg-green-500 hover:bg-green-600">
-                            <CheckCircle className="mr-1 h-3 w-3" /> 
-                            Pagado {packageData.paymentMethod ? `(${packageData.paymentMethod})` : ''}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">
-                            <Clock className="mr-1 h-3 w-3" /> 
-                            Pendiente de pago
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
+                  <div className="flex items-center mt-2">
+                    <span className="font-medium mr-2">Estado de entrega:</span>
+                    {packageData.deliveryStatus === 'entregado' ? (
+                      <Badge className="bg-green-500 hover:bg-green-600">
+                        <Truck className="mr-1 h-3 w-3" /> 
+                        Entregado
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline">
+                        <Clock className="mr-1 h-3 w-3" /> 
+                        Pendiente de entrega
+                      </Badge>
+                    )}
                   </div>
                 </div>
-              </TabsContent>
-              <TabsContent value="tracking">
-                <div className="space-y-4">
-                  <div className="flex items-center">
-                    <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                      <Package className="h-5 w-5 text-white" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="font-medium">Paquete registrado</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDate(new Date(packageData.createdAt))}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="h-12 border-l-2 border-dashed border-gray-300 ml-5"></div>
-                  
-                  <div className="flex items-center">
-                    <div className={`w-10 h-10 rounded-full ${packageData.isPaid ? 'bg-green-500' : 'bg-gray-300'} flex items-center justify-center`}>
-                      <DollarSign className="h-5 w-5 text-white" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="font-medium">
-                        {packageData.isPaid ? 'Pago recibido' : 'Pago pendiente'}
-                      </p>
-                      {packageData.isPaid && (
-                        <p className="text-sm text-muted-foreground">
-                          Pagado mediante {packageData.paymentMethod || 'efectivo'}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="h-12 border-l-2 border-dashed border-gray-300 ml-5"></div>
-                  
-                  <div className="flex items-center">
-                    <div className={`w-10 h-10 rounded-full ${packageData.deliveryStatus === 'entregado' ? 'bg-green-500' : 'bg-gray-300'} flex items-center justify-center`}>
-                      <Truck className="h-5 w-5 text-white" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="font-medium">
-                        {packageData.deliveryStatus === 'entregado' ? 'Paquete entregado' : 'Entrega pendiente'}
-                      </p>
-                      {packageData.deliveryStatus === 'entregado' && packageData.checkedAt && (
-                        <p className="text-sm text-muted-foreground">
-                          Entregado el {formatDate(new Date(packageData.checkedAt))}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
+              </div>
+            </div>
           </CardContent>
           <CardFooter className="flex flex-wrap gap-3 justify-center">
             <Button variant="outline" onClick={handleSharePackage}>
