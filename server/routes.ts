@@ -2006,6 +2006,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const passengerCount = reservationData.passengers.length;
       
+      console.log(`[POST /reservations] Procesando reservación para ${passengerCount} pasajeros en viaje ${trip.id}`);
+      console.log(`[POST /reservations] Asientos disponibles antes de la reservación: ${trip.availableSeats}`);
+      
       if (trip.availableSeats < passengerCount) {
         return res.status(400).json({ 
           error: "Not enough available seats",
@@ -2065,11 +2068,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Actualizar asientos disponibles en el viaje
+      const newAvailableSeats = trip.availableSeats - passengerCount;
+      console.log(`[POST /reservations] Actualizando asientos disponibles en viaje ${trip.id}: ${trip.availableSeats} -> ${newAvailableSeats}`);
+      
       await storage.updateTrip(trip.id, {
-        availableSeats: trip.availableSeats - passengerCount
+        availableSeats: newAvailableSeats
       });
       
       // Actualizar disponibilidad en viajes relacionados
+      console.log(`[POST /reservations] Actualizando viajes relacionados con cambio de -${passengerCount} asientos`);
       await storage.updateRelatedTripsAvailability(trip.id, -passengerCount);
       
       res.status(201).json({
