@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { formatDate, formatPrice } from "@/lib/utils";
+import { ReservationWithDetails } from "@shared/schema";
 import { 
   DollarSign, 
   Search, 
@@ -72,14 +73,14 @@ export function CashRegisterPage() {
   }, [isLoading]);
   
   // Filtrar las reservaciones
-  const filteredReservations = paidReservations?.filter(reservation => {
+  const filteredReservations = paidReservations?.filter((reservation: ReservationWithDetails) => {
     // Aplicar filtro de búsqueda
     let matchesSearch = true;
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       const routeName = reservation.trip?.route?.name?.toLowerCase() || '';
       const passengerNames = (reservation.passengers || []).map(
-        p => `${p.firstName} ${p.lastName}`.toLowerCase()
+        (p) => `${p.firstName} ${p.lastName}`.toLowerCase()
       ).join(" ");
       const email = (reservation.email || '').toLowerCase();
       const phone = (reservation.phone || '').toLowerCase();

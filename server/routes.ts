@@ -4492,4 +4492,25 @@ function setupPackageRoutes(app: Express) {
       res.status(500).json({ message: 'Error interno del servidor' });
     }
   });
+  
+  // GET /api/cash-register - Obtener reservaciones pagadas por el usuario actual
+  app.get(apiRouter('/cash-register'), isAuthenticated, async (req, res) => {
+    try {
+      // Verificar que el usuario está autenticado (ya verificado por middleware isAuthenticated)
+      const userId = req.user!.id;
+      
+      console.log(`[GET /cash-register] Usuario ${req.user!.firstName} ${req.user!.lastName} solicitando datos de caja`);
+      
+      // Obtener las reservaciones pagadas por este usuario
+      const paidReservations = await storage.getPaidReservationsByUser(userId);
+      
+      console.log(`[GET /cash-register] Enviando ${paidReservations.length} reservaciones pagadas por el usuario ${userId}`);
+      
+      // Devolver las reservaciones
+      res.json(paidReservations);
+    } catch (error) {
+      console.error('[GET /cash-register] Error:', error);
+      res.status(500).json({ message: 'Error al cargar datos de caja' });
+    }
+  });
 }
