@@ -178,6 +178,8 @@ export default function PackageDetailPage() {
         description: "Marcando paquete como pagado",
       });
       
+      console.log(`Enviando petición para marcar como pagado el paquete ${packageId}`);
+      
       const response = await fetch(`/api/public/packages/${packageId}/mark-paid`, {
         method: 'POST',
         headers: {
@@ -191,7 +193,8 @@ export default function PackageDetailPage() {
       }
       
       // Recargar los datos del paquete
-      packageQuery.refetch();
+      console.log("Paquete marcado como pagado, recargando datos...");
+      await packageQuery.refetch();
       
       toast({
         title: "¡Éxito!",
@@ -216,6 +219,8 @@ export default function PackageDetailPage() {
         description: "Marcando paquete como entregado",
       });
       
+      console.log(`Enviando petición para marcar como entregado el paquete ${packageId}`);
+      
       const response = await fetch(`/api/public/packages/${packageId}/mark-delivered`, {
         method: 'POST',
         headers: {
@@ -229,7 +234,8 @@ export default function PackageDetailPage() {
       }
       
       // Recargar los datos del paquete
-      packageQuery.refetch();
+      console.log("Paquete marcado como entregado, recargando datos...");
+      await packageQuery.refetch();
       
       toast({
         title: "¡Éxito!",
@@ -318,11 +324,11 @@ export default function PackageDetailPage() {
                 <div className="pl-7 space-y-1">
                   <p className="text-sm flex items-center">
                     <span className="font-medium mr-2">Origen:</span> 
-                    {packageData.segmentOrigin || packageData.tripOrigin || "No disponible"}
+                    {packageData.segmentOrigin || "No disponible"}
                   </p>
                   <p className="text-sm flex items-center">
                     <span className="font-medium mr-2">Destino:</span> 
-                    {packageData.segmentDestination || packageData.tripDestination || "No disponible"}
+                    {packageData.segmentDestination || "No disponible"}
                   </p>
                   {packageData.tripDate && (
                     <p className="text-sm flex items-center">
@@ -394,20 +400,11 @@ export default function PackageDetailPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-wrap gap-3 justify-center">
-            <Button variant="outline" onClick={handleSharePackage}>
-              <Share2 className="mr-2 h-4 w-4" />
-              Compartir
-            </Button>
-            <Button onClick={handlePrintTicket}>
-              <Printer className="mr-2 h-4 w-4" />
-              Imprimir Ticket
-            </Button>
-            
             {/* Botones condicionales para marcado de estado */}
             {!packageData.isPaid && (
               <Button 
                 variant="default" 
-                className="bg-green-600 hover:bg-green-700" 
+                className="bg-green-600 hover:bg-green-700 w-full md:w-auto" 
                 onClick={handleMarkAsPaid}
               >
                 <CheckCircle className="mr-2 h-4 w-4" />
@@ -418,7 +415,7 @@ export default function PackageDetailPage() {
             {packageData.deliveryStatus !== 'entregado' && (
               <Button 
                 variant="default" 
-                className="bg-blue-600 hover:bg-blue-700" 
+                className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto" 
                 onClick={handleMarkAsDelivered}
               >
                 <Truck className="mr-2 h-4 w-4" />
