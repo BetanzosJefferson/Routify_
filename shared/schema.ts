@@ -159,6 +159,7 @@ export const reservations = pgTable("reservations", {
   advancePaymentMethod: text("advance_payment_method").default(PaymentMethod.CASH), // Método del anticipo
   createdBy: integer("created_by"), // ID del usuario que crea la reservación
   paidBy: integer("paid_by"), // ID del usuario que marca como pagado el ticket
+  markedAsPaidAt: timestamp("marked_as_paid_at"), // Fecha y hora en que se marcó como pagado
   commissionPaid: boolean("commission_paid").default(false), // Indicador si la comisión ha sido pagada
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
