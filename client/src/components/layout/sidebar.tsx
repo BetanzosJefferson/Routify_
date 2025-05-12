@@ -171,9 +171,9 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               )}
               {canAccess("cash-register") && (
                 <NavItem 
-                  icon={<DollarSignIcon className="h-5 w-5" />} 
+                  icon={<PercentIcon className="h-5 w-5" />} 
                   active={(location === '/cash-register') || ((location === '/' || location === '/dashboard') && activeTab === "cash-register")}
-                  onClick={() => navigate("/cash-register")}
+                  onClick={() => setLocation("/cash-register")}
                 >
                   Caja
                 </NavItem>
