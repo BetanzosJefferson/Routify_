@@ -4558,18 +4558,114 @@ function setupPackageRoutes(app: Express) {
         if (!companyId) {
           console.log(`[GET /cash-register] Usuario dueño/admin sin compañía asignada. Usando vista limitada.`);
           const paidReservations = await storage.getPaidReservationsByUser(user.id);
-          return res.json(paidReservations);
+          
+          // Agregar información adicional para identificar a qué empresa pertenece cada reserva
+          const enrichedReservations = await Promise.all(
+            paidReservations.map(async (reservation) => {
+              // Obtener la compañía del viaje
+              let companyId = null;
+              let companyName = "Desconocida";
+              
+              if (reservation.trip && reservation.trip.companyId) {
+                companyId = reservation.trip.companyId;
+                
+                // Intentar obtener el nombre de la compañía si está disponible
+                try {
+                  const company = await storage.getCompanyById(companyId);
+                  if (company) {
+                    companyName = company.name || companyId;
+                  }
+                } catch (err) {
+                  console.error(`Error al obtener información de la compañía ${companyId}:`, err);
+                }
+              }
+              
+              return {
+                ...reservation,
+                companyInfo: {
+                  id: companyId,
+                  name: companyName
+                }
+              };
+            })
+          );
+          
+          return res.json(enrichedReservations);
         }
         
         console.log(`[GET /cash-register] Usuario dueño/admin: mostrando todas las reservaciones pagadas de la compañía ${companyId}`);
         const companyReservations = await storage.getPaidReservationsByCompany(companyId);
-        return res.json(companyReservations);
+        
+        // Agregar información adicional para identificar a qué empresa pertenece cada reserva
+        const enrichedReservations = await Promise.all(
+          companyReservations.map(async (reservation) => {
+            // Obtener la compañía del viaje
+            let companyId = null;
+            let companyName = "Desconocida";
+            
+            if (reservation.trip && reservation.trip.companyId) {
+              companyId = reservation.trip.companyId;
+              
+              // Intentar obtener el nombre de la compañía si está disponible
+              try {
+                const company = await storage.getCompanyById(companyId);
+                if (company) {
+                  companyName = company.name || companyId;
+                }
+              } catch (err) {
+                console.error(`Error al obtener información de la compañía ${companyId}:`, err);
+              }
+            }
+            
+            return {
+              ...reservation,
+              companyInfo: {
+                id: companyId,
+                name: companyName
+              }
+            };
+          })
+        );
+        
+        return res.json(enrichedReservations);
       }
       
       // Para otros roles, mostrar solo sus propias reservaciones
       const paidReservations = await storage.getPaidReservationsByUser(user.id);
-      console.log(`[GET /cash-register] Enviando ${paidReservations.length} reservaciones pagadas por el usuario ${user.id}`);
-      return res.json(paidReservations);
+      
+      // Agregar información adicional para identificar a qué empresa pertenece cada reserva
+      const enrichedReservations = await Promise.all(
+        paidReservations.map(async (reservation) => {
+          // Obtener la compañía del viaje
+          let companyId = null;
+          let companyName = "Desconocida";
+          
+          if (reservation.trip && reservation.trip.companyId) {
+            companyId = reservation.trip.companyId;
+            
+            // Intentar obtener el nombre de la compañía si está disponible
+            try {
+              const company = await storage.getCompanyById(companyId);
+              if (company) {
+                companyName = company.name || companyId;
+              }
+            } catch (err) {
+              console.error(`Error al obtener información de la compañía ${companyId}:`, err);
+            }
+          }
+          
+          return {
+            ...reservation,
+            companyInfo: {
+              id: companyId,
+              name: companyName
+            }
+          };
+        })
+      );
+      
+      console.log(`[GET /cash-register] Enviando ${enrichedReservations.length} reservaciones pagadas por el usuario ${user.id}`);
+      return res.json(enrichedReservations);
     } catch (error) {
       console.error('[GET /cash-register] Error:', error);
       res.status(500).json({ message: 'Error al cargar datos de caja' });
