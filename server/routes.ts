@@ -2573,7 +2573,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               tripDate: trip.departureDate,
               segmentOrigin: trip.segmentOrigin || route.origin,
               segmentDestination: trip.segmentDestination || route.destination,
-              companyName: trip.companyName || route.companyName
+              companyName: trip.companyName || route.companyName,
+              // Para asegurar que se usa la fecha del viaje como fecha de envío
+              shippingDate: trip.departureDate
             };
           }
         }
@@ -4056,6 +4058,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: user.id
       };
       
+      // Si hay un tripId, obtener la fecha de salida del viaje
+      if (packageData.tripId) {
+        try {
+          const trip = await storage.getTrip(packageData.tripId);
+          if (trip && trip.departureDate) {
+            console.log(`[POST /packages] Usando fecha de salida del viaje: ${trip.departureDate}`);
+            // Actualizar la fecha de creación para que coincida con la fecha del viaje
+            packageData.createdAt = trip.departureDate;
+          }
+        } catch (tripError) {
+          console.error(`[POST /packages] Error al obtener datos del viaje: ${tripError}`);
+          // Continuamos sin fecha específica si hay un error (usará la fecha actual)
+        }
+      }
+      
       console.log(`[POST /packages] Creando paquetería:`, packageData);
       
       // Crear la paquetería
@@ -4100,8 +4117,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Preparar datos para actualizar
+      const updateData = { ...req.body };
+      
+      // Si se está cambiando el viaje (tripId), actualizar la fecha de creación para que coincida con la nueva fecha del viaje
+      if (updateData.tripId && updateData.tripId !== existingPackage.tripId) {
+        try {
+          const trip = await storage.getTrip(updateData.tripId);
+          if (trip && trip.departureDate) {
+            console.log(`[PATCH /packages/${id}] Actualizando fecha a fecha de salida del nuevo viaje: ${trip.departureDate}`);
+            // Usar la fecha del nuevo viaje
+            updateData.createdAt = trip.departureDate;
+          }
+        } catch (tripError) {
+          console.error(`[PATCH /packages/${id}] Error al obtener datos del nuevo viaje: ${tripError}`);
+          // Continuamos con la actualización sin cambiar la fecha
+        }
+      }
+      
       // Actualizar la paquetería
-      const updatedPackage = await storage.updatePackage(parseInt(id), req.body);
+      const updatedPackage = await storage.updatePackage(parseInt(id), updateData);
       
       // Responder con la paquetería actualizada
       res.json(updatedPackage);
