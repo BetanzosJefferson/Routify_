@@ -426,6 +426,7 @@ export function CashRegisterPage() {
                         <TableRow>
                           <TableHead>ID Reservación</TableHead>
                           <TableHead>Pasajero</TableHead>
+                          <TableHead>Empresa</TableHead>
                           <TableHead>Ruta</TableHead>
                           <TableHead>Método</TableHead>
                           <TableHead className="text-right">Monto</TableHead>
@@ -439,6 +440,11 @@ export function CashRegisterPage() {
                               <div className="flex items-center gap-1">
                                 <User className="h-4 w-4 text-gray-500" />
                                 <span>{reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <span>{reservation.trip?.company?.name || companyData.name || 'No disponible'}</span>
                               </div>
                             </TableCell>
                             <TableCell>{reservation.trip?.route?.name || 'No disponible'}</TableCell>
