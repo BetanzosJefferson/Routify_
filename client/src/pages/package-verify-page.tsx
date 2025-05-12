@@ -91,14 +91,36 @@ export default function PackageVerifyPage() {
           console.error(`Error HTTP ${res.status} al verificar paquete:`, res.statusText);
           let errorMessage = "Error al cargar el paquete";
           
-          try {
-            const errorData = await res.json();
-            errorMessage = errorData.message || errorMessage;
-          } catch (e) {
-            // Si no hay un cuerpo JSON, usamos el mensaje por defecto
+          // Intentamos obtener el mensaje de error del cuerpo
+          const contentType = res.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            try {
+              const errorData = await res.json();
+              errorMessage = errorData.message || errorMessage;
+            } catch (e) {
+              console.error("Error al parsear respuesta JSON:", e);
+            }
+          } else {
+            // Si el contenido no es JSON, capturamos el texto completo para depuración
+            try {
+              const textContent = await res.text();
+              console.error("Respuesta no JSON recibida:", textContent.substring(0, 150) + "...");
+              errorMessage = "Error de formato en la respuesta del servidor";
+            } catch (e) {
+              console.error("Error al leer respuesta como texto:", e);
+            }
           }
           
           throw new Error(errorMessage);
+        }
+        
+        // Verificamos que la respuesta sea JSON antes de intentar parsearla
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          console.error("La respuesta no es JSON. Content-Type:", contentType);
+          const textContent = await res.text();
+          console.error("Contenido (primeros 150 caracteres):", textContent.substring(0, 150) + "...");
+          throw new Error("La respuesta del servidor no tiene el formato esperado");
         }
         
         const data = await res.json();
@@ -106,7 +128,11 @@ export default function PackageVerifyPage() {
         return data;
       } catch (error) {
         console.error("Error al cargar información del paquete:", error);
-        setErrorMessage(error instanceof Error ? error.message : "Error desconocido");
+        setErrorMessage(
+          error instanceof Error 
+            ? error.message 
+            : "Error desconocido al procesar la respuesta"
+        );
         throw error;
       }
     },
@@ -128,14 +154,36 @@ export default function PackageVerifyPage() {
         console.error(`Error HTTP ${res.status} al marcar como pagado:`, res.statusText);
         let errorMessage = "Error al marcar como pagado";
         
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          // Si no hay un cuerpo JSON, usamos el mensaje por defecto
+        // Verificamos el tipo de contenido para decidir cómo procesarlo
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          try {
+            const errorData = await res.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            console.error("Error al parsear respuesta JSON:", e);
+          }
+        } else {
+          // Si el contenido no es JSON, capturamos el texto para depuración
+          try {
+            const textContent = await res.text();
+            console.error("Respuesta no JSON recibida:", textContent.substring(0, 150) + "...");
+            errorMessage = "Error de formato en la respuesta del servidor";
+          } catch (e) {
+            console.error("Error al leer respuesta como texto:", e);
+          }
         }
         
         throw new Error(errorMessage);
+      }
+      
+      // Verificamos que la respuesta sea JSON antes de intentar parsearla
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error("La respuesta no es JSON. Content-Type:", contentType);
+        const textContent = await res.text();
+        console.error("Contenido (primeros 150 caracteres):", textContent.substring(0, 150) + "...");
+        throw new Error("La respuesta del servidor no tiene el formato esperado");
       }
       
       return res.json();
@@ -175,14 +223,36 @@ export default function PackageVerifyPage() {
         console.error(`Error HTTP ${res.status} al marcar como entregado:`, res.statusText);
         let errorMessage = "Error al marcar como entregado";
         
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          // Si no hay un cuerpo JSON, usamos el mensaje por defecto
+        // Verificamos el tipo de contenido para decidir cómo procesarlo
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          try {
+            const errorData = await res.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            console.error("Error al parsear respuesta JSON:", e);
+          }
+        } else {
+          // Si el contenido no es JSON, capturamos el texto para depuración
+          try {
+            const textContent = await res.text();
+            console.error("Respuesta no JSON recibida:", textContent.substring(0, 150) + "...");
+            errorMessage = "Error de formato en la respuesta del servidor";
+          } catch (e) {
+            console.error("Error al leer respuesta como texto:", e);
+          }
         }
         
         throw new Error(errorMessage);
+      }
+      
+      // Verificamos que la respuesta sea JSON antes de intentar parsearla
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error("La respuesta no es JSON. Content-Type:", contentType);
+        const textContent = await res.text();
+        console.error("Contenido (primeros 150 caracteres):", textContent.substring(0, 150) + "...");
+        throw new Error("La respuesta del servidor no tiene el formato esperado");
       }
       
       return res.json();
