@@ -315,7 +315,7 @@ export default function ReservationDetailsModal({
                         </div>
                       )}
                       
-                      {user && reservation.paymentStatus !== 'pagado' && (
+                      {user && reservation.paymentStatus !== 'pagado' && reservation.status === 'confirmed' && (
                         <Button 
                           onClick={markAsPaid}
                           disabled={isMarkingAsPaid}
@@ -334,6 +334,12 @@ export default function ReservationDetailsModal({
                             </>
                           )}
                         </Button>
+                      )}
+                      
+                      {user && reservation.status === 'canceled' && (
+                        <div className="w-full mt-3 p-2 bg-gray-100 border border-gray-200 rounded text-center text-gray-500 text-sm">
+                          Esta reservación está cancelada
+                        </div>
                       )}
                     </div>
                   </div>
@@ -399,12 +405,17 @@ export default function ReservationDetailsModal({
                       variant="secondary"
                       className="w-full text-sm"
                       onClick={handleCheckTicket}
-                      disabled={isChecking}
+                      disabled={isChecking || reservation.status === 'canceled'}
                     >
                       {isChecking ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Verificando...
+                        </>
+                      ) : reservation.status === 'canceled' ? (
+                        <>
+                          <X className="mr-2 h-4 w-4" />
+                          Ticket cancelado
                         </>
                       ) : (
                         <>
