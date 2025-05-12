@@ -34,8 +34,6 @@ interface NavItemProps {
 }
 
 function NavItem({ icon, active, onClick, children }: NavItemProps) {
-  // Evitamos re-renders innecesarios que pueden causar parpadeos visuales
-  // mediante la memoización del componente
   return (
     <button
       className={cn(
@@ -44,15 +42,7 @@ function NavItem({ icon, active, onClick, children }: NavItemProps) {
           ? "bg-primary text-primary-foreground hover:bg-primary/90"
           : "text-gray-700 dark:text-gray-200 hover:text-primary dark:hover:text-primary hover:bg-primary/10"
       )}
-      onClick={(e) => {
-        // Prevenimos comportamiento predeterminado para tener más control 
-        e.preventDefault();
-        // Usamos requestAnimationFrame para asegurar que la navegación
-        // ocurra después de que se complete el ciclo de renderizado actual
-        requestAnimationFrame(() => {
-          onClick();
-        });
-      }}
+      onClick={onClick}
     >
       <span className={cn("mr-3 flex-shrink-0", active ? "text-white" : "text-gray-500 dark:text-gray-400 group-hover:text-primary")}>{icon}</span>
       <span className="truncate">{children}</span>
@@ -79,22 +69,16 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const { user } = useAuth();
   
   const handleTabClick = (tab: TabType) => {
-    // Primero actualizamos la URL para evitar cambios visuales no deseados
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', tab);
-    
     // Verificar si estamos en una URL distinta a '/' y volver al dashboard
     if (location !== '/' && location !== '/dashboard') {
-      // Prevenir actualización de estado antes de la navegación
-      window.history.pushState({}, '', url.toString());
       setLocation('/?tab=' + tab);
     } else {
+      onTabChange(tab);
+      
       // Actualizar el URL pero sin hacer una redirección completa
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tab);
       window.history.pushState({}, '', url.toString());
-      // Solo después de actualizar la URL, actualizamos el estado
-      setTimeout(() => {
-        onTabChange(tab);
-      }, 0);
     }
   };
 
