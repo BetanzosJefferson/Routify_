@@ -321,7 +321,7 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                     </Badge>
                   )}
                 </TableCell>
-                <TableCell>{formatDate(new Date(pkg.createdAt))}</TableCell>
+                <TableCell>{pkg.tripDate ? formatDate(new Date(pkg.tripDate)) : formatDate(new Date(pkg.createdAt))}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
