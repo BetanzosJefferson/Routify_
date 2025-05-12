@@ -79,19 +79,21 @@ export function normalizeToStartOfDay(date: Date | string): Date {
       }
     }
   } else {
-    // Si ya es un objeto Date, extraer sus componentes y crear nueva fecha
-    // con hora a mediodía para evitar problemas de cambio de día
+    // Si ya es un objeto Date, vamos a usar directamente la fecha UTC sin manipulación 
+    // para evitar problemas con getDate() que modifica la fecha en función de la zona horaria
     
-    // Usar los componentes pero crear con la zona horaria correcta
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const day = date.getDate();
+    // Extraer directamente de la representación ISO para preservar la fecha exacta
+    const isoDate = date.toISOString();
+    const parts = isoDate.split('T')[0].split('-');
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // Meses en JS son 0-11
+    const day = parseInt(parts[2], 10);
     
     console.log(`[normalizeToStartOfDay] Fecha objeto original: ${date.toISOString()}`);
-    console.log(`[normalizeToStartOfDay] Componentes extraídos: año=${year}, mes=${month}, día=${day}`);
+    console.log(`[normalizeToStartOfDay] Componentes ISO extraídos: año=${year}, mes=${month}, día=${day}`);
     
-    // Crear nueva fecha asegurando que se mantenga el día especificado
-    dateObj = new Date(year, month, day, 12, 0, 0);
+    // Crear fecha directamente sin offset de zona horaria
+    dateObj = new Date(Date.UTC(year, month, day, 12, 0, 0));
   }
   
   // Asegurarnos que la fecha tenga 12:00:00 para evitar problemas de DST

@@ -29,6 +29,7 @@ interface PackageData {
   segmentOrigin?: string;
   segmentDestination?: string;
   tripDate?: string | Date;
+  shippingDate?: string | Date;
   companyId?: string;
 }
 
