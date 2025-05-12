@@ -39,7 +39,9 @@ interface PackageTicketProps {
 async function addQRCodeToPDF(doc: jsPDF, packageId: number, yPosition: number): Promise<void> {
   try {
     // Crear URL para verificación y entrega del paquete
+    // Aseguramos que la URL coincida exactamente con la ruta definida en App.tsx
     const verificationUrl = `${window.location.origin}/package-verify/${packageId}`;
+    console.log("URL generada para QR:", verificationUrl);
     
     // Generar código QR como data URL con menor densidad para mejorar escaneo
     const qrDataUrl = await QRCode.toDataURL(verificationUrl, {

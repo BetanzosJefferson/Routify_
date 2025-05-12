@@ -4204,6 +4204,7 @@ function setupPackageRoutes(app: Express) {
   app.get(apiRouter('/packages/:id/verify'), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      console.log(`[API] Solicitud de verificación para paquete ID: ${id}, URL: ${req.originalUrl}`);
       
       // Obtener el paquete
       const packageData = await storage.getPackage(id);

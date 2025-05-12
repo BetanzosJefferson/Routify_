@@ -32,10 +32,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 // Página de verificación de paquetes (accesible por QR)
 export default function PackageVerifyPage() {
   const { id } = useParams<{ id: string }>();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  // Extraemos el ID del paquete de la URL
   const packageId = parseInt(id || "0");
+  
+  console.log("Verificando paquete ID:", packageId, "desde URL:", location);
 
   // Verificar que el ID sea válido
   useEffect(() => {
@@ -52,8 +57,22 @@ export default function PackageVerifyPage() {
   // Obtener la información del paquete
   const packageQuery = useQuery({
     queryKey: ["/api/packages/verify", packageId],
-    queryFn: () => apiRequest("GET", `/api/packages/${packageId}/verify`).then(res => res.json()),
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("GET", `/api/packages/${packageId}/verify`);
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || "Error al cargar el paquete");
+        }
+        return res.json();
+      } catch (error) {
+        console.error("Error al cargar información del paquete:", error);
+        setErrorMessage(error instanceof Error ? error.message : "Error desconocido");
+        throw error;
+      }
+    },
     enabled: packageId > 0, // Habilitamos sin necesidad de autenticación para ver información básica
+    retry: 1, // Limitamos el número de reintentos
   });
 
   // Mutación para marcar como pagado
@@ -139,10 +158,29 @@ export default function PackageVerifyPage() {
           <CardHeader>
             <CardTitle>Error al cargar el paquete</CardTitle>
             <CardDescription>
-              No se pudo obtener la información del paquete. Por favor, inténtelo de nuevo.
+              {errorMessage || "No se pudo obtener la información del paquete. Por favor, inténtelo de nuevo."}
             </CardDescription>
           </CardHeader>
-          <CardFooter>
+          <CardContent>
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>Detalles técnicos:</p>
+              <ul className="list-disc list-inside">
+                <li>ID de paquete: {packageId}</li>
+                <li>Ruta actual: {location}</li>
+                <li>Estado de autenticación: {user ? "Autenticado" : "No autenticado"}</li>
+              </ul>
+              <p>Si el problema persiste, contacte al administrador del sistema.</p>
+            </div>
+          </CardContent>
+          <CardFooter className="flex flex-col gap-3">
+            <Button 
+              onClick={() => packageQuery.refetch()} 
+              variant="outline" 
+              className="w-full"
+              disabled={packageQuery.isFetching}
+            >
+              Intentar nuevamente
+            </Button>
             <Button onClick={() => navigate("/")} className="w-full">
               Volver al inicio
             </Button>
