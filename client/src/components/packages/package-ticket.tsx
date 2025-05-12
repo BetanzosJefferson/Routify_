@@ -130,14 +130,68 @@ export async function generatePackageTicketPDF(packageData: PackageData, company
     doc.setFontSize(8);
     doc.setFont("courier", "normal");
     
-    // Origen
+    // Origen con ajuste de texto
     const origen = packageData.segmentOrigin || packageData.tripOrigin || "";
-    doc.text(`Origen: ${origen}`, 5, y);
+    const origenCompleto = `Origen: ${origen}`;
     
-    y += 4;
-    // Destino
+    // Dividir origen en múltiples líneas si es necesario
+    const maxWidthOrigen = 48; // Ancho máximo en mm
+    if (doc.getStringUnitWidth(origenCompleto) * 8 / doc.internal.scaleFactor > maxWidthOrigen) {
+      // Primera línea: "Origen:"
+      doc.text("Origen:", 5, y);
+      y += 3;
+      
+      // Dividir el resto en múltiples líneas
+      const words = origen.split(' ');
+      let line = '';
+      for (let i = 0; i < words.length; i++) {
+        const testLine = line + words[i] + ' ';
+        if (doc.getStringUnitWidth(testLine) * 8 / doc.internal.scaleFactor > maxWidthOrigen) {
+          doc.text(line, 5, y);
+          line = words[i] + ' ';
+          y += 3;
+        } else {
+          line = testLine;
+        }
+      }
+      doc.text(line, 5, y);
+      y += 4;
+    } else {
+      // Si cabe en una línea
+      doc.text(origenCompleto, 5, y);
+      y += 4;
+    }
+    
+    // Destino con ajuste de texto
     const destino = packageData.segmentDestination || packageData.tripDestination || "";
-    doc.text(`Destino: ${destino}`, 5, y);
+    const destinoCompleto = `Destino: ${destino}`;
+    
+    // Dividir destino en múltiples líneas si es necesario
+    if (doc.getStringUnitWidth(destinoCompleto) * 8 / doc.internal.scaleFactor > maxWidthOrigen) {
+      // Primera línea: "Destino:"
+      doc.text("Destino:", 5, y);
+      y += 3;
+      
+      // Dividir el resto en múltiples líneas
+      const words = destino.split(' ');
+      let line = '';
+      for (let i = 0; i < words.length; i++) {
+        const testLine = line + words[i] + ' ';
+        if (doc.getStringUnitWidth(testLine) * 8 / doc.internal.scaleFactor > maxWidthOrigen) {
+          doc.text(line, 5, y);
+          line = words[i] + ' ';
+          y += 3;
+        } else {
+          line = testLine;
+        }
+      }
+      doc.text(line, 5, y);
+      y += 4;
+    } else {
+      // Si cabe en una línea
+      doc.text(destinoCompleto, 5, y);
+      y += 4;
+    }
     
     // Fecha del viaje
     if (packageData.tripDate) {
@@ -222,9 +276,6 @@ export async function generatePackageTicketPDF(packageData: PackageData, company
   
   y += 5;
   doc.setFontSize(7);
-  doc.text("Escanee el código QR para verificar el paquete", 29, y, { align: "center" });
-  
-  y += 3;
   doc.text("www.transroute.mx", 29, y, { align: "center" });
 
   // Abrir en una nueva ventana e imprimir automáticamente
@@ -374,13 +425,17 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
       {(packageData.segmentOrigin || packageData.tripOrigin) && (packageData.segmentDestination || packageData.tripDestination) && (
         <div className="ticket-section">
           <h3>Ruta</h3>
-          <div className="ticket-row">
-            <MapPin size={12} />
-            <span>Origen: {packageData.segmentOrigin || packageData.tripOrigin}</span>
+          <div className="ticket-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.25rem' }}>
+              <MapPin size={12} style={{ minWidth: '12px', marginRight: '0.25rem' }} />
+              <span style={{ display: 'block', wordBreak: 'break-word' }}>Origen: {packageData.segmentOrigin || packageData.tripOrigin}</span>
+            </div>
           </div>
-          <div className="ticket-row">
-            <MapPin size={12} />
-            <span>Destino: {packageData.segmentDestination || packageData.tripDestination}</span>
+          <div className="ticket-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.25rem' }}>
+              <MapPin size={12} style={{ minWidth: '12px', marginRight: '0.25rem' }} />
+              <span style={{ display: 'block', wordBreak: 'break-word' }}>Destino: {packageData.segmentDestination || packageData.tripDestination}</span>
+            </div>
           </div>
           {packageData.tripDate && (
             <div className="ticket-row">
@@ -432,7 +487,6 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
       
       {/* URL de seguimiento */}
       <div className="ticket-route">
-        <div>Escanee el código QR para verificar el paquete</div>
         <div>www.transroute.mx</div>
       </div>
     </div>
