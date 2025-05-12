@@ -2567,10 +2567,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (trip) {
           const route = await storage.getRoute(trip.routeId);
           if (route) {
+            // Usar directamente la fecha del viaje sin procesarla
+            console.log(`[GET /public/packages/${id}] departureDate original del viaje:`, trip.departureDate);
+            
             tripInfo = {
               tripOrigin: route.origin,
               tripDestination: route.destination,
-              tripDate: trip.departureDate,
+              tripDate: trip.departureDate, // La fecha exacta que viene del viaje
+              departure_date: trip.departureDate, // Añadimos un campo adicional con el mismo valor para mayor claridad
               segmentOrigin: trip.segmentOrigin || route.origin,
               segmentDestination: trip.segmentDestination || route.destination,
               companyName: trip.companyName || route.companyName
