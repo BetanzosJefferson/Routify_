@@ -2120,7 +2120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verificar si la reservación ya está cancelada
-      if (reservation.status === schema.ReservationStatus.CANCELED) {
+      if (reservation.status === "canceled") {
         return res.status(400).json({ error: "Esta reservación ya ha sido cancelada" });
       }
       
@@ -2139,7 +2139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Actualizar la reservación para marcarla como cancelada
       const updatedReservation = await storage.updateReservation(id, {
-        status: schema.ReservationStatus.CANCELED
+        status: "canceled"
       });
       
       if (!updatedReservation) {
