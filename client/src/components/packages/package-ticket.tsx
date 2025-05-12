@@ -35,28 +35,39 @@ interface PackageTicketProps {
   companyName?: string;
 }
 
+// Función para generar la URL de verificación del paquete
+function createVerificationUrl(packageId: number): string {
+  // Construimos la URL absoluta completa para evitar problemas de redirección
+  // Aseguramos que coincida exactamente con cómo está definida la ruta en App.tsx
+  const base = window.location.origin; // Ej. https://example.com
+  const path = `/package-verify/${packageId}`; // Path debe coincidir con la ruta en App.tsx
+  
+  const fullUrl = `${base}${path}`;
+  console.log("URL generada para verificación de paquete:", fullUrl);
+  
+  return fullUrl;
+}
+
 // Función para generar el QR y agregarlo al PDF
 async function addQRCodeToPDF(doc: jsPDF, packageId: number, yPosition: number): Promise<void> {
   try {
-    // Crear URL para verificación y entrega del paquete
-    // Aseguramos que la URL coincida exactamente con la ruta definida en App.tsx
-    const verificationUrl = `${window.location.origin}/package-verify/${packageId}`;
-    console.log("URL generada para QR:", verificationUrl);
+    // Obtenemos la URL de verificación
+    const verificationUrl = createVerificationUrl(packageId);
     
-    // Generar código QR como data URL con menor densidad para mejorar escaneo
+    // Generamos el código QR con configuraciones optimizadas para escaneo
     const qrDataUrl = await QRCode.toDataURL(verificationUrl, {
-      width: 150,
-      margin: 1,
-      errorCorrectionLevel: 'M', // Nivel medio de corrección de errores
+      width: 180, // Aumentamos el tamaño para mejor resolución
+      margin: 1,   // Margen mínimo
+      errorCorrectionLevel: 'H', // Nivel alto de corrección de errores para mejorar escaneo
       color: {
-        dark: '#000000',
-        light: '#FFFFFF'
+        dark: '#000000', // Negro para máximo contraste
+        light: '#FFFFFF'  // Fondo blanco
       }
     });
     
-    // Calcular el tamaño y posición del QR - Aumentamos un poco el tamaño
-    const qrSize = 28; // Tamaño en mm (aumentado para mejor visibilidad)
-    const xPosition = (58 - qrSize) / 2; // Centrar horizontalmente
+    // Optimizamos el tamaño y posición del QR
+    const qrSize = 30; // Tamaño en mm (aumentado para mejor visibilidad)
+    const xPosition = (58 - qrSize) / 2; // Centrado horizontalmente
     
     // Añadir el código QR al PDF
     doc.addImage(qrDataUrl, 'PNG', xPosition, yPosition, qrSize, qrSize);
