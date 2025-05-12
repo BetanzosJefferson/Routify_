@@ -44,7 +44,8 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "reservation-requests",
     "notifications",
     "coupons",
-    "packages"
+    "packages",
+    "cash-register"
   ],
   [UserRole.ADMIN]: [
     "routes",
@@ -58,7 +59,8 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "commissions",
     "reservation-requests", 
     "notifications",
-    "packages"
+    "packages",
+    "cash-register"
   ],
   [UserRole.CALL_CENTER]: [
     "trips",
