@@ -43,6 +43,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Link } from "wouter";
 import {
   Package,
   MoreVertical,
@@ -54,6 +55,7 @@ import {
   Ban,
   Loader2,
   Plus,
+  Share2,
 } from "lucide-react";
 
 // Importar el componente de ticket de paquete
@@ -335,6 +337,13 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                         </DropdownMenuItem>
                       )}
                       
+                      <DropdownMenuItem asChild>
+                        <Link href={`/package/${pkg.id}`} target="_blank">
+                          <Share2 className="mr-2 h-4 w-4" />
+                          Ver ficha pública
+                        </Link>
+                      </DropdownMenuItem>
+
                       <Dialog>
                         <DialogTrigger asChild>
                           <DropdownMenuItem
