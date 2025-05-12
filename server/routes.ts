@@ -1811,8 +1811,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.status(403).json({ error: "Acceso denegado a este viaje" });
           }
         }
-        // Los roles que NO son superAdmin o admin tienen acceso restringido
-        else if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+        // Los roles que NO son superAdmin, admin, taquilla o checador tienen acceso restringido
+        else if (user.role !== UserRole.SUPER_ADMIN && 
+                 user.role !== UserRole.ADMIN && 
+                 user.role !== UserRole.TICKET_OFFICE && 
+                 user.role !== UserRole.CHECKER) {
           // Obtener la compañía del usuario
           companyId = user.companyId || user.company;
           
@@ -1892,7 +1895,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[GET /reservations] Encontradas ${reservations.length} reservaciones`);
       
       // CAPA ADICIONAL DE SEGURIDAD - FILTRO POST-CONSULTA
-      if (user && user.role !== UserRole.SUPER_ADMIN) {
+      if (user && 
+          user.role !== UserRole.SUPER_ADMIN && 
+          user.role !== UserRole.ADMIN && 
+          user.role !== UserRole.TICKET_OFFICE && 
+          user.role !== UserRole.CHECKER) {
         // Obtener la compañía del usuario
         const userCompany = user.companyId || user.company || null;
         
@@ -1938,10 +1945,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let companyId: string | null = null;
       
       // REGLAS DE ACCESO:
-      // 1. Solo superAdmin puede ver TODAS las reservaciones (sin filtro)
-      // 2. Todos los demás roles (incluyendo admin) solo pueden ver reservaciones de SU COMPAÑÍA
+      // 1. superAdmin, admin, checador y taquilla pueden ver TODAS las reservaciones (sin filtro)
+      // 2. Todos los demás roles solo pueden ver reservaciones de SU COMPAÑÍA
       if (user) {
-        if (user.role !== UserRole.SUPER_ADMIN) {
+        if (user.role !== UserRole.SUPER_ADMIN && 
+            user.role !== UserRole.ADMIN && 
+            user.role !== UserRole.TICKET_OFFICE && 
+            user.role !== UserRole.CHECKER) {
           // Obtener la compañía del usuario
           companyId = user.companyId || user.company;
           
