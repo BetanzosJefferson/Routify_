@@ -41,18 +41,19 @@ async function addQRCodeToPDF(doc: jsPDF, packageId: number, yPosition: number):
     // Crear URL para verificación y entrega del paquete
     const verificationUrl = `${window.location.origin}/package-verify/${packageId}`;
     
-    // Generar código QR como data URL
+    // Generar código QR como data URL con menor densidad para mejorar escaneo
     const qrDataUrl = await QRCode.toDataURL(verificationUrl, {
-      width: 120,
-      margin: 0,
+      width: 150,
+      margin: 1,
+      errorCorrectionLevel: 'M', // Nivel medio de corrección de errores
       color: {
         dark: '#000000',
         light: '#FFFFFF'
       }
     });
     
-    // Calcular el tamaño y posición del QR
-    const qrSize = 25; // Tamaño en mm
+    // Calcular el tamaño y posición del QR - Aumentamos un poco el tamaño
+    const qrSize = 28; // Tamaño en mm (aumentado para mejor visibilidad)
     const xPosition = (58 - qrSize) / 2; // Centrar horizontalmente
     
     // Añadir el código QR al PDF
@@ -62,7 +63,7 @@ async function addQRCodeToPDF(doc: jsPDF, packageId: number, yPosition: number):
     const textY = yPosition + qrSize + 3;
     doc.setFontSize(6);
     doc.setFont("courier", "normal");
-    doc.text("Escanea para verificar o entregar", 29, textY, { align: "center" });
+    doc.text("Escanea para verificar", 29, textY, { align: "center" });
     
     return Promise.resolve();
   } catch (error) {
@@ -73,11 +74,12 @@ async function addQRCodeToPDF(doc: jsPDF, packageId: number, yPosition: number):
 
 // Función para generar el PDF con dimensiones de ticket térmico
 export async function generatePackageTicketPDF(packageData: PackageData, companyName: string) {
-  // Crear un documento PDF con las dimensiones de un ticket térmico (58mm x 160mm)
+  // Crear un documento PDF con las dimensiones de un ticket térmico (58mm x 170mm)
+  // Aumentamos un poco la altura para asegurar suficiente espacio para el QR
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
-    format: [58, 160], // 58mm de ancho, 160mm de alto (formato estándar para tickets térmicos)
+    format: [58, 170], 
   });
 
   // Configuración de fuentes
@@ -113,8 +115,8 @@ export async function generatePackageTicketPDF(packageData: PackageData, company
     return currentY + 4; // Devolvemos la nueva posición Y con un pequeño margen
   };
 
-  // Margen superior
-  let y = 10;
+  // Margen superior reducido para centrar mejor el contenido
+  let y = 5;
 
   // Encabezado
   doc.setFontSize(12);
@@ -224,24 +226,7 @@ export async function generatePackageTicketPDF(packageData: PackageData, company
     y
   );
   
-  // Estado de entrega
-  y += 6;
-  doc.setFontSize(9);
-  doc.setFont("courier", "bold");
-  doc.text("Estado de Entrega", 5, y);
-  
-  y += 4;
-  doc.setFontSize(8);
-  doc.setFont("courier", "normal");
-  doc.text(
-    packageData.deliveryStatus === 'entregado' 
-      ? 'Entregado' 
-      : 'Pendiente de entrega',
-    5,
-    y
-  );
-  
-  // Línea separadora antes del pie de página
+  // Línea separadora antes del pie de página - eliminamos la sección de "Estado de Entrega"
   y += 6;
   doc.setDrawColor(200, 200, 200);
   doc.line(5, y, 53, y);
@@ -251,9 +236,14 @@ export async function generatePackageTicketPDF(packageData: PackageData, company
   doc.setFontSize(7);
   doc.text(`Gracias por confiar en ${companyName}`, 29, y, { align: "center" });
   
-  // Añadir código QR
-  y += 8;
+  // Añadir código QR - Aumentamos el espacio
+  y += 6;
   await addQRCodeToPDF(doc, packageData.id, y);
+  
+  // Aseguramos un margen inferior después del QR para evitar cortes
+  doc.setFont("courier", "normal");
+  doc.setFontSize(1); // Texto muy pequeño solo para forzar un margen
+  doc.text(" ", 29, y + 35, { align: "center" });
   
   // Abrir en una nueva ventana e imprimir automáticamente
   window.open(URL.createObjectURL(doc.output('blob')));
@@ -414,17 +404,7 @@ export function PackageTicket({ packageData, companyName = "TransRoute" }: Packa
         </div>
       </div>
       
-      <div className="ticket-section">
-        <h3>Estado de Entrega</h3>
-        <div className="ticket-row">
-          <Truck size={12} />
-          <span>
-            {packageData.deliveryStatus === 'entregado' 
-              ? 'Entregado' 
-              : 'Pendiente de entrega'}
-          </span>
-        </div>
-      </div>
+      {/* Eliminamos la sección de Estado de Entrega para mantener consistencia con el PDF */}
       
       <div className="ticket-footer">
         <div>Gracias por confiar en {companyName}</div>
