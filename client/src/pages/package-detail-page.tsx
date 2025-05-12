@@ -103,11 +103,16 @@ export default function PackageDetailPage() {
   }, [user, packageQuery.data]);
 
   // Manejar la impresión del ticket
-  const handlePrintTicket = () => {
+  const handlePrintTicket = async () => {
     if (packageQuery.data) {
       try {
+        toast({
+          title: "Generando ticket",
+          description: "Por favor espere mientras se genera el ticket...",
+        });
+        
         // Generar el PDF con dimensiones de ticket térmico
-        generatePackageTicketPDF(packageQuery.data, packageQuery.data.companyName || "TransRoute");
+        await generatePackageTicketPDF(packageQuery.data, packageQuery.data.companyName || "TransRoute");
       } catch (error) {
         console.error("Error al generar el ticket PDF:", error);
         toast({
@@ -452,6 +457,26 @@ export default function PackageDetailPage() {
                 )}
               </>
             )}
+            
+            {/* Botón de impresión de ticket (siempre visible) */}
+            <Button 
+              variant="outline" 
+              className="w-full md:w-auto" 
+              onClick={handlePrintTicket}
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              Imprimir ticket
+            </Button>
+            
+            {/* Botón para compartir */}
+            <Button 
+              variant="outline" 
+              className="w-full md:w-auto" 
+              onClick={handleSharePackage}
+            >
+              <Share2 className="mr-2 h-4 w-4" />
+              Compartir
+            </Button>
           </CardFooter>
         </Card>
       </div>
