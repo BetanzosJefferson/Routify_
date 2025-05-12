@@ -309,35 +309,18 @@ export default function ReservationDetailsModal({
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-2 items-center">
-                        <div className="text-sm text-gray-500 font-medium">MONTO TOTAL</div>
-                        <div className="text-right font-medium">{formatPrice(reservation.totalAmount)}</div>
-                      </div>
-                      
                       {(reservation.advanceAmount && reservation.advanceAmount > 0) && (
                         <>
                           <div className="grid grid-cols-2 items-center">
-                            <div className="text-sm text-gray-500 font-medium">ANTICIPO</div>
-                            <div className="text-right font-medium">{formatPrice(reservation.advanceAmount)}</div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 items-center">
-                            <div className="text-sm text-gray-500 font-medium">MÉTODO ANTICIPO</div>
-                            <div className="text-right">{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                            <div className="text-sm text-gray-500 font-medium">ANTICIPÓ</div>
+                            <div className="text-right font-medium">{formatPrice(reservation.advanceAmount)} ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
                           </div>
                           
                           {reservation.advanceAmount < reservation.totalAmount && (
-                            <>
-                              <div className="grid grid-cols-2 items-center">
-                                <div className="text-sm text-gray-500 font-medium">PENDIENTE DE PAGO</div>
-                                <div className="text-right font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</div>
-                              </div>
-                              
-                              <div className="grid grid-cols-2 items-center">
-                                <div className="text-sm text-gray-500 font-medium">MÉTODO PAGO FINAL</div>
-                                <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-                              </div>
-                            </>
+                            <div className="grid grid-cols-2 items-center">
+                              <div className="text-sm text-gray-500 font-medium">RESTA</div>
+                              <div className="text-right font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
+                            </div>
                           )}
                         </>
                       )}
@@ -348,6 +331,11 @@ export default function ReservationDetailsModal({
                           <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
                         </div>
                       )}
+                      
+                      <div className="grid grid-cols-2 items-center border-t border-gray-200 pt-2 mt-2">
+                        <div className="text-sm text-gray-500 font-medium">TOTAL</div>
+                        <div className="text-right font-medium">{formatPrice(reservation.totalAmount)}</div>
+                      </div>
                       
                       {user && reservation.paymentStatus !== 'pagado' && reservation.status === 'confirmed' && (
                         <Button 
