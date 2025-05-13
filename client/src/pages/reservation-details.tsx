@@ -288,16 +288,35 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
             {/* Visualización para reservaciones canceladas */}
             {reservation.status === 'canceled' ? (
               <>
-                <div className="grid grid-cols-2 items-center mb-3">
-                  <div className="text-sm text-gray-500 font-medium">PRECIO ORIGINAL</div>
-                  <div className="text-right font-medium line-through text-gray-500">{formatPrice(reservation.totalAmount)}</div>
-                </div>
+                {reservation.paymentStatus === 'pagado' ? (
+                  <>
+                    {/* Visualización para reservaciones canceladas pero pagadas */}
+                    <div className="grid grid-cols-2 items-center mb-3">
+                      <div className="text-sm text-gray-500 font-medium">TOTAL PAGADO</div>
+                      <div className="text-right font-medium">{formatPrice(reservation.totalAmount)}</div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 items-center mb-3">
+                      <div className="text-sm text-gray-500 font-medium">MÉTODO DE PAGO</div>
+                      <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Visualización para reservaciones canceladas sin pagar */}
+                    <div className="grid grid-cols-2 items-center mb-3">
+                      <div className="text-sm text-gray-500 font-medium">PRECIO ORIGINAL</div>
+                      <div className="text-right font-medium line-through text-gray-500">{formatPrice(reservation.totalAmount)}</div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 items-center mb-3">
+                      <div className="text-sm text-gray-500 font-medium">INGRESO REAL</div>
+                      <div className="text-right font-medium">{formatPrice(reservation.advanceAmount || 0)}</div>
+                    </div>
+                  </>
+                )}
                 
-                <div className="grid grid-cols-2 items-center mb-3">
-                  <div className="text-sm text-gray-500 font-medium">INGRESO REAL</div>
-                  <div className="text-right font-medium">{formatPrice(reservation.advanceAmount || 0)}</div>
-                </div>
-                
+                {/* Para ambos casos de reservación cancelada, mostrar información de anticipo si existe */}
                 {(reservation.advanceAmount && reservation.advanceAmount > 0) && (
                   <>
                     <div className="grid grid-cols-2 items-center mb-3">
