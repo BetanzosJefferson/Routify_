@@ -1929,6 +1929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Procesar las reservaciones para agregar el nombre de la empresa
         const reservationsWithCompanyInfo = await Promise.all(
           reservations.map(async (reservation) => {
+            // Primero intentamos usar companyId directamente de la reservación
             if (reservation.companyId) {
               // Obtener información de la empresa
               const companyInfo = await storage.getCompanyById(reservation.companyId);
@@ -1942,10 +1943,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     name: companyInfo.name
                   }
                 };
+              } else {
+                // Si no se encuentra la empresa pero tenemos ID, mostrar ID como nombre
+                return {
+                  ...reservation,
+                  companyInfo: {
+                    id: reservation.companyId,
+                    name: `Empresa ID: ${reservation.companyId}`
+                  }
+                };
+              }
+            } 
+            // Si la reservación no tiene companyId directo, intentar obtenerlo del viaje
+            else if (reservation.trip && reservation.trip.companyId) {
+              const companyInfo = await storage.getCompanyById(reservation.trip.companyId);
+              
+              if (companyInfo) {
+                return {
+                  ...reservation,
+                  companyInfo: {
+                    id: companyInfo.id,
+                    name: companyInfo.name
+                  }
+                };
+              } else {
+                return {
+                  ...reservation,
+                  companyInfo: {
+                    id: reservation.trip.companyId,
+                    name: `Empresa ID: ${reservation.trip.companyId}`
+                  }
+                };
               }
             }
-            // Si no tiene companyId o no se encuentra la empresa, devolver la reservación sin cambios
-            return reservation;
+            // Si no hay ninguna información de empresa disponible
+            return {
+              ...reservation,
+              companyInfo: {
+                id: null,
+                name: "Sin empresa asignada"
+              }
+            };
           })
         );
         
