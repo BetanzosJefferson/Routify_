@@ -12,6 +12,16 @@ import connectPg from "connect-pg-simple";
 import { pool } from "./db";
 import bcrypt from "bcryptjs";
 
+// Middleware exportado para verificar autenticación
+export const getAuthMiddleware = () => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (req.isAuthenticated()) {
+      return next();
+    }
+    res.status(401).json({ message: "No autenticado" });
+  };
+};
+
 const scryptAsync = promisify(scrypt);
 
 declare global {
