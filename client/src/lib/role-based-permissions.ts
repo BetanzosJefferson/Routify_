@@ -127,3 +127,44 @@ export function hasRoleAccess(userRole: string, allowedRoles: string[]): boolean
   if (!userRole) return false;
   return allowedRoles.includes(userRole);
 }
+
+/**
+ * Comprueba si un usuario tiene alguno de los roles requeridos
+ * @param user - Usuario actual
+ * @param requiredRoles - Array de roles permitidos
+ * @returns Verdadero si el usuario tiene alguno de los roles requeridos
+ */
+export function hasRequiredRole(user: any, requiredRoles: string[]): boolean {
+  if (!user || !user.role) return false;
+  
+  // Mapeo de alias en español a los roles estándar en inglés
+  const roleMap: Record<string, string> = {
+    'admin': 'admin',
+    'administrador': 'admin',
+    'owner': 'owner',
+    'dueño': 'owner',
+    'checker': 'checker',
+    'checador': 'checker',
+    'driver': 'driver',
+    'chofer': 'driver',
+    'ticket_office': 'ticket_office',
+    'taquilla': 'ticket_office',
+    'super_admin': 'super_admin',
+    'superadmin': 'super_admin',
+    'desarrollador': 'developer',
+    'developer': 'developer',
+    'call_center': 'call_center',
+    'commissioner': 'commissioner',
+    'comisionista': 'commissioner',
+  };
+  
+  // Normalizar el rol del usuario
+  const normalizedUserRole = roleMap[user.role.toLowerCase()] || user.role.toLowerCase();
+  
+  // Normalizar los roles requeridos
+  const normalizedRequiredRoles = requiredRoles.map(role => 
+    roleMap[role.toLowerCase()] || role.toLowerCase()
+  );
+  
+  return normalizedRequiredRoles.includes(normalizedUserRole);
+}
