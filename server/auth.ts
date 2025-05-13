@@ -180,12 +180,27 @@ export function setupAuthRoutes(app: Express, customIsAuthenticated?: any) {
         return res.status(404).json({ message: "Usuario no encontrado" });
       }
       
-      // Eliminar el usuario
-      await db
-        .delete(users)
-        .where(eq(users.id, userId));
-      
-      console.log(`Usuario ${userId} eliminado por ${user.email} (${user.role})`);
+      try {
+        // Primero, verificar si el usuario tiene asociaciones en user_companies
+        if (userToDelete[0].role === UserRole.TICKET_OFFICE) {
+          console.log(`Eliminando asociaciones de empresas para el usuario taquillero ${userId}`);
+          // Eliminar todas las asociaciones de empresas del usuario
+          await db
+            .delete(userCompanies)
+            .where(eq(userCompanies.userId, userId));
+          console.log(`Asociaciones de empresas eliminadas para el usuario ${userId}`);
+        }
+        
+        // Ahora eliminar el usuario
+        await db
+          .delete(users)
+          .where(eq(users.id, userId));
+        
+        console.log(`Usuario ${userId} eliminado por ${user.email} (${user.role})`);
+      } catch (error) {
+        console.error("Error al eliminar usuario:", error);
+        return res.status(500).json({ message: "Error al eliminar usuario" });
+      }
       
       res.status(200).json({ 
         message: "Usuario eliminado correctamente"
