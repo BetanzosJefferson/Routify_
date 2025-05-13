@@ -113,8 +113,7 @@ export function ReservationList() {
       const tripDate = normalizeToStartOfDay(reservation.trip.departureDate);
       // Normalizar la fecha actual también para hacer una comparación correcta
       const today = normalizeToStartOfDay(new Date());
-      // Si son el mismo día o el viaje es en el futuro, se considera 'upcoming'
-      return isSameLocalDay(tripDate, today) || tripDate > today;
+      return tripDate >= today;
     }
   ) || [];
   
@@ -127,8 +126,7 @@ export function ReservationList() {
       const tripDate = normalizeToStartOfDay(reservation.trip.departureDate);
       // Normalizar la fecha actual también para hacer una comparación correcta
       const today = normalizeToStartOfDay(new Date());
-      // Solo se considera 'archived' si la fecha del viaje es anterior a hoy (no incluye el día actual)
-      return tripDate < today && !isSameLocalDay(tripDate, today);
+      return tripDate < today;
     }
   ) || [];
   
