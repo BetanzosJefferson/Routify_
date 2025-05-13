@@ -295,8 +295,9 @@ export function setupAuthRoutes(app: Express, customIsAuthenticated?: any) {
       const expiresAt = add(new Date(), { hours: 24 });
 
       // Crear la invitación
+      // IMPORTANTE: No convertimos a JSON aquí ya que Drizzle lo hace automáticamente
       const metadataValue = role === UserRole.TICKET_OFFICE && selectedCompanies ? 
-        JSON.stringify({ selectedCompanies }) : null;
+        { selectedCompanies } : null;
 
       const [invitation] = await db
         .insert(invitations)
@@ -604,9 +605,30 @@ export function setupAuthRoutes(app: Express, customIsAuthenticated?: any) {
       // Si es taquilla, verificar si hay empresas seleccionadas en los metadatos
       if (invitation[0].role === UserRole.TICKET_OFFICE && invitation[0].metadata) {
         try {
-          const metadata = JSON.parse(invitation[0].metadata as string);
+          // Manejar diferentes formatos de metadata (puede ser objeto o string)
+          let metadata;
+          if (typeof invitation[0].metadata === 'string') {
+            // Intenta parsear como JSON regular
+            try {
+              metadata = JSON.parse(invitation[0].metadata);
+            } catch (e) {
+              // Si falla el parse regular, intenta con formato de escape adicional
+              // (esto es para manejar los registros existentes con doble escape)
+              const cleanedJson = (invitation[0].metadata as string)
+                .replace(/^\"/, '') // Quitar comillas al inicio
+                .replace(/\"$/, '') // Quitar comillas al final
+                .replace(/\\"/g, '"'); // Reemplazar \" por "
+              
+              metadata = JSON.parse(cleanedJson);
+            }
+          } else {
+            // Ya es un objeto
+            metadata = invitation[0].metadata;
+          }
+          
+          // Verificar si hay compañías seleccionadas
           if (metadata.selectedCompanies && Array.isArray(metadata.selectedCompanies) && metadata.selectedCompanies.length > 0) {
-            console.log(`[REGISTER] Usuario taquilla: Asociando con ${metadata.selectedCompanies.length} empresas`);
+            console.log(`[REGISTER] Usuario taquilla: Asociando con ${metadata.selectedCompanies.length} empresas: ${JSON.stringify(metadata.selectedCompanies)}`);
             
             // Crear asociaciones entre el usuario y cada empresa seleccionada
             for (const companyIdentifier of metadata.selectedCompanies) {
@@ -618,9 +640,12 @@ export function setupAuthRoutes(app: Express, customIsAuthenticated?: any) {
                 });
               console.log(`[REGISTER] Asociado usuario ${user.id} con empresa ${companyIdentifier}`);
             }
+          } else {
+            console.log(`[REGISTER] No se encontraron compañías seleccionadas en los metadatos:`, metadata);
           }
         } catch (parseErr) {
-          console.error("Error al parsear metadatos de invitación:", parseErr);
+          console.error("Error al procesar metadatos de invitación:", parseErr);
+          console.error("Valor de metadata:", invitation[0].metadata);
         }
       }
 
