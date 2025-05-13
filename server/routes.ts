@@ -2,6 +2,8 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
+import { db } from "./db";
+import { eq, inArray } from "drizzle-orm";
 import { 
   insertRouteSchema, 
   insertTripSchema, 
@@ -18,7 +20,9 @@ import {
   TripStatus,
   UserRole,
   PaymentStatus,
-  PaymentMethod
+  PaymentMethod,
+  userCompanies,
+  companies
 } from "@shared/schema";
 
 // Constantes para roles y permisos de paqueterías
@@ -4578,16 +4582,41 @@ function setupPackageRoutes(app: Express) {
       const { user } = req as any;
       console.log(`[GET /cash-register] Usuario ${user.firstName} ${user.lastName} solicitando datos de caja`);
       
-      // Si el usuario es taquillero (puede ver todas las empresas)
+      // Si el usuario es taquillero (tiene acceso a empresas específicas)
       if (user.role === UserRole.TICKET_OFFICE) {
-        console.log(`[GET /cash-register] Usuario taquillero: mostrando todas las reservaciones pagadas agrupadas por empresa`);
+        console.log(`[GET /cash-register] Usuario taquillero: obteniendo compañías asociadas`);
+        
+        // Obtener las compañías asociadas al usuario de taquilla
+        const userCompanyAssociations = await db
+          .select()
+          .from(userCompanies)
+          .where(eq(userCompanies.userId, user.id));
+        
+        console.log(`[GET /cash-register] Usuario taquillero: ${userCompanyAssociations.length} compañías asociadas`);
+        
+        if (userCompanyAssociations.length === 0) {
+          console.log(`[GET /cash-register] Usuario taquillero sin empresas asociadas: no se mostrarán reservaciones`);
+          return res.json([]);
+        }
+        
+        // Obtener todos los IDs de compañías a las que tiene acceso
+        const associatedCompanyIds = userCompanyAssociations.map(assoc => assoc.companyId);
+        console.log(`[GET /cash-register] IDs de compañías asociadas: ${associatedCompanyIds.join(', ')}`);
         
         // Obtener todas las reservaciones marcadas como pagadas por este taquillero
         const taquilleroReservations = await storage.getPaidReservationsByUser(user.id);
         
+        // Filtrar las reservaciones para mostrar solo las de las compañías asociadas
+        const filteredReservations = taquilleroReservations.filter(reservation => {
+          const tripCompanyId = reservation.trip?.companyId || null;
+          return tripCompanyId && associatedCompanyIds.includes(tripCompanyId);
+        });
+        
+        console.log(`[GET /cash-register] Filtrando ${taquilleroReservations.length} reservaciones a ${filteredReservations.length} (solo compañías asociadas)`);
+        
         // Agregar información adicional para identificar a qué empresa pertenece cada reserva
         const enrichedReservations = await Promise.all(
-          taquilleroReservations.map(async (reservation) => {
+          filteredReservations.map(async (reservation) => {
             // Obtener la compañía del viaje
             let companyId = null;
             let companyName = "Desconocida";
