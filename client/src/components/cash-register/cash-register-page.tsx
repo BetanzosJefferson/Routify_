@@ -402,11 +402,17 @@ export function CashRegisterPage() {
             </div>
           ) : isTicketOfficeView ? (
             <div className="space-y-8">
-              {Object.entries(reservationsByCompany).map(([companyId, companyData]) => (
-                <div key={companyId} className="mb-8">
-                  <h3 className="text-lg font-semibold mb-3 text-primary border-b pb-2">
-                    Empresa: {companyData.name}
-                  </h3>
+              {Object.entries(reservationsByCompany).map(([companyId, companyData]) => {
+                // Filtrar por empresa seleccionada si hay filtro activo
+                if (companyFilter !== 'todas' && companyId !== companyFilter) {
+                  return null;
+                }
+                
+                return (
+                  <div key={companyId} className="mb-8">
+                    <h3 className="text-lg font-semibold mb-3 text-primary border-b pb-2">
+                      Empresa: {companyData.name}
+                    </h3>
                   
                   {/* Tarjetas resumen por empresa */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -500,7 +506,7 @@ export function CashRegisterPage() {
                     </Table>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           ) : (
             <div className="overflow-x-auto">
