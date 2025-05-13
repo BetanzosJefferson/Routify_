@@ -234,7 +234,7 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
   // Endpoint para crear una invitación
   app.post("/api/invitations", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const { role, email } = req.body;
+      const { role, email, selectedCompanies } = req.body;
       const { user } = req as any; // Obtener el usuario autenticado
 
       if (!role) {
@@ -243,10 +243,19 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
 
       // El middleware isAuthenticated ya garantiza que el usuario está autenticado
 
-      // Verificar permisos según el rol
-      // Solo los SUPER_ADMIN pueden crear cualquier tipo de usuario
-      // Los OWNER solo pueden crear usuarios de tipo DUEÑO, CALL CENTER, CHECADOR y CHOFER
-      // Los ADMIN solo pueden crear usuarios que no sean SUPER_ADMIN, ADMIN ni OWNER
+      // Verificar que solo superAdmin puede crear usuarios de taquilla
+      if (role === UserRole.TICKET_OFFICE && user.role !== UserRole.SUPER_ADMIN) {
+        return res.status(403).json({
+          message: "Solo el Super Administrador puede crear usuarios de taquilla"
+        });
+      }
+
+      // Validar que la selección de empresas es obligatoria para taquilla
+      if (role === UserRole.TICKET_OFFICE && (!selectedCompanies || !Array.isArray(selectedCompanies) || selectedCompanies.length === 0)) {
+        return res.status(400).json({
+          message: "Debe seleccionar al menos una empresa para usuarios de taquilla"
+        });
+      }
       
       // Nueva lógica para DUEÑO - puede invitar roles específicos, incluyendo Administrador y Comisionista
       if (user.role === UserRole.OWNER) {
@@ -282,6 +291,10 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
       // Calcular fecha de expiración (24 horas desde ahora)
       const expiresAt = add(new Date(), { hours: 24 });
 
+      // Crear la invitación
+      const metadataValue = role === UserRole.TICKET_OFFICE && selectedCompanies ? 
+        JSON.stringify({ selectedCompanies }) : null;
+
       const [invitation] = await db
         .insert(invitations)
         .values({
@@ -289,8 +302,13 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
           email: email || null,
           expiresAt,
           createdById: user.id, // Usar el ID del usuario autenticado como creador
+          metadata: metadataValue, // Guardar las empresas seleccionadas como metadatos
         })
         .returning();
+        
+      if (role === UserRole.TICKET_OFFICE && selectedCompanies && selectedCompanies.length > 0) {
+        console.log(`[POST /api/invitations] Creando invitación para taquilla con empresas: ${JSON.stringify(selectedCompanies)}`);
+      }
 
       res.status(201).json(invitation);
     } catch (error) {
@@ -393,12 +411,26 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
           role: inviter[0].role
         };
       }
+      
+      // Procesar metadatos si existen (para usuarios de taquilla)
+      let selectedCompanies = null;
+      if (invitation[0].metadata && invitation[0].role === UserRole.TICKET_OFFICE) {
+        try {
+          const metadata = JSON.parse(invitation[0].metadata as string);
+          if (metadata.selectedCompanies) {
+            selectedCompanies = metadata.selectedCompanies;
+          }
+        } catch (parseErr) {
+          console.error("Error al parsear metadatos de invitación:", parseErr);
+        }
+      }
 
       res.json({
         valid: true,
         role: invitation[0].role,
         email: invitation[0].email,
-        inviter: inviterInfo
+        inviter: inviterInfo,
+        selectedCompanies: selectedCompanies
       });
     } catch (error) {
       console.error("Error al verificar invitación:", error);
@@ -563,6 +595,29 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
         } catch (companyError) {
           console.error("[REGISTER] Error al crear la compañía:", companyError);
           // No fallar el registro si falla la creación de la compañía
+        }
+      }
+
+      // Si es taquilla, verificar si hay empresas seleccionadas en los metadatos
+      if (invitation[0].role === UserRole.TICKET_OFFICE && invitation[0].metadata) {
+        try {
+          const metadata = JSON.parse(invitation[0].metadata as string);
+          if (metadata.selectedCompanies && Array.isArray(metadata.selectedCompanies) && metadata.selectedCompanies.length > 0) {
+            console.log(`[REGISTER] Usuario taquilla: Asociando con ${metadata.selectedCompanies.length} empresas`);
+            
+            // Crear asociaciones entre el usuario y cada empresa seleccionada
+            for (const companyIdentifier of metadata.selectedCompanies) {
+              await db
+                .insert(userCompanies)
+                .values({
+                  userId: user.id,
+                  companyId: companyIdentifier
+                });
+              console.log(`[REGISTER] Asociado usuario ${user.id} con empresa ${companyIdentifier}`);
+            }
+          }
+        } catch (parseErr) {
+          console.error("Error al parsear metadatos de invitación:", parseErr);
         }
       }
 

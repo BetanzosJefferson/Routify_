@@ -563,6 +563,7 @@ export const invitations = pgTable("invitations", {
   expiresAt: timestamp("expires_at").notNull(),
   usedAt: timestamp("used_at"),
   createdById: integer("created_by_id").notNull(),
+  metadata: json("metadata"), // Campo para almacenar datos adicionales como las empresas seleccionadas
 });
 
 export const insertInvitationSchema = createInsertSchema(invitations);
