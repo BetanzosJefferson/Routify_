@@ -14,13 +14,20 @@ import { Label } from "@/components/ui/label";
 import { AlertCircle, Copy, Check, UserPlus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/use-auth";
+import { CompanySelectionModal } from "./company-selection-modal";
 
 // Schema de validación
 const invitationFormSchema = z.object({
   role: z.string().min(1, "El rol es requerido"),
+  // Agregaremos selectedCompanies en tiempo de ejecución para taquilla
 });
 
 type InvitationFormValues = z.infer<typeof invitationFormSchema>;
+
+// Tipo extendido para incluir las compañías seleccionadas para usuarios de taquilla
+interface InvitationData extends InvitationFormValues {
+  selectedCompanies?: string[];
+}
 
 // Función para obtener los roles permitidos según el rol del usuario autenticado
 function getFilteredRoles(userRole?: string): string[] {
@@ -45,7 +52,7 @@ function getFilteredRoles(userRole?: string): string[] {
     ];
   }
   
-  // Si es superadmin, puede invitar a todos los roles
+  // Si es superadmin, puede invitar a todos los roles (incluyendo taquilla)
   return [
     UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
@@ -53,7 +60,7 @@ function getFilteredRoles(userRole?: string): string[] {
     UserRole.CALL_CENTER,
     UserRole.CHECKER,
     UserRole.DRIVER,
-    UserRole.TICKET_OFFICE,
+    UserRole.TICKET_OFFICE, // Solo superAdmin puede invitar a taquilla
     UserRole.DEVELOPER,
     UserRole.COMMISSIONER
   ];
@@ -84,6 +91,8 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
   const queryClient = useQueryClient();
   const [invitation, setInvitation] = useState<{ token: string; url: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showCompanySelectionModal, setShowCompanySelectionModal] = useState(false);
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const { user } = useAuth(); // Obtener el usuario autenticado
   
   // Determinar los roles que puede invitar según su rol
@@ -97,7 +106,7 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
   });
 
   const mutation = useMutation({
-    mutationFn: async (data: InvitationFormValues) => {
+    mutationFn: async (data: InvitationData) => {
       const response = await fetch("/api/invitations", {
         method: "POST",
         headers: {
@@ -129,6 +138,9 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
         description: "El enlace de registro ha sido creado exitosamente",
       });
 
+      // Limpiar selección de empresas
+      setSelectedCompanies([]);
+
       if (onComplete) {
         onComplete();
       }
@@ -142,8 +154,29 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
     },
   });
 
+  // Manejador para selección de empresas
+  const handleCompanySelection = (companies: string[]) => {
+    setSelectedCompanies(companies);
+    setShowCompanySelectionModal(false);
+    
+    // Después de seleccionar las empresas, continuar con la creación de la invitación
+    const formData = form.getValues();
+    const invitationData: InvitationData = {
+      ...formData,
+      selectedCompanies: companies
+    };
+    
+    mutation.mutate(invitationData);
+  };
+
   function onSubmit(data: InvitationFormValues) {
-    mutation.mutate(data);
+    // Si es rol de taquilla y es superAdmin, mostrar el modal de selección de empresas
+    if (data.role === UserRole.TICKET_OFFICE && user?.role === UserRole.SUPER_ADMIN) {
+      setShowCompanySelectionModal(true);
+    } else {
+      // Para otros roles, continuar normalmente
+      mutation.mutate(data);
+    }
   }
 
   function copyToClipboard() {
@@ -170,6 +203,13 @@ export function CreateInvitationForm({ onComplete }: CreateInvitationFormProps) 
 
   return (
     <div className="space-y-6">
+      {/* Modal de selección de empresas */}
+      <CompanySelectionModal
+        isOpen={showCompanySelectionModal}
+        onClose={() => setShowCompanySelectionModal(false)}
+        onConfirm={handleCompanySelection}
+      />
+      
       {invitation ? (
         <div className="space-y-6">
           <div className="bg-green-50 border-green-100 p-4 rounded-lg">
