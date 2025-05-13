@@ -2159,6 +2159,31 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
+  async getUsersByRole(role: string): Promise<schema.User[]> {
+    console.log(`[getUsersByRole] Obteniendo usuarios con rol: ${role}`);
+    
+    if (!role) {
+      console.warn(`[getUsersByRole] Se llamó con rol vacío o nulo`);
+      return [];
+    }
+    
+    try {
+      // Consultar usuarios por rol
+      const users = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.role, role));
+      
+      console.log(`[getUsersByRole] Encontrados ${users.length} usuarios con rol ${role}`);
+      console.log(`[getUsersByRole] IDs de usuarios encontrados: ${users.map(u => u.id).join(', ')}`);
+      
+      return users;
+    } catch (error) {
+      console.error(`[getUsersByRole] Error al obtener usuarios por rol ${role}:`, error);
+      return [];
+    }
+  }
+  
   async getUsersByCompanyAndRole(companyId: string, role: string): Promise<schema.User[]> {
     console.log(`[getUsersByCompanyAndRole] Buscando usuarios de compañía ${companyId} con rol ${role}`);
     
