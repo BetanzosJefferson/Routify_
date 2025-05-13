@@ -489,7 +489,7 @@ export function ReservationList() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pago</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado por</th>
-                  {user?.role === "taquillero" && (
+                  {user?.role === "taquilla" && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <Building2 className="h-4 w-4 inline mr-1" />
                       Empresa
@@ -599,7 +599,7 @@ export function ReservationList() {
                         <span className="text-gray-400 text-sm">No disponible</span>
                       )}
                     </td>
-                    {user?.role === "taquillero" && (
+                    {user?.role === "taquilla" && (
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
                           {reservation.companyInfo?.name || 'N/A'}
