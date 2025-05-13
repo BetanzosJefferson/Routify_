@@ -1995,9 +1995,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } else {
         // Ejecutar la consulta con los filtros apropiados
-        if (user.role === UserRole.TICKET_OFFICE && companyIds && companyIds.length > 0) {
-          console.log(`[GET /reservations] TAQUILLERO: Aplicando filtro de ${companyIds.length} compañías`);
-          reservations = await storage.getReservations(undefined, tripId || undefined, companyIds);
+        if (user.role === UserRole.TICKET_OFFICE && companyFilter && companyFilter.length > 0) {
+          console.log(`[GET /reservations] TAQUILLERO: Aplicando filtro de ${companyFilter.length} compañías`);
+          reservations = await storage.getReservations(undefined, tripId || undefined, companyFilter);
         } else {
           // Filtro normal por compañía para otros roles
           reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
