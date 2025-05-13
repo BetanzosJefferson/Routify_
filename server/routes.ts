@@ -608,13 +608,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else {
             console.log(`[GET /trips] Conductor sin compañía asignada, aplicando solo filtro por driverId`);
           }
-        } else if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
+        } else if (user.role === UserRole.TICKET_OFFICE) {
+          // CASO ESPECIAL PARA TAQUILLEROS: Obtener las compañías asociadas
+          console.log(`[GET /trips] Usuario es TAQUILLERO (ID: ${user.id}), obteniendo empresas asociadas`);
+          
+          // Obtener las asociaciones del usuario con empresas
+          const userCompanyAssociations = await db
+            .select()
+            .from(userCompanies)
+            .where(eq(userCompanies.userId, user.id));
+          
+          if (userCompanyAssociations.length === 0) {
+            console.log(`[GET /trips] Taquillero sin empresas asociadas, no verá ningún viaje`);
+            return res.json([]);
+          }
+          
+          // Obtener los IDs de las empresas asociadas
+          const companyIds = userCompanyAssociations.map(assoc => assoc.companyId);
+          console.log(`[GET /trips] Taquillero con ${companyIds.length} empresas asociadas: ${companyIds.join(', ')}`);
+          
+          // Establecer un parámetro especial para manejar múltiples compañías
+          searchParams.companyIds = companyIds;
+          
+        } else if (user.role !== UserRole.SUPER_ADMIN) {
           // Usuarios normales - SIEMPRE FILTRAR POR SU COMPAÑÍA
           // Obtener companyId del usuario (preferimos companyId pero también aceptamos company como respaldo)
           const userCompanyId = user.companyId || user.company || null;
           
           if (userCompanyId) {
-            // Aplicar filtro por compañía - OBLIGATORIO para usuarios que no son superAdmin o taquilla
+            // Aplicar filtro por compañía - OBLIGATORIO para usuarios que no son superAdmin
             searchParams.companyId = userCompanyId;
             console.log(`[GET /trips] Filtro compañía aplicado: ${userCompanyId}`);
           } else {
@@ -623,7 +645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.json([]);
           }
         } else {
-          // Usuarios superAdmin o taquilla - ACCESO TOTAL
+          // Solo superAdmin tiene ACCESO TOTAL
           console.log(`[GET /trips] Usuario ${user.firstName} con rol ${user.role} - ACCESO TOTAL (sin filtrar compañía)`);
           
           // SOLUCIÓN ESPECIAL: Establecer un valor especial 'ALL' para indicar acceso total
