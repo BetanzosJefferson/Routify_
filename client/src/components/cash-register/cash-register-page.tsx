@@ -162,7 +162,7 @@ export function CashRegisterPage() {
   
   // Agrupar reservaciones por compañía para taquilleros
   const reservationsByCompany = isTicketOfficeView 
-    ? sortedReservations.reduce<Record<string, { name: string, reservations: ReservationWithCompany[] }>>((groups, reservation) => {
+    ? (paidReservations || []).reduce<Record<string, { name: string, reservations: ReservationWithCompany[] }>>((groups, reservation) => {
         const companyId = reservation.companyInfo?.id || 'sin-empresa';
         const companyName = reservation.companyInfo?.name || 'Sin empresa asignada';
         
@@ -244,7 +244,7 @@ export function CashRegisterPage() {
       <Card className="mb-6">
         <CardContent className="p-6">
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className={`grid grid-cols-1 ${isTicketOfficeView ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
               <div className="col-span-2">
                 <label htmlFor="searchInput" className="mb-2 block text-sm font-medium">
                   Buscar
@@ -296,6 +296,29 @@ export function CashRegisterPage() {
                   </SelectContent>
                 </Select>
               </div>
+              
+              {/* Selector de empresa (solo para taquilleros) */}
+              {isTicketOfficeView && (
+                <div>
+                  <label htmlFor="companyFilter" className="mb-2 block text-sm font-medium">
+                    Empresa
+                  </label>
+                  <Select value={companyFilter} onValueChange={setCompanyFilter}>
+                    <SelectTrigger id="companyFilter" className="w-full">
+                      <SelectValue placeholder="Todas las empresas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todas">Todas las empresas</SelectItem>
+                      {/* Generar opciones de empresas dinámicamente */}
+                      {Object.entries(reservationsByCompany).map(([companyId, companyData]) => (
+                        <SelectItem key={companyId} value={companyId}>
+                          {companyData.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             
             {/* Resumen de caja */}
