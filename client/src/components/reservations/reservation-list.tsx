@@ -494,7 +494,9 @@ export function ReservationList() {
                     </th>
                   )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado por</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  {activeTab === "canceled" && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -601,16 +603,16 @@ export function ReservationList() {
                         <span className="text-gray-400 text-sm">No disponible</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge 
-                        variant="outline"
-                        className={reservation.status === 'confirmed' 
-                          ? "bg-blue-100 text-blue-800 border-blue-200" 
-                          : "bg-red-100 text-red-800 border-red-200"}
-                      >
-                        {reservation.status === 'confirmed' ? 'CONFIRMADA' : 'CANCELADA'}
-                      </Badge>
-                    </td>
+                    {activeTab === "canceled" && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge 
+                          variant="outline"
+                          className="bg-red-100 text-red-800 border-red-200"
+                        >
+                          CANCELADA
+                        </Badge>
+                      </td>
+                    )}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                         <Button 
