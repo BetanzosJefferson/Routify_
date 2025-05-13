@@ -1957,11 +1957,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const allReservations = [];
           
           for (const id of relatedTripIds) {
-            // Aplicar filtro de compañía para todos los roles excepto superAdmin
-            const tripReservations = await storage.getReservations(
-              (user.role === UserRole.SUPER_ADMIN) ? undefined : (companyId || undefined),
-              id
-            );
+            // Aplicar filtro de compañía según el rol del usuario
+            let tripReservations;
+            
+            if (user.role === UserRole.SUPER_ADMIN) {
+              // SuperAdmin ve todo sin filtrar por compañía
+              tripReservations = await storage.getReservations(undefined, id);
+            } 
+            else if (user.role === UserRole.TICKET_OFFICE && companyIds && companyIds.length > 0) {
+              // Taquilleros filtran por sus compañías asignadas
+              console.log(`[GET /reservations] TAQUILLERO: Filtrando viaje relacionado ${id} por ${companyIds.length} compañías asignadas`);
+              tripReservations = await storage.getReservations(undefined, id, companyIds);
+            } 
+            else {
+              // Resto de roles filtran por su compañía directa
+              tripReservations = await storage.getReservations(companyId || undefined, id);
+            }
+            
             allReservations.push(...tripReservations);
             console.log(`[GET /reservations] Encontradas ${tripReservations.length} reservaciones para viaje relacionado ${id}`);
           }
@@ -1971,39 +1983,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (error) {
           console.error('[GET /reservations] Error al obtener viajes relacionados:', error);
           // Si hay error, caer al comportamiento normal (solo el viaje solicitado)
-          reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
+          // Usando filtro de compañías para taquilleros o filtro normal para otros roles
+          if (user.role === UserRole.TICKET_OFFICE && companyIds && companyIds.length > 0) {
+            console.log(`[GET /reservations] TAQUILLERO: Aplicando filtro de ${companyIds.length} compañías tras error`);
+            reservations = await storage.getReservations(undefined, tripId || undefined, companyIds);
+          } else {
+            reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
+          }
         }
       } else {
-        // Ejecutar la consulta normal con el filtro de compañía si aplica
-        reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
+        // Ejecutar la consulta con los filtros apropiados
+        if (user.role === UserRole.TICKET_OFFICE && companyIds && companyIds.length > 0) {
+          console.log(`[GET /reservations] TAQUILLERO: Aplicando filtro de ${companyIds.length} compañías`);
+          reservations = await storage.getReservations(undefined, tripId || undefined, companyIds);
+        } else {
+          // Filtro normal por compañía para otros roles
+          reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
+        }
       }
       
       console.log(`[GET /reservations] Encontradas ${reservations.length} reservaciones`);
       
       // CAPA ADICIONAL DE SEGURIDAD - FILTRO POST-CONSULTA
-      if (user && 
-          user.role !== UserRole.SUPER_ADMIN && 
-          user.role !== UserRole.ADMIN && 
-          user.role !== UserRole.TICKET_OFFICE && 
-          user.role !== UserRole.CHECKER) {
-        // Obtener la compañía del usuario
-        const userCompany = user.companyId || user.company || null;
-        
-        if (userCompany) {
-          // Verificar que todas las reservaciones sean realmente de la compañía del usuario
-          const reservacionesDeOtrasCompanias = reservations.filter(r => 
-            r.companyId && r.companyId !== userCompany
-          );
+      if (user) {
+        // CASO ESPECIAL: TAQUILLERO - verificar acceso a múltiples compañías asignadas
+        if (user.role === UserRole.TICKET_OFFICE) {
+          // Solo aplicar filtro si tenemos las compañías asignadas
+          if (companyIds && companyIds.length > 0) {
+            console.log(`[GET /reservations] VERIFICACIÓN TAQUILLERO: Asegurando acceso solo a compañías asignadas`);
+            
+            // Verificar que todas las reservaciones pertenezcan a las compañías asignadas
+            const reservacionesDeOtrasCompanias = reservations.filter(r => 
+              r.companyId && !companyIds.includes(r.companyId)
+            );
+            
+            if (reservacionesDeOtrasCompanias.length > 0) {
+              console.log(`[ALERTA DE SEGURIDAD] Se intentaron mostrar ${reservacionesDeOtrasCompanias.length} reservaciones de compañías no asignadas al taquillero!`);
+              
+              // CRÍTICO: Filtrar y devolver SOLO las reservaciones de las compañías asignadas
+              const reservacionesFiltradas = reservations.filter(r => 
+                r.companyId && companyIds.includes(r.companyId)
+              );
+              console.log(`[CORRECCIÓN] Devolviendo solo ${reservacionesFiltradas.length} reservaciones de las compañías asignadas`);
+              
+              // Reemplazar los resultados
+              return res.json(reservacionesFiltradas);
+            }
+          }
+        }
+        // VERIFICACIÓN PARA OTROS ROLES (excepto superAdmin, admin, taquilla y checador)
+        else if (user.role !== UserRole.SUPER_ADMIN && 
+                user.role !== UserRole.ADMIN && 
+                user.role !== UserRole.CHECKER) {
+          // Obtener la compañía del usuario
+          const userCompany = user.companyId || user.company || null;
           
-          if (reservacionesDeOtrasCompanias.length > 0) {
-            console.log(`[ALERTA DE SEGURIDAD] Se intentaron mostrar ${reservacionesDeOtrasCompanias.length} reservaciones de otras compañías!`);
+          if (userCompany) {
+            // Verificar que todas las reservaciones sean realmente de la compañía del usuario
+            const reservacionesDeOtrasCompanias = reservations.filter(r => 
+              r.companyId && r.companyId !== userCompany
+            );
             
-            // CRÍTICO: Filtrar y devolver SOLO las reservaciones de la compañía del usuario
-            const reservacionesFiltradas = reservations.filter(r => r.companyId === userCompany);
-            console.log(`[CORRECCIÓN] Devolviendo solo ${reservacionesFiltradas.length} reservaciones de compañía ${userCompany}`);
-            
-            // Reemplazar los resultados
-            return res.json(reservacionesFiltradas);
+            if (reservacionesDeOtrasCompanias.length > 0) {
+              console.log(`[ALERTA DE SEGURIDAD] Se intentaron mostrar ${reservacionesDeOtrasCompanias.length} reservaciones de otras compañías!`);
+              
+              // CRÍTICO: Filtrar y devolver SOLO las reservaciones de la compañía del usuario
+              const reservacionesFiltradas = reservations.filter(r => r.companyId === userCompany);
+              console.log(`[CORRECCIÓN] Devolviendo solo ${reservacionesFiltradas.length} reservaciones de compañía ${userCompany}`);
+              
+              // Reemplazar los resultados
+              return res.json(reservacionesFiltradas);
+            }
           }
         }
       }
