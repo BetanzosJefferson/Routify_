@@ -1791,7 +1791,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // SEGURIDAD: Filtrado de datos por compañía
       let companyId: string | null = null;
       let tripId: number | null = null;
-      let companyFilter: string[] | null = null; // Añadimos esta variable para los taquilleros
       let includeRelatedTrips = req.query.includeRelated === 'true';
       
       // Verificar si se solicita filtrar por viaje específico
@@ -1830,8 +1829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[GET /reservations] Taquillero con ${assignedCompanyIds.length} empresas asignadas: [${assignedCompanyIds.join(', ')}]`);
           
           // Las reservaciones se filtrarán por estas compañías en la capa de almacenamiento
-          // Modificamos la variable de filtro que ya debería estar declarada antes
-          companyFilter = assignedCompanyIds;
+          companyIds = assignedCompanyIds;
         }
         // CASO ESPECIAL: CONDUCTORES - solo ven sus viajes asignados
         else if (user.role === UserRole.DRIVER && tripId) {
@@ -1986,18 +1984,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('[GET /reservations] Error al obtener viajes relacionados:', error);
           // Si hay error, caer al comportamiento normal (solo el viaje solicitado)
           // Usando filtro de compañías para taquilleros o filtro normal para otros roles
-          if (user.role === UserRole.TICKET_OFFICE && companyFilter && companyFilter.length > 0) {
-            console.log(`[GET /reservations] TAQUILLERO: Aplicando filtro de ${companyFilter.length} compañías tras error`);
-            reservations = await storage.getReservations(undefined, tripId || undefined, companyFilter);
+          if (user.role === UserRole.TICKET_OFFICE && companyIds && companyIds.length > 0) {
+            console.log(`[GET /reservations] TAQUILLERO: Aplicando filtro de ${companyIds.length} compañías tras error`);
+            reservations = await storage.getReservations(undefined, tripId || undefined, companyIds);
           } else {
             reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
           }
         }
       } else {
         // Ejecutar la consulta con los filtros apropiados
-        if (user.role === UserRole.TICKET_OFFICE && companyFilter && companyFilter.length > 0) {
-          console.log(`[GET /reservations] TAQUILLERO: Aplicando filtro de ${companyFilter.length} compañías`);
-          reservations = await storage.getReservations(undefined, tripId || undefined, companyFilter);
+        if (user.role === UserRole.TICKET_OFFICE && companyIds && companyIds.length > 0) {
+          console.log(`[GET /reservations] TAQUILLERO: Aplicando filtro de ${companyIds.length} compañías`);
+          reservations = await storage.getReservations(undefined, tripId || undefined, companyIds);
         } else {
           // Filtro normal por compañía para otros roles
           reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
