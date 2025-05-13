@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
+import { hasRequiredRole } from "@/lib/role-based-permissions";
 import TicketCheckedModal from "@/components/reservations/ticket-checked-modal";
 
 interface ReservationDetailsModalProps {
@@ -64,6 +65,16 @@ export default function ReservationDetailsModal({
       return;
     }
     
+    // Verificar si la reservación está cancelada
+    if (reservation?.status === 'canceled') {
+      toast({
+        title: "Reservación cancelada",
+        description: "Las reservaciones canceladas no pueden ser verificadas.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsChecking(true);
     try {
       const response = await apiRequest("POST", `/api/reservations/${reservationId}/check`);
@@ -105,6 +116,16 @@ export default function ReservationDetailsModal({
   // Marcar como pagado
   const markAsPaid = async () => {
     if (!reservationId) return;
+    
+    // Verificar si la reservación está cancelada
+    if (reservation?.status === 'canceled') {
+      toast({
+        title: "Reservación cancelada",
+        description: "Las reservaciones canceladas no pueden ser marcadas como pagadas.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setIsMarkingAsPaid(true);
     try {
@@ -399,6 +420,26 @@ export default function ReservationDetailsModal({
               
               <DialogFooter className="mt-2 sm:mt-4 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
                 <Button className="w-full sm:w-auto text-sm" onClick={handleClose}>Cerrar</Button>
+                
+                {user && hasRequiredRole(user, ["checker", "driver", "owner", "admin"]) && reservation.status !== 'canceled' && (
+                  <Button
+                    className="w-full sm:w-auto text-sm bg-green-600 hover:bg-green-700"
+                    onClick={handleCheckTicket}
+                    disabled={isChecking}
+                  >
+                    {isChecking ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Procesando...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Verificar Ticket
+                      </>
+                    )}
+                  </Button>
+                )}
                 
                 {user && reservation.status !== 'canceled' && (
                   <Button 
