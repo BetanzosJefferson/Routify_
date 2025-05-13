@@ -429,6 +429,7 @@ export function CashRegisterPage() {
                           <TableHead>Empresa</TableHead>
                           <TableHead>Ruta</TableHead>
                           <TableHead>Método</TableHead>
+                          <TableHead>Fecha de pago</TableHead>
                           <TableHead className="text-right">Monto</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -456,6 +457,12 @@ export function CashRegisterPage() {
                                 </span>
                               )}
                             </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-4 w-4 text-gray-500" />
+                                <span>{formatDate(reservation.markedAsPaidAt)}</span>
+                              </div>
+                            </TableCell>
                             <TableCell className="text-right">{formatPrice(reservation.totalAmount || 0)}</TableCell>
                           </TableRow>
                         ))}
@@ -480,6 +487,7 @@ export function CashRegisterPage() {
                     <TableHead>Empresa</TableHead>
                     <TableHead>Ruta</TableHead>
                     <TableHead>Método</TableHead>
+                    <TableHead>Fecha de pago</TableHead>
                     {isAdminView && <TableHead>Registrado por</TableHead>}
                     <TableHead className="text-right">Monto</TableHead>
                   </TableRow>
