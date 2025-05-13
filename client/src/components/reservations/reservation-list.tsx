@@ -817,7 +817,18 @@ export function ReservationList() {
                     
                     <div className="text-right">
                       <div className="text-xs text-gray-500">Total</div>
-                      <div className="font-medium">{formatPrice(reservation.totalAmount)}</div>
+                      {activeTab === "canceled" ? (
+                        <div className="font-medium">
+                          <span className="line-through text-gray-500">{formatPrice(reservation.totalAmount)}</span>
+                          {reservation.advanceAmount > 0 ? (
+                            <span className="ml-1">{formatPrice(reservation.advanceAmount)}</span>
+                          ) : (
+                            <span className="ml-1">{formatPrice(0)}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="font-medium">{formatPrice(reservation.totalAmount)}</div>
+                      )}
                     </div>
                     
                     {/* Información del creador para móvil */}
@@ -835,16 +846,37 @@ export function ReservationList() {
                     <div className="col-span-2 mt-2 bg-gray-50 p-2 rounded-md border border-gray-100 text-xs">
                       <div className="grid grid-cols-2 gap-2">
                         {(!reservation.advanceAmount || reservation.advanceAmount <= 0) ? (
-                          <>
-                            <div>
-                              <div className="text-gray-500">Método de pago</div>
-                              <div className="font-medium">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-                            </div>
-                            <div>
-                              <div className="text-gray-500">Estado</div>
-                              <div className="font-medium">{reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}</div>
-                            </div>
-                          </>
+                          activeTab === "canceled" ? (
+                            <>
+                              <div>
+                                <div className="text-gray-500">Método de pago</div>
+                                <div className="font-medium">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                              </div>
+                              <div>
+                                <div className="text-gray-500">Estado</div>
+                                <div className="font-medium">
+                                  <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
+                                    CANCELADA
+                                  </Badge>
+                                </div>
+                              </div>
+                              <div className="col-span-2">
+                                <div className="text-gray-500">Ingreso real</div>
+                                <div className="font-medium">{formatPrice(0)}</div>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div>
+                                <div className="text-gray-500">Método de pago</div>
+                                <div className="font-medium">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                              </div>
+                              <div>
+                                <div className="text-gray-500">Estado</div>
+                                <div className="font-medium">{reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}</div>
+                              </div>
+                            </>
+                          )
                         ) : (
                           <>
                             <div className="col-span-2">
@@ -858,10 +890,17 @@ export function ReservationList() {
                             {reservation.advanceAmount < reservation.totalAmount && (
                               <div className="col-span-2">
                                 <div className="text-gray-500">{reservation.paymentStatus === 'pagado' ? 'Pagó' : 'Resta'}</div>
-                                <div className="font-medium">
-                                  {formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}{" "}
-                                  <span className="font-normal">({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
-                                </div>
+                                {activeTab === "canceled" ? (
+                                  <div className="font-medium line-through text-gray-500">
+                                    {formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}{" "}
+                                    <span className="font-normal">({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
+                                  </div>
+                                ) : (
+                                  <div className="font-medium">
+                                    {formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}{" "}
+                                    <span className="font-normal">({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
+                                  </div>
+                                )}
                               </div>
                             )}
                             

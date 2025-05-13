@@ -285,39 +285,70 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
         <div className="mb-6">
           <h2 className="text-base font-medium mb-3 border-b pb-2">Información de Pago</h2>
           <div className="bg-gray-50 p-4 rounded-md">
-            <div className="grid grid-cols-2 items-center mb-3">
-              <div className="text-sm text-gray-500 font-medium">TOTAL</div>
-              <div className="text-right font-medium">{formatPrice(reservation.totalAmount)}</div>
-            </div>
-            
-            <div className="grid grid-cols-2 items-center mb-3">
-              <div className="text-sm text-gray-500 font-medium">MÉTODO DE PAGO</div>
-              <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-            </div>
-            
-            {(reservation.advanceAmount && reservation.advanceAmount > 0) && (
+            {/* Visualización para reservaciones canceladas */}
+            {reservation.status === 'canceled' ? (
               <>
                 <div className="grid grid-cols-2 items-center mb-3">
-                  <div className="text-sm text-gray-500 font-medium">ANTICIPO</div>
-                  <div className="text-right font-medium">{formatPrice(reservation.advanceAmount)}</div>
+                  <div className="text-sm text-gray-500 font-medium">PRECIO ORIGINAL</div>
+                  <div className="text-right font-medium line-through text-gray-500">{formatPrice(reservation.totalAmount)}</div>
                 </div>
                 
                 <div className="grid grid-cols-2 items-center mb-3">
-                  <div className="text-sm text-gray-500 font-medium">MÉTODO ANTICIPO</div>
-                  <div className="text-right">{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                  <div className="text-sm text-gray-500 font-medium">INGRESO REAL</div>
+                  <div className="text-right font-medium">{formatPrice(reservation.advanceAmount || 0)}</div>
                 </div>
                 
-                {reservation.advanceAmount < reservation.totalAmount && (
+                {(reservation.advanceAmount && reservation.advanceAmount > 0) && (
                   <>
                     <div className="grid grid-cols-2 items-center mb-3">
-                      <div className="text-sm text-gray-500 font-medium">PENDIENTE DE PAGO</div>
-                      <div className="text-right font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</div>
+                      <div className="text-sm text-gray-500 font-medium">ANTICIPO RETENIDO</div>
+                      <div className="text-right font-medium">{formatPrice(reservation.advanceAmount)}</div>
                     </div>
                     
-                    <div className="grid grid-cols-2 items-center">
-                      <div className="text-sm text-gray-500 font-medium">MÉTODO PAGO FINAL</div>
-                      <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                    <div className="grid grid-cols-2 items-center mb-3">
+                      <div className="text-sm text-gray-500 font-medium">MÉTODO ANTICIPO</div>
+                      <div className="text-right">{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
                     </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 items-center mb-3">
+                  <div className="text-sm text-gray-500 font-medium">TOTAL</div>
+                  <div className="text-right font-medium">{formatPrice(reservation.totalAmount)}</div>
+                </div>
+                
+                <div className="grid grid-cols-2 items-center mb-3">
+                  <div className="text-sm text-gray-500 font-medium">MÉTODO DE PAGO</div>
+                  <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                </div>
+                
+                {(reservation.advanceAmount && reservation.advanceAmount > 0) && (
+                  <>
+                    <div className="grid grid-cols-2 items-center mb-3">
+                      <div className="text-sm text-gray-500 font-medium">ANTICIPO</div>
+                      <div className="text-right font-medium">{formatPrice(reservation.advanceAmount)}</div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 items-center mb-3">
+                      <div className="text-sm text-gray-500 font-medium">MÉTODO ANTICIPO</div>
+                      <div className="text-right">{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                    </div>
+                    
+                    {reservation.advanceAmount < reservation.totalAmount && (
+                      <>
+                        <div className="grid grid-cols-2 items-center mb-3">
+                          <div className="text-sm text-gray-500 font-medium">PENDIENTE DE PAGO</div>
+                          <div className="text-right font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 items-center">
+                          <div className="text-sm text-gray-500 font-medium">MÉTODO PAGO FINAL</div>
+                          <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
               </>
