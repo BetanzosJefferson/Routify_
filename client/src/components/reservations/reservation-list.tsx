@@ -538,9 +538,12 @@ export function ReservationList() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="space-y-1">
                         <div className="flex items-center space-x-2">
-                          {/* Si está cancelado y tiene anticipo pero no está pagado, mostrar el valor del anticipo */}
+                          {/* Si está cancelado y tiene anticipo pero no está pagado, mostrar el valor total tachado y el anticipo */}
                           {activeTab === "canceled" && reservation.advanceAmount > 0 && reservation.paymentStatus !== 'pagado' ? (
-                            <span className="text-sm font-medium">{formatPrice(reservation.advanceAmount)}</span>
+                            <>
+                              <span className="text-sm font-medium line-through text-gray-500">{formatPrice(reservation.totalAmount)}</span>
+                              <span className="text-sm font-medium ml-1">{formatPrice(reservation.advanceAmount)}</span>
+                            </>
                           ) : (
                             <span className="text-sm font-medium">{formatPrice(reservation.totalAmount)}</span>
                           )}
