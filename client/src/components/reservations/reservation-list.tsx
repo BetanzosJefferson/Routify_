@@ -487,15 +487,15 @@ export function ReservationList() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seats</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pago</th>
+                  {activeTab === "canceled" && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  )}
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado por</th>
                   {user?.role === "taquilla" && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <Building2 className="h-4 w-4 inline mr-1" />
                       Empresa
                     </th>
-                  )}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado por</th>
-                  {activeTab === "canceled" && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -537,7 +537,17 @@ export function ReservationList() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="space-y-1">
-                        <div className="text-sm font-medium">{formatPrice(reservation.totalAmount)}</div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-medium">{formatPrice(reservation.totalAmount)}</span>
+                          <Badge 
+                            variant={reservation.paymentStatus === 'pagado' ? "outline" : "secondary"}
+                            className={reservation.paymentStatus === 'pagado' 
+                              ? "bg-green-100 text-green-800 border-green-200" 
+                              : "bg-amber-100 text-amber-800 border-amber-200"}
+                          >
+                            {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
+                          </Badge>
+                        </div>
                         
                         {(!reservation.advanceAmount || reservation.advanceAmount <= 0) ? (
                           <div className="flex justify-between text-xs">
@@ -567,26 +577,14 @@ export function ReservationList() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge 
-                        variant={reservation.paymentStatus === 'pagado' ? "outline" : "secondary"}
-                        className={reservation.paymentStatus === 'pagado' 
-                          ? "bg-green-100 text-green-800 border-green-200" 
-                          : "bg-amber-100 text-amber-800 border-amber-200"}
-                      >
-                        {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
-                      </Badge>
-                    </td>
-                    {user?.role === "taquilla" && (
+                    {activeTab === "canceled" && (
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {reservation.companyInfo?.name || 'N/A'}
-                        </div>
-                        {reservation.companyInfo?.id && (
-                          <div className="text-xs text-gray-500">
-                            ID: {reservation.companyInfo.id}
-                          </div>
-                        )}
+                        <Badge 
+                          variant="outline"
+                          className="bg-red-100 text-red-800 border-red-200"
+                        >
+                          CANCELADA
+                        </Badge>
                       </td>
                     )}
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -603,6 +601,18 @@ export function ReservationList() {
                         <span className="text-gray-400 text-sm">No disponible</span>
                       )}
                     </td>
+                    {user?.role === "taquilla" && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {reservation.companyInfo?.name || 'N/A'}
+                        </div>
+                        {reservation.companyInfo?.id && (
+                          <div className="text-xs text-gray-500">
+                            ID: {reservation.companyInfo.id}
+                          </div>
+                        )}
+                      </td>
+                    )}
                     {activeTab === "canceled" && (
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Badge 
