@@ -61,6 +61,21 @@ const ReservationCanceledModal: React.FC<ReservationCanceledModalProps> = ({
               <p className="text-sm text-gray-700">
                 Esta reservación ha sido cancelada y no puede ser procesada. Por favor, contacte al administrador si necesita más información.
               </p>
+
+              <div className="bg-gray-100 p-2 rounded-md border border-gray-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-700">Precio original:</span>
+                  <span className="text-sm font-medium line-through text-gray-500">
+                    ${reservation.totalAmount.toLocaleString('es-MX')}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-sm text-gray-700">Ingreso real:</span>
+                  <span className="text-sm font-medium">
+                    ${(reservation.advanceAmount || 0).toLocaleString('es-MX')}
+                  </span>
+                </div>
+              </div>
               
               {reservation.advanceAmount > 0 && (
                 <div className="bg-amber-50 p-2 rounded-md border border-amber-100">
