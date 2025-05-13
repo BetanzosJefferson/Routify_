@@ -527,6 +527,12 @@ export function CashRegisterPage() {
                           {reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4 text-gray-500" />
+                          <span>{formatDate(reservation.markedAsPaidAt)}</span>
+                        </div>
+                      </TableCell>
                       {isAdminView && (
                         <TableCell>
                           {reservation.paidByUserInfo ? (
