@@ -636,6 +636,30 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
     }
   });
   
+  // Endpoint para obtener todas las empresas (usado por el modal de selección)
+  app.get("/api/companies", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      // Solo superAdmin puede ver todas las empresas para asignarlas
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        return res.status(403).json({ message: "Acceso denegado" });
+      }
+      
+      // Obtener todas las empresas
+      const allCompanies = await db
+        .select()
+        .from(companies);
+      
+      console.log(`[GET /api/companies] Encontradas ${allCompanies.length} empresas`);
+      
+      res.json(allCompanies);
+    } catch (error) {
+      console.error("Error al obtener empresas:", error);
+      res.status(500).json({ message: "Error al obtener empresas" });
+    }
+  });
+  
   // Endpoint para obtener las empresas asociadas a un usuario de taquilla
   app.get("/api/user/companies", isAuthenticated, async (req: Request, res: Response) => {
     try {
