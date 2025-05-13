@@ -490,14 +490,18 @@ export function ReservationList() {
                   {activeTab === "canceled" && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   )}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado por</th>
+                  {user?.role !== "taquilla" && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado por</th>
+                  )}
                   {user?.role === "taquilla" && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <Building2 className="h-4 w-4 inline mr-1" />
                       Empresa
                     </th>
                   )}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  {user?.role !== "taquilla" && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -617,20 +621,22 @@ export function ReservationList() {
                         </Badge>
                       </td>
                     )}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {reservation.createdByUser ? (
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {reservation.createdByUser.firstName} {reservation.createdByUser.lastName}
+                    {user?.role !== "taquilla" && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {reservation.createdByUser ? (
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {reservation.createdByUser.firstName} {reservation.createdByUser.lastName}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {reservation.createdByUser.role}
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {reservation.createdByUser.role}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 text-sm">No disponible</span>
-                      )}
-                    </td>
+                        ) : (
+                          <span className="text-gray-400 text-sm">No disponible</span>
+                        )}
+                      </td>
+                    )}
                     {user?.role === "taquilla" && (
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
@@ -643,43 +649,45 @@ export function ReservationList() {
                         )}
                       </td>
                     )}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-                        <Button 
-                          variant="link" 
-                          className="text-blue-600 hover:text-blue-800 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEditModal(reservation);
-                          }}
-                        >
-                          Editar
-                        </Button>
-                        {reservation.status === 'canceled' ? (
+                    {user?.role !== "taquilla" && (
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                           <Button 
                             variant="link" 
-                            className="text-red-800 hover:text-red-900 p-0"
+                            className="text-blue-600 hover:text-blue-800 p-0"
                             onClick={(e) => {
                               e.stopPropagation();
-                              openDeleteConfirm(reservation.id, 'delete');
+                              openEditModal(reservation);
                             }}
                           >
-                            Eliminar
+                            Editar
                           </Button>
-                        ) : (
-                          <Button 
-                            variant="link" 
-                            className="text-amber-600 hover:text-amber-800 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openDeleteConfirm(reservation.id, 'cancel');
-                            }}
-                          >
-                            Cancelar
-                          </Button>
-                        )}
-                      </div>
-                    </td>
+                          {reservation.status === 'canceled' ? (
+                            <Button 
+                              variant="link" 
+                              className="text-red-800 hover:text-red-900 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDeleteConfirm(reservation.id, 'delete');
+                              }}
+                            >
+                              Eliminar
+                            </Button>
+                          ) : (
+                            <Button 
+                              variant="link" 
+                              className="text-amber-600 hover:text-amber-800 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDeleteConfirm(reservation.id, 'cancel');
+                              }}
+                            >
+                              Cancelar
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
