@@ -665,7 +665,9 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
         .from(companies)
         .where(inArray(companies.identifier, companyIds));
       
+      // Log para depuración
       console.log(`[GET /api/user/companies] Usuario taquilla ${user.id}: ${companiesData.length} empresas asociadas`);
+      console.log(`[GET /api/user/companies] IDs de empresas: ${companyIds.join(', ')}`);
       
       res.json(companiesData);
     } catch (error) {
