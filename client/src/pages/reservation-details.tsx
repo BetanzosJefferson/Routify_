@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import TicketCheckedModal from "@/components/reservations/ticket-checked-modal";
+import ReservationCanceledModal from "@/components/reservations/reservation-canceled-modal";
 
 export default function ReservationDetails({ params }: { params?: { id?: string } }) {
   const [_, setLocation] = useLocation();
@@ -19,6 +20,7 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
   const [reservationId, setReservationId] = useState<number | null>(null);
   const [isMarkingAsPaid, setIsMarkingAsPaid] = useState(false);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+  const [isCanceledModalOpen, setIsCanceledModalOpen] = useState(false);
   const [ticketCheckResult, setTicketCheckResult] = useState<{
     isFirstScan: boolean;
     reservation?: any;
@@ -57,12 +59,28 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
   const checkTicketMutation = useMutation({
     mutationFn: async () => {
       if (!reservationId || !user) return null;
+      
+      // Primero verificamos si la reservación está cancelada
+      const reservationResponse = await fetch(`/api/public/reservations/${reservationId}`);
+      if (!reservationResponse.ok) return null;
+      const reservationData = await reservationResponse.json();
+      
+      if (reservationData.status === 'canceled') {
+        return { isCanceled: true, reservation: reservationData };
+      }
+      
       const response = await apiRequest("POST", `/api/reservations/${reservationId}/check`);
       if (!response.ok) return null;
       return response.json();
     },
     onSuccess: (data) => {
       if (!data) return;
+      
+      // Si la reservación está cancelada, mostramos el modal de cancelación
+      if (data.isCanceled) {
+        setIsCanceledModalOpen(true);
+        return;
+      }
       
       setTicketCheckResult({
         isFirstScan: data.isFirstScan,
@@ -85,6 +103,16 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
   // Función para marcar como pagado
   const markAsPaid = async () => {
     if (!reservationId || !user) return;
+    
+    // Verificar si la reservación está cancelada
+    if (reservation.status === 'canceled') {
+      toast({
+        title: "No se puede procesar",
+        description: "Las reservaciones canceladas no pueden ser marcadas como pagadas.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setIsMarkingAsPaid(true);
     try {
@@ -296,7 +324,7 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
             )}
             
             {/* Botón para marcar como pagado */}
-            {reservation.paymentStatus !== 'pagado' && user && (
+            {reservation.paymentStatus !== 'pagado' && user && reservation.status !== 'canceled' && (
               <Button 
                 onClick={markAsPaid} 
                 disabled={isMarkingAsPaid}
@@ -314,6 +342,13 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
                   </>
                 )}
               </Button>
+            )}
+            
+            {/* Mensaje si está cancelada */}
+            {reservation.status === 'canceled' && (
+              <div className="w-full mt-4 p-3 bg-red-50 border border-red-200 rounded text-center text-red-600 text-sm">
+                Esta reservación está cancelada y no puede ser procesada.
+              </div>
             )}
           </div>
         </div>
