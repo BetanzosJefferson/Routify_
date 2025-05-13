@@ -44,6 +44,7 @@ export function CashRegisterPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("todos"); // Valor por defecto
+  const [companyFilter, setCompanyFilter] = useState("todas"); // Filtro por empresa para taquilleros
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   
   // Estados adicionales para mejorar la UX
@@ -138,7 +139,13 @@ export function CashRegisterPage() {
       }
     }
     
-    return matchesSearch && matchesDate && matchesPaymentMethod;
+    // Aplicar filtro de empresa (solo para taquilleros)
+    let matchesCompany = true;
+    if (isTicketOfficeView && companyFilter !== 'todas') {
+      matchesCompany = reservation.companyInfo?.id === companyFilter;
+    }
+    
+    return matchesSearch && matchesDate && matchesPaymentMethod && matchesCompany;
   }) || [];
   
   // Ordenar por fecha
