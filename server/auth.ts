@@ -641,8 +641,11 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
     try {
       const { user } = req as any;
       
+      console.log(`[GET /api/companies] Solicitud recibida desde usuario: ${user.firstName} ${user.lastName}, rol: ${user.role}`);
+      
       // Solo superAdmin puede ver todas las empresas para asignarlas
       if (user.role !== UserRole.SUPER_ADMIN) {
+        console.log(`[GET /api/companies] Acceso denegado para usuario con rol ${user.role}`);
         return res.status(403).json({ message: "Acceso denegado" });
       }
       
@@ -652,6 +655,9 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
         .from(companies);
       
       console.log(`[GET /api/companies] Encontradas ${allCompanies.length} empresas`);
+      for (const company of allCompanies) {
+        console.log(`[GET /api/companies] Empresa: ${company.name}, ID: ${company.identifier}`);
+      }
       
       res.json(allCompanies);
     } catch (error) {

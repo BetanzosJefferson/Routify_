@@ -16,25 +16,49 @@ interface CompanySelectionModalProps {
 
 export function CompanySelectionModal({ isOpen, onClose, onConfirm }: CompanySelectionModalProps) {
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
   
-  // Consultar todas las empresas
-  const { data: companies, isLoading, error } = useQuery({
-    queryKey: ['/api/companies'],
-    queryFn: async () => {
-      const response = await fetch('/api/companies');
-      if (!response.ok) {
-        throw new Error('Error al cargar las empresas');
-      }
-      return await response.json();
-    },
-    enabled: isOpen,
-  });
-  
-  // Resetear selección cuando el modal se abre
+  // Cargar empresas cuando el modal se abre
   useEffect(() => {
-    if (isOpen) {
-      setSelectedCompanies([]);
+    async function fetchCompanies() {
+      if (!isOpen) return;
+      
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        console.log("Llamando a API para obtener empresas...");
+        const response = await fetch('/api/companies', {
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log("Respuesta recibida con status:", response.status);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Error en respuesta:", errorText);
+          throw new Error(`Error ${response.status}: ${errorText || response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log("Datos recibidos:", data);
+        setCompanies(data);
+      } catch (err) {
+        console.error("Error al cargar empresas:", err);
+        setError(err instanceof Error ? err : new Error('Error desconocido'));
+      } finally {
+        setIsLoading(false);
+      }
     }
+    
+    fetchCompanies();
+    setSelectedCompanies([]);
   }, [isOpen]);
   
   const handleSelectCompany = (companyId: string) => {
