@@ -602,8 +602,13 @@ export function ReservationList() {
                     {user?.role === "taquillero" && (
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          {reservation.companyName || (reservation.trip?.companyName) || 'N/A'}
+                          {reservation.companyInfo?.name || 'N/A'}
                         </div>
+                        {reservation.companyInfo?.id && (
+                          <div className="text-xs text-gray-500">
+                            ID: {reservation.companyInfo.id}
+                          </div>
+                        )}
                       </td>
                     )}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
