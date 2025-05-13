@@ -613,16 +613,6 @@ export function ReservationList() {
                         )}
                       </td>
                     )}
-                    {activeTab === "canceled" && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge 
-                          variant="outline"
-                          className="bg-red-100 text-red-800 border-red-200"
-                        >
-                          CANCELADA
-                        </Badge>
-                      </td>
-                    )}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                         <Button 
