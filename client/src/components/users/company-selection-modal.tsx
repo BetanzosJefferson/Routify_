@@ -20,6 +20,13 @@ export function CompanySelectionModal({ isOpen, onClose, onConfirm }: CompanySel
   // Consultar todas las empresas
   const { data: companies, isLoading, error } = useQuery({
     queryKey: ['/api/companies'],
+    queryFn: async () => {
+      const response = await fetch('/api/companies');
+      if (!response.ok) {
+        throw new Error('Error al cargar las empresas');
+      }
+      return await response.json();
+    },
     enabled: isOpen,
   });
   
@@ -63,7 +70,7 @@ export function CompanySelectionModal({ isOpen, onClose, onConfirm }: CompanySel
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Error al cargar las empresas. Por favor, intenta de nuevo.
+              Error al cargar las empresas: {error instanceof Error ? error.message : 'Por favor, intenta de nuevo.'}
             </AlertDescription>
           </Alert>
         ) : companies && companies.length > 0 ? (
