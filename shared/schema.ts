@@ -569,6 +569,30 @@ export const insertInvitationSchema = createInsertSchema(invitations);
 export type InsertInvitation = z.infer<typeof insertInvitationSchema>;
 export type Invitation = typeof invitations.$inferSelect;
 
+// TICKET OFFICE USER COMPANIES SCHEMA
+export const userCompanies = pgTable("user_companies", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  companyId: text("company_id").notNull().references(() => companies.identifier),
+  createdAt: timestamp("created_at").notNull().defaultNow()
+});
+
+export const insertUserCompanySchema = createInsertSchema(userCompanies);
+export type InsertUserCompany = z.infer<typeof insertUserCompanySchema>;
+export type UserCompany = typeof userCompanies.$inferSelect;
+
+// Relaciones para userCompanies
+export const userCompanyRelations = relations(userCompanies, ({ one }) => ({
+  user: one(users, {
+    fields: [userCompanies.userId],
+    references: [users.id]
+  }),
+  company: one(companies, {
+    fields: [userCompanies.companyId],
+    references: [companies.identifier]
+  })
+}));
+
 // USER RELATIONS
 export const userRelations = relations(users, ({ many, one }) => ({
   invitationsCreated: many(invitations),
@@ -580,6 +604,8 @@ export const userRelations = relations(users, ({ many, one }) => ({
     references: [users.id],
     relationName: 'invitedBy'
   }),
+  // Relación con las compañías asignadas (para usuarios taquilla)
+  assignedCompanies: many(userCompanies),
   // Relación para las reservaciones creadas por este usuario
   createdReservations: many(reservations, {
     fields: [users.id],
