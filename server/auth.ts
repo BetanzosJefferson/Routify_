@@ -4,7 +4,7 @@ import { Express, Request, Response, NextFunction } from "express";
 import { db } from "./db";
 import { 
   users, insertUserSchema, insertInvitationSchema, invitations, UserRole,
-  companies, insertCompanySchema 
+  companies, insertCompanySchema, userCompanies
 } from "@shared/schema";
 import { eq, and, isNull, ne, or, inArray } from "drizzle-orm";
 import { add } from "date-fns";
