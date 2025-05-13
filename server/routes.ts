@@ -1922,6 +1922,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Si el usuario es TICKET_OFFICE (Taquilla), agregar información de la empresa a cada reservación
+      if (user && user.role === UserRole.TICKET_OFFICE) {
+        console.log(`[GET /reservations] Usuario con rol TICKET_OFFICE: Agregando información de empresas`);
+        
+        // Procesar las reservaciones para agregar el nombre de la empresa
+        const reservationsWithCompanyInfo = await Promise.all(
+          reservations.map(async (reservation) => {
+            if (reservation.companyId) {
+              // Obtener información de la empresa
+              const companyInfo = await storage.getCompanyById(reservation.companyId);
+              
+              if (companyInfo) {
+                // Devolver la reservación con la información de la empresa
+                return {
+                  ...reservation,
+                  companyInfo: {
+                    id: companyInfo.id,
+                    name: companyInfo.name
+                  }
+                };
+              }
+            }
+            // Si no tiene companyId o no se encuentra la empresa, devolver la reservación sin cambios
+            return reservation;
+          })
+        );
+        
+        console.log(`[GET /reservations] Procesadas ${reservationsWithCompanyInfo.length} reservaciones con información de empresa`);
+        return res.json(reservationsWithCompanyInfo);
+      }
+      
       res.json(reservations);
     } catch (error: any) {
       console.error("[GET /reservations] Error:", error);
