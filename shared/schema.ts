@@ -209,6 +209,10 @@ export type ReservationWithDetails = Reservation & {
   createdByUser?: User;
   checkedByUser?: User;
   paidByUser?: User;
+  companyInfo?: {
+    id: string | null;
+    name: string;
+  };
 };
 
 export type SegmentPrice = {
