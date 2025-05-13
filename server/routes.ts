@@ -1791,6 +1791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // SEGURIDAD: Filtrado de datos por compañía
       let companyId: string | null = null;
       let tripId: number | null = null;
+      let companyIds: string[] | undefined = undefined; // Agregamos esta variable para taquilleros
       let includeRelatedTrips = req.query.includeRelated === 'true';
       
       // Verificar si se solicita filtrar por viaje específico
