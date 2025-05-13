@@ -81,6 +81,7 @@ export interface IStorage {
   // User methods
   getUsers(): Promise<User[]>;
   getUsersByCompany(companyId: string): Promise<User[]>;
+  getUsersByRole(role: string): Promise<User[]>;
   getUserById(id: number): Promise<User | undefined>;
   updateUser(id: number, userData: { 
     email?: string; 

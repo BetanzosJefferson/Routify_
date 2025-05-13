@@ -4663,11 +4663,41 @@ function setupPackageRoutes(app: Express) {
         }
         
         console.log(`[GET /cash-register] Usuario dueño/admin: mostrando todas las reservaciones pagadas de la compañía ${companyId}`);
-        const companyReservations = await storage.getPaidReservationsByCompany(companyId);
+        
+        // Modificación: Obtener todas las reservaciones pagadas de su compañía, incluidas las marcadas
+        // por taquilleros para viajes de esta compañía
+        
+        // 1. Obtener reservaciones pagadas por usuarios de la compañía
+        const companyUsersReservations = await storage.getPaidReservationsByCompany(companyId);
+        
+        // 2. Obtener reservaciones pagadas por taquilleros para viajes de esta compañía
+        // Primero, buscar todos los usuarios con rol taquilla
+        const ticketOfficeUsers = await storage.getUsersByRole(UserRole.TICKET_OFFICE);
+        
+        // Array para almacenar todas las reservaciones
+        let allReservations = [...companyUsersReservations];
+        
+        // Para cada taquillero, obtener las reservaciones que marcó como pagadas
+        for (const ticketOfficeUser of ticketOfficeUsers) {
+          const ticketOfficeReservations = await storage.getPaidReservationsByUser(ticketOfficeUser.id);
+          
+          // Filtrar solo las que pertenecen a la compañía actual
+          const companyTicketOfficeReservations = ticketOfficeReservations.filter(
+            reservation => reservation.trip && reservation.trip.companyId === companyId
+          );
+          
+          // Agregar las reservaciones al array total
+          allReservations = [...allReservations, ...companyTicketOfficeReservations];
+        }
+        
+        // Eliminar duplicados (si un taquillero marcó como pagada una reservación que ya está incluida)
+        const uniqueReservations = allReservations.filter((reservation, index, self) => 
+          self.findIndex(r => r.id === reservation.id) === index
+        );
         
         // Agregar información adicional para identificar a qué empresa pertenece cada reserva
         const enrichedReservations = await Promise.all(
-          companyReservations.map(async (reservation) => {
+          uniqueReservations.map(async (reservation) => {
             // Obtener la compañía del viaje
             let companyId = null;
             let companyName = "Desconocida";
