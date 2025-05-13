@@ -383,6 +383,15 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
           isFirstScan={ticketCheckResult.isFirstScan}
         />
       )}
+      
+      {/* Modal de reservación cancelada */}
+      {reservation && (
+        <ReservationCanceledModal
+          isOpen={isCanceledModalOpen}
+          onClose={() => setIsCanceledModalOpen(false)}
+          reservation={reservation}
+        />
+      )}
     </div>
   );
 }
