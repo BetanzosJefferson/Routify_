@@ -141,12 +141,36 @@ export function formatDate(date: Date | string | null | undefined): string {
     // Para depuración: imprimir la fecha antes de procesarla
     console.log(`[formatDate] Fecha original: ${date instanceof Date ? date.toISOString() : date}`);
     
-    const normalizedDate = normalizeToStartOfDay(date);
+    // Crear fecha manualmente para evitar problemas de zona horaria
+    let dateObj: Date;
     
-    // Para depuración: imprimir la fecha normalizada
-    console.log(`[formatDate] Fecha normalizada: ${normalizedDate.toISOString()}`);
+    if (typeof date === 'string') {
+      if (date.includes('T')) {
+        // Extraer los componentes de la fecha ISO directamente
+        const datePart = date.split('T')[0];
+        const [year, month, day] = datePart.split('-').map(Number);
+        
+        // Crear fecha local con el mismo día, mes y año
+        dateObj = new Date(year, month - 1, day, 12, 0, 0);
+      } else {
+        // Formato simple YYYY-MM-DD
+        const [year, month, day] = date.split('-').map(Number);
+        dateObj = new Date(year, month - 1, day, 12, 0, 0);
+      }
+    } else if (date instanceof Date) {
+      // Extraer componentes de la fecha
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const day = date.getDate();
+      // Crear nueva fecha local con los mismos componentes
+      dateObj = new Date(year, month, day, 12, 0, 0);
+    } else {
+      throw new Error('Formato de fecha no válido');
+    }
     
-    const result = format(normalizedDate, 'dd/MM/yyyy', { locale: es });
+    console.log(`[formatDate] Fecha procesada: ${dateObj.toISOString()}`);
+    
+    const result = format(dateObj, 'dd/MM/yyyy', { locale: es });
     console.log(`[formatDate] Resultado: ${result}`);
     return result;
   } catch (error) {
