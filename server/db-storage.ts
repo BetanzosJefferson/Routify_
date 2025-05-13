@@ -1075,7 +1075,7 @@ export class DatabaseStorage implements IStorage {
         }
       }
       
-      // 3 y 4. Buscar otros viajes principales en la misma ruta y sus sub-viajes
+      // 3 y 4. Buscar otros viajes principales en la misma ruta y fecha, y sus sub-viajes
       const otherMainTrips = await db
         .select()
         .from(schema.trips)
@@ -1083,6 +1083,7 @@ export class DatabaseStorage implements IStorage {
           and(
             eq(schema.trips.routeId, mainTrip.routeId),
             eq(schema.trips.isSubTrip, false),
+            eq(schema.trips.departureDate, mainTrip.departureDate), // Solo viajes con la misma fecha
             sql`id != ${mainTrip.id}`
           )
         );
@@ -1198,8 +1199,8 @@ export class DatabaseStorage implements IStorage {
           .where(eq(schema.trips.id, subTrip.id));
       }
       
-      // 2 y 3. Buscar otros viajes principales y sus sub-viajes que comparten esta ruta
-      // Obtenemos todos los viajes principales para esta ruta (excepto el actual)
+      // 2 y 3. Buscar otros viajes principales y sus sub-viajes que comparten esta ruta y fecha
+      // Obtenemos todos los viajes principales para esta ruta y fecha (excepto el actual)
       const relatedMainTrips = await db
         .select()
         .from(schema.trips)
@@ -1207,6 +1208,7 @@ export class DatabaseStorage implements IStorage {
           and(
             eq(schema.trips.routeId, trip.routeId),
             eq(schema.trips.isSubTrip, false),
+            eq(schema.trips.departureDate, trip.departureDate), // Solo viajes con la misma fecha
             sql`id != ${trip.id}`
           )
         );
