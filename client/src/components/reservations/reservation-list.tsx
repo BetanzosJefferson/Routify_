@@ -750,44 +750,46 @@ export function ReservationList() {
                       </div>
                     </div>
                     
-                    <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-                      <Button 
-                        size="sm"
-                        variant="link" 
-                        className="text-blue-600 hover:text-blue-800 p-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditModal(reservation);
-                        }}
-                      >
-                        Editar
-                      </Button>
-                      {reservation.status === 'canceled' ? (
+                    {user?.role !== "taquilla" && (
+                      <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                         <Button 
                           size="sm"
                           variant="link" 
-                          className="text-red-800 hover:text-red-900 p-0"
+                          className="text-blue-600 hover:text-blue-800 p-0"
                           onClick={(e) => {
                             e.stopPropagation();
-                            openDeleteConfirm(reservation.id, 'delete');
+                            openEditModal(reservation);
                           }}
                         >
-                          Eliminar
+                          Editar
                         </Button>
-                      ) : (
-                        <Button 
-                          size="sm"
-                          variant="link" 
-                          className="text-amber-600 hover:text-amber-800 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDeleteConfirm(reservation.id, 'cancel');
-                          }}
-                        >
-                          Cancelar
-                        </Button>
-                      )}
-                    </div>
+                        {reservation.status === 'canceled' ? (
+                          <Button 
+                            size="sm"
+                            variant="link" 
+                            className="text-red-800 hover:text-red-900 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDeleteConfirm(reservation.id, 'delete');
+                            }}
+                          >
+                            Eliminar
+                          </Button>
+                        ) : (
+                          <Button 
+                            size="sm"
+                            variant="link" 
+                            className="text-amber-600 hover:text-amber-800 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDeleteConfirm(reservation.id, 'cancel');
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                   
                   <div className="grid grid-cols-2 gap-y-2 text-sm">
@@ -840,13 +842,28 @@ export function ReservationList() {
                     </div>
                     
                     {/* Información del creador para móvil */}
-                    {reservation.createdByUser && (
+                    {user?.role !== "taquilla" && reservation.createdByUser && (
                       <div className="col-span-2 mt-2">
                         <div className="text-xs text-gray-500">Creado por:</div>
                         <div className="text-sm">
                           {reservation.createdByUser.firstName} {reservation.createdByUser.lastName}
                           <span className="text-xs text-gray-500 ml-1">({reservation.createdByUser.role})</span>
                         </div>
+                      </div>
+                    )}
+                    
+                    {/* Información de la empresa para móvil (solo para taquilla) */}
+                    {user?.role === "taquilla" && reservation.companyInfo && (
+                      <div className="col-span-2 mt-2">
+                        <div className="text-xs text-gray-500">Empresa:</div>
+                        <div className="text-sm font-medium">
+                          {reservation.companyInfo.name || 'N/A'}
+                        </div>
+                        {reservation.companyInfo.id && (
+                          <div className="text-xs text-gray-500">
+                            ID: {reservation.companyInfo.id}
+                          </div>
+                        )}
                       </div>
                     )}
                     
