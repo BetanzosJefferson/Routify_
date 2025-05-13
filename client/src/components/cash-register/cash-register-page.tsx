@@ -429,9 +429,11 @@ export function CashRegisterPage() {
               <FilterIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-gray-600">No hay pagos registrados</h3>
               <p className="text-gray-500 mt-1">
-                {searchTerm || dateFilter || paymentMethodFilter || (isTicketOfficeView && companyFilter !== 'todas')
-                  ? "No se encontraron pagos con los filtros aplicados."
-                  : "Todavía no has marcado ninguna reservación como pagada."}
+                {isTicketOfficeView && associatedCompanies?.length === 0
+                  ? "No tienes empresas asociadas a tu cuenta. Contacta al administrador para configurar tus accesos."
+                  : searchTerm || dateFilter || paymentMethodFilter || (isTicketOfficeView && companyFilter !== 'todas')
+                    ? "No se encontraron pagos con los filtros aplicados."
+                    : "Todavía no has marcado ninguna reservación como pagada."}
               </p>
             </div>
           ) : isTicketOfficeView ? (

@@ -635,4 +635,42 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
       res.status(500).json({ message: "Error interno del servidor" });
     }
   });
+  
+  // Endpoint para obtener las empresas asociadas a un usuario de taquilla
+  app.get("/api/user/companies", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      // Si el usuario no es de taquilla, simplemente devolver un arreglo vacío
+      if (user.role !== UserRole.TICKET_OFFICE) {
+        return res.json([]);
+      }
+      
+      // Obtener las asociaciones del usuario con empresas
+      const userCompanyAssociations = await db
+        .select()
+        .from(userCompanies)
+        .where(eq(userCompanies.userId, user.id));
+      
+      if (userCompanyAssociations.length === 0) {
+        return res.json([]);
+      }
+      
+      // Obtener los IDs de las empresas
+      const companyIds = userCompanyAssociations.map(assoc => assoc.companyId);
+      
+      // Obtener los detalles de las empresas
+      const companiesData = await db
+        .select()
+        .from(companies)
+        .where(inArray(companies.identifier, companyIds));
+      
+      console.log(`[GET /api/user/companies] Usuario taquilla ${user.id}: ${companiesData.length} empresas asociadas`);
+      
+      res.json(companiesData);
+    } catch (error) {
+      console.error("Error al obtener empresas del usuario:", error);
+      res.status(500).json({ message: "Error al obtener empresas del usuario" });
+    }
+  });
 }
