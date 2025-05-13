@@ -1305,11 +1305,11 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getReservations(companyId?: string, tripId?: number): Promise<ReservationWithDetails[]> {
+  async getReservations(companyId?: string, tripId?: number, companyIds?: string[]): Promise<ReservationWithDetails[]> {
     console.time('getReservations-optimized');
     
     // NUEVA IMPLEMENTACIÓN CON FILTRADO DE COMPAÑÍA Y VIAJE
-    console.log(`[getReservations] Iniciando búsqueda${companyId ? ` para compañía ${companyId}` : ''}${tripId ? ` para viaje ${tripId}` : ''}`);
+    console.log(`[getReservations] Iniciando búsqueda${companyId ? ` para compañía ${companyId}` : ''}${companyIds && companyIds.length > 0 ? ` para compañías [${companyIds.join(', ')}]` : ''}${tripId ? ` para viaje ${tripId}` : ''}`);
     
     // Construir condiciones de filtrado como array
     const condiciones = [];
@@ -1329,8 +1329,41 @@ export class DatabaseStorage implements IStorage {
       console.log(`[getReservations] Verificación: Existen ${reservasPorViaje} reservas para el viaje ${tripId}`);
     }
     
-    // FILTRO CRÍTICO: Compañía (Prioridad 2)
-    if (companyId) {
+    // FILTRO POR MÚLTIPLES COMPAÑÍAS (para Taquilleros)
+    if (companyIds && companyIds.length > 0) {
+      console.log(`[getReservations] FILTRO POR MÚLTIPLES COMPAÑÍAS: [${companyIds.join(', ')}]`);
+      
+      // Vamos a construir una condición OR para cada compañía
+      if (companyIds.length === 1) {
+        // Si solo hay una compañía, usar condición simple de igualdad
+        condiciones.push(sql`company_id = ${companyIds[0]}`);
+      } else {
+        // Si hay múltiples compañías, crear una condición OR para cada una
+        // Por ejemplo: (company_id = 'bamo-456' OR company_id = 'viaja-facil-123')
+        const companyConditions = companyIds.map(id => sql`company_id = ${id}`);
+        
+        // Combinar usando nuestro propio SQL
+        let orConditionSql = sql`(`;
+        
+        // Añadir cada condición con OR entre ellas
+        for (let i = 0; i < companyConditions.length; i++) {
+          orConditionSql = sql`${orConditionSql}${companyConditions[i]}`;
+          
+          // Añadir OR excepto para el último elemento
+          if (i < companyConditions.length - 1) {
+            orConditionSql = sql`${orConditionSql} OR `;
+          }
+        }
+        
+        // Cerrar el paréntesis
+        orConditionSql = sql`${orConditionSql})`;
+        
+        // Añadir la condición completa
+        condiciones.push(orConditionSql);
+      }
+    }
+    // FILTRO POR UNA COMPAÑÍA ESPECÍFICA
+    else if (companyId) {
       console.log(`[getReservations] FILTRO CRÍTICO: Compañía ${companyId}`);
       
       // Verificar cuántas reservas existen para esta compañía

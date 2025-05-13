@@ -1805,12 +1805,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // REGLAS DE ACCESO:
       // 1. superAdmin y admin pueden ver TODAS las reservaciones
-      // 2. Conductores pueden ver reservaciones de los viajes asignados a ellos
-      // 3. El resto de roles solo pueden ver reservaciones de SU COMPAÑÍA
+      // 2. Taquilleros pueden ver reservaciones de sus compañías asignadas
+      // 3. Conductores pueden ver reservaciones de los viajes asignados a ellos
+      // 4. El resto de roles solo pueden ver reservaciones de SU COMPAÑÍA
       if (user) {
-        // CASO ESPECIAL: Si el usuario es CONDUCTOR y se solicita un viaje específico
-        // y ese viaje está asignado al conductor, permitir ver las reservaciones
-        if (user.role === UserRole.DRIVER && tripId) {
+        // CASO ESPECIAL: TAQUILLEROS - obtener las compañías asignadas
+        if (user.role === UserRole.TICKET_OFFICE) {
+          console.log(`[GET /reservations] TAQUILLERO solicitando reservaciones`);
+          
+          // Obtener las compañías asociadas al taquillero
+          const userCompanyAssociations = await db
+            .select()
+            .from(userCompanies)
+            .where(eq(userCompanies.userId, user.id));
+          
+          if (userCompanyAssociations.length === 0) {
+            console.log(`[GET /reservations] Taquillero sin empresas asociadas, no verá ninguna reservación`);
+            return res.json([]);
+          }
+          
+          // Obtener los IDs de las compañías asignadas
+          const assignedCompanyIds = userCompanyAssociations.map(assoc => assoc.companyId);
+          console.log(`[GET /reservations] Taquillero con ${assignedCompanyIds.length} empresas asignadas: [${assignedCompanyIds.join(', ')}]`);
+          
+          // Las reservaciones se filtrarán por estas compañías en la capa de almacenamiento
+          companyIds = assignedCompanyIds;
+        }
+        // CASO ESPECIAL: CONDUCTORES - solo ven sus viajes asignados
+        else if (user.role === UserRole.DRIVER && tripId) {
           console.log(`[GET /reservations] CONDUCTOR solicitando reservaciones para viaje ${tripId}`);
           
           // Obtener el viaje específico para verificar si está asignado al conductor
@@ -1889,7 +1911,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           console.log(`[GET /reservations] FILTRO CRÍTICO: Aplicando filtro por compañía "${companyId}"`);
-        } else {
+        } else if (user.role !== UserRole.TICKET_OFFICE) {
+          // SuperAdmin, Admin, y Checador - acceso total
           console.log(`[GET /reservations] Usuario con rol ${user.role} puede ver TODAS las reservaciones`);
         }
       } else {
