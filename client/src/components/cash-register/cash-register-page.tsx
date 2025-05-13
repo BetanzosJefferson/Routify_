@@ -375,7 +375,9 @@ export function CashRegisterPage() {
             </Button>
           </div>
           <CardDescription className="mt-1">
-            Mostrando {sortedReservations.length} pagos registrados
+            {isTicketOfficeView && companyFilter !== 'todas' 
+              ? `Mostrando pagos registrados para ${Object.entries(reservationsByCompany).find(([id]) => id === companyFilter)?.[1]?.name || 'la empresa seleccionada'}`
+              : `Mostrando ${sortedReservations.length} pagos registrados`}
           </CardDescription>
         </CardHeader>
         
@@ -390,12 +392,16 @@ export function CashRegisterPage() {
               <p>Error al cargar los datos: {error instanceof Error ? error.message : "Error desconocido"}</p>
               <p className="text-sm mt-2">Por favor, intenta de nuevo más tarde.</p>
             </div>
-          ) : ((isTicketOfficeView ? Object.keys(reservationsByCompany).length : sortedReservations.length) === 0) ? (
+          ) : ((isTicketOfficeView ? 
+              (companyFilter !== 'todas' 
+                ? !sortedReservations.length 
+                : !Object.keys(reservationsByCompany).length)
+              : !sortedReservations.length)) ? (
             <div className="text-center p-10 bg-gray-50 rounded-lg">
               <FilterIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-gray-600">No hay pagos registrados</h3>
               <p className="text-gray-500 mt-1">
-                {searchTerm || dateFilter || paymentMethodFilter
+                {searchTerm || dateFilter || paymentMethodFilter || (isTicketOfficeView && companyFilter !== 'todas')
                   ? "No se encontraron pagos con los filtros aplicados."
                   : "Todavía no has marcado ninguna reservación como pagada."}
               </p>
