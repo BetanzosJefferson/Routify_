@@ -8,6 +8,7 @@ import {
 } from "@shared/schema";
 import { eq, and, isNull, ne, or, inArray } from "drizzle-orm";
 import { add } from "date-fns";
+import { getAuthMiddleware } from "./auth-session";
 
 const scryptAsync = promisify(scrypt);
 
@@ -24,7 +25,9 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
-export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
+export function setupAuthRoutes(app: Express, customIsAuthenticated?: any) {
+  // Utilizar el middleware de autenticación importado o el proporcionado
+  const authMiddleware = customIsAuthenticated || getAuthMiddleware();
   // Crear un usuario SuperAdmin inicial si no existe ninguno
   async function createInitialSuperAdmin() {
     const superAdminExists = await db
@@ -82,7 +85,7 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
   });
 
   // Endpoint para obtener usuarios filtrados por rol y/o compañía
-  app.get("/api/users", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/users", authMiddleware, async (req: Request, res: Response) => {
     try {
       const { user } = req as any; // Obtener el usuario autenticado desde la sesión
       const { role } = req.query; // Obtener el filtro de rol de la consulta (opcional)
@@ -147,7 +150,7 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
   });
   
   // Endpoint para eliminar un usuario - SOLO SUPERADMIN
-  app.delete("/api/users/:id", isAuthenticated, async (req: Request, res: Response) => {
+  app.delete("/api/users/:id", authMiddleware, async (req: Request, res: Response) => {
     try {
       const { user } = req as any; // Obtener el usuario autenticado
       const userId = parseInt(req.params.id);
@@ -232,7 +235,7 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
   });
 
   // Endpoint para crear una invitación
-  app.post("/api/invitations", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/invitations", authMiddleware, async (req: Request, res: Response) => {
     try {
       const { role, email, selectedCompanies } = req.body;
       const { user } = req as any; // Obtener el usuario autenticado
@@ -318,7 +321,7 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
   });
 
   // Endpoint para obtener invitaciones filtradas por rol
-  app.get("/api/invitations", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/invitations", authMiddleware, async (req: Request, res: Response) => {
     try {
       const { user } = req as any; // Obtener el usuario autenticado desde la sesión
       
@@ -637,7 +640,7 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
   });
   
   // Endpoint para obtener todas las empresas (usado por el modal de selección)
-  app.get("/api/companies", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/companies", authMiddleware, async (req: Request, res: Response) => {
     try {
       const { user } = req as any;
       
@@ -667,7 +670,7 @@ export function setupAuthRoutes(app: Express, isAuthenticated?: any) {
   });
   
   // Endpoint para obtener las empresas asociadas a un usuario de taquilla
-  app.get("/api/user/companies", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/user/companies", authMiddleware, async (req: Request, res: Response) => {
     try {
       const { user } = req as any;
       
