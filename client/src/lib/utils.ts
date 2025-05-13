@@ -204,8 +204,20 @@ export function formatDateLong(date: Date | string): string {
  * @returns String en formato YYYY-MM-DD
  */
 export function formatDateForInput(date: Date | string): string {
-  const normalizedDate = normalizeToStartOfDay(date);
-  return dateToLocalISOString(normalizedDate);
+  // Si es un objeto Date, extraer componentes directamente para evitar 
+  // problemas de zona horaria
+  if (date instanceof Date) {
+    // Usar los componentes locales de la fecha
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    console.log(`[formatDateForInput] Fecha por componentes: ${year}-${month}-${day}`);
+    return `${year}-${month}-${day}`;
+  } else {
+    // Para strings, normalizar primero
+    const normalizedDate = normalizeToStartOfDay(date);
+    return dateToLocalISOString(normalizedDate);
+  }
 }
 
 export function formatTime(time: string): string {
@@ -405,8 +417,20 @@ export function dateToLocalISOString(date: Date): string {
  * @returns Cadena de fecha en formato ISO para uso en consultas
  */
 export function formatDateForApiQuery(date: Date | string): string {
-  const normalizedDate = normalizeToStartOfDay(date);
-  return dateToLocalISOString(normalizedDate);
+  // Si es un objeto Date, extraer componentes directamente para evitar 
+  // problemas de zona horaria
+  if (date instanceof Date) {
+    // Usar los componentes locales de la fecha
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    console.log(`[formatDateForApiQuery] Fecha por componentes: ${year}-${month}-${day}`);
+    return `${year}-${month}-${day}`;
+  } else {
+    // Para strings, normalizar primero
+    const normalizedDate = normalizeToStartOfDay(date);
+    return dateToLocalISOString(normalizedDate);
+  }
 }
 
 /**
