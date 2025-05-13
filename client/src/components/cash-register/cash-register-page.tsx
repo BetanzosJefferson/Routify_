@@ -502,6 +502,7 @@ export function CashRegisterPage() {
                           <TableHead>Ruta</TableHead>
                           <TableHead>Método</TableHead>
                           <TableHead>Fecha de pago</TableHead>
+                          <TableHead>Registrado por</TableHead>
                           <TableHead className="text-right">Monto</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -535,6 +536,16 @@ export function CashRegisterPage() {
                                 <span>{formatDate(reservation.markedAsPaidAt)}</span>
                               </div>
                             </TableCell>
+                            <TableCell>
+                              {reservation.createdByUser ? (
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{reservation.createdByUser.firstName} {reservation.createdByUser.lastName}</span>
+                                  <span className="text-xs text-gray-500 capitalize">{reservation.createdByUser.role}</span>
+                                </div>
+                              ) : (
+                                <span className="text-gray-500">Usuario desconocido</span>
+                              )}
+                            </TableCell>
                             <TableCell className="text-right">{formatPrice(reservation.totalAmount || 0)}</TableCell>
                           </TableRow>
                         ))}
@@ -560,6 +571,7 @@ export function CashRegisterPage() {
                     <TableHead>Ruta</TableHead>
                     <TableHead>Método</TableHead>
                     <TableHead>Fecha de pago</TableHead>
+                    {isAdminView && <TableHead>Cobrado por</TableHead>}
                     {isAdminView && <TableHead>Registrado por</TableHead>}
                     <TableHead className="text-right">Monto</TableHead>
                   </TableRow>
@@ -611,6 +623,18 @@ export function CashRegisterPage() {
                             <div className="flex flex-col">
                               <span className="font-medium">{reservation.paidByUserInfo.firstName} {reservation.paidByUserInfo.lastName}</span>
                               <span className="text-xs text-gray-500 capitalize">{reservation.paidByUserInfo.role}</span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">Usuario desconocido</span>
+                          )}
+                        </TableCell>
+                      )}
+                      {isAdminView && (
+                        <TableCell>
+                          {reservation.createdByUser ? (
+                            <div className="flex flex-col">
+                              <span className="font-medium">{reservation.createdByUser.firstName} {reservation.createdByUser.lastName}</span>
+                              <span className="text-xs text-gray-500 capitalize">{reservation.createdByUser.role}</span>
                             </div>
                           ) : (
                             <span className="text-gray-500">Usuario desconocido</span>
