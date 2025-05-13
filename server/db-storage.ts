@@ -589,6 +589,7 @@ export class DatabaseStorage implements IStorage {
     date?: string;
     seats?: number;
     companyId?: string;  // Añadido para filtrar por compañía
+    companyIds?: string[]; // Añadido para filtrar por múltiples compañías (taquilleros)
     driverId?: number;   // Añadido para filtrar viajes de un conductor específico
     visibility?: string; // Añadido para filtrar por visibilidad (publicado/oculto/cancelado)
     includeAllVisibilities?: boolean; // Nuevo parámetro para incluir todos los estados de visibilidad
@@ -616,8 +617,42 @@ export class DatabaseStorage implements IStorage {
     }
     
     // 1. FILTRADO POR COMPAÑÍA (PRIORIDAD MÁXIMA)
-    if (params.companyId) {
-      // Importante: Los usuarios con privilegios especiales como superAdmin y taquilla pueden pasar un
+    if (params.companyIds && params.companyIds.length > 0) {
+      // CASO ESPECIAL: Usuario taquillero con múltiples compañías asignadas
+      console.log(`[searchTrips-v2] FILTRADO MÚLTIPLE POR COMPAÑÍAS: [${params.companyIds.join(', ')}]`);
+      
+      // Vamos a construir una condición OR para cada compañía
+      if (params.companyIds.length === 1) {
+        // Si solo hay una compañía, usar condición simple de igualdad
+        condiciones.push(sql`company_id = ${params.companyIds[0]}`);
+      } else {
+        // Si hay múltiples compañías, crear una condición OR para cada una
+        // Por ejemplo: (company_id = 'bamo-456' OR company_id = 'viaja-facil-123')
+        const companyConditions = params.companyIds.map(id => sql`company_id = ${id}`);
+        
+        // Combinar todas las condiciones con OR dentro de paréntesis
+        // Combinar usando nuestro propio SQL
+        let orConditionSql = sql`(`;
+        
+        // Añadir cada condición con OR entre ellas
+        for (let i = 0; i < companyConditions.length; i++) {
+          orConditionSql = sql`${orConditionSql}${companyConditions[i]}`;
+          
+          // Añadir OR excepto para el último elemento
+          if (i < companyConditions.length - 1) {
+            orConditionSql = sql`${orConditionSql} OR `;
+          }
+        }
+        
+        // Cerrar el paréntesis
+        orConditionSql = sql`${orConditionSql})`;
+        
+        // Añadir la condición completa
+        condiciones.push(orConditionSql);
+      }
+    } else if (params.companyId) {
+      // CASO NORMAL: Filtrado por una sola compañía
+      // Importante: Los usuarios con privilegios especiales como superAdmin pueden pasar un
       // parámetro especial "ALL" para indicar que quieren ver todos los viajes
       
       if (params.companyId === 'ALL') {

@@ -688,25 +688,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Reemplazar los resultados con solo los viajes asignados
             return res.json(viajesFiltradosConductor);
           }
-        }
-        
-        // Verificación de compañía para todos los usuarios (incluyendo conductores)
-        const userCompany = user.companyId || user.company || null;
-        
-        if (userCompany) {
-          // Filtrar para asegurarnos que solo devolvemos viajes de su compañía
-          const viajesDeOtrasCompanias = trips.filter(t => t.companyId && t.companyId !== userCompany);
+        } else if (user.role === UserRole.TICKET_OFFICE) {
+          // VERIFICACIÓN ESPECIAL PARA TAQUILLEROS: asegurar que solo vean viajes de sus compañías asociadas
+          console.log(`[GET /trips] VERIFICACIÓN TAQUILLERO: Asegurando que solo vea viajes de sus compañías asociadas`);
+          
+          // Obtener las compañías asociadas al taquillero
+          const userCompanyAssociations = await db
+            .select()
+            .from(userCompanies)
+            .where(eq(userCompanies.userId, user.id));
+          
+          if (userCompanyAssociations.length === 0) {
+            console.log(`[GET /trips] Taquillero sin empresas asociadas, no debería ver ningún viaje`);
+            return res.json([]);
+          }
+          
+          // Obtener los IDs de las compañías
+          const companyIds = userCompanyAssociations.map(assoc => assoc.companyId);
+          console.log(`[GET /trips] Taquillero tiene acceso a las empresas: [${companyIds.join(', ')}]`);
+          
+          // Verificar que todos los viajes pertenezcan a las compañías asignadas
+          const viajesDeOtrasCompanias = trips.filter(t => 
+            t.companyId && !companyIds.includes(t.companyId)
+          );
           
           if (viajesDeOtrasCompanias.length > 0) {
-            console.log(`[ALERTA DE SEGURIDAD] Se intentaron mostrar ${viajesDeOtrasCompanias.length} viajes de otras compañías!`);
+            console.log(`[ALERTA DE SEGURIDAD] Se intentaron mostrar ${viajesDeOtrasCompanias.length} viajes de compañías no asignadas al taquillero!`);
             console.log(`IDs bloqueados: ${viajesDeOtrasCompanias.map(t => t.id).join(', ')}`);
             
-            // CRÍTICO: Filtrar y devolver SOLO los viajes de la compañía del usuario
-            const viajesFiltrados = trips.filter(t => t.companyId === userCompany);
-            console.log(`[CORRECCIÓN] Devolviendo solo ${viajesFiltrados.length} viajes de compañía ${userCompany}`);
+            // CRÍTICO: Filtrar y devolver SOLO los viajes de las compañías asignadas
+            const viajesFiltrados = trips.filter(t => 
+              t.companyId && companyIds.includes(t.companyId)
+            );
+            console.log(`[CORRECCIÓN] Devolviendo solo ${viajesFiltrados.length} viajes de las compañías asignadas`);
             
-            // Reemplazar los resultados con solo los viajes de su compañía
+            // Reemplazar los resultados
             return res.json(viajesFiltrados);
+          }
+        } else {
+          // Verificación de compañía para usuarios normales
+          const userCompany = user.companyId || user.company || null;
+          
+          if (userCompany) {
+            // Filtrar para asegurarnos que solo devolvemos viajes de su compañía
+            const viajesDeOtrasCompanias = trips.filter(t => t.companyId && t.companyId !== userCompany);
+            
+            if (viajesDeOtrasCompanias.length > 0) {
+              console.log(`[ALERTA DE SEGURIDAD] Se intentaron mostrar ${viajesDeOtrasCompanias.length} viajes de otras compañías!`);
+              console.log(`IDs bloqueados: ${viajesDeOtrasCompanias.map(t => t.id).join(', ')}`);
+              
+              // CRÍTICO: Filtrar y devolver SOLO los viajes de la compañía del usuario
+              const viajesFiltrados = trips.filter(t => t.companyId === userCompany);
+              console.log(`[CORRECCIÓN] Devolviendo solo ${viajesFiltrados.length} viajes de compañía ${userCompany}`);
+              
+              // Reemplazar los resultados con solo los viajes de su compañía
+              return res.json(viajesFiltrados);
+            }
           }
         }
       }
