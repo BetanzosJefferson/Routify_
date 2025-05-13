@@ -55,6 +55,25 @@ export function CashRegisterPage() {
   const isAdminView = user?.role === 'dueño' || user?.role === 'administrador';
   const isTicketOfficeView = user?.role === 'taquilla';
   
+  // Obtener las empresas asociadas para usuarios de taquilla
+  const { 
+    data: associatedCompanies
+  } = useQuery({
+    queryKey: ["/api/user/companies"],
+    queryFn: async () => {
+      if (!user || user.role !== 'taquilla') return [];
+      
+      const response = await fetch('/api/user/companies');
+      if (!response.ok) {
+        console.error("Error al obtener empresas asociadas:", await response.text());
+        return [];
+      }
+      
+      return await response.json();
+    },
+    enabled: !!user && user.role === 'taquilla'
+  });
+  
   // Obtener las reservaciones marcadas como pagadas por el usuario actual
   const { 
     data: paidReservations, 
@@ -309,12 +328,21 @@ export function CashRegisterPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todas">Todas las empresas</SelectItem>
-                      {/* Generar opciones de empresas dinámicamente */}
-                      {Object.entries(reservationsByCompany).map(([companyId, companyData]) => (
-                        <SelectItem key={companyId} value={companyId}>
-                          {companyData.name}
-                        </SelectItem>
-                      ))}
+                      {/* Mostrar empresas asociadas para el usuario de taquilla */}
+                      {associatedCompanies && associatedCompanies.length > 0 ? (
+                        associatedCompanies.map((company) => (
+                          <SelectItem key={company.identifier} value={company.identifier}>
+                            {company.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        // Como respaldo, usar las empresas encontradas en las reservaciones
+                        Object.entries(reservationsByCompany).map(([companyId, companyData]) => (
+                          <SelectItem key={companyId} value={companyId}>
+                            {companyData.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
