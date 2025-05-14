@@ -32,7 +32,7 @@ export default function Dashboard() {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("tab") as TabType | null;
     
-    if (tab && ["create-route", "publish-trip", "trips", "reservations", "trip-summary", "users", "vehicles", "commissions", "boarding-list"].includes(tab)) {
+    if (tab && ["create-route", "publish-trip", "trips", "reservations", "trip-summary", "users", "vehicles", "commissions", "boarding-list", "transfers"].includes(tab)) {
       // Solo actualizar si el usuario tiene acceso a esta sección
       if (user && hasAccessToSection(user.role, tab)) {
         setActiveTab(tab);
@@ -40,7 +40,7 @@ export default function Dashboard() {
         // Si no tiene acceso, buscar la primera sección a la que sí tenga acceso
         const accessibleSections = [
           "create-route", "publish-trip", "trips", "reservations", 
-          "trip-summary", "boarding-list", "users", "vehicles", "commissions"
+          "trip-summary", "boarding-list", "users", "vehicles", "commissions", "transfers"
         ].filter(section => hasAccessToSection(user?.role || "", section));
         
         if (accessibleSections.length > 0) {
