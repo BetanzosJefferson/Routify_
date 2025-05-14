@@ -29,6 +29,32 @@ import { db } from "./db";
 import { eq, and, gte, lt, like, or, sql, desc, isNull, not, inArray } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
+  // Company methods
+  async getAllCompanies(): Promise<any[]> {
+    try {
+      console.log("DB Storage: Consultando todas las compañías");
+      const companies = await db.select().from(schema.companies);
+      console.log(`DB Storage: Compañías encontradas: ${companies.length}`);
+      return companies;
+    } catch (error) {
+      console.error("DB Storage: Error al consultar compañías:", error);
+      return [];
+    }
+  }
+  
+  async getCompanyById(companyId: string): Promise<any | undefined> {
+    try {
+      console.log(`DB Storage: Consultando compañía con ID: ${companyId}`);
+      const [company] = await db
+        .select()
+        .from(schema.companies)
+        .where(eq(schema.companies.identifier, companyId));
+      return company;
+    } catch (error) {
+      console.error(`DB Storage: Error al consultar compañía ${companyId}:`, error);
+      return undefined;
+    }
+  }
   async getRoutes(companyId?: string): Promise<Route[]> {
     try {
       if (companyId) {

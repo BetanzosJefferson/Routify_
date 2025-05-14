@@ -25,6 +25,10 @@ import {
 } from "@shared/schema";
 
 export interface IStorage {
+  // Company methods
+  getAllCompanies(): Promise<any[]>;
+  getCompanyById(companyId: string): Promise<any | undefined>;
+  
   // Route methods
   getRoutes(companyId?: string): Promise<Route[]>;
   getRoute(id: number): Promise<Route | undefined>;
@@ -171,6 +175,7 @@ export class MemStorage implements IStorage {
   private vehicles: Map<number, Vehicle>;
   private commissions: Map<number, Commission>;
   private users: Map<number, User>;
+  private companies: Map<string, any>;
   
   private routeId: number;
   private tripId: number;
