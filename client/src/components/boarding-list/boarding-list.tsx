@@ -16,6 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { normalizeToStartOfDay, isSameLocalDay } from "@/lib/utils";
+import { formatTripTime } from "@/lib/trip-utils";
 
 // Importamos nuestros nuevos hooks especializados para conductores
 import { useDriverTrips, Trip } from "@/hooks/use-driver-trips";
@@ -246,7 +247,7 @@ export function BoardingList() {
                       
                       <div className="flex items-center text-gray-600">
                         <Clock className="h-4 w-4 mr-2" />
-                        {trip.departureTime} - {trip.arrivalTime}
+                        {formatTripTime(trip.departureTime, true, 'standard')} - {formatTripTime(trip.arrivalTime, true, 'standard')}
                       </div>
                       
                       <div className="flex items-center text-gray-600">
