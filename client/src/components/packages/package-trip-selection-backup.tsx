@@ -307,11 +307,11 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
               <div className="p-4 w-full">
                 {/* Horarios en la parte superior */}
                 <div className="flex justify-between items-center mb-4">
-                  <div className="font-bold text-lg">{formatTripTime(trip.departureTime, true, "pretty")}</div>
+                  <div className="font-bold text-lg">{trip.departureTime}</div>
                   <div className="text-xs text-gray-500">
                     {calculateDuration(trip.departureTime, trip.arrivalTime)}
                   </div>
-                  <div className="font-bold text-lg text-right">{formatTripTime(trip.arrivalTime, true, "pretty")}</div>
+                  <div className="font-bold text-lg text-right">{trip.arrivalTime}</div>
                 </div>
                 
                 <div className="border-t border-gray-200 pt-3 mt-2">
