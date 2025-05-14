@@ -12,7 +12,6 @@ import { UsersPage } from "@/components/users/users-page";
 import VehiclesPage from "@/components/vehicles/vehicles-page";
 import CommissionsPage from "@/components/commissions/commissions-page";
 import { BoardingList } from "@/components/boarding-list/boarding-list";
-import TransfersPage from "@/components/transfers/transfers-page";
 import { TabType } from "@/hooks/use-active-tab";
 import { useAuth } from "@/hooks/use-auth";
 import { hasAccessToSection } from "@/lib/role-based-permissions";
@@ -33,7 +32,7 @@ export default function Dashboard() {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("tab") as TabType | null;
     
-    if (tab && ["create-route", "publish-trip", "trips", "reservations", "trip-summary", "users", "vehicles", "commissions", "boarding-list", "transfers"].includes(tab)) {
+    if (tab && ["create-route", "publish-trip", "trips", "reservations", "trip-summary", "users", "vehicles", "commissions", "boarding-list"].includes(tab)) {
       // Solo actualizar si el usuario tiene acceso a esta sección
       if (user && hasAccessToSection(user.role, tab)) {
         setActiveTab(tab);
@@ -41,7 +40,7 @@ export default function Dashboard() {
         // Si no tiene acceso, buscar la primera sección a la que sí tenga acceso
         const accessibleSections = [
           "create-route", "publish-trip", "trips", "reservations", 
-          "trip-summary", "boarding-list", "users", "vehicles", "commissions", "transfers"
+          "trip-summary", "boarding-list", "users", "vehicles", "commissions"
         ].filter(section => hasAccessToSection(user?.role || "", section));
         
         if (accessibleSections.length > 0) {
@@ -130,12 +129,6 @@ export default function Dashboard() {
             {activeTab === "commissions" && canAccess("commissions") ? (
               <CommissionsPage />
             ) : activeTab === "commissions" && (
-              <AccessDeniedAlert />
-            )}
-            
-            {activeTab === "transfers" && canAccess("transfers") ? (
-              <TransfersPage />
-            ) : activeTab === "transfers" && (
               <AccessDeniedAlert />
             )}
           </main>
