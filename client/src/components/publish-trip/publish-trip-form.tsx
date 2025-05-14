@@ -104,6 +104,22 @@ export function PublishTripForm() {
       })
       .filter(Boolean) as StopTime[];
   };
+  
+  // Convertir horas del formato 12h a 24h para comparaciones
+  const convertTo24Hour = (hour: string, minute: string, ampm: string): number => {
+    let hourNum = parseInt(hour, 10);
+    const minuteNum = parseInt(minute, 10);
+    
+    // Ajustar la hora según AM/PM
+    if (ampm === "AM" && hourNum === 12) {
+      hourNum = 0; // 12 AM = 0 en formato 24h
+    } else if (ampm === "PM" && hourNum < 12) {
+      hourNum += 12; // 1-11 PM = 13-23 en formato 24h
+    }
+    
+    // Retornar como un valor decimal para facilitar comparaciones
+    return hourNum + (minuteNum / 60);
+  };
 
   const [stopTimes, setStopTimes] = useState<StopTime[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -370,6 +386,31 @@ export function PublishTripForm() {
       routeSegmentsQuery.data.destination,
     ];
 
+    // Calcular los días relativos para cada parada
+    // Inicialmente todas las paradas están en el día 0 (día de salida del viaje)
+    const stopDayOffsets = new Array(stopTimeArray.length).fill(0);
+    
+    // Recorrer las paradas en orden para detectar cuando se cruza la medianoche
+    for (let i = 1; i < stopTimeArray.length; i++) {
+      const prevStop = stopTimeArray[i-1];
+      const currStop = stopTimeArray[i];
+      
+      if (prevStop && currStop) {
+        // Convertir a valores para comparación (horas en escala de 24)
+        const prevTime = convertTo24Hour(prevStop.hour, prevStop.minute, prevStop.ampm);
+        const currTime = convertTo24Hour(currStop.hour, currStop.minute, currStop.ampm);
+        
+        // Si el tiempo actual es menor que el anterior, significa que cruzó la medianoche
+        if (currTime < prevTime) {
+          // Esta parada y todas las siguientes están en el día siguiente
+          stopDayOffsets[i] = stopDayOffsets[i-1] + 1;
+        } else {
+          // Mantiene el mismo día que la parada anterior
+          stopDayOffsets[i] = stopDayOffsets[i-1];
+        }
+      }
+    }
+
     // Para cada segmento, encontrar el tiempo de salida y llegada correspondiente
     const updatedSegmentPrices = segmentPrices.map((segment) => {
       // Encontrar índice del origen en allLocations
@@ -387,9 +428,9 @@ export function PublishTripForm() {
         stopTimeArray[originIndex] &&
         stopTimeArray[destinationIndex]
       ) {
-        // Formatear tiempos
-        const departureTime = `${stopTimeArray[originIndex]?.hour}:${stopTimeArray[originIndex]?.minute} ${stopTimeArray[originIndex]?.ampm}`;
-        const arrivalTime = `${stopTimeArray[destinationIndex]?.hour}:${stopTimeArray[destinationIndex]?.minute} ${stopTimeArray[destinationIndex]?.ampm}`;
+        // Formatear tiempos, añadiendo indicador de día si es necesario
+        const departureTime = `${stopTimeArray[originIndex]?.hour}:${stopTimeArray[originIndex]?.minute} ${stopTimeArray[originIndex]?.ampm}${stopDayOffsets[originIndex] > 0 ? ` +${stopDayOffsets[originIndex]}d` : ''}`;
+        const arrivalTime = `${stopTimeArray[destinationIndex]?.hour}:${stopTimeArray[destinationIndex]?.minute} ${stopTimeArray[destinationIndex]?.ampm}${stopDayOffsets[destinationIndex] > 0 ? ` +${stopDayOffsets[destinationIndex]}d` : ''}`;
 
         return {
           ...segment,

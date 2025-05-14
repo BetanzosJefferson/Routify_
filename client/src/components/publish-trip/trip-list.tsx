@@ -10,6 +10,7 @@ import {
   dateToLocalISOString,
   formatDateForApiQuery
 } from "@/lib/utils";
+import { formatTripTime } from "@/lib/trip-utils";
 import { 
   PencilIcon, 
   TrashIcon, 
@@ -460,7 +461,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
 
   // Formatear hora para mostrar
   const formatTime = (timeString: string) => {
-    return timeString;
+    return formatTripTime(timeString, true, 'standard');
   };
 
   const getStopsCount = (trip: Trip) => {
