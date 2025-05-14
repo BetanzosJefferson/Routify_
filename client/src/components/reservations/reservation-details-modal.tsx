@@ -16,6 +16,7 @@ import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { hasRequiredRole } from "@/lib/role-based-permissions";
+import { formatTripTime } from "@/lib/trip-utils";
 import TicketCheckedModal from "@/components/reservations/ticket-checked-modal";
 
 interface ReservationDetailsModalProps {
@@ -304,8 +305,15 @@ export default function ReservationDetailsModal({
                       
                       <div>
                         <div className="text-sm text-gray-500 font-medium">HORA DE SALIDA</div>
-                        <div>{reservation.trip.departureTime}</div>
+                        <div>{formatTripTime(reservation.trip.departureTime, true, 'pretty')}</div>
                       </div>
+                      
+                      {reservation.trip.arrivalTime && (
+                        <div>
+                          <div className="text-sm text-gray-500 font-medium">HORA DE LLEGADA</div>
+                          <div>{formatTripTime(reservation.trip.arrivalTime, true, 'pretty')}</div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
