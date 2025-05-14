@@ -1,210 +1,222 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { useToast } from "@/hooks/use-toast";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Loader2, ArrowRight, CheckCircle, XCircle } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { TransferDetailsModal } from "./transfer-details-modal";
+import { Button } from "@/components/ui/button";
+import { ArrowUpDown, Eye } from "lucide-react";
+import TransferDetailsModal from "./transfer-details-modal";
 
-// Interfaces para tipado
-interface TripTransfer {
+interface Transfer {
   id: number;
-  sourceCompanyId: string;
-  targetCompanyId: string;
-  sourceTripId: number;
-  targetTripId: number;
+  sourceCompanyId: string | null;
+  targetCompanyId: string | null;
+  tripId: number;
   status: string;
-  reason?: string;
-  requestedAt: string;
-  respondedAt?: string;
-  createdBy?: number;
-  approvedBy?: number;
-  routeMapping?: {
-    originMatches: boolean;
-    destinationMatches: boolean;
-    skippedStops: string[];
-    additionalStops: string[];
+  reason: string;
+  createdAt: Date;
+  updatedAt: Date;
+  sourceCompanyName: string;
+  targetCompanyName: string;
+  tripDetails: {
+    departureDate: Date;
+    departureTime: string;
+    origin: string;
+    destination: string;
   };
+  reservationCount: number;
 }
 
 interface TransfersListProps {
-  transfers: TripTransfer[];
+  transfers: Transfer[];
   onRefresh: () => void;
 }
 
-export const TransfersList = ({ transfers, onRefresh }: TransfersListProps) => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [selectedTransfer, setSelectedTransfer] = useState<number | null>(null);
-  const [transferToApprove, setTransferToApprove] = useState<number | null>(null);
-  const [transferToReject, setTransferToReject] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+const TransfersList = ({ transfers, onRefresh }: TransfersListProps) => {
+  const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null);
+  const [sortField, setSortField] = useState<string>("createdAt");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
-  const handleViewDetails = (transferId: number) => {
-    setSelectedTransfer(transferId);
+  const handleViewDetails = (transfer: Transfer) => {
+    setSelectedTransfer(transfer);
   };
 
-  const handleApproveTransfer = async () => {
-    if (!transferToApprove) return;
-    
-    setIsLoading(true);
-    try {
-      await apiRequest("PATCH", `/api/transfers/${transferToApprove}/status`, {
-        status: "aprobado"
-      });
-      
-      toast({
-        title: "Transferencia aprobada",
-        description: "La transferencia ha sido aprobada exitosamente",
-      });
-      
-      onRefresh();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo aprobar la transferencia",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-      setTransferToApprove(null);
+  const formatDate = (date: Date) => {
+    return format(new Date(date), "dd/MM/yyyy", { locale: es });
+  };
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
     }
   };
 
-  const handleRejectTransfer = async () => {
-    if (!transferToReject) return;
-    
-    setIsLoading(true);
-    try {
-      await apiRequest("PATCH", `/api/transfers/${transferToReject}/status`, {
-        status: "rechazado"
-      });
-      
-      toast({
-        title: "Transferencia rechazada",
-        description: "La transferencia ha sido rechazada",
-      });
-      
-      onRefresh();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo rechazar la transferencia",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-      setTransferToReject(null);
-    }
-  };
-
-  const renderStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case "pendiente":
-        return <Badge variant="outline">Pendiente</Badge>;
-      case "aprobado":
-        return <Badge variant="success">Aprobado</Badge>;
-      case "rechazado":
-        return <Badge variant="destructive">Rechazado</Badge>;
+      case "pending":
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pendiente</Badge>;
+      case "approved":
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 bg-opacity-50">Aprobada</Badge>;
+      case "rejected":
+        return <Badge variant="destructive">Rechazada</Badge>;
+      case "completed":
+        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Completada</Badge>;
       default:
-        return <Badge>{status}</Badge>;
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  const canApprove = (transfer: TripTransfer) => {
-    // Solo puede aprobar la empresa destino o superAdmin
-    return (
-      transfer.status === "pendiente" &&
-      (user?.role === "superAdmin" || user?.companyId === transfer.targetCompanyId)
-    );
-  };
-
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), "dd MMM yyyy, HH:mm", { locale: es });
-  };
+  // Ordenar las transferencias
+  const sortedTransfers = [...transfers].sort((a, b) => {
+    if (sortField === "createdAt" || sortField === "updatedAt") {
+      const dateA = new Date(a[sortField as keyof Transfer] as Date).getTime();
+      const dateB = new Date(b[sortField as keyof Transfer] as Date).getTime();
+      return sortDirection === "asc" ? dateA - dateB : dateB - dateA;
+    } else if (sortField === "departureDate") {
+      const dateA = new Date(a.tripDetails.departureDate).getTime();
+      const dateB = new Date(b.tripDetails.departureDate).getTime();
+      return sortDirection === "asc" ? dateA - dateB : dateB - dateA;
+    } else {
+      const valA = a[sortField as keyof Transfer];
+      const valB = b[sortField as keyof Transfer];
+      
+      if (typeof valA === "string" && typeof valB === "string") {
+        return sortDirection === "asc" 
+          ? valA.localeCompare(valB) 
+          : valB.localeCompare(valA);
+      }
+      
+      // Comparación por reservationCount
+      if (sortField === "reservationCount") {
+        return sortDirection === "asc" 
+          ? (a.reservationCount - b.reservationCount)
+          : (b.reservationCount - a.reservationCount);
+      }
+      
+      return 0;
+    }
+  });
 
   return (
-    <>
+    <div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Compañía Origen</TableHead>
-              <TableHead>Compañía Destino</TableHead>
-              <TableHead>Fecha Solicitada</TableHead>
-              <TableHead>Estado</TableHead>
+              <TableHead className="w-[80px]">ID</TableHead>
+              <TableHead>
+                <div 
+                  className="flex items-center cursor-pointer"
+                  onClick={() => handleSort("sourceCompanyName")}
+                >
+                  Origen
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
+              <TableHead>
+                <div 
+                  className="flex items-center cursor-pointer"
+                  onClick={() => handleSort("targetCompanyName")}
+                >
+                  Destino
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
+              <TableHead>
+                <div 
+                  className="flex items-center cursor-pointer"
+                  onClick={() => handleSort("departureDate")}
+                >
+                  Viaje
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
+              <TableHead>
+                <div 
+                  className="flex items-center cursor-pointer"
+                  onClick={() => handleSort("reservationCount")}
+                >
+                  Reservas
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
+              <TableHead>
+                <div 
+                  className="flex items-center cursor-pointer"
+                  onClick={() => handleSort("status")}
+                >
+                  Estado
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
+              <TableHead>
+                <div 
+                  className="flex items-center cursor-pointer"
+                  onClick={() => handleSort("createdAt")}
+                >
+                  Fecha
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {transfers.map((transfer) => (
+            {sortedTransfers.map((transfer) => (
               <TableRow key={transfer.id}>
                 <TableCell className="font-medium">{transfer.id}</TableCell>
-                <TableCell>{transfer.sourceCompanyId}</TableCell>
-                <TableCell>{transfer.targetCompanyId}</TableCell>
-                <TableCell>{formatDate(transfer.requestedAt)}</TableCell>
-                <TableCell>{renderStatusBadge(transfer.status)}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewDetails(transfer.id)}
-                    >
-                      Detalles
-                    </Button>
-                    
-                    {canApprove(transfer) && (
-                      <>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => setTransferToApprove(transfer.id)}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Aprobar
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => setTransferToReject(transfer.id)}
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Rechazar
-                        </Button>
-                      </>
-                    )}
+                <TableCell>{transfer.sourceCompanyName}</TableCell>
+                <TableCell>{transfer.targetCompanyName}</TableCell>
+                <TableCell>
+                  <div className="space-y-1">
+                    <div className="font-medium text-sm">
+                      {formatDate(transfer.tripDetails.departureDate)}
+                    </div>
+                    <div className="text-xs text-muted-foreground flex flex-col sm:flex-row gap-1">
+                      <span>{transfer.tripDetails.origin}</span>
+                      <span className="hidden sm:inline">→</span>
+                      <span>{transfer.tripDetails.destination}</span>
+                    </div>
                   </div>
+                </TableCell>
+                <TableCell>{transfer.reservationCount}</TableCell>
+                <TableCell>{getStatusBadge(transfer.status)}</TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="text-sm">
+                      {formatDate(transfer.createdAt)}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {format(new Date(transfer.createdAt), "HH:mm", { locale: es })}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleViewDetails(transfer)}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    Ver detalles
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -212,79 +224,16 @@ export const TransfersList = ({ transfers, onRefresh }: TransfersListProps) => {
         </Table>
       </div>
 
-      {/* Modal de detalles */}
       {selectedTransfer && (
-        <TransferDetailsModal 
-          transferId={selectedTransfer} 
+        <TransferDetailsModal
           isOpen={!!selectedTransfer}
           onClose={() => setSelectedTransfer(null)}
+          transfer={selectedTransfer}
+          onTransferUpdated={onRefresh}
         />
       )}
-
-      {/* Diálogo de confirmación de aprobación */}
-      <AlertDialog 
-        open={!!transferToApprove} 
-        onOpenChange={(open) => !open && setTransferToApprove(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar aprobación</AlertDialogTitle>
-            <AlertDialogDescription>
-              ¿Estás seguro de que deseas aprobar esta transferencia? 
-              Las reservaciones serán transferidas al viaje de destino.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleApproveTransfer}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Procesando...
-                </>
-              ) : (
-                "Aprobar"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Diálogo de confirmación de rechazo */}
-      <AlertDialog 
-        open={!!transferToReject} 
-        onOpenChange={(open) => !open && setTransferToReject(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar rechazo</AlertDialogTitle>
-            <AlertDialogDescription>
-              ¿Estás seguro de que deseas rechazar esta transferencia?
-              La solicitud será cancelada y las reservaciones permanecerán con la compañía original.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleRejectTransfer}
-              disabled={isLoading}
-              className="bg-destructive hover:bg-destructive/90"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Procesando...
-                </>
-              ) : (
-                "Rechazar"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+    </div>
   );
 };
+
+export default TransfersList;

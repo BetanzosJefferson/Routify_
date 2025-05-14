@@ -1,476 +1,420 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, CheckCircle, XCircle, Circle, AlertCircle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Check, X, AlertCircle, UserPlus } from "lucide-react";
 import { AddReservationModal } from "./add-reservation-modal";
 
-interface TransferDetailsModalProps {
-  transferId: number;
-  isOpen: boolean;
-  onClose: () => void;
+// Definir interfaces para los tipos de datos
+interface Transfer {
+  id: number;
+  sourceCompanyId: string | null;
+  targetCompanyId: string | null;
+  tripId: number;
+  status: string;
+  reason: string;
+  createdAt: Date;
+  updatedAt: Date;
+  sourceCompanyName: string;
+  targetCompanyName: string;
+  tripDetails: {
+    departureDate: Date;
+    departureTime: string;
+    origin: string;
+    destination: string;
+    route: {
+      name: string;
+      stops: string[];
+    };
+  };
+  reservationCount: number;
+  reservations?: Reservation[];
 }
 
-export const TransferDetailsModal = ({ transferId, isOpen, onClose }: TransferDetailsModalProps) => {
+interface Reservation {
+  id: number;
+  passengerName: string;
+  passengerLastName: string;
+  seatNumber: number;
+  status: string;
+  transferStatus?: string;
+}
+
+interface TransferDetailsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  transfer: Transfer;
+  onTransferUpdated: () => void;
+}
+
+const TransferDetailsModal = ({ 
+  isOpen, 
+  onClose, 
+  transfer, 
+  onTransferUpdated 
+}: TransferDetailsModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("details");
-  const [isAddReservationModalOpen, setIsAddReservationModalOpen] = useState(false);
-
-  const { data: transfer, isLoading, refetch } = useQuery({
-    queryKey: [`/api/transfers/${transferId}`],
-    queryFn: async () => {
-      const response = await fetch(`/api/transfers/${transferId}`);
-      if (!response.ok) {
-        throw new Error("Error al cargar los detalles de la transferencia");
-      }
-      return response.json();
-    },
-    enabled: isOpen && !!transferId,
-    refetchOnWindowFocus: false
-  });
-
+  const [activeTab, setActiveTab] = useState("info");
+  const [isAddReservationOpen, setIsAddReservationOpen] = useState(false);
+  
+  const isSource = user?.companyId === transfer.sourceCompanyId;
+  const isTarget = user?.companyId === transfer.targetCompanyId;
+  const canApprove = isTarget && transfer.status === "pending";
+  const canAddReservations = isSource && (transfer.status === "approved" || transfer.status === "pending");
+  
+  // Mutación para aprobar una transferencia
   const approveTransferMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("PATCH", `/api/transfers/${transferId}/status`, {
-        status: "aprobado"
-      });
+      const response = await apiRequest("PATCH", `/api/transfers/${transfer.id}/approve`, {});
+      return await response.json();
     },
     onSuccess: () => {
       toast({
         title: "Transferencia aprobada",
-        description: "La transferencia ha sido aprobada con éxito",
+        description: "La transferencia ha sido aprobada correctamente",
+        variant: "success"
       });
-      refetch();
+      onTransferUpdated();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
-        title: "Error",
-        description: "No se pudo aprobar la transferencia",
-        variant: "destructive",
+        title: "Error al aprobar",
+        description: error.message || "No se pudo aprobar la transferencia",
+        variant: "destructive"
       });
     }
   });
 
+  // Mutación para rechazar una transferencia
   const rejectTransferMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("PATCH", `/api/transfers/${transferId}/status`, {
-        status: "rechazado"
-      });
+      const response = await apiRequest("PATCH", `/api/transfers/${transfer.id}/reject`, {});
+      return await response.json();
     },
     onSuccess: () => {
       toast({
         title: "Transferencia rechazada",
         description: "La transferencia ha sido rechazada",
+        variant: "default"
       });
-      refetch();
+      onTransferUpdated();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
-        title: "Error",
-        description: "No se pudo rechazar la transferencia",
-        variant: "destructive",
+        title: "Error al rechazar",
+        description: error.message || "No se pudo rechazar la transferencia",
+        variant: "destructive"
       });
     }
   });
 
-  const handleApproveTransfer = () => {
+  const handleApprove = () => {
     approveTransferMutation.mutate();
   };
 
-  const handleRejectTransfer = () => {
+  const handleReject = () => {
     rejectTransferMutation.mutate();
   };
 
-  const handleAddReservation = () => {
-    setIsAddReservationModalOpen(true);
+  const formatDate = (date: Date) => {
+    return format(new Date(date), "d 'de' MMMM, yyyy', a las' HH:mm", { locale: es });
   };
 
-  const handleReservationAdded = () => {
-    setIsAddReservationModalOpen(false);
-    refetch();
-    toast({
-      title: "Reservación añadida",
-      description: "La reservación ha sido añadida a la transferencia",
-    });
-  };
-
-  const renderStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case "pendiente":
-        return <Badge variant="outline">Pendiente</Badge>;
-      case "aprobado":
-        return <Badge variant="success">Aprobado</Badge>;
-      case "rechazado":
-        return <Badge variant="destructive">Rechazado</Badge>;
+      case "pending":
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pendiente</Badge>;
+      case "approved":
+        return <Badge variant="success" className="bg-green-50 text-green-700 border-green-200">Aprobada</Badge>;
+      case "rejected":
+        return <Badge variant="destructive">Rechazada</Badge>;
+      case "completed":
+        return <Badge variant="success" className="bg-blue-50 text-blue-700 border-blue-200">Completada</Badge>;
       default:
-        return <Badge>{status}</Badge>;
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), "dd MMM yyyy, HH:mm", { locale: es });
-  };
-
-  const canAddReservation = () => {
-    if (!transfer) return false;
-    
-    // Solo la compañía de origen puede añadir reservaciones
-    return (
-      transfer.status === "pendiente" &&
-      (user?.role === "superAdmin" || user?.companyId === transfer.sourceCompanyId)
-    );
-  };
-
-  const canApproveOrReject = () => {
-    if (!transfer) return false;
-    
-    // Solo la compañía destino puede aprobar/rechazar
-    return (
-      transfer.status === "pendiente" &&
-      (user?.role === "superAdmin" || user?.companyId === transfer.targetCompanyId)
-    );
-  };
-
-  const renderContent = () => {
-    if (isLoading || !transfer) {
-      return (
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      );
+  const getReservationStatusBadge = (status: string, transferStatus?: string) => {
+    // Si la reservación tiene un estado de transferencia específico
+    if (transferStatus) {
+      switch (transferStatus) {
+        case "transferred":
+          return <Badge variant="success" className="bg-green-50 text-green-700 border-green-200">Transferida</Badge>;
+        case "pending":
+          return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pendiente</Badge>;
+        case "rejected":
+          return <Badge variant="destructive">Rechazada</Badge>;
+        default:
+          return <Badge variant="outline">{transferStatus}</Badge>;
+      }
     }
-
-    const { sourceTrip, targetTrip, routeMapping, reservations } = transfer;
-
-    return (
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="details">Detalles</TabsTrigger>
-          <TabsTrigger value="compatibility">Compatibilidad</TabsTrigger>
-          <TabsTrigger value="reservations">Reservaciones ({reservations?.length || 0})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="details">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-medium mb-2">Viaje de origen</h3>
-              <div className="border rounded-md p-4 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">ID:</span>
-                  <span>{sourceTrip.id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Ruta:</span>
-                  <span>{sourceTrip.route.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Origen:</span>
-                  <span>{sourceTrip.route.origin}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Destino:</span>
-                  <span>{sourceTrip.route.destination}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Fecha:</span>
-                  <span>{format(new Date(sourceTrip.departureDate), "dd MMM yyyy", { locale: es })}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Salida:</span>
-                  <span>{sourceTrip.departureTime}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Llegada:</span>
-                  <span>{sourceTrip.arrivalTime}</span>
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="text-lg font-medium mb-2">Viaje de destino</h3>
-              <div className="border rounded-md p-4 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">ID:</span>
-                  <span>{targetTrip.id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Ruta:</span>
-                  <span>{targetTrip.route.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Origen:</span>
-                  <span>{targetTrip.route.origin}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Destino:</span>
-                  <span>{targetTrip.route.destination}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Fecha:</span>
-                  <span>{format(new Date(targetTrip.departureDate), "dd MMM yyyy", { locale: es })}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Salida:</span>
-                  <span>{targetTrip.departureTime}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Llegada:</span>
-                  <span>{targetTrip.arrivalTime}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <h3 className="text-lg font-medium mb-2">Información de la transferencia</h3>
-            <div className="border rounded-md p-4 space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">ID:</span>
-                <span>{transfer.id}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Estado:</span>
-                <span>{renderStatusBadge(transfer.status)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Fecha de solicitud:</span>
-                <span>{formatDate(transfer.requestedAt)}</span>
-              </div>
-              {transfer.respondedAt && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Fecha de respuesta:</span>
-                  <span>{formatDate(transfer.respondedAt)}</span>
-                </div>
-              )}
-              {transfer.reason && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Motivo:</span>
-                  <span>{transfer.reason}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="compatibility">
-          {routeMapping ? (
-            <div className="space-y-6">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center">
-                  <span className="mr-2">
-                    {routeMapping.originMatches ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-500" />
-                    )}
-                  </span>
-                  <span>
-                    {routeMapping.originMatches
-                      ? "El origen de ambas rutas coincide"
-                      : "El origen de las rutas no coincide"}
-                  </span>
-                </div>
-                <div className="flex items-center">
-                  <span className="mr-2">
-                    {routeMapping.destinationMatches ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-500" />
-                    )}
-                  </span>
-                  <span>
-                    {routeMapping.destinationMatches
-                      ? "El destino de ambas rutas coincide"
-                      : "El destino de las rutas no coincide"}
-                  </span>
-                </div>
-              </div>
-
-              {routeMapping.skippedStops.length > 0 && (
-                <div>
-                  <h4 className="text-md font-medium mb-2 flex items-center">
-                    <AlertCircle className="h-4 w-4 mr-2 text-amber-500" />
-                    Paradas omitidas en la ruta destino
-                  </h4>
-                  <ul className="list-disc list-inside pl-4">
-                    {routeMapping.skippedStops.map((stop, index) => (
-                      <li key={index}>{stop}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {routeMapping.additionalStops.length > 0 && (
-                <div>
-                  <h4 className="text-md font-medium mb-2 flex items-center">
-                    <Circle className="h-4 w-4 mr-2 text-blue-500" />
-                    Paradas adicionales en la ruta destino
-                  </h4>
-                  <ul className="list-disc list-inside pl-4">
-                    {routeMapping.additionalStops.map((stop, index) => (
-                      <li key={index}>{stop}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <div className="bg-muted p-4 rounded-md">
-                <p className="text-sm text-muted-foreground">
-                  Nota: Al momento de transferir las reservaciones, los puntos de origen y destino
-                  pueden necesitar ajustes si las rutas no son idénticas.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <p>No hay información de compatibilidad disponible</p>
-          )}
-        </TabsContent>
-
-        <TabsContent value="reservations">
-          <div className="mb-4 flex justify-between items-center">
-            <h3 className="text-lg font-medium">Reservaciones a transferir</h3>
-            
-            {canAddReservation() && (
-              <Button onClick={handleAddReservation}>
-                Añadir reservación
-              </Button>
-            )}
-          </div>
-          
-          {reservations && reservations.length > 0 ? (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID Reservación</TableHead>
-                    <TableHead>Origen Original</TableHead>
-                    <TableHead>Destino Original</TableHead>
-                    <TableHead>Nuevo Origen</TableHead>
-                    <TableHead>Nuevo Destino</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reservations.map((res: any) => (
-                    <TableRow key={res.id}>
-                      <TableCell>{res.reservationId}</TableCell>
-                      <TableCell>{res.originalOrigin}</TableCell>
-                      <TableCell>{res.originalDestination}</TableCell>
-                      <TableCell>{res.newOrigin}</TableCell>
-                      <TableCell>{res.newDestination}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center p-8 border rounded-md">
-              <p className="text-muted-foreground">
-                No hay reservaciones añadidas a esta transferencia
-              </p>
-              {canAddReservation() && (
-                <Button onClick={handleAddReservation} className="mt-4">
-                  Añadir reservación
-                </Button>
-              )}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-    );
+    
+    // Si no tiene un estado de transferencia, usar el estado principal
+    switch (status) {
+      case "confirmed":
+        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Confirmada</Badge>;
+      case "pending":
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pendiente</Badge>;
+      case "cancelled":
+        return <Badge variant="destructive">Cancelada</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
   };
+
+  const isPending = approveTransferMutation.isPending || rejectTransferMutation.isPending;
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detalles de transferencia</DialogTitle>
             <DialogDescription>
-              Información detallada sobre la transferencia entre compañías
+              Información de la transferencia #{transfer.id}
             </DialogDescription>
           </DialogHeader>
-
-          {renderContent()}
-
-          <DialogFooter className="mt-6">
-            {canApproveOrReject() && (
-              <div className="flex space-x-2 mr-auto">
-                <Button
-                  variant="default"
-                  onClick={handleApproveTransfer}
-                  disabled={approveTransferMutation.isPending}
-                >
-                  {approveTransferMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Procesando...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Aprobar
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleRejectTransfer}
-                  disabled={rejectTransferMutation.isPending}
-                >
-                  {rejectTransferMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Procesando...
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="mr-2 h-4 w-4" />
-                      Rechazar
-                    </>
-                  )}
-                </Button>
+          
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="info">Información General</TabsTrigger>
+              <TabsTrigger value="reservations">Reservaciones ({transfer.reservationCount})</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="info" className="space-y-4 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Detalles de la transferencia</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Estado:</span>
+                      <span>{getStatusBadge(transfer.status)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Fecha de solicitud:</span>
+                      <span>{formatDate(transfer.createdAt)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Última actualización:</span>
+                      <span>{formatDate(transfer.updatedAt)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Empresa origen:</span>
+                      <span>{transfer.sourceCompanyName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Empresa destino:</span>
+                      <span>{transfer.targetCompanyName}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Detalles del viaje</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Ruta:</span>
+                      <span>{transfer.tripDetails.route.name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Fecha de salida:</span>
+                      <span>{format(new Date(transfer.tripDetails.departureDate), "dd/MM/yyyy")}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Hora de salida:</span>
+                      <span>{transfer.tripDetails.departureTime}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Origen:</span>
+                      <span>{transfer.tripDetails.origin}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Destino:</span>
+                      <span>{transfer.tripDetails.destination}</span>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            )}
-            <Button variant="outline" onClick={onClose}>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Motivo de la transferencia</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="whitespace-pre-line">{transfer.reason}</p>
+                </CardContent>
+              </Card>
+
+              {transfer.tripDetails.route.stops.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Paradas intermedias</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="relative">
+                      {transfer.tripDetails.route.stops.map((stop, index) => (
+                        <div key={index} className="flex items-center mb-4">
+                          <div className="relative flex items-center justify-center">
+                            <div className="h-8 w-8 rounded-full border-2 border-primary bg-background flex items-center justify-center z-10">
+                              {index + 1}
+                            </div>
+                            {index < transfer.tripDetails.route.stops.length - 1 && (
+                              <div className="absolute top-8 left-4 h-8 w-0.5 bg-muted-foreground" />
+                            )}
+                          </div>
+                          <div className="ml-4">
+                            <p className="font-medium">{stop}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="reservations" className="pt-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Reservaciones</CardTitle>
+                    <CardDescription>
+                      Listado de reservaciones incluidas en esta transferencia
+                    </CardDescription>
+                  </div>
+                  {canAddReservations && (
+                    <Button onClick={() => setIsAddReservationOpen(true)}>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Agregar reservación
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  {!transfer.reservations || transfer.reservations.length === 0 ? (
+                    <div className="text-center py-8">
+                      <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">No hay reservaciones asociadas a esta transferencia</p>
+                      {canAddReservations && (
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setIsAddReservationOpen(true)} 
+                          className="mt-4"
+                        >
+                          Agregar reservación
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-md border">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="bg-muted">
+                            <th className="text-left p-3">ID</th>
+                            <th className="text-left p-3">Pasajero</th>
+                            <th className="text-left p-3">Asiento</th>
+                            <th className="text-left p-3">Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {transfer.reservations.map((reservation) => (
+                            <tr key={reservation.id} className="border-t">
+                              <td className="p-3">{reservation.id}</td>
+                              <td className="p-3">{reservation.passengerName} {reservation.passengerLastName}</td>
+                              <td className="p-3">{reservation.seatNumber}</td>
+                              <td className="p-3">
+                                {getReservationStatusBadge(reservation.status, reservation.transferStatus)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+          
+          <Separator className="my-4" />
+          
+          <DialogFooter className="flex justify-between sm:justify-between">
+            <div>
+              {canApprove && (
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleReject}
+                    disabled={isPending}
+                  >
+                    {rejectTransferMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : (
+                      <X className="h-4 w-4 mr-1" />
+                    )}
+                    Rechazar
+                  </Button>
+                  <Button
+                    onClick={handleApprove}
+                    disabled={isPending}
+                  >
+                    {approveTransferMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : (
+                      <Check className="h-4 w-4 mr-1" />
+                    )}
+                    Aprobar
+                  </Button>
+                </div>
+              )}
+            </div>
+            <Button variant="secondary" onClick={onClose}>
               Cerrar
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {transfer && isAddReservationModalOpen && (
+      {isAddReservationOpen && (
         <AddReservationModal
-          transferId={transferId}
-          sourceTripId={transfer.sourceTripId}
-          isOpen={isAddReservationModalOpen}
-          onClose={() => setIsAddReservationModalOpen(false)}
-          onReservationAdded={handleReservationAdded}
+          transferId={transfer.id}
+          sourceTripId={transfer.tripId}
+          isOpen={isAddReservationOpen}
+          onClose={() => setIsAddReservationOpen(false)}
+          onReservationAdded={onTransferUpdated}
         />
       )}
     </>
   );
 };
+
+export default TransferDetailsModal;

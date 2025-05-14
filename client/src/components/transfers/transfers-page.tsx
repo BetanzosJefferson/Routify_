@@ -2,19 +2,19 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TransfersList } from "./transfers-list";
-import { NewTransferModal } from "./new-transfer-modal";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import TransfersList from "./transfers-list";
+import NewTransferModal from "./new-transfer-modal";
 
 const TransfersPage = () => {
   const { user } = useAuth();
@@ -133,20 +133,21 @@ const TransfersPage = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Todos los estados</SelectItem>
-                  <SelectItem value="pendiente">Pendientes</SelectItem>
-                  <SelectItem value="aprobado">Aprobados</SelectItem>
-                  <SelectItem value="rechazado">Rechazados</SelectItem>
+                  <SelectItem value="pending">Pendiente</SelectItem>
+                  <SelectItem value="approved">Aprobada</SelectItem>
+                  <SelectItem value="rejected">Rechazada</SelectItem>
+                  <SelectItem value="completed">Completada</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
-
+          
           {renderContent()}
         </CardContent>
       </Card>
 
-      <NewTransferModal 
-        isOpen={isCreateModalOpen} 
+      <NewTransferModal
+        isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onTransferCreated={handleTransferCreated}
       />
