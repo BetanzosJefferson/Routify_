@@ -24,6 +24,7 @@ export const ALL_SECTIONS: Section[] = [
   { id: "coupons", name: "Cupones", description: "Gestión de cupones de descuento" },
   { id: "packages", name: "Paqueterías", description: "Gestión de envío de paquetes" },
   { id: "cash-register", name: "Caja", description: "Registro de pagos realizados" },
+  { id: "transfers", name: "Transferencias", description: "Transferencias de reservaciones entre empresas" },
   { id: "settings", name: "Configuración", description: "Ajustes generales del sistema" }
 ];
 
@@ -45,7 +46,8 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "notifications",
     "coupons",
     "packages",
-    "cash-register"
+    "cash-register",
+    "transfers"
   ],
   [UserRole.ADMIN]: [
     "routes",
@@ -60,7 +62,8 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "reservation-requests", 
     "notifications",
     "packages",
-    "cash-register"
+    "cash-register",
+    "transfers"
   ],
   [UserRole.CALL_CENTER]: [
     "trips",
