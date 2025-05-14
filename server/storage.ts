@@ -21,7 +21,13 @@ import {
   InsertCoupon,
   InsertNotification,
   Notification,
-  ReservationRequest
+  ReservationRequest,
+  CompanyLink,
+  InsertCompanyLink,
+  TransferRequest,
+  InsertTransferRequest,
+  TransferDetail,
+  InsertTransferDetail
 } from "@shared/schema";
 
 export interface IStorage {
@@ -142,6 +148,29 @@ export interface IStorage {
   
   // Company methods
   getCompanyById(companyId: string): Promise<{id: string, name: string} | null>;
+  getCompanyByEmail(email: string): Promise<{id: string, name: string, email: string} | null>;
+  
+  // Company Link methods
+  createCompanyLink(linkData: InsertCompanyLink): Promise<CompanyLink>;
+  getCompanyLink(id: number): Promise<CompanyLink | undefined>;
+  getCompanyLinkByToken(token: string): Promise<CompanyLink | undefined>;
+  updateCompanyLink(id: number, data: Partial<CompanyLink>): Promise<CompanyLink | undefined>;
+  getCompanyLinks(companyId: string): Promise<CompanyLink[]>;
+  getActiveCompanyLink(sourceCompanyId: string, targetCompanyId: string): Promise<CompanyLink | undefined>;
+  
+  // Transfer Request methods
+  createTransferRequest(requestData: InsertTransferRequest): Promise<TransferRequest>;
+  getTransferRequest(id: number): Promise<TransferRequest | undefined>;
+  updateTransferRequest(id: number, data: Partial<TransferRequest>): Promise<TransferRequest | undefined>;
+  getSentTransferRequests(companyId: string): Promise<TransferRequest[]>;
+  getReceivedTransferRequests(companyId: string): Promise<TransferRequest[]>;
+  
+  // Transfer Detail methods
+  createTransferDetail(detailData: InsertTransferDetail): Promise<TransferDetail>;
+  getTransferDetail(id: number): Promise<TransferDetail | undefined>;
+  updateTransferDetail(id: number, data: Partial<TransferDetail>): Promise<TransferDetail | undefined>;
+  getTransferDetails(transferRequestId: number): Promise<TransferDetail[]>;
+  getTransferDetailsByReservation(reservationId: number): Promise<TransferDetail[]>;
 }
 
 export class MemStorage implements IStorage {
