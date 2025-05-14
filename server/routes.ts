@@ -1297,7 +1297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Si tenemos tiempos personalizados, usémoslos directamente
-      const segmentTimes: Record<string, { departureTime: string; arrivalTime: string }> = {};
+      const segmentTimes: Record<string, { departureTime: string; arrivalTime: string; dayOffset?: number }> = {};
       
       // Asegurarse de que los tiempos de origen y destino principal estén configurados correctamente
       if (!locationTimeMap[route.origin]) {
@@ -1312,6 +1312,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Si tenemos suficientes tiempos personalizados, calcular segmentos basados en ellos
       if (Object.keys(locationTimeMap).length >= 2) {
+        // Calcular los desplazamientos de día para cada ubicación
+        const locationDayOffsets: Record<string, number> = {};
+        
+        // Inicializar todas las ubicaciones con desplazamiento 0
+        allPoints.forEach(point => {
+          locationDayOffsets[point] = 0;
+        });
+        
+        // Recorrer puntos secuencialmente y detectar cruces de medianoche
+        for (let i = 1; i < allPoints.length; i++) {
+          const prevPoint = allPoints[i-1];
+          const currPoint = allPoints[i];
+          
+          if (prevPoint && currPoint && locationTimeMap[prevPoint] && locationTimeMap[currPoint]) {
+            // Verificar si este segmento cruza la medianoche
+            const crossesMidnight = isCrossingMidnight(locationTimeMap[prevPoint], locationTimeMap[currPoint]);
+            
+            if (crossesMidnight) {
+              // Todas las ubicaciones desde este punto en adelante están en el día siguiente
+              console.log(`⚠️ Detectado cruce de medianoche entre ${prevPoint} y ${currPoint}`);
+              
+              // El desplazamiento de la ubicación actual es el de la anterior + 1
+              locationDayOffsets[currPoint] = locationDayOffsets[prevPoint] + 1;
+              
+              // Actualizar todas las ubicaciones posteriores con el mismo desplazamiento
+              for (let j = i + 1; j < allPoints.length; j++) {
+                locationDayOffsets[allPoints[j]] = locationDayOffsets[currPoint];
+              }
+            } else {
+              // Sin cruce de medianoche, heredar el mismo desplazamiento de la ubicación anterior
+              locationDayOffsets[currPoint] = locationDayOffsets[prevPoint];
+            }
+          }
+        }
+        
+        // Registrar los desplazamientos de día calculados
+        allPoints.forEach(point => {
+          if (locationDayOffsets[point] > 0) {
+            console.log(`📆 Ubicación ${point} está en el día +${locationDayOffsets[point]}d`);
+          }
+        });
+        
         // Primero, procesamos los segmentos directos entre paradas adyacentes
         for (let i = 0; i < allPoints.length - 1; i++) {
           const origin = allPoints[i];
@@ -1319,23 +1361,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (origin && destination && locationTimeMap[origin] && locationTimeMap[destination]) {
             const key = `${origin}-${destination}`;
+            
+            // Obtener los tiempos básicos
+            let departureTime = locationTimeMap[origin];
+            let arrivalTime = locationTimeMap[destination];
+            
+            // Añadir indicadores de día si es necesario
+            if (locationDayOffsets[origin] > 0) {
+              departureTime = addDayIndicator(departureTime, locationDayOffsets[origin]);
+            }
+            
+            if (locationDayOffsets[destination] > 0) {
+              arrivalTime = addDayIndicator(arrivalTime, locationDayOffsets[destination]);
+            }
+            
             segmentTimes[key] = {
-              departureTime: locationTimeMap[origin],
-              arrivalTime: locationTimeMap[destination]
+              departureTime,
+              arrivalTime,
+              dayOffset: locationDayOffsets[destination] - locationDayOffsets[origin]
             };
+            
+            console.log(`Segmento ${origin} -> ${destination}: ${departureTime} - ${arrivalTime} (dayOffset: ${segmentTimes[key].dayOffset})`);
           }
         }
         
-        // Luego, procesamos todos los segmentos restantes
+        // Luego, procesamos todos los segmentos no adyacentes
         segments.forEach(segment => {
           const key = `${segment.origin}-${segment.destination}`;
           
           // Solo procesar segmentos que no se hayan procesado aún
           if (!segmentTimes[key] && locationTimeMap[segment.origin] && locationTimeMap[segment.destination]) {
+            // Obtener los tiempos básicos
+            let departureTime = locationTimeMap[segment.origin];
+            let arrivalTime = locationTimeMap[segment.destination];
+            
+            // Añadir indicadores de día si es necesario
+            if (locationDayOffsets[segment.origin] > 0) {
+              departureTime = addDayIndicator(departureTime, locationDayOffsets[segment.origin]);
+            }
+            
+            if (locationDayOffsets[segment.destination] > 0) {
+              arrivalTime = addDayIndicator(arrivalTime, locationDayOffsets[segment.destination]);
+            }
+            
             segmentTimes[key] = {
-              departureTime: locationTimeMap[segment.origin],
-              arrivalTime: locationTimeMap[segment.destination]
+              departureTime,
+              arrivalTime,
+              dayOffset: locationDayOffsets[segment.destination] - locationDayOffsets[segment.origin]
             };
+            
+            console.log(`Segmento (no adyacente) ${segment.origin} -> ${segment.destination}: ${departureTime} - ${arrivalTime} (dayOffset: ${segmentTimes[key].dayOffset})`);
           }
         });
         
@@ -1457,15 +1532,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const key = `${segment.origin}-${segment.destination}`;
       calculatedSegmentTimes[key] = {
         departureTime: segmentDepartureTime,
-        arrivalTime: segmentArrivalTime
+        arrivalTime: segmentArrivalTime,
+        dayOffset: endDayOffset - startDayOffset // Diferencia de días entre salida y llegada
       };
     });
     
     // Add the main route times
     const mainRouteKey = `${route.origin}-${route.destination}`;
+    
+    // Check if main trip crosses midnight
+    const mainDayOffset = isCrossingMidnight(mainDepartureTime, mainArrivalTime) ? 1 : 0;
+    
     calculatedSegmentTimes[mainRouteKey] = {
       departureTime: mainDepartureTime,
-      arrivalTime: mainArrivalTime
+      arrivalTime: mainArrivalTime,
+      dayOffset: mainDayOffset // 1 si cruza la medianoche, 0 si no
     };
     
     return calculatedSegmentTimes;
