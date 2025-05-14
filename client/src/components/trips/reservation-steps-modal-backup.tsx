@@ -544,9 +544,9 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                     <div className="text-gray-500">Fecha:</div>
                     <div className="font-medium">{formatDate(trip.departureDate)}</div>
                     <div className="text-gray-500">Salida:</div>
-                    <div className="font-medium">{formatTripTime(trip.departureTime, true, "pretty")}</div>
+                    <div className="font-medium">{trip.departureTime}</div>
                     <div className="text-gray-500">Llegada:</div>
-                    <div className="font-medium">{formatTripTime(trip.arrivalTime, true, "pretty")}</div>
+                    <div className="font-medium">{trip.arrivalTime}</div>
                     <div className="text-gray-500">Precio por pasajero:</div>
                     <div className="font-medium">{formatPrice(trip.price)}</div>
                   </div>
@@ -841,9 +841,9 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                     <div className="text-gray-500">Fecha:</div>
                     <div className="font-medium">{formatDate(trip.departureDate)}</div>
                     <div className="text-gray-500">Salida:</div>
-                    <div className="font-medium">{formatTripTime(trip.departureTime, true, "pretty")}</div>
+                    <div className="font-medium">{trip.departureTime}</div>
                     <div className="text-gray-500">Llegada:</div>
-                    <div className="font-medium">{formatTripTime(trip.arrivalTime, true, "pretty")}</div>
+                    <div className="font-medium">{trip.arrivalTime}</div>
                   </div>
                 </div>
                 
@@ -1071,7 +1071,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                         </div>
                         <div>
                           <div className="text-sm text-gray-500">Hora:</div>
-                          <div>{formatTripTime(trip.departureTime, true, "pretty")}</div>
+                          <div>{trip.departureTime}</div>
                         </div>
                       </div>
                     </div>

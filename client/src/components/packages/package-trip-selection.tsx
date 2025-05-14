@@ -4,7 +4,7 @@ import { Loader2Icon, MapPinIcon, CalendarIcon, FilterIcon, ArrowLeft, Truck } f
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { format } from "date-fns";
-import { extractLocationsFromTrips } from "@/lib/trip-utils";
+import { extractLocationsFromTrips, formatTripTime } from "@/lib/trip-utils";
 
 // UI Components
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
