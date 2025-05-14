@@ -3246,6 +3246,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     UserRole.ADMIN
   ];
   
+  // Obtener compañías disponibles para transferencia
+  app.get(apiRouter("/companies/available-for-transfer"), [isAuthenticated, hasRole(TRANSFER_MANAGE_ROLES)], async (req, res) => {
+    try {
+      console.log(`[GET /companies/available-for-transfer] Usuario: ${req.user?.firstName} ${req.user?.lastName}`);
+      
+      // Si es superadmin, obtener todas las compañías excepto la del usuario actual
+      let companies;
+      if (req.user?.role === UserRole.SUPER_ADMIN) {
+        companies = await storage.getAllCompanies();
+      } else {
+        // Para otros roles, solo obtener compañías activas
+        // Excluir la compañía propia del usuario
+        companies = await storage.getAllCompanies();
+        companies = companies.filter(c => c.identifier !== req.user?.companyId && c.status === 'active');
+      }
+      
+      res.json(companies);
+    } catch (error) {
+      console.error("Error al obtener compañías para transferencia:", error);
+      res.status(500).json({ error: "Error al obtener compañías disponibles" });
+    }
+  });
+  
+  // Obtener viajes disponibles para transferencia
+  app.get(apiRouter("/trips/available-for-transfer"), [isAuthenticated, hasRole(TRANSFER_MANAGE_ROLES)], async (req, res) => {
+    try {
+      console.log(`[GET /trips/available-for-transfer] Usuario: ${req.user?.firstName} ${req.user?.lastName}`);
+      console.log(`[GET /trips/available-for-transfer] Rol: ${req.user?.role}, CompanyId: ${req.user?.companyId}`);
+      
+      // Obtener viajes futuros de la compañía del usuario
+      if (!req.user?.companyId && req.user?.role !== UserRole.SUPER_ADMIN) {
+        return res.status(403).json({ error: "No tienes una compañía asignada" });
+      }
+      
+      // Filtrar viajes de la compañía actual, que sean futuros y tengan asientos disponibles
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const trips = await storage.getTrips({
+        companyId: req.user.companyId,
+        afterDate: today,
+        status: 'publicado',
+        withAvailableSeats: true
+      });
+      
+      // Transformar los viajes para incluir sólo la información necesaria
+      const availableTrips = trips.map(trip => ({
+        id: trip.id,
+        departureDate: trip.departureDate,
+        departureTime: trip.departureTime,
+        origin: trip.route.origin,
+        destination: trip.route.destination,
+        availableSeats: trip.availableSeats
+      }));
+      
+      res.json(availableTrips);
+    } catch (error) {
+      console.error("Error al obtener viajes para transferencia:", error);
+      res.status(500).json({ error: "Error al obtener viajes disponibles" });
+    }
+  });
+  
   // Validación para la creación de transferencias
   const createTripTransferSchema = z.object({
     sourceCompanyId: z.string(),
