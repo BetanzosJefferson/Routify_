@@ -13,6 +13,7 @@ import {
   UserIcon,
   Search
 } from "lucide-react";
+import { formatTripTime } from "@/lib/trip-utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -282,7 +283,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
               </div>
               <div>
                 <div className="text-xs text-gray-500">Horario</div>
-                <div className="text-sm font-medium">{tripDetails.departureTime} - {tripDetails.arrivalTime}</div>
+                <div className="text-sm font-medium">
+                  {formatTripTime(tripDetails.departureTime, true, 'pretty')} - {formatTripTime(tripDetails.arrivalTime, true, 'pretty')}
+                </div>
               </div>
             </div>
             
