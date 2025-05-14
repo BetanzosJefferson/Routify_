@@ -1286,6 +1286,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     // Calculate times for each segment
     const calculatedSegmentTimes: Record<string, { departureTime: string; arrivalTime: string }> = {};
+    
+    // Variable para rastrear cuando cruzamos la medianoche
+    let crossesMidnight = arrivalMinutes > departureMinutes + (24 * 60 - departureMinutes);
+    console.log(`[calculateSegmentTimes] ¿El viaje cruza la medianoche? ${crossesMidnight ? 'SÍ' : 'NO'}`);
+    
+    // Calcular a partir de qué minuto se cruza la medianoche (en caso de que aplique)
+    const midnightCrossingMinute = crossesMidnight ? 
+      departureMinutes + ((24 * 60 - departureMinutes) % (24 * 60)) : null;
+    
+    if (midnightCrossingMinute !== null) {
+      console.log(`[calculateSegmentTimes] El viaje cruza la medianoche después de ${midnightCrossingMinute - departureMinutes} minutos del inicio`);
+    }
+    
     segments.forEach(segment => {
       const startIdx = pointIndices[segment.origin] as number;
       const endIdx = pointIndices[segment.destination] as number;
@@ -1294,19 +1307,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const segmentStartMinutes = departureMinutes + (startIdx * minutesPerSegment);
       const segmentEndMinutes = departureMinutes + (endIdx * minutesPerSegment);
       
-      // Convert back to 12-hour format
+      // Determinar si este segmento cruza la medianoche o está completamente en el día siguiente
+      const segmentIsAfterMidnight = midnightCrossingMinute !== null && 
+        ((segmentStartMinutes >= midnightCrossingMinute) || 
+         (segmentStartMinutes < midnightCrossingMinute && segmentEndMinutes >= midnightCrossingMinute));
+      
+      if (segmentIsAfterMidnight) {
+        console.log(`[calculateSegmentTimes] Segmento ${segment.origin} -> ${segment.destination} ocurre después de la medianoche`);
+      }
+      
+      // Convert back to 12-hour format, considerando el cambio de día
+      // Para la hora de salida del segmento
       const segmentStartHour = Math.floor(segmentStartMinutes / 60) % 24;
       const segmentStartMinute = Math.floor(segmentStartMinutes % 60);
       const segmentStartAmPm = segmentStartHour >= 12 ? 'PM' : 'AM';
       const displayStartHour = segmentStartHour > 12 ? segmentStartHour - 12 : (segmentStartHour === 0 ? 12 : segmentStartHour);
       
+      // Para la hora de llegada del segmento
       const segmentEndHour = Math.floor(segmentEndMinutes / 60) % 24;
       const segmentEndMinute = Math.floor(segmentEndMinutes % 60);
       const segmentEndAmPm = segmentEndHour >= 12 ? 'PM' : 'AM';
       const displayEndHour = segmentEndHour > 12 ? segmentEndHour - 12 : (segmentEndHour === 0 ? 12 : segmentEndHour);
       
-      const segmentDepartureTime = `${String(displayStartHour).padStart(2, '0')}:${String(segmentStartMinute).padStart(2, '0')} ${segmentStartAmPm}`;
-      const segmentArrivalTime = `${String(displayEndHour).padStart(2, '0')}:${String(segmentEndMinute).padStart(2, '0')} ${segmentEndAmPm}`;
+      // Calcular días de desplazamiento (0 = mismo día, 1 = día siguiente, etc.)
+      const startDayOffset = Math.floor(segmentStartMinutes / (24 * 60));
+      const endDayOffset = Math.floor(segmentEndMinutes / (24 * 60));
+      
+      // Formatear tiempos incluyendo indicador de día siguiente si es necesario
+      let segmentDepartureTime = `${String(displayStartHour).padStart(2, '0')}:${String(segmentStartMinute).padStart(2, '0')} ${segmentStartAmPm}`;
+      let segmentArrivalTime = `${String(displayEndHour).padStart(2, '0')}:${String(segmentEndMinute).padStart(2, '0')} ${segmentEndAmPm}`;
+      
+      // Agregar indicador de día siguiente si corresponde
+      if (startDayOffset > 0) {
+        segmentDepartureTime += ` +${startDayOffset}d`;
+        console.log(`[calculateSegmentTimes] Tiempo de salida para ${segment.origin} es ${startDayOffset} día(s) después`);
+      }
+      
+      if (endDayOffset > 0) {
+        segmentArrivalTime += ` +${endDayOffset}d`;
+        console.log(`[calculateSegmentTimes] Tiempo de llegada para ${segment.destination} es ${endDayOffset} día(s) después`);
+      }
       
       const key = `${segment.origin}-${segment.destination}`;
       calculatedSegmentTimes[key] = {
