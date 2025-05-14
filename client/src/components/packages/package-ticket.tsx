@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Package, User, Clock, Calendar, PhoneCall, Truck, DollarSign, CheckCircle, ChevronsRight, MapPin } from "lucide-react";
 import { formatDate, formatCurrency, formatTime } from "@/lib/utils";
+import { formatTripTime } from "@/lib/trip-utils";
 import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
 
@@ -206,7 +207,7 @@ export async function generatePackageTicketPDF(packageData: PackageData, company
     // Hora de envío (usando la hora de salida del viaje)
     if (packageData.departureTime) {
       y += 4;
-      doc.text(`Hora de salida: ${packageData.departureTime}`, 5, y);
+      doc.text(`Hora de salida: ${formatTripTime(packageData.departureTime, true, 'standard')}`, 5, y);
     } else if (packageData.createdAt) {
       // Si no hay hora de salida disponible, usar la hora de creación como fallback
       y += 4;
