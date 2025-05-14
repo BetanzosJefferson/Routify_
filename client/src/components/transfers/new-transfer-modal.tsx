@@ -36,8 +36,10 @@ import { Loader2 } from "lucide-react";
 
 // Definir el esquema para el formulario
 const transferFormSchema = z.object({
+  sourceCompanyId: z.string().min(1, "La empresa origen es requerida"),
   targetCompanyId: z.string().min(1, "La empresa destino es requerida"),
-  tripId: z.string().min(1, "El viaje es requerido"),
+  sourceTripId: z.string().min(1, "El viaje origen es requerido"),
+  targetTripId: z.string().optional(),
   reason: z.string().min(10, "Por favor proporciona un motivo detallado").max(500, "El motivo no puede exceder los 500 caracteres"),
 });
 
@@ -111,8 +113,10 @@ const NewTransferModal = ({ isOpen, onClose, onTransferCreated }: NewTransferMod
   const form = useForm<TransferFormValues>({
     resolver: zodResolver(transferFormSchema),
     defaultValues: {
+      sourceCompanyId: user?.companyId || "",
       targetCompanyId: "",
-      tripId: "",
+      sourceTripId: "",
+      targetTripId: "",
       reason: "",
     },
   });
@@ -121,9 +125,12 @@ const NewTransferModal = ({ isOpen, onClose, onTransferCreated }: NewTransferMod
   const createTransferMutation = useMutation({
     mutationFn: async (data: TransferFormValues) => {
       const response = await apiRequest("POST", "/api/transfers", {
+        sourceCompanyId: data.sourceCompanyId,
         targetCompanyId: data.targetCompanyId,
-        tripId: parseInt(data.tripId),
+        sourceTripId: parseInt(data.sourceTripId),
+        targetTripId: data.targetTripId ? parseInt(data.targetTripId) : null,
         reason: data.reason,
+        createdBy: user?.id
       });
       return await response.json();
     },
@@ -203,7 +210,7 @@ const NewTransferModal = ({ isOpen, onClose, onTransferCreated }: NewTransferMod
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
               control={form.control}
-              name="tripId"
+              name="sourceTripId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Viaje origen</FormLabel>
@@ -237,6 +244,18 @@ const NewTransferModal = ({ isOpen, onClose, onTransferCreated }: NewTransferMod
                   </Select>
                   {tripId && getTripDetails()}
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="sourceCompanyId"
+              render={({ field }) => (
+                <FormItem className="hidden">
+                  <FormControl>
+                    <input type="hidden" {...field} value={user?.companyId || ""} />
+                  </FormControl>
                 </FormItem>
               )}
             />
