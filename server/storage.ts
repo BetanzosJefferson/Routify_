@@ -142,6 +142,25 @@ export interface IStorage {
   
   // Company methods
   getCompanyById(companyId: string): Promise<{id: string, name: string} | null>;
+
+  // Transfer methods
+  createTripTransfer(transferData: schema.InsertTripTransfer): Promise<schema.TripTransfer>;
+  getTripTransfers(filters?: { 
+    sourceCompanyId?: string, 
+    targetCompanyId?: string,
+    status?: string
+  }): Promise<schema.TripTransfer[]>;
+  getTripTransferWithDetails(id: number): Promise<schema.TripTransfer & { 
+    sourceCompany: any,
+    targetCompany: any,
+    sourceTrip: TripWithRouteInfo,
+    targetTrip: TripWithRouteInfo,
+    reservations: schema.ReservationTransfer[]
+  } | undefined>;
+  updateTripTransferStatus(id: number, status: string, approvedBy?: number): Promise<schema.TripTransfer | undefined>;
+  createReservationTransfer(transferData: schema.InsertReservationTransfer): Promise<schema.ReservationTransfer>;
+  getReservationTransfers(transferId: number): Promise<schema.ReservationTransfer[]>;
+  getReservationTransfersByReservation(reservationId: number): Promise<schema.ReservationTransfer[]>;
 }
 
 export class MemStorage implements IStorage {
