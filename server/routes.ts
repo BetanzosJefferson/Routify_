@@ -5234,4 +5234,578 @@ function setupPackageRoutes(app: Express) {
       res.status(500).json({ message: 'Error al cargar datos de caja' });
     }
   });
+  
+  // RUTAS PARA LA TRANSFERENCIA DE PASAJEROS ENTRE EMPRESAS
+
+  // Middleware de autenticación para transferencias
+  const requireAuthentication = (req: Request, res: Response, next: () => void) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "No autenticado" });
+    }
+    next();
+  };
+
+  const requireOwnerRole = (req: Request, res: Response, next: () => void) => {
+    if (!req.isAuthenticated() || req.user.role !== UserRole.OWNER) {
+      return res.status(403).json({ message: "Se requiere rol de propietario (Dueño)" });
+    }
+    next();
+  };
+
+  const requireOwnerOrAdminRole = (req: Request, res: Response, next: () => void) => {
+    if (!req.isAuthenticated() || (req.user.role !== UserRole.OWNER && req.user.role !== UserRole.ADMIN)) {
+      return res.status(403).json({ message: "Se requiere rol de propietario (Dueño) o administrador" });
+    }
+    next();
+  };
+
+  // 1. Rutas para la gestión de vínculos entre empresas
+  app.post('/api/company-links', requireAuthentication, requireOwnerRole, async (req, res) => {
+    try {
+      console.log('[POST /company-links] Creando nuevo vínculo entre empresas');
+      const user = req.user!;
+      
+      // Verificar si el usuario tiene permisos para la empresa origen
+      if (!req.body.sourceCompanyId || req.body.sourceCompanyId !== user.companyId) {
+        console.log(`[POST /company-links] El usuario no pertenece a la empresa origen ${req.body.sourceCompanyId}`);
+        return res.status(403).json({ message: 'No tienes permisos para crear vínculos para esta empresa' });
+      }
+      
+      // Verificar si la empresa destino existe
+      const targetCompany = await storage.getCompanyByEmail(req.body.targetCompanyEmail);
+      if (!targetCompany) {
+        console.log(`[POST /company-links] Empresa destino con email ${req.body.targetCompanyEmail} no encontrada`);
+        return res.status(404).json({ message: 'Empresa destino no encontrada' });
+      }
+      
+      // No podemos vincular la misma empresa
+      if (user.companyId === targetCompany.id) {
+        console.log(`[POST /company-links] Intento de vincular la misma empresa ${user.companyId}`);
+        return res.status(400).json({ message: 'No puedes vincular tu empresa contigo misma' });
+      }
+      
+      // Verificar si ya existe un vínculo activo entre estas empresas
+      const existingLink = await storage.getActiveCompanyLink(user.companyId!, targetCompany.id);
+      if (existingLink) {
+        console.log(`[POST /company-links] Ya existe un vínculo activo entre ${user.companyId} y ${targetCompany.id}`);
+        return res.status(400).json({ message: 'Ya existe un vínculo activo con esta empresa' });
+      }
+      
+      // Generar token único para URL de un solo uso (36 caracteres)
+      const oneTimeToken = generateUniqueToken();
+      
+      // Crear nuevo vínculo
+      const linkData = {
+        sourceCompanyId: user.companyId!,
+        targetCompanyId: targetCompany.id,
+        status: 'pending',
+        oneTimeUrl: oneTimeToken,
+        createdBy: user.id,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      const validatedData = insertCompanyLinkSchema.parse(linkData);
+      const newLink = await storage.createCompanyLink(validatedData);
+      
+      console.log(`[POST /company-links] Vínculo creado: ${JSON.stringify(newLink)}`);
+      return res.status(201).json({
+        ...newLink,
+        targetCompanyName: targetCompany.name
+      });
+    } catch (error) {
+      console.error('[POST /company-links] Error:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: 'Datos de vínculo inválidos',
+          errors: error.errors
+        });
+      }
+      return res.status(500).json({ message: 'Error al crear vínculo entre empresas' });
+    }
+  });
+  
+  app.get('/api/company-links', requireAuthentication, requireOwnerRole, async (req, res) => {
+    try {
+      console.log('[GET /company-links] Obteniendo vínculos de empresa');
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        console.log('[GET /company-links] Usuario sin empresa asignada');
+        return res.status(403).json({ message: 'No tienes una empresa asignada' });
+      }
+      
+      const links = await storage.getCompanyLinks(user.companyId);
+      
+      // Enriquecer con información de compañías
+      const enrichedLinks = await Promise.all(links.map(async (link) => {
+        let sourceCompanyName = "Desconocida";
+        let targetCompanyName = "Desconocida";
+        
+        try {
+          const sourceCompany = await storage.getCompanyById(link.sourceCompanyId);
+          if (sourceCompany) sourceCompanyName = sourceCompany.name;
+          
+          const targetCompany = await storage.getCompanyById(link.targetCompanyId);
+          if (targetCompany) targetCompanyName = targetCompany.name;
+        } catch (err) {
+          console.error(`Error al obtener detalles de empresas para vínculo ${link.id}:`, err);
+        }
+        
+        return {
+          ...link,
+          sourceCompanyName,
+          targetCompanyName
+        };
+      }));
+      
+      console.log(`[GET /company-links] Enviando ${enrichedLinks.length} vínculos`);
+      return res.json(enrichedLinks);
+    } catch (error) {
+      console.error('[GET /company-links] Error:', error);
+      return res.status(500).json({ message: 'Error al obtener vínculos entre empresas' });
+    }
+  });
+  
+  app.get('/api/company-links/verify/:token', requireAuthentication, requireOwnerRole, async (req, res) => {
+    try {
+      console.log(`[GET /company-links/verify] Verificando token ${req.params.token}`);
+      const user = req.user!;
+      const token = req.params.token;
+      
+      // Buscar el vínculo por token
+      const link = await storage.getCompanyLinkByToken(token);
+      
+      if (!link) {
+        console.log(`[GET /company-links/verify] Token ${token} no encontrado`);
+        return res.status(404).json({ message: 'Enlace de invitación no válido o expirado' });
+      }
+      
+      // Verificar que el usuario pertenece a la empresa destino
+      if (user.companyId !== link.targetCompanyId) {
+        console.log(`[GET /company-links/verify] Usuario de empresa ${user.companyId} intenta acceder a invitación para ${link.targetCompanyId}`);
+        return res.status(403).json({ message: 'No tienes permisos para aceptar esta invitación' });
+      }
+      
+      // Verificar que el vínculo esté en estado pendiente
+      if (link.status !== 'pending') {
+        console.log(`[GET /company-links/verify] Invitación con estado ${link.status}, no 'pending'`);
+        return res.status(400).json({ message: 'Esta invitación ya fue procesada anteriormente' });
+      }
+      
+      // Obtener información de las empresas para la respuesta
+      const sourceCompany = await storage.getCompanyById(link.sourceCompanyId);
+      
+      console.log(`[GET /company-links/verify] Token verificado: ${JSON.stringify(link)}`);
+      return res.json({
+        link,
+        sourceCompanyName: sourceCompany ? sourceCompany.name : "Empresa desconocida"
+      });
+    } catch (error) {
+      console.error('[GET /company-links/verify] Error:', error);
+      return res.status(500).json({ message: 'Error al verificar invitación' });
+    }
+  });
+  
+  app.patch('/api/company-links/:id', requireAuthentication, requireOwnerRole, async (req, res) => {
+    try {
+      console.log(`[PATCH /company-links] Actualizando vínculo ${req.params.id}`);
+      const user = req.user!;
+      const linkId = parseInt(req.params.id);
+      
+      if (isNaN(linkId)) {
+        return res.status(400).json({ message: 'ID de vínculo inválido' });
+      }
+      
+      // Obtener el vínculo
+      const link = await storage.getCompanyLink(linkId);
+      
+      if (!link) {
+        console.log(`[PATCH /company-links] Vínculo ${linkId} no encontrado`);
+        return res.status(404).json({ message: 'Vínculo no encontrado' });
+      }
+      
+      // Solo el propietario de la empresa destino puede actualizar el estado
+      if (user.companyId !== link.targetCompanyId) {
+        console.log(`[PATCH /company-links] Usuario de empresa ${user.companyId} intenta actualizar vínculo para ${link.targetCompanyId}`);
+        return res.status(403).json({ message: 'No tienes permisos para actualizar este vínculo' });
+      }
+      
+      // Solo se puede actualizar vínculos pendientes
+      if (link.status !== 'pending') {
+        console.log(`[PATCH /company-links] Vínculo con estado ${link.status}, no 'pending'`);
+        return res.status(400).json({ message: 'Este vínculo ya fue procesado anteriormente' });
+      }
+      
+      // Actualizar el vínculo
+      const updatedLink = await storage.updateCompanyLink(linkId, {
+        status: req.body.status, // 'active' o 'rejected'
+        updatedAt: new Date()
+      });
+      
+      // Invalidar el token de un solo uso
+      await storage.updateCompanyLink(linkId, {
+        oneTimeUrl: null
+      });
+      
+      console.log(`[PATCH /company-links] Vínculo actualizado: ${JSON.stringify(updatedLink)}`);
+      return res.json(updatedLink);
+    } catch (error) {
+      console.error('[PATCH /company-links] Error:', error);
+      return res.status(500).json({ message: 'Error al actualizar vínculo' });
+    }
+  });
+  
+  // 2. Rutas para las solicitudes de transferencia
+  app.post('/api/transfer-requests', requireAuthentication, requireOwnerOrAdminRole, async (req, res) => {
+    try {
+      console.log('[POST /transfer-requests] Creando nueva solicitud de transferencia');
+      const user = req.user!;
+      
+      // Verificar si hay un vínculo activo entre las empresas
+      const link = await storage.getActiveCompanyLink(user.companyId!, req.body.targetCompanyId);
+      
+      if (!link) {
+        console.log(`[POST /transfer-requests] No existe vínculo activo entre ${user.companyId} y ${req.body.targetCompanyId}`);
+        return res.status(400).json({ message: 'No existe un vínculo activo con la empresa destino' });
+      }
+      
+      // Verificar que la reservación pertenece a la empresa del usuario
+      const reservation = await storage.getReservationWithDetails(req.body.reservationId);
+      
+      if (!reservation) {
+        console.log(`[POST /transfer-requests] Reservación ${req.body.reservationId} no encontrada`);
+        return res.status(404).json({ message: 'Reservación no encontrada' });
+      }
+      
+      if (reservation.trip.companyId !== user.companyId) {
+        console.log(`[POST /transfer-requests] Reservación ${reservation.id} pertenece a ${reservation.trip.companyId}, no a ${user.companyId}`);
+        return res.status(403).json({ message: 'No tienes permisos sobre esta reservación' });
+      }
+      
+      // Verificar que la reservación no esté ya transferida
+      const existingTransfers = await storage.getTransferDetailsByReservation(reservation.id);
+      if (existingTransfers.length > 0) {
+        console.log(`[POST /transfer-requests] Reservación ${reservation.id} ya tiene transferencias asociadas`);
+        return res.status(400).json({ message: 'Esta reservación ya ha sido transferida' });
+      }
+      
+      // Crear solicitud de transferencia
+      const transferRequestData = {
+        sourceCompanyId: user.companyId!,
+        targetCompanyId: req.body.targetCompanyId,
+        status: 'pending',
+        notes: req.body.notes || null,
+        createdBy: user.id,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      const validatedData = insertTransferRequestSchema.parse(transferRequestData);
+      const newTransferRequest = await storage.createTransferRequest(validatedData);
+      
+      // Crear detalles de transferencia para cada pasajero en la reservación
+      for (const passenger of reservation.passengers) {
+        const transferDetailData = {
+          transferRequestId: newTransferRequest.id,
+          reservationId: reservation.id,
+          passengerId: passenger.id,
+          sourceTripId: reservation.tripId,
+          targetTripId: null, // Se asignará cuando la empresa destino acepte
+          status: 'pending',
+          createdAt: new Date()
+        };
+        
+        const validatedDetailData = insertTransferDetailSchema.parse(transferDetailData);
+        await storage.createTransferDetail(validatedDetailData);
+      }
+      
+      console.log(`[POST /transfer-requests] Solicitud creada: ${JSON.stringify(newTransferRequest)}`);
+      return res.status(201).json(newTransferRequest);
+    } catch (error) {
+      console.error('[POST /transfer-requests] Error:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: 'Datos de solicitud inválidos',
+          errors: error.errors
+        });
+      }
+      return res.status(500).json({ message: 'Error al crear solicitud de transferencia' });
+    }
+  });
+  
+  app.get('/api/transfer-requests/sent', requireAuthentication, requireOwnerOrAdminRole, async (req, res) => {
+    try {
+      console.log('[GET /transfer-requests/sent] Obteniendo solicitudes enviadas');
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        console.log('[GET /transfer-requests/sent] Usuario sin empresa asignada');
+        return res.status(403).json({ message: 'No tienes una empresa asignada' });
+      }
+      
+      const requests = await storage.getSentTransferRequests(user.companyId);
+      
+      // Enriquecer con información adicional
+      const enrichedRequests = await Promise.all(requests.map(async (request) => {
+        let targetCompanyName = "Desconocida";
+        let details = [];
+        
+        try {
+          const targetCompany = await storage.getCompanyById(request.targetCompanyId);
+          if (targetCompany) targetCompanyName = targetCompany.name;
+          
+          details = await storage.getTransferDetails(request.id);
+        } catch (err) {
+          console.error(`Error al obtener detalles para solicitud ${request.id}:`, err);
+        }
+        
+        return {
+          ...request,
+          targetCompanyName,
+          details,
+          passengerCount: details.length
+        };
+      }));
+      
+      console.log(`[GET /transfer-requests/sent] Enviando ${enrichedRequests.length} solicitudes enviadas`);
+      return res.json(enrichedRequests);
+    } catch (error) {
+      console.error('[GET /transfer-requests/sent] Error:', error);
+      return res.status(500).json({ message: 'Error al obtener solicitudes enviadas' });
+    }
+  });
+  
+  app.get('/api/transfer-requests/received', requireAuthentication, requireOwnerOrAdminRole, async (req, res) => {
+    try {
+      console.log('[GET /transfer-requests/received] Obteniendo solicitudes recibidas');
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        console.log('[GET /transfer-requests/received] Usuario sin empresa asignada');
+        return res.status(403).json({ message: 'No tienes una empresa asignada' });
+      }
+      
+      const requests = await storage.getReceivedTransferRequests(user.companyId);
+      
+      // Enriquecer con información adicional
+      const enrichedRequests = await Promise.all(requests.map(async (request) => {
+        let sourceCompanyName = "Desconocida";
+        let details = [];
+        
+        try {
+          const sourceCompany = await storage.getCompanyById(request.sourceCompanyId);
+          if (sourceCompany) sourceCompanyName = sourceCompany.name;
+          
+          details = await storage.getTransferDetails(request.id);
+        } catch (err) {
+          console.error(`Error al obtener detalles para solicitud ${request.id}:`, err);
+        }
+        
+        return {
+          ...request,
+          sourceCompanyName,
+          details,
+          passengerCount: details.length
+        };
+      }));
+      
+      console.log(`[GET /transfer-requests/received] Enviando ${enrichedRequests.length} solicitudes recibidas`);
+      return res.json(enrichedRequests);
+    } catch (error) {
+      console.error('[GET /transfer-requests/received] Error:', error);
+      return res.status(500).json({ message: 'Error al obtener solicitudes recibidas' });
+    }
+  });
+  
+  app.get('/api/transfer-requests/:id', requireAuthentication, requireOwnerOrAdminRole, async (req, res) => {
+    try {
+      console.log(`[GET /transfer-requests] Obteniendo solicitud ${req.params.id}`);
+      const user = req.user!;
+      const requestId = parseInt(req.params.id);
+      
+      if (isNaN(requestId)) {
+        return res.status(400).json({ message: 'ID de solicitud inválido' });
+      }
+      
+      // Obtener la solicitud
+      const request = await storage.getTransferRequest(requestId);
+      
+      if (!request) {
+        console.log(`[GET /transfer-requests] Solicitud ${requestId} no encontrada`);
+        return res.status(404).json({ message: 'Solicitud no encontrada' });
+      }
+      
+      // Verificar que el usuario pertenece a alguna de las empresas involucradas
+      if (user.companyId !== request.sourceCompanyId && user.companyId !== request.targetCompanyId) {
+        console.log(`[GET /transfer-requests] Usuario de empresa ${user.companyId} intenta acceder a solicitud entre ${request.sourceCompanyId} y ${request.targetCompanyId}`);
+        return res.status(403).json({ message: 'No tienes permisos para ver esta solicitud' });
+      }
+      
+      // Obtener detalles de la solicitud
+      const details = await storage.getTransferDetails(requestId);
+      let sourceCompanyName = "Desconocida";
+      let targetCompanyName = "Desconocida";
+      
+      try {
+        const sourceCompany = await storage.getCompanyById(request.sourceCompanyId);
+        if (sourceCompany) sourceCompanyName = sourceCompany.name;
+        
+        const targetCompany = await storage.getCompanyById(request.targetCompanyId);
+        if (targetCompany) targetCompanyName = targetCompany.name;
+      } catch (err) {
+        console.error(`Error al obtener detalles de empresas para solicitud ${requestId}:`, err);
+      }
+      
+      // Obtener información detallada de pasajeros
+      let enrichedDetails = [];
+      try {
+        enrichedDetails = await Promise.all(details.map(async (detail) => {
+          const passenger = await storage.getPassenger(detail.passengerId);
+          const reservation = await storage.getReservation(detail.reservationId);
+          const sourceTrip = detail.sourceTripId ? await storage.getTripWithRouteInfo(detail.sourceTripId) : null;
+          const targetTrip = detail.targetTripId ? await storage.getTripWithRouteInfo(detail.targetTripId) : null;
+          
+          return {
+            ...detail,
+            passenger,
+            reservation,
+            sourceTrip,
+            targetTrip
+          };
+        }));
+      } catch (err) {
+        console.error(`Error al obtener información detallada para solicitud ${requestId}:`, err);
+      }
+      
+      const enrichedRequest = {
+        ...request,
+        sourceCompanyName,
+        targetCompanyName,
+        details: enrichedDetails,
+        passengerCount: details.length
+      };
+      
+      console.log(`[GET /transfer-requests] Solicitud encontrada: ${JSON.stringify(request)}`);
+      return res.json(enrichedRequest);
+    } catch (error) {
+      console.error('[GET /transfer-requests] Error:', error);
+      return res.status(500).json({ message: 'Error al obtener solicitud de transferencia' });
+    }
+  });
+  
+  app.patch('/api/transfer-requests/:id', requireAuthentication, requireOwnerOrAdminRole, async (req, res) => {
+    try {
+      console.log(`[PATCH /transfer-requests] Actualizando solicitud ${req.params.id}`);
+      const user = req.user!;
+      const requestId = parseInt(req.params.id);
+      
+      if (isNaN(requestId)) {
+        return res.status(400).json({ message: 'ID de solicitud inválido' });
+      }
+      
+      // Obtener la solicitud
+      const request = await storage.getTransferRequest(requestId);
+      
+      if (!request) {
+        console.log(`[PATCH /transfer-requests] Solicitud ${requestId} no encontrada`);
+        return res.status(404).json({ message: 'Solicitud no encontrada' });
+      }
+      
+      // Solo la empresa destino puede actualizar el estado de la solicitud
+      if (user.companyId !== request.targetCompanyId) {
+        console.log(`[PATCH /transfer-requests] Usuario de empresa ${user.companyId} intenta actualizar solicitud para ${request.targetCompanyId}`);
+        return res.status(403).json({ message: 'No tienes permisos para actualizar esta solicitud' });
+      }
+      
+      // Solo se puede actualizar solicitudes pendientes
+      if (request.status !== 'pending') {
+        console.log(`[PATCH /transfer-requests] Solicitud con estado ${request.status}, no 'pending'`);
+        return res.status(400).json({ message: 'Esta solicitud ya fue procesada anteriormente' });
+      }
+      
+      // Actualizar la solicitud
+      const updatedRequest = await storage.updateTransferRequest(requestId, {
+        status: req.body.status, // 'approved' o 'rejected'
+        notes: req.body.notes || request.notes,
+        updatedAt: new Date()
+      });
+      
+      // Si se aprueba, actualizar también los detalles
+      if (req.body.status === 'approved' && req.body.targetTripId) {
+        const details = await storage.getTransferDetails(requestId);
+        
+        // Asignar el viaje de destino a todos los pasajeros transferidos
+        for (const detail of details) {
+          await storage.updateTransferDetail(detail.id, {
+            targetTripId: req.body.targetTripId,
+            status: 'approved'
+          });
+        }
+      } else if (req.body.status === 'rejected') {
+        // Si se rechaza, marcar todos los detalles como rechazados
+        const details = await storage.getTransferDetails(requestId);
+        for (const detail of details) {
+          await storage.updateTransferDetail(detail.id, {
+            status: 'rejected'
+          });
+        }
+      }
+      
+      console.log(`[PATCH /transfer-requests] Solicitud actualizada: ${JSON.stringify(updatedRequest)}`);
+      return res.json(updatedRequest);
+    } catch (error) {
+      console.error('[PATCH /transfer-requests] Error:', error);
+      return res.status(500).json({ message: 'Error al actualizar solicitud de transferencia' });
+    }
+  });
+  
+  app.get('/api/trips/compatible-for-transfer', requireAuthentication, requireOwnerOrAdminRole, async (req, res) => {
+    try {
+      console.log('[GET /trips/compatible-for-transfer] Buscando viajes compatibles para transferencia');
+      const user = req.user!;
+      const { origin, destination, date } = req.query;
+      
+      if (!origin || !destination || !date) {
+        return res.status(400).json({ message: 'Origen, destino y fecha son obligatorios' });
+      }
+      
+      // Buscar viajes de la empresa del usuario que coincidan con origen y destino
+      const departureDate = new Date(date.toString());
+      
+      // Obtener viajes disponibles
+      const compatibleTrips = await storage.getTrips({
+        companyId: user.companyId,
+        departureDate: departureDate,
+        availableSeatsMin: 1,
+        visibility: 'public' // Solo viajes públicos pueden recibir transferencias
+      });
+      
+      // Filtrar viajes que contengan el origen y destino solicitados
+      const filteredTrips = compatibleTrips.filter(trip => {
+        // Obtener ruta completa con origen, paradas y destino
+        const routeStops = [trip.route.origin, ...trip.route.stops, trip.route.destination];
+        
+        // El origen debe estar ANTES del destino en la ruta
+        const originIndex = routeStops.findIndex(stop => stop === origin);
+        const destinationIndex = routeStops.findIndex(stop => stop === destination);
+        
+        return originIndex >= 0 && destinationIndex >= 0 && originIndex < destinationIndex;
+      });
+      
+      console.log(`[GET /trips/compatible-for-transfer] Encontrados ${filteredTrips.length} viajes compatibles`);
+      return res.json(filteredTrips);
+    } catch (error) {
+      console.error('[GET /trips/compatible-for-transfer] Error:', error);
+      return res.status(500).json({ message: 'Error al buscar viajes compatibles' });
+    }
+  });
+}
+
+// Función para generar un token único para URL de un solo uso
+function generateUniqueToken(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 }
