@@ -1022,16 +1022,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
             arrivalTime = segmentTimes[`${segment.origin}-${segment.destination}`].arrivalTime;
           }
           
+          // Determinar si este segmento cruza la medianoche y calcular el desplazamiento de día
+          // Primero verificamos si ya tiene indicadores de día
+          const departureOffset = extractDayIndicator(departureTime);
+          const arrivalOffset = extractDayIndicator(arrivalTime);
+          
+          // Limpiar los tiempos para el análisis de cruce de día
+          const cleanDeparture = departureTime.replace(/\s*\+\d+d$/, '');
+          const cleanArrival = arrivalTime.replace(/\s*\+\d+d$/, '');
+          
+          // Verificar si el segmento cruza la medianoche
+          const crossesMidnight = isCrossingMidnight(cleanDeparture, cleanArrival);
+          
+          console.log(`[Segment ${segment.origin} -> ${segment.destination}] DepartureTime: ${departureTime}, ArrivalTime: ${arrivalTime}`);
+          console.log(`[Segment ${segment.origin} -> ${segment.destination}] Cruza medianoche: ${crossesMidnight}`);
+          console.log(`[Segment ${segment.origin} -> ${segment.destination}] Desplazamiento salida: +${departureOffset}d, llegada: +${arrivalOffset}d`);
+          
+          // Calcular la fecha real para este segmento (sumar días si es necesario)
+          const segmentDepartureDate = new Date(date);
+          if (departureOffset > 0) {
+            segmentDepartureDate.setDate(segmentDepartureDate.getDate() + departureOffset);
+            console.log(`[Segment ${segment.origin} -> ${segment.destination}] Fecha ajustada a ${segmentDepartureDate.toISOString()}`);
+          }
+          
+          // Para la llegada, si el arrivalOffset es mayor que departureOffset, o si cruza la medianoche, 
+          // significa que la llegada es al día siguiente
+          let segmentArrivalDate = new Date(segmentDepartureDate);
+          if (arrivalOffset > departureOffset || (crossesMidnight && arrivalOffset === departureOffset)) {
+            segmentArrivalDate.setDate(segmentArrivalDate.getDate() + 1);
+            console.log(`[Segment ${segment.origin} -> ${segment.destination}] Fecha llegada ajustada a ${segmentArrivalDate.toISOString()}`);
+          }
+          
+          // Preparar los tiempos limpios sin indicadores de día para guardarlos en la base de datos
+          const cleanDepartureTime = departureTime.replace(/\s*\+\d+d$/, '');
+          const cleanArrivalTime = arrivalTime.replace(/\s*\+\d+d$/, '');
+          
           const subTripToCreate = {
             routeId: tripData.routeId,
-            departureDate: new Date(date),
-            departureTime,
-            arrivalTime,
+            departureDate: segmentDepartureDate, // Usar la fecha calculada con el desplazamiento
+            departureTime: cleanDepartureTime,   // Guardar el tiempo sin indicador de día
+            arrivalTime: cleanArrivalTime,       // Guardar el tiempo sin indicador de día
             capacity: tripData.capacity,
             availableSeats: tripData.capacity,
             price,
             // vehicleType: ya no se utiliza
-            segmentPrices: [{ origin: segment.origin, destination: segment.destination, price }],
+            segmentPrices: [{ 
+              origin: segment.origin, 
+              destination: segment.destination, 
+              price,
+              // Incluir información de desplazamiento de día para referencias futuras
+              departureTime: departureTime, // Con indicador de día si existe
+              arrivalTime: arrivalTime      // Con indicador de día si existe
+            }],
             isSubTrip: true,
             parentTripId: mainTrip.id,
             segmentOrigin: segment.origin,
@@ -1053,6 +1095,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to create trip" });
     }
   });
+  
+  // Función para detectar si un segmento de viaje cruza la medianoche
+  function isCrossingMidnight(departureTime: string, arrivalTime: string): boolean {
+    try {
+      // Extraer el tiempo sin posibles indicadores de día
+      const cleanDeparture = departureTime.replace(/\s*\+\d+d$/, '');
+      const cleanArrival = arrivalTime.replace(/\s*\+\d+d$/, '');
+      
+      // Extraer componentes de tiempo
+      const [deptTimeStr, deptAmPm] = cleanDeparture.split(' ');
+      const [arrTimeStr, arrAmPm] = cleanArrival.split(' ');
+      
+      if (!deptTimeStr || !deptAmPm || !arrTimeStr || !arrAmPm) {
+        console.log(`[isCrossingMidnight] Error en formato: ${departureTime} -> ${arrivalTime}`);
+        return false;
+      }
+      
+      const [deptHourStr, deptMinuteStr] = deptTimeStr.split(':');
+      const [arrHourStr, arrMinuteStr] = arrTimeStr.split(':');
+      
+      const deptHour = parseInt(deptHourStr, 10);
+      const deptMinute = parseInt(deptMinuteStr, 10);
+      const arrHour = parseInt(arrHourStr, 10);
+      const arrMinute = parseInt(arrMinuteStr, 10);
+      
+      // Convertir a formato 24 horas para comparación
+      let deptHour24 = deptHour;
+      if (deptAmPm === 'PM' && deptHour !== 12) deptHour24 += 12;
+      if (deptAmPm === 'AM' && deptHour === 12) deptHour24 = 0;
+      
+      let arrHour24 = arrHour;
+      if (arrAmPm === 'PM' && arrHour !== 12) arrHour24 += 12;
+      if (arrAmPm === 'AM' && arrHour === 12) arrHour24 = 0;
+      
+      // Convertir a minutos totales para una comparación más simple
+      const deptMinTotal = deptHour24 * 60 + deptMinute;
+      const arrMinTotal = arrHour24 * 60 + arrMinute;
+      
+      // Si el tiempo de llegada es menor que el de salida, significa que cruza la medianoche
+      return arrMinTotal < deptMinTotal;
+    } catch (error) {
+      console.error(`[isCrossingMidnight] Error analizando tiempos ${departureTime} -> ${arrivalTime}:`, error);
+      return false;
+    }
+  }
+  
+  // Función para extraer el indicador de día de una cadena de tiempo
+  function extractDayIndicator(timeString: string): number {
+    if (!timeString) return 0;
+    
+    const dayIndicatorMatch = timeString.match(/\+(\d+)d$/);
+    return dayIndicatorMatch ? parseInt(dayIndicatorMatch[1], 10) : 0;
+  }
+  
+  // Función para agregar el indicador de día a un horario
+  function addDayIndicator(timeString: string, days: number): string {
+    // Si ya tiene un indicador, reemplazarlo
+    const cleanedTime = timeString.replace(/\s*\+\d+d$/, '');
+    return days > 0 ? `${cleanedTime} +${days}d` : cleanedTime;
+  }
   
   // Helper function to generate all possible segments between stops
   function generateAllPossibleSegments(route: RouteWithSegments) {
@@ -1107,8 +1209,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const totalSegments = totalPoints - 1;
     
     // Resultado final: mapa de tiempos para cada segmento
-    const segmentTimes: Record<string, { departureTime: string; arrivalTime: string }> = {};
+    const segmentTimes: Record<string, { departureTime: string; arrivalTime: string; dayOffset?: number }> = {};
     console.log("Iniciando cálculo de tiempos para segmentos");
+    
+    // Analizar si el viaje principal cruza la medianoche
+    const mainTripCrossesMidnight = isCrossingMidnight(mainDepartureTime, mainArrivalTime);
+    console.log(`Viaje principal: ${mainDepartureTime} - ${mainArrivalTime}, cruza medianoche: ${mainTripCrossesMidnight}`);
     
     // Primero intentamos usar los tiempos definidos en segmentPrices (con mayor prioridad)
     const segmentPrices = segments[0]?.segmentPrices;

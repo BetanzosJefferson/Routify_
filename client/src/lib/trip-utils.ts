@@ -52,6 +52,52 @@ export function formatTripTime(
 }
 
 /**
+ * Extrae el indicador de día de una cadena de tiempo
+ * @param timeString El formato de hora que puede contener +Nd
+ * @returns Número de días desplazados (0 si no hay indicador)
+ */
+export function extractDayIndicator(timeString: string): number {
+  if (!timeString) return 0;
+  
+  const dayIndicatorMatch = timeString.match(/\+(\d+)d$/);
+  return dayIndicatorMatch ? parseInt(dayIndicatorMatch[1], 10) : 0;
+}
+
+/**
+ * Analiza si dos horarios representan un cruce de medianoche
+ * @param departure Hora de salida en formato "HH:MM AM/PM"
+ * @param arrival Hora de llegada en formato "HH:MM AM/PM"
+ * @returns true si representa un cruce de medianoche
+ */
+export function isCrossingMidnight(departure: string, arrival: string): boolean {
+  // Limpiamos posibles indicadores de día
+  const cleanDeparture = departure.replace(/\s*\+\d+d$/, '');
+  const cleanArrival = arrival.replace(/\s*\+\d+d$/, '');
+  
+  // Extraer componentes
+  const [deptTime, deptAmPm] = cleanDeparture.split(' ');
+  const [arrTime, arrAmPm] = cleanArrival.split(' ');
+  const [deptHour, deptMinute] = deptTime.split(':').map(n => parseInt(n, 10));
+  const [arrHour, arrMinute] = arrTime.split(':').map(n => parseInt(n, 10));
+  
+  // Convertir a formato 24 horas para comparación
+  let deptHour24 = deptHour;
+  if (deptAmPm === 'PM' && deptHour !== 12) deptHour24 += 12;
+  if (deptAmPm === 'AM' && deptHour === 12) deptHour24 = 0;
+  
+  let arrHour24 = arrHour;
+  if (arrAmPm === 'PM' && arrHour !== 12) arrHour24 += 12;
+  if (arrAmPm === 'AM' && arrHour === 12) arrHour24 = 0;
+  
+  // Calcular minutos totales para cada tiempo
+  const deptMinTotal = deptHour24 * 60 + deptMinute;
+  const arrMinTotal = arrHour24 * 60 + arrMinute;
+  
+  // Si la llegada es "antes" que la salida en tiempo de reloj, cruza la medianoche
+  return arrMinTotal < deptMinTotal;
+}
+
+/**
  * Extrae y formatea ubicaciones únicas (origen y destino) de rutas y viajes en formato agrupado por ciudad
  */
 export function extractLocationsFromTrips(trips: TripWithRouteInfo[]): LocationOption[] {
