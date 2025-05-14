@@ -5,13 +5,16 @@ import { LocationOption } from "@/components/ui/command-combobox";
  * Formatea la hora de viaje que podría contener indicador de día siguiente
  * @param timeString Cadena de tiempo en formato "HH:MM AM/PM +Nd" donde N es el número de días
  * @param includeDayIndicator Si se debe incluir el indicador de día en el resultado
- * @param formatStyle Estilo de formato: 'standard' (como viene), 'pretty' (con emoji), 'compact' (sin formato especial)
+ * @param formatStyle Estilo de formato: 'standard' (como viene), 'pretty' (con emoji), 'compact' (sin formato especial),
+ *                    'descriptive' (mensaje descriptivo como "Este viaje inicia el (día)")
+ * @param tripDate Fecha opcional del viaje para el formato descriptivo, necesaria si formatStyle='descriptive'
  * @returns Cadena formateada según el estilo seleccionado
  */
 export function formatTripTime(
   timeString: string | null | undefined, 
   includeDayIndicator: boolean = true,
-  formatStyle: 'standard' | 'pretty' | 'compact' = 'standard'
+  formatStyle: 'standard' | 'pretty' | 'compact' | 'descriptive' = 'standard',
+  tripDate?: Date | string
 ): string {
   if (!timeString) return '';
   
@@ -35,6 +38,31 @@ export function formatTripTime(
   
   // Formatear según el estilo seleccionado
   switch (formatStyle) {
+    case 'descriptive':
+      // Formato descriptivo con fecha
+      if (!tripDate) {
+        return `${baseTime} (día siguiente)`;
+      }
+      
+      // Convertir a objeto Date si se proporciona como string
+      const date = typeof tripDate === 'string' ? new Date(tripDate) : tripDate;
+      
+      // Crear una nueva fecha sumando los días de offset
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + dayOffset);
+      
+      // Formatear la fecha ajustada en español
+      const formattedDate = nextDate.toLocaleDateString('es-MX', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
+      });
+      
+      // Capitalizar primera letra
+      const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+      
+      return `${baseTime} (${capitalizedDate})`;
+      
     case 'pretty':
       // Usar emoji de calendario para indicar el día siguiente
       const dayEmoji = dayOffset === 1 ? '📆' : '📅';
