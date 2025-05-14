@@ -230,31 +230,58 @@ export class DatabaseStorage implements IStorage {
     };
   }
   
-  async getTrips(companyId?: string): Promise<TripWithRouteInfo[]> {
+  async getTrips(companyIdOrParams?: string | { 
+    companyId?: string,
+    afterDate?: Date,
+    status?: string,
+    withAvailableSeats?: boolean
+  }): Promise<TripWithRouteInfo[]> {
     console.time('getTrips-optimized');
     
+    // Determinar si estamos recibiendo un companyId o un objeto params
+    const isParams = typeof companyIdOrParams === 'object';
+    const params = isParams ? companyIdOrParams : { companyId: companyIdOrParams };
+    
     // NUEVA IMPLEMENTACIÓN PARA GETTRIPS
-    console.log(`[getTrips-v2] Iniciando búsqueda de viajes${companyId ? ` para compañía ${companyId}` : ''}`);
+    console.log(`[getTrips-v2] Iniciando búsqueda de viajes${params.companyId ? ` para compañía ${params.companyId}` : ''}`);
     
     // Construir condiciones como array
     const condiciones = [];
     
     // FILTRO CRÍTICO: Filtrar por compañía si se proporciona
-    if (companyId) {
-      console.log(`[getTrips-v2] FILTRO CRÍTICO: Compañía ${companyId}`);
+    if (params.companyId) {
+      console.log(`[getTrips-v2] FILTRO CRÍTICO: Compañía ${params.companyId}`);
       
       // Consulta directa para verificar cuántos viajes existen
       const testQuery = await db.execute(
-        sql`SELECT COUNT(*) FROM trips WHERE company_id = ${companyId}`
+        sql`SELECT COUNT(*) FROM trips WHERE company_id = ${params.companyId}`
       );
       
       const viajesContador = Number(testQuery.rows?.[0]?.count || 0); 
-      console.log(`[getTrips-v2] Verificación: Existen ${viajesContador} viajes para compañía ${companyId}`);
+      console.log(`[getTrips-v2] Verificación: Existen ${viajesContador} viajes para compañía ${params.companyId}`);
       
       // Agregar condición de compañía directamente como SQL para máxima seguridad
-      condiciones.push(sql`company_id = ${companyId}`);
+      condiciones.push(sql`company_id = ${params.companyId}`);
     } else {
       console.log(`[getTrips-v2] ADVERTENCIA: Obteniendo TODOS los viajes sin filtro de compañía`);
+    }
+    
+    // Filtrar por fecha si se proporciona
+    if (params.afterDate) {
+      console.log(`[getTrips-v2] Filtro: Viajes después de ${params.afterDate.toISOString()}`);
+      condiciones.push(sql`departure_date >= ${params.afterDate}`);
+    }
+    
+    // Filtrar por estado si se proporciona
+    if (params.status) {
+      console.log(`[getTrips-v2] Filtro: Viajes con estado ${params.status}`);
+      condiciones.push(sql`trip_status = ${params.status}`);
+    }
+    
+    // Filtrar por asientos disponibles si se solicita
+    if (params.withAvailableSeats) {
+      console.log(`[getTrips-v2] Filtro: Viajes con asientos disponibles`);
+      condiciones.push(sql`available_seats > 0`);
     }
     
     // Ejecutar la consulta con las condiciones
