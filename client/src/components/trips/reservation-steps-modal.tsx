@@ -4,6 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { formatDate, formatPrice, normalizeToStartOfDay, formatDateLong } from "@/lib/utils";
+import { formatTripTime } from "@/lib/trip-utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { TripWithRouteInfo, UserRole } from "@shared/schema";
