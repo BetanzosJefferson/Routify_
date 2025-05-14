@@ -2,6 +2,56 @@ import { TripWithRouteInfo } from "@shared/schema";
 import { LocationOption } from "@/components/ui/command-combobox";
 
 /**
+ * Formatea la hora de viaje que podría contener indicador de día siguiente
+ * @param timeString Cadena de tiempo en formato "HH:MM AM/PM +Nd" donde N es el número de días
+ * @param includeDayIndicator Si se debe incluir el indicador de día en el resultado
+ * @param formatStyle Estilo de formato: 'standard' (como viene), 'pretty' (con emoji), 'compact' (sin formato especial)
+ * @returns Cadena formateada según el estilo seleccionado
+ */
+export function formatTripTime(
+  timeString: string | null | undefined, 
+  includeDayIndicator: boolean = true,
+  formatStyle: 'standard' | 'pretty' | 'compact' = 'standard'
+): string {
+  if (!timeString) return '';
+  
+  // Verificar si contiene un indicador de día
+  const dayIndicatorMatch = timeString.match(/\+(\d+)d$/);
+  const hasNextDayIndicator = dayIndicatorMatch !== null;
+  const dayOffset = hasNextDayIndicator ? parseInt(dayIndicatorMatch[1], 10) : 0;
+  
+  // Si no hay indicador o no queremos incluirlo, podemos devolver solo la hora
+  if (!hasNextDayIndicator || !includeDayIndicator) {
+    // Eliminar el sufijo "+Nd" si existe
+    const cleanTimeString = hasNextDayIndicator 
+      ? timeString.replace(/\s*\+\d+d$/, '') 
+      : timeString;
+      
+    return cleanTimeString;
+  }
+  
+  // Extraer la hora sin el indicador de día
+  const baseTime = timeString.replace(/\s*\+\d+d$/, '');
+  
+  // Formatear según el estilo seleccionado
+  switch (formatStyle) {
+    case 'pretty':
+      // Usar emoji de calendario para indicar el día siguiente
+      const dayEmoji = dayOffset === 1 ? '📆' : '📅';
+      return `${baseTime} ${dayEmoji}`;
+      
+    case 'compact':
+      // Solo añadir "+1" o "+N" sin la "d"
+      return `${baseTime} +${dayOffset}`;
+      
+    case 'standard':
+    default:
+      // Mantener formato original
+      return `${baseTime} +${dayOffset}d`;
+  }
+}
+
+/**
  * Extrae y formatea ubicaciones únicas (origen y destino) de rutas y viajes en formato agrupado por ciudad
  */
 export function extractLocationsFromTrips(trips: TripWithRouteInfo[]): LocationOption[] {
