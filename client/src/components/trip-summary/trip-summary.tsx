@@ -12,7 +12,7 @@ import { Trip, TripWithRouteInfo, Reservation, Passenger } from "@shared/schema"
 import { useTrips } from "@/hooks/use-trips";
 import { useReservations } from "@/hooks/use-reservations";
 import { usePackages, Package } from "@/hooks/use-packages";
-import { formatTripTime } from "@/lib/trip-utils";
+import { formatTripTime, extractDayIndicator } from "@/lib/trip-utils";
 
 type TripSummaryProps = {
   className?: string;
@@ -388,6 +388,29 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                   </div>
                                 </div>
                               </div>
+                              
+                              {/* Mensaje descriptivo para viajes que cruzan la medianoche */}
+                              {(() => {
+                                const currentTrip = trips.find(t => t.id === selectedTrip);
+                                if (currentTrip && (
+                                  extractDayIndicator(currentTrip.departureTime) > 0 || 
+                                  extractDayIndicator(currentTrip.arrivalTime) > 0
+                                )) {
+                                  return (
+                                    <div className="mt-2">
+                                      <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded-md flex items-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <circle cx="12" cy="12" r="10"></circle>
+                                          <line x1="12" y1="8" x2="12" y2="12"></line>
+                                          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                        </svg>
+                                        {formatTripTime(currentTrip.departureTime, true, 'descriptive', currentTrip.departureDate)}
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
                               <div>
                                 <Label className="text-gray-500">Vehículo</Label>
                                 <div className="font-medium capitalize">
