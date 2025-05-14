@@ -29,32 +29,6 @@ import { db } from "./db";
 import { eq, and, gte, lt, like, or, sql, desc, isNull, not, inArray } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
-  // Company methods
-  async getAllCompanies(): Promise<any[]> {
-    try {
-      console.log("DB Storage: Consultando todas las compañías");
-      const companies = await db.select().from(schema.companies);
-      console.log(`DB Storage: Compañías encontradas: ${companies.length}`);
-      return companies;
-    } catch (error) {
-      console.error("DB Storage: Error al consultar compañías:", error);
-      return [];
-    }
-  }
-  
-  async getCompanyById(companyId: string): Promise<any | undefined> {
-    try {
-      console.log(`DB Storage: Consultando compañía con ID: ${companyId}`);
-      const [company] = await db
-        .select()
-        .from(schema.companies)
-        .where(eq(schema.companies.identifier, companyId));
-      return company;
-    } catch (error) {
-      console.error(`DB Storage: Error al consultar compañía ${companyId}:`, error);
-      return undefined;
-    }
-  }
   async getRoutes(companyId?: string): Promise<Route[]> {
     try {
       if (companyId) {
@@ -230,58 +204,31 @@ export class DatabaseStorage implements IStorage {
     };
   }
   
-  async getTrips(companyIdOrParams?: string | { 
-    companyId?: string,
-    afterDate?: Date,
-    status?: string,
-    withAvailableSeats?: boolean
-  }): Promise<TripWithRouteInfo[]> {
+  async getTrips(companyId?: string): Promise<TripWithRouteInfo[]> {
     console.time('getTrips-optimized');
     
-    // Determinar si estamos recibiendo un companyId o un objeto params
-    const isParams = typeof companyIdOrParams === 'object';
-    const params = isParams ? companyIdOrParams : { companyId: companyIdOrParams };
-    
     // NUEVA IMPLEMENTACIÓN PARA GETTRIPS
-    console.log(`[getTrips-v2] Iniciando búsqueda de viajes${params.companyId ? ` para compañía ${params.companyId}` : ''}`);
+    console.log(`[getTrips-v2] Iniciando búsqueda de viajes${companyId ? ` para compañía ${companyId}` : ''}`);
     
     // Construir condiciones como array
     const condiciones = [];
     
     // FILTRO CRÍTICO: Filtrar por compañía si se proporciona
-    if (params.companyId) {
-      console.log(`[getTrips-v2] FILTRO CRÍTICO: Compañía ${params.companyId}`);
+    if (companyId) {
+      console.log(`[getTrips-v2] FILTRO CRÍTICO: Compañía ${companyId}`);
       
       // Consulta directa para verificar cuántos viajes existen
       const testQuery = await db.execute(
-        sql`SELECT COUNT(*) FROM trips WHERE company_id = ${params.companyId}`
+        sql`SELECT COUNT(*) FROM trips WHERE company_id = ${companyId}`
       );
       
       const viajesContador = Number(testQuery.rows?.[0]?.count || 0); 
-      console.log(`[getTrips-v2] Verificación: Existen ${viajesContador} viajes para compañía ${params.companyId}`);
+      console.log(`[getTrips-v2] Verificación: Existen ${viajesContador} viajes para compañía ${companyId}`);
       
       // Agregar condición de compañía directamente como SQL para máxima seguridad
-      condiciones.push(sql`company_id = ${params.companyId}`);
+      condiciones.push(sql`company_id = ${companyId}`);
     } else {
       console.log(`[getTrips-v2] ADVERTENCIA: Obteniendo TODOS los viajes sin filtro de compañía`);
-    }
-    
-    // Filtrar por fecha si se proporciona
-    if (params.afterDate) {
-      console.log(`[getTrips-v2] Filtro: Viajes después de ${params.afterDate.toISOString()}`);
-      condiciones.push(sql`departure_date >= ${params.afterDate}`);
-    }
-    
-    // Filtrar por estado si se proporciona
-    if (params.status) {
-      console.log(`[getTrips-v2] Filtro: Viajes con estado ${params.status}`);
-      condiciones.push(sql`trip_status = ${params.status}`);
-    }
-    
-    // Filtrar por asientos disponibles si se solicita
-    if (params.withAvailableSeats) {
-      console.log(`[getTrips-v2] Filtro: Viajes con asientos disponibles`);
-      condiciones.push(sql`available_seats > 0`);
     }
     
     // Ejecutar la consulta con las condiciones
@@ -3527,214 +3474,6 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error(`[getCompanyById] Error al buscar compañía ID ${companyId}:`, error);
       return null;
-    }
-  }
-
-  // TRANSFER METHODS
-  async createTripTransfer(transferData: schema.InsertTripTransfer): Promise<schema.TripTransfer> {
-    try {
-      console.log(`[createTripTransfer] Creando transferencia de viaje: ${JSON.stringify(transferData)}`);
-      
-      const [transfer] = await db
-        .insert(schema.tripTransfers)
-        .values(transferData)
-        .returning();
-      
-      console.log(`[createTripTransfer] Transferencia creada: ${JSON.stringify(transfer)}`);
-      return transfer;
-    } catch (error) {
-      console.error("[createTripTransfer] Error al crear transferencia:", error);
-      throw error;
-    }
-  }
-
-  async getTripTransfers(filters?: { 
-    sourceCompanyId?: string, 
-    targetCompanyId?: string,
-    status?: string
-  }): Promise<schema.TripTransfer[]> {
-    try {
-      console.log(`[getTripTransfers] Consultando transferencias con filtros: ${JSON.stringify(filters)}`);
-      
-      let query = db
-        .select()
-        .from(schema.tripTransfers);
-      
-      if (filters) {
-        const conditions = [];
-        
-        if (filters.sourceCompanyId) {
-          conditions.push(eq(schema.tripTransfers.sourceCompanyId, filters.sourceCompanyId));
-        }
-        
-        if (filters.targetCompanyId) {
-          conditions.push(eq(schema.tripTransfers.targetCompanyId, filters.targetCompanyId));
-        }
-        
-        if (filters.status) {
-          conditions.push(eq(schema.tripTransfers.status, filters.status));
-        }
-        
-        if (conditions.length > 0) {
-          query = query.where(and(...conditions));
-        }
-      }
-      
-      // Ordenamos por fecha de solicitud de más reciente a más antigua
-      query = query.orderBy(desc(schema.tripTransfers.requestedAt));
-      
-      const transfers = await query;
-      console.log(`[getTripTransfers] Transferencias encontradas: ${transfers.length}`);
-      return transfers;
-    } catch (error) {
-      console.error("[getTripTransfers] Error al consultar transferencias:", error);
-      throw error;
-    }
-  }
-
-  async getTripTransferWithDetails(id: number): Promise<schema.TripTransfer & { 
-    sourceCompany: any,
-    targetCompany: any,
-    sourceTrip: TripWithRouteInfo,
-    targetTrip: TripWithRouteInfo,
-    reservations: schema.ReservationTransfer[]
-  } | undefined> {
-    try {
-      console.log(`[getTripTransferWithDetails] Consultando transferencia ID: ${id}`);
-      
-      // Obtenemos la transferencia básica
-      const [transfer] = await db
-        .select()
-        .from(schema.tripTransfers)
-        .where(eq(schema.tripTransfers.id, id));
-      
-      if (!transfer) {
-        console.log(`[getTripTransferWithDetails] No se encontró la transferencia con ID: ${id}`);
-        return undefined;
-      }
-      
-      // Obtenemos información de empresas
-      const [sourceCompany] = await db
-        .select()
-        .from(schema.companies)
-        .where(eq(schema.companies.identifier, transfer.sourceCompanyId));
-      
-      const [targetCompany] = await db
-        .select()
-        .from(schema.companies)
-        .where(eq(schema.companies.identifier, transfer.targetCompanyId));
-      
-      // Obtenemos información de viajes
-      const sourceTrip = await this.getTripWithRouteInfo(transfer.sourceTripId);
-      const targetTrip = await this.getTripWithRouteInfo(transfer.targetTripId);
-      
-      if (!sourceTrip || !targetTrip) {
-        console.log(`[getTripTransferWithDetails] No se encontraron viajes para la transferencia: ${id}`);
-        throw new Error("No se encontraron los viajes asociados a la transferencia");
-      }
-      
-      // Obtenemos las reservaciones transferidas
-      const reservations = await db
-        .select()
-        .from(schema.reservationTransfers)
-        .where(eq(schema.reservationTransfers.transferId, id));
-      
-      const transferWithDetails = {
-        ...transfer,
-        sourceCompany,
-        targetCompany,
-        sourceTrip,
-        targetTrip,
-        reservations
-      };
-      
-      return transferWithDetails;
-    } catch (error) {
-      console.error("[getTripTransferWithDetails] Error al consultar transferencia con detalles:", error);
-      throw error;
-    }
-  }
-
-  async updateTripTransferStatus(id: number, status: string, approvedBy?: number): Promise<schema.TripTransfer | undefined> {
-    try {
-      console.log(`[updateTripTransferStatus] Actualizando estado de transferencia ID: ${id} a: ${status}`);
-      
-      const updateData: any = {
-        status,
-        respondedAt: new Date()
-      };
-      
-      if (approvedBy) {
-        updateData.approvedBy = approvedBy;
-      }
-      
-      const [updatedTransfer] = await db
-        .update(schema.tripTransfers)
-        .set(updateData)
-        .where(eq(schema.tripTransfers.id, id))
-        .returning();
-      
-      if (!updatedTransfer) {
-        console.log(`[updateTripTransferStatus] No se encontró la transferencia con ID: ${id}`);
-        return undefined;
-      }
-      
-      console.log(`[updateTripTransferStatus] Transferencia actualizada: ${JSON.stringify(updatedTransfer)}`);
-      return updatedTransfer;
-    } catch (error) {
-      console.error("[updateTripTransferStatus] Error al actualizar estado de transferencia:", error);
-      throw error;
-    }
-  }
-
-  async createReservationTransfer(transferData: schema.InsertReservationTransfer): Promise<schema.ReservationTransfer> {
-    try {
-      console.log(`[createReservationTransfer] Creando transferencia de reservación: ${JSON.stringify(transferData)}`);
-      
-      const [reservationTransfer] = await db
-        .insert(schema.reservationTransfers)
-        .values(transferData)
-        .returning();
-      
-      console.log(`[createReservationTransfer] Transferencia de reservación creada: ${JSON.stringify(reservationTransfer)}`);
-      return reservationTransfer;
-    } catch (error) {
-      console.error("[createReservationTransfer] Error al crear transferencia de reservación:", error);
-      throw error;
-    }
-  }
-
-  async getReservationTransfers(transferId: number): Promise<schema.ReservationTransfer[]> {
-    try {
-      console.log(`[getReservationTransfers] Consultando transferencias para transferencia ID: ${transferId}`);
-      
-      const transfers = await db
-        .select()
-        .from(schema.reservationTransfers)
-        .where(eq(schema.reservationTransfers.transferId, transferId));
-      
-      console.log(`[getReservationTransfers] Transferencias encontradas: ${transfers.length}`);
-      return transfers;
-    } catch (error) {
-      console.error("[getReservationTransfers] Error al consultar transferencias:", error);
-      throw error;
-    }
-  }
-
-  async getReservationTransfersByReservation(reservationId: number): Promise<schema.ReservationTransfer[]> {
-    try {
-      console.log(`[getReservationTransfersByReservation] Consultando transferencias para reservación ID: ${reservationId}`);
-      
-      const transfers = await db
-        .select()
-        .from(schema.reservationTransfers)
-        .where(eq(schema.reservationTransfers.reservationId, reservationId));
-      
-      console.log(`[getReservationTransfersByReservation] Transferencias encontradas: ${transfers.length}`);
-      return transfers;
-    } catch (error) {
-      console.error("[getReservationTransfersByReservation] Error al consultar transferencias por reservación:", error);
-      throw error;
     }
   }
 }

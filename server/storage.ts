@@ -25,10 +25,6 @@ import {
 } from "@shared/schema";
 
 export interface IStorage {
-  // Company methods
-  getAllCompanies(): Promise<any[]>;
-  getCompanyById(companyId: string): Promise<any | undefined>;
-  
   // Route methods
   getRoutes(companyId?: string): Promise<Route[]>;
   getRoute(id: number): Promise<Route | undefined>;
@@ -39,12 +35,6 @@ export interface IStorage {
   
   // Trip methods
   getTrips(companyId?: string): Promise<TripWithRouteInfo[]>;
-  getTrips(params: {
-    companyId?: string,
-    afterDate?: Date,
-    status?: string,
-    withAvailableSeats?: boolean
-  }): Promise<TripWithRouteInfo[]>;
   getTrip(id: number): Promise<Trip | undefined>;
   getTripWithRouteInfo(id: number): Promise<TripWithRouteInfo | undefined>;
   createTrip(trip: InsertTrip): Promise<Trip>;
@@ -152,25 +142,6 @@ export interface IStorage {
   
   // Company methods
   getCompanyById(companyId: string): Promise<{id: string, name: string} | null>;
-
-  // Transfer methods
-  createTripTransfer(transferData: schema.InsertTripTransfer): Promise<schema.TripTransfer>;
-  getTripTransfers(filters?: { 
-    sourceCompanyId?: string, 
-    targetCompanyId?: string,
-    status?: string
-  }): Promise<schema.TripTransfer[]>;
-  getTripTransferWithDetails(id: number): Promise<schema.TripTransfer & { 
-    sourceCompany: any,
-    targetCompany: any,
-    sourceTrip: TripWithRouteInfo,
-    targetTrip: TripWithRouteInfo,
-    reservations: schema.ReservationTransfer[]
-  } | undefined>;
-  updateTripTransferStatus(id: number, status: string, approvedBy?: number): Promise<schema.TripTransfer | undefined>;
-  createReservationTransfer(transferData: schema.InsertReservationTransfer): Promise<schema.ReservationTransfer>;
-  getReservationTransfers(transferId: number): Promise<schema.ReservationTransfer[]>;
-  getReservationTransfersByReservation(reservationId: number): Promise<schema.ReservationTransfer[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -181,7 +152,6 @@ export class MemStorage implements IStorage {
   private vehicles: Map<number, Vehicle>;
   private commissions: Map<number, Commission>;
   private users: Map<number, User>;
-  private companies: Map<string, any>;
   
   private routeId: number;
   private tripId: number;
@@ -199,7 +169,6 @@ export class MemStorage implements IStorage {
     this.vehicles = new Map();
     this.commissions = new Map();
     this.users = new Map();
-    this.companies = new Map();
     
     this.routeId = 1;
     this.tripId = 1;
@@ -221,17 +190,6 @@ export class MemStorage implements IStorage {
       ],
       destination: "México - Terminal Central Norte"
     });
-  }
-  
-  // Company methods
-  async getAllCompanies(): Promise<any[]> {
-    console.log("MemStorage: Consultando todas las compañías");
-    return Array.from(this.companies.values());
-  }
-  
-  async getCompanyById(companyId: string): Promise<any | undefined> {
-    console.log(`MemStorage: Consultando compañía con ID: ${companyId}`);
-    return this.companies.get(companyId);
   }
   
   // Route methods
@@ -315,39 +273,12 @@ export class MemStorage implements IStorage {
   }
   
   // Trip methods
-  async getTrips(companyIdOrParams?: string | { 
-    companyId?: string,
-    afterDate?: Date,
-    status?: string,
-    withAvailableSeats?: boolean
-  }): Promise<TripWithRouteInfo[]> {
+  async getTrips(companyId?: string): Promise<TripWithRouteInfo[]> {
     let trips = Array.from(this.trips.values());
     
-    // Determinar si estamos recibiendo un companyId o un objeto params
-    const isParams = typeof companyIdOrParams === 'object';
-    const params = isParams ? companyIdOrParams : { companyId: companyIdOrParams };
-    
     // Filtrar por companyId si se proporciona
-    if (params.companyId) {
-      trips = trips.filter(trip => trip.companyId === params.companyId);
-    }
-    
-    // Filtrar por fecha si se proporciona
-    if (params.afterDate) {
-      trips = trips.filter(trip => {
-        const tripDate = new Date(trip.departureDate);
-        return tripDate >= params.afterDate!;
-      });
-    }
-    
-    // Filtrar por estado si se proporciona
-    if (params.status) {
-      trips = trips.filter(trip => trip.tripStatus === params.status);
-    }
-    
-    // Filtrar por asientos disponibles si se solicita
-    if (params.withAvailableSeats) {
-      trips = trips.filter(trip => trip.availableSeats > 0);
+    if (companyId) {
+      trips = trips.filter(trip => trip.companyId === companyId);
     }
     
     const tripsWithRoute: TripWithRouteInfo[] = [];
