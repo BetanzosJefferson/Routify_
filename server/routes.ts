@@ -1466,7 +1466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
     
     // Calculate times for each segment
-    const calculatedSegmentTimes: Record<string, { departureTime: string; arrivalTime: string }> = {};
+    const calculatedSegmentTimes: Record<string, { departureTime: string; arrivalTime: string; dayOffset?: number }> = {};
     
     // Variable para rastrear cuando cruzamos la medianoche
     let crossesMidnight = arrivalMinutes > departureMinutes + (24 * 60 - departureMinutes);
