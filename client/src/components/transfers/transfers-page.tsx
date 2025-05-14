@@ -20,7 +20,7 @@ const TransfersPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState("all");
 
   // Consultar las transferencias
@@ -32,7 +32,7 @@ const TransfersPage = () => {
     queryKey: ["/api/transfers", statusFilter], 
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (statusFilter) {
+      if (statusFilter && statusFilter !== "all") {
         params.append("status", statusFilter);
       }
       
@@ -127,12 +127,12 @@ const TransfersPage = () => {
             </Tabs>
             
             <div className="w-full md:w-auto">
-              <Select value={statusFilter || ""} onValueChange={(value) => setStatusFilter(value || undefined)}>
+              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value)}>
                 <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Filtrar por estado" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos los estados</SelectItem>
+                  <SelectItem value="all">Todos los estados</SelectItem>
                   <SelectItem value="pending">Pendiente</SelectItem>
                   <SelectItem value="approved">Aprobada</SelectItem>
                   <SelectItem value="rejected">Rechazada</SelectItem>
