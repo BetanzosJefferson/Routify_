@@ -4,7 +4,7 @@ import { Loader2Icon, MapPinIcon, CalendarIcon, FilterIcon, ChevronLeftIcon, Che
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { format } from "date-fns";
-import { extractLocationsFromTrips, formatTripTime } from "@/lib/trip-utils";
+import { extractLocationsFromTrips, formatTripTime, extractDayIndicator } from "@/lib/trip-utils";
 
 // Función para abreviar ubicaciones en móvil
 function abbreviateLocation(location: string): string {
@@ -480,7 +480,7 @@ export function TripList() {
                 </div>
                 
                 {/* Mostrar mensaje descriptivo para viajes que cruzan la medianoche */}
-                {trip.departureTime?.includes('+') || trip.arrivalTime?.includes('+') ? (
+                {(extractDayIndicator(trip.departureTime) > 0 || extractDayIndicator(trip.arrivalTime) > 0) ? (
                   <div className="mt-2 text-xs text-amber-600 bg-amber-50 p-2 rounded-md flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="12" r="10"></circle>

@@ -84,7 +84,7 @@ export function formatTripTime(
  * @param timeString El formato de hora que puede contener +Nd
  * @returns Número de días desplazados (0 si no hay indicador)
  */
-export function extractDayIndicator(timeString: string): number {
+export function extractDayIndicator(timeString: string | null | undefined): number {
   if (!timeString) return 0;
   
   const dayIndicatorMatch = timeString.match(/\+(\d+)d$/);
