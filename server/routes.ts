@@ -79,6 +79,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session-based auth system
   const { isAuthenticated, hasRole } = setupAuthentication(app);
   
+  // Definir los middleware de roles comunes
+  const hasOwnerRole = hasRole([UserRole.OWNER]);
+  const hasOwnerOrAdminRole = hasRole([UserRole.OWNER, UserRole.ADMIN]);
+  
   // Setup authentication routes (both old and new)
   // Pasamos el middleware de autenticación al setup de rutas de autenticación
   setupAuthRoutes(app, isAuthenticated);
@@ -5237,36 +5241,15 @@ function setupPackageRoutes(app: Express) {
   
   // RUTAS PARA LA TRANSFERENCIA DE PASAJEROS ENTRE EMPRESAS
 
-  // Middleware de autenticación para transferencias
-  const requireAuthentication = (req: Request, res: Response, next: () => void) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "No autenticado" });
-    }
-    next();
-  };
-
-  const requireOwnerRole = (req: Request, res: Response, next: () => void) => {
-    if (!req.isAuthenticated() || req.user.role !== UserRole.OWNER) {
-      return res.status(403).json({ message: "Se requiere rol de propietario (Dueño)" });
-    }
-    next();
-  };
-
-  const requireOwnerOrAdminRole = (req: Request, res: Response, next: () => void) => {
-    if (!req.isAuthenticated() || (req.user.role !== UserRole.OWNER && req.user.role !== UserRole.ADMIN)) {
-      return res.status(403).json({ message: "Se requiere rol de propietario (Dueño) o administrador" });
-    }
-    next();
-  };
-
   // 1. Rutas para la gestión de vínculos entre empresas
-  app.post('/api/company-links', requireAuthentication, requireOwnerRole, async (req, res) => {
+
+  app.post('/api/company-links', isAuthenticated, hasOwnerRole, async (req, res) => {
     try {
       console.log('[POST /company-links] Creando nuevo vínculo entre empresas');
       const user = req.user!;
       
       // Verificar si el usuario tiene permisos para la empresa origen
-      if (!req.body.sourceCompanyId || req.body.sourceCompanyId !== user.companyId) {
+      if (!req.body.sourceCompanyId || req.body.sourceCompanyId !== user.company) {
         console.log(`[POST /company-links] El usuario no pertenece a la empresa origen ${req.body.sourceCompanyId}`);
         return res.status(403).json({ message: 'No tienes permisos para crear vínculos para esta empresa' });
       }
@@ -5279,15 +5262,15 @@ function setupPackageRoutes(app: Express) {
       }
       
       // No podemos vincular la misma empresa
-      if (user.companyId === targetCompany.id) {
-        console.log(`[POST /company-links] Intento de vincular la misma empresa ${user.companyId}`);
+      if (user.company === targetCompany.id) {
+        console.log(`[POST /company-links] Intento de vincular la misma empresa ${user.company}`);
         return res.status(400).json({ message: 'No puedes vincular tu empresa contigo misma' });
       }
       
       // Verificar si ya existe un vínculo activo entre estas empresas
-      const existingLink = await storage.getActiveCompanyLink(user.companyId!, targetCompany.id);
+      const existingLink = await storage.getActiveCompanyLink(user.company!, targetCompany.id);
       if (existingLink) {
-        console.log(`[POST /company-links] Ya existe un vínculo activo entre ${user.companyId} y ${targetCompany.id}`);
+        console.log(`[POST /company-links] Ya existe un vínculo activo entre ${user.company} y ${targetCompany.id}`);
         return res.status(400).json({ message: 'Ya existe un vínculo activo con esta empresa' });
       }
       
@@ -5296,7 +5279,7 @@ function setupPackageRoutes(app: Express) {
       
       // Crear nuevo vínculo
       const linkData = {
-        sourceCompanyId: user.companyId!,
+        sourceCompanyId: user.company!,
         targetCompanyId: targetCompany.id,
         status: 'pending',
         oneTimeUrl: oneTimeToken,
@@ -5325,7 +5308,7 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
-  app.get('/api/company-links', requireAuthentication, requireOwnerRole, async (req, res) => {
+  app.get('/api/company-links', isAuthenticated, hasOwnerRole, async (req, res) => {
     try {
       console.log('[GET /company-links] Obteniendo vínculos de empresa');
       const user = req.user!;
@@ -5367,7 +5350,7 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
-  app.get('/api/company-links/verify/:token', requireAuthentication, requireOwnerRole, async (req, res) => {
+  app.get('/api/company-links/verify/:token', isAuthenticated, hasOwnerRole, async (req, res) => {
     try {
       console.log(`[GET /company-links/verify] Verificando token ${req.params.token}`);
       const user = req.user!;
@@ -5382,8 +5365,8 @@ function setupPackageRoutes(app: Express) {
       }
       
       // Verificar que el usuario pertenece a la empresa destino
-      if (user.companyId !== link.targetCompanyId) {
-        console.log(`[GET /company-links/verify] Usuario de empresa ${user.companyId} intenta acceder a invitación para ${link.targetCompanyId}`);
+      if (user.company !== link.targetCompanyId) {
+        console.log(`[GET /company-links/verify] Usuario de empresa ${user.company} intenta acceder a invitación para ${link.targetCompanyId}`);
         return res.status(403).json({ message: 'No tienes permisos para aceptar esta invitación' });
       }
       
@@ -5407,7 +5390,7 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
-  app.patch('/api/company-links/:id', requireAuthentication, requireOwnerRole, async (req, res) => {
+  app.patch('/api/company-links/:id', isAuthenticated, hasOwnerRole, async (req, res) => {
     try {
       console.log(`[PATCH /company-links] Actualizando vínculo ${req.params.id}`);
       const user = req.user!;
@@ -5426,8 +5409,8 @@ function setupPackageRoutes(app: Express) {
       }
       
       // Solo el propietario de la empresa destino puede actualizar el estado
-      if (user.companyId !== link.targetCompanyId) {
-        console.log(`[PATCH /company-links] Usuario de empresa ${user.companyId} intenta actualizar vínculo para ${link.targetCompanyId}`);
+      if (user.company !== link.targetCompanyId) {
+        console.log(`[PATCH /company-links] Usuario de empresa ${user.company} intenta actualizar vínculo para ${link.targetCompanyId}`);
         return res.status(403).json({ message: 'No tienes permisos para actualizar este vínculo' });
       }
       
@@ -5457,16 +5440,16 @@ function setupPackageRoutes(app: Express) {
   });
   
   // 2. Rutas para las solicitudes de transferencia
-  app.post('/api/transfer-requests', requireAuthentication, requireOwnerOrAdminRole, async (req, res) => {
+  app.post('/api/transfer-requests', isAuthenticated, hasOwnerOrAdminRole, async (req, res) => {
     try {
       console.log('[POST /transfer-requests] Creando nueva solicitud de transferencia');
       const user = req.user!;
       
       // Verificar si hay un vínculo activo entre las empresas
-      const link = await storage.getActiveCompanyLink(user.companyId!, req.body.targetCompanyId);
+      const link = await storage.getActiveCompanyLink(user.company!, req.body.targetCompanyId);
       
       if (!link) {
-        console.log(`[POST /transfer-requests] No existe vínculo activo entre ${user.companyId} y ${req.body.targetCompanyId}`);
+        console.log(`[POST /transfer-requests] No existe vínculo activo entre ${user.company} y ${req.body.targetCompanyId}`);
         return res.status(400).json({ message: 'No existe un vínculo activo con la empresa destino' });
       }
       
@@ -5478,8 +5461,8 @@ function setupPackageRoutes(app: Express) {
         return res.status(404).json({ message: 'Reservación no encontrada' });
       }
       
-      if (reservation.trip.companyId !== user.companyId) {
-        console.log(`[POST /transfer-requests] Reservación ${reservation.id} pertenece a ${reservation.trip.companyId}, no a ${user.companyId}`);
+      if (reservation.trip.companyId !== user.company) {
+        console.log(`[POST /transfer-requests] Reservación ${reservation.id} pertenece a ${reservation.trip.companyId}, no a ${user.company}`);
         return res.status(403).json({ message: 'No tienes permisos sobre esta reservación' });
       }
       
@@ -5492,7 +5475,7 @@ function setupPackageRoutes(app: Express) {
       
       // Crear solicitud de transferencia
       const transferRequestData = {
-        sourceCompanyId: user.companyId!,
+        sourceCompanyId: user.company!,
         targetCompanyId: req.body.targetCompanyId,
         status: 'pending',
         notes: req.body.notes || null,
@@ -5534,17 +5517,17 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
-  app.get('/api/transfer-requests/sent', requireAuthentication, requireOwnerOrAdminRole, async (req, res) => {
+  app.get('/api/transfer-requests/sent', isAuthenticated, hasOwnerOrAdminRole, async (req, res) => {
     try {
       console.log('[GET /transfer-requests/sent] Obteniendo solicitudes enviadas');
       const user = req.user!;
       
-      if (!user.companyId) {
+      if (!user.company) {
         console.log('[GET /transfer-requests/sent] Usuario sin empresa asignada');
         return res.status(403).json({ message: 'No tienes una empresa asignada' });
       }
       
-      const requests = await storage.getSentTransferRequests(user.companyId);
+      const requests = await storage.getSentTransferRequests(user.company);
       
       // Enriquecer con información adicional
       const enrichedRequests = await Promise.all(requests.map(async (request) => {
@@ -5576,17 +5559,17 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
-  app.get('/api/transfer-requests/received', requireAuthentication, requireOwnerOrAdminRole, async (req, res) => {
+  app.get('/api/transfer-requests/received', isAuthenticated, hasOwnerOrAdminRole, async (req, res) => {
     try {
       console.log('[GET /transfer-requests/received] Obteniendo solicitudes recibidas');
       const user = req.user!;
       
-      if (!user.companyId) {
+      if (!user.company) {
         console.log('[GET /transfer-requests/received] Usuario sin empresa asignada');
         return res.status(403).json({ message: 'No tienes una empresa asignada' });
       }
       
-      const requests = await storage.getReceivedTransferRequests(user.companyId);
+      const requests = await storage.getReceivedTransferRequests(user.company);
       
       // Enriquecer con información adicional
       const enrichedRequests = await Promise.all(requests.map(async (request) => {
