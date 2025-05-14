@@ -3236,6 +3236,313 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoints para transferencias entre compañías
+  // -----------------------------------------------
+  
+  // Roles que pueden crear y gestionar transferencias
+  const TRANSFER_MANAGE_ROLES = [
+    UserRole.SUPER_ADMIN,
+    UserRole.OWNER,
+    UserRole.ADMIN
+  ];
+  
+  // Validación para la creación de transferencias
+  const createTripTransferSchema = z.object({
+    sourceCompanyId: z.string(),
+    targetCompanyId: z.string(),
+    sourceTripId: z.number(),
+    targetTripId: z.number(),
+    reason: z.string().optional(),
+    createdBy: z.number(),
+    routeMapping: z.object({
+      originMatches: z.boolean(),
+      destinationMatches: z.boolean(),
+      skippedStops: z.array(z.string()),
+      additionalStops: z.array(z.string())
+    }).optional()
+  });
+  
+  // Crear una nueva solicitud de transferencia
+  app.post(apiRouter("/transfers"), [isAuthenticated, hasRole(TRANSFER_MANAGE_ROLES)], async (req, res) => {
+    try {
+      const validation = createTripTransferSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Datos de transferencia inválidos", 
+          errors: validation.error.format() 
+        });
+      }
+      
+      // Verificar que las compañías existen
+      const sourceCompany = await storage.getCompanyById(req.body.sourceCompanyId);
+      const targetCompany = await storage.getCompanyById(req.body.targetCompanyId);
+      
+      if (!sourceCompany) {
+        return res.status(404).json({ message: "La compañía de origen no existe" });
+      }
+      
+      if (!targetCompany) {
+        return res.status(404).json({ message: "La compañía destino no existe" });
+      }
+      
+      // Verificar que los viajes existen
+      const sourceTrip = await storage.getTripWithRouteInfo(req.body.sourceTripId);
+      const targetTrip = await storage.getTripWithRouteInfo(req.body.targetTripId);
+      
+      if (!sourceTrip) {
+        return res.status(404).json({ message: "El viaje de origen no existe" });
+      }
+      
+      if (!targetTrip) {
+        return res.status(404).json({ message: "El viaje destino no existe" });
+      }
+      
+      // Verificamos que el usuario tenga acceso a la compañía de origen
+      if (
+        req.user?.role !== UserRole.SUPER_ADMIN && 
+        req.user?.companyId !== req.body.sourceCompanyId
+      ) {
+        return res.status(403).json({ message: "No tienes permiso para transferir viajes de esta compañía" });
+      }
+      
+      // Crear el mapeo de rutas si no se proporciona
+      let routeMapping = req.body.routeMapping;
+      
+      if (!routeMapping) {
+        // Extraemos información de las rutas
+        const sourceRoute = sourceTrip.route;
+        const targetRoute = targetTrip.route;
+        
+        // Comprobamos coincidencia de origen y destino
+        const originMatches = sourceRoute.origin === targetRoute.origin;
+        const destinationMatches = sourceRoute.destination === targetRoute.destination;
+        
+        // Calculamos paradas omitidas y adicionales
+        const sourceStops = [sourceRoute.origin, ...sourceRoute.stops, sourceRoute.destination];
+        const targetStops = [targetRoute.origin, ...targetRoute.stops, targetRoute.destination];
+        
+        const skippedStops = sourceStops.filter(stop => !targetStops.includes(stop));
+        const additionalStops = targetStops.filter(stop => !sourceStops.includes(stop));
+        
+        routeMapping = {
+          originMatches,
+          destinationMatches,
+          skippedStops,
+          additionalStops
+        };
+      }
+      
+      // Crear la transferencia
+      const transferData = {
+        ...req.body,
+        routeMapping,
+        status: 'pendiente'
+      };
+      
+      const transfer = await storage.createTripTransfer(transferData);
+      
+      res.status(201).json(transfer);
+    } catch (error) {
+      console.error("Error al crear transferencia:", error);
+      res.status(500).json({ message: "Error al crear transferencia" });
+    }
+  });
+  
+  // Obtener transferencias según filtros
+  app.get(apiRouter("/transfers"), [isAuthenticated, hasRole(TRANSFER_MANAGE_ROLES)], async (req, res) => {
+    try {
+      const { sourceCompanyId, targetCompanyId, status } = req.query;
+      
+      const filters: any = {};
+      
+      if (sourceCompanyId) {
+        filters.sourceCompanyId = sourceCompanyId as string;
+      }
+      
+      if (targetCompanyId) {
+        filters.targetCompanyId = targetCompanyId as string;
+      }
+      
+      if (status) {
+        filters.status = status as string;
+      }
+      
+      // Si no es superadmin, solo ver las transferencias relacionadas con su compañía
+      if (req.user?.role !== UserRole.SUPER_ADMIN) {
+        if (req.user?.companyId) {
+          // Si no hay filtros específicos, mostrar las transferencias donde la compañía
+          // del usuario es origen o destino
+          if (!sourceCompanyId && !targetCompanyId) {
+            const asSource = await storage.getTripTransfers({ sourceCompanyId: req.user.companyId });
+            const asTarget = await storage.getTripTransfers({ targetCompanyId: req.user.companyId });
+            
+            // Combinar y eliminar duplicados
+            const combined = [...asSource, ...asTarget];
+            const uniqueIds = new Set(combined.map(transfer => transfer.id));
+            const transfers = Array.from(uniqueIds).map(id => 
+              combined.find(transfer => transfer.id === id)
+            );
+            
+            return res.json(transfers);
+          } else {
+            // Si hay filtros específicos, verificar que el usuario tenga permiso
+            if (
+              (sourceCompanyId && sourceCompanyId !== req.user.companyId) &&
+              (targetCompanyId && targetCompanyId !== req.user.companyId)
+            ) {
+              return res.status(403).json({ message: "No tienes permiso para ver transferencias de estas compañías" });
+            }
+          }
+        }
+      }
+      
+      const transfers = await storage.getTripTransfers(filters);
+      res.json(transfers);
+    } catch (error) {
+      console.error("Error al obtener transferencias:", error);
+      res.status(500).json({ message: "Error al obtener transferencias" });
+    }
+  });
+  
+  // Obtener detalles de una transferencia
+  app.get(apiRouter("/transfers/:id"), [isAuthenticated, hasRole(TRANSFER_MANAGE_ROLES)], async (req, res) => {
+    try {
+      const transferId = parseInt(req.params.id);
+      
+      if (isNaN(transferId)) {
+        return res.status(400).json({ message: "ID de transferencia inválido" });
+      }
+      
+      const transfer = await storage.getTripTransferWithDetails(transferId);
+      
+      if (!transfer) {
+        return res.status(404).json({ message: "Transferencia no encontrada" });
+      }
+      
+      // Verificar permisos: debe ser superadmin o pertenecer a alguna de las compañías involucradas
+      if (
+        req.user?.role !== UserRole.SUPER_ADMIN &&
+        req.user?.companyId !== transfer.sourceCompanyId &&
+        req.user?.companyId !== transfer.targetCompanyId
+      ) {
+        return res.status(403).json({ message: "No tienes permiso para ver esta transferencia" });
+      }
+      
+      res.json(transfer);
+    } catch (error) {
+      console.error("Error al obtener detalles de transferencia:", error);
+      res.status(500).json({ message: "Error al obtener detalles de transferencia" });
+    }
+  });
+  
+  // Actualizar estado de una transferencia
+  app.patch(apiRouter("/transfers/:id/status"), [isAuthenticated, hasRole(TRANSFER_MANAGE_ROLES)], async (req, res) => {
+    try {
+      const transferId = parseInt(req.params.id);
+      const { status } = req.body;
+      
+      if (isNaN(transferId)) {
+        return res.status(400).json({ message: "ID de transferencia inválido" });
+      }
+      
+      if (!status || !['pendiente', 'aprobado', 'rechazado'].includes(status)) {
+        return res.status(400).json({ message: "Estado de transferencia inválido" });
+      }
+      
+      // Obtener la transferencia actual
+      const transfer = await storage.getTripTransferWithDetails(transferId);
+      
+      if (!transfer) {
+        return res.status(404).json({ message: "Transferencia no encontrada" });
+      }
+      
+      // Verificar permisos: para aprobar/rechazar debe ser de la compañía destino
+      if (
+        req.user?.role !== UserRole.SUPER_ADMIN &&
+        req.user?.companyId !== transfer.targetCompanyId
+      ) {
+        return res.status(403).json({ message: "No tienes permiso para actualizar esta transferencia" });
+      }
+      
+      // Actualizar estado
+      const updatedTransfer = await storage.updateTripTransferStatus(
+        transferId, 
+        status, 
+        req.user?.id
+      );
+      
+      // Si se aprueba la transferencia, procesar las reservaciones
+      if (status === 'aprobado' && updatedTransfer) {
+        // TODO: Implementar la transferencia real de reservaciones
+        console.log("Transferencia aprobada, procesando reservaciones...");
+      }
+      
+      res.json(updatedTransfer);
+    } catch (error) {
+      console.error("Error al actualizar estado de transferencia:", error);
+      res.status(500).json({ message: "Error al actualizar estado de transferencia" });
+    }
+  });
+  
+  // Añadir reservaciones a una transferencia
+  app.post(apiRouter("/transfers/:id/reservations"), [isAuthenticated, hasRole(TRANSFER_MANAGE_ROLES)], async (req, res) => {
+    try {
+      const transferId = parseInt(req.params.id);
+      const { reservationId, originalOrigin, originalDestination, newOrigin, newDestination } = req.body;
+      
+      if (isNaN(transferId)) {
+        return res.status(400).json({ message: "ID de transferencia inválido" });
+      }
+      
+      // Validar datos
+      if (!reservationId || !originalOrigin || !originalDestination || !newOrigin || !newDestination) {
+        return res.status(400).json({ message: "Datos de reservación incompletos" });
+      }
+      
+      // Obtener la transferencia
+      const transfer = await storage.getTripTransferWithDetails(transferId);
+      
+      if (!transfer) {
+        return res.status(404).json({ message: "Transferencia no encontrada" });
+      }
+      
+      // Verificar permisos
+      if (
+        req.user?.role !== UserRole.SUPER_ADMIN &&
+        req.user?.companyId !== transfer.sourceCompanyId
+      ) {
+        return res.status(403).json({ message: "No tienes permiso para añadir reservaciones a esta transferencia" });
+      }
+      
+      // Verificar que la reservación existe y pertenece a la compañía de origen
+      const reservation = await storage.getReservationWithDetails(reservationId);
+      
+      if (!reservation) {
+        return res.status(404).json({ message: "Reservación no encontrada" });
+      }
+      
+      if (reservation.trip.companyId !== transfer.sourceCompanyId) {
+        return res.status(403).json({ message: "Esta reservación no pertenece a la compañía de origen" });
+      }
+      
+      // Crear la transferencia de reservación
+      const reservationTransfer = await storage.createReservationTransfer({
+        reservationId,
+        transferId,
+        originalOrigin,
+        originalDestination,
+        newOrigin,
+        newDestination
+      });
+      
+      res.status(201).json(reservationTransfer);
+    } catch (error) {
+      console.error("Error al añadir reservación a transferencia:", error);
+      res.status(500).json({ message: "Error al añadir reservación a transferencia" });
+    }
+  });
+
   const httpServer = createServer(app);
   // Endpoint para obtener reservaciones creadas por comisionistas
   app.get(apiRouter("/commissions/reservations"), async (req: Request, res: Response) => {
