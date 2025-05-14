@@ -4,7 +4,7 @@ import { Loader2Icon, MapPinIcon, CalendarIcon, FilterIcon, ArrowLeft, Truck } f
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { format } from "date-fns";
-import { extractLocationsFromTrips, formatTripTime } from "@/lib/trip-utils";
+import { extractLocationsFromTrips, formatTripTime, extractDayIndicator } from "@/lib/trip-utils";
 
 // UI Components
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -313,6 +313,20 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                   </div>
                   <div className="font-bold text-lg text-right">{formatTripTime(trip.arrivalTime, true, "pretty")}</div>
                 </div>
+                
+                {/* Mensaje descriptivo para viajes que cruzan la medianoche */}
+                {(extractDayIndicator(trip.departureTime) > 0 || extractDayIndicator(trip.arrivalTime) > 0) && (
+                  <div className="mt-2 mb-3">
+                    <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded-md flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                      </svg>
+                      {formatTripTime(trip.departureTime, true, 'descriptive', trip.departureDate)}
+                    </div>
+                  </div>
+                )}
                 
                 <div className="border-t border-gray-200 pt-3 mt-2">
 
