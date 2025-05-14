@@ -936,16 +936,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
           (sp: any) => sp.origin === route.origin && sp.destination === route.destination
         );
         
+        // Verificar si el viaje principal cruza la medianoche
+        const mainTripCrossesMidnight = isCrossingMidnight(departureTime, arrivalTime);
+        console.log(`Viaje principal ${route.origin} -> ${route.destination}: ¿Cruza medianoche? ${mainTripCrossesMidnight ? 'SÍ' : 'NO'}`);
+        
+        // Fecha de salida es la fecha del bucle (date)
+        const mainDepartureDate = new Date(date);
+        
+        // Si el viaje cruza la medianoche, la fecha de llegada será el día siguiente
+        const mainArrivalDate = new Date(date);
+        if (mainTripCrossesMidnight) {
+          mainArrivalDate.setDate(mainArrivalDate.getDate() + 1);
+          console.log(`Fecha de llegada ajustada a ${mainArrivalDate.toISOString()} debido a cruce de medianoche`);
+        }
+        
+        // Almacenar los tiempos sin indicadores de día en la base de datos
+        const cleanDepartureTime = departureTime.replace(/\s*\+\d+d$/, '');
+        const cleanArrivalTime = arrivalTime.replace(/\s*\+\d+d$/, '');
+        
         const mainTripToCreate = {
           routeId: tripData.routeId,
-          departureDate: new Date(date),
-          departureTime,
-          arrivalTime,
+          departureDate: mainDepartureDate, // Fecha de salida (sin ajuste)
+          departureTime: cleanDepartureTime, // Hora de salida sin indicador de día
+          arrivalTime: cleanArrivalTime,     // Hora de llegada sin indicador de día
           capacity: tripData.capacity,
           availableSeats: tripData.capacity,
           price: mainSegmentPrice?.price || 450, // Usar el precio del segmento principal o un valor por defecto
           // vehicleType: ya no se utiliza
-          segmentPrices: tripData.segmentPrices,
+          segmentPrices: tripData.segmentPrices.map((sp: any) => {
+            // Si es el segmento principal y cruza la medianoche, añadir información
+            if (sp.origin === route.origin && sp.destination === route.destination && mainTripCrossesMidnight) {
+              return {
+                ...sp,
+                // Incluir información completa con indicadores de día para referencia futura
+                departureTime: departureTime,
+                arrivalTime: mainTripCrossesMidnight ? addDayIndicator(arrivalTime, 1) : arrivalTime
+              };
+            }
+            return sp;
+          }),
           isSubTrip: false,
           parentTripId: null,
           companyId: companyId, // Asignar la compañía del usuario al viaje
@@ -1098,27 +1127,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Función para detectar si un segmento de viaje cruza la medianoche
   function isCrossingMidnight(departureTime: string, arrivalTime: string): boolean {
+    if (!departureTime || !arrivalTime) {
+      console.log(`[isCrossingMidnight] Tiempos inválidos: ${departureTime} -> ${arrivalTime}`);
+      return false;
+    }
+    
     try {
       // Extraer el tiempo sin posibles indicadores de día
-      const cleanDeparture = departureTime.replace(/\s*\+\d+d$/, '');
-      const cleanArrival = arrivalTime.replace(/\s*\+\d+d$/, '');
+      const cleanDeparture = departureTime.replace(/\s*\+\d+d$/, '').trim();
+      const cleanArrival = arrivalTime.replace(/\s*\+\d+d$/, '').trim();
       
       // Extraer componentes de tiempo
-      const [deptTimeStr, deptAmPm] = cleanDeparture.split(' ');
-      const [arrTimeStr, arrAmPm] = cleanArrival.split(' ');
+      const deptParts = cleanDeparture.split(' ');
+      const arrParts = cleanArrival.split(' ');
+      
+      // Si no tiene formato de 12 horas (AM/PM), no podemos determinar
+      if (deptParts.length < 2 || arrParts.length < 2) {
+        console.log(`[isCrossingMidnight] Formato inválido sin AM/PM: ${departureTime} -> ${arrivalTime}`);
+        return false;
+      }
+      
+      const deptTimeStr = deptParts[0];
+      const deptAmPm = deptParts[1].toUpperCase(); // Normalizar a mayúsculas
+      
+      const arrTimeStr = arrParts[0];
+      const arrAmPm = arrParts[1].toUpperCase(); // Normalizar a mayúsculas
       
       if (!deptTimeStr || !deptAmPm || !arrTimeStr || !arrAmPm) {
         console.log(`[isCrossingMidnight] Error en formato: ${departureTime} -> ${arrivalTime}`);
         return false;
       }
       
+      // Validar que PM/AM son válidos
+      if (!['AM', 'PM'].includes(deptAmPm) || !['AM', 'PM'].includes(arrAmPm)) {
+        console.log(`[isCrossingMidnight] AM/PM inválido: ${deptAmPm}, ${arrAmPm}`);
+        return false;
+      }
+      
       const [deptHourStr, deptMinuteStr] = deptTimeStr.split(':');
       const [arrHourStr, arrMinuteStr] = arrTimeStr.split(':');
+      
+      if (!deptHourStr || !deptMinuteStr || !arrHourStr || !arrMinuteStr) {
+        console.log(`[isCrossingMidnight] Formato de hora:minuto inválido: ${departureTime} -> ${arrivalTime}`);
+        return false;
+      }
       
       const deptHour = parseInt(deptHourStr, 10);
       const deptMinute = parseInt(deptMinuteStr, 10);
       const arrHour = parseInt(arrHourStr, 10);
       const arrMinute = parseInt(arrMinuteStr, 10);
+      
+      // Validar rangos de horas/minutos
+      if (isNaN(deptHour) || isNaN(deptMinute) || isNaN(arrHour) || isNaN(arrMinute) ||
+          deptHour < 1 || deptHour > 12 || deptMinute < 0 || deptMinute > 59 ||
+          arrHour < 1 || arrHour > 12 || arrMinute < 0 || arrMinute > 59) {
+        console.log(`[isCrossingMidnight] Valores de hora/minuto inválidos: ${departureTime} -> ${arrivalTime}`);
+        return false;
+      }
       
       // Convertir a formato 24 horas para comparación
       let deptHour24 = deptHour;
@@ -1133,8 +1198,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const deptMinTotal = deptHour24 * 60 + deptMinute;
       const arrMinTotal = arrHour24 * 60 + arrMinute;
       
+      // Si son exactamente la misma hora, no cruza la medianoche
+      if (deptMinTotal === arrMinTotal) {
+        return false;
+      }
+      
       // Si el tiempo de llegada es menor que el de salida, significa que cruza la medianoche
-      return arrMinTotal < deptMinTotal;
+      const isCrossing = arrMinTotal < deptMinTotal;
+      console.log(`[isCrossingMidnight] ${departureTime} -> ${arrivalTime}: ${isCrossing ? 'SÍ cruza medianoche' : 'NO cruza medianoche'}`);
+      return isCrossing;
     } catch (error) {
       console.error(`[isCrossingMidnight] Error analizando tiempos ${departureTime} -> ${arrivalTime}:`, error);
       return false;
