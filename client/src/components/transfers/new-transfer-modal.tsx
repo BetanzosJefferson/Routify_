@@ -1,17 +1,18 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { format } from "date-fns";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
+
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -28,19 +29,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 
-const formSchema = z.object({
-  sourceCompanyId: z.string().min(1, "La compañía de origen es obligatoria"),
-  targetCompanyId: z.string().min(1, "La compañía destino es obligatoria"),
-  sourceTripId: z.number().min(1, "El viaje de origen es obligatorio"),
-  targetTripId: z.number().min(1, "El viaje destino es obligatorio"),
-  reason: z.string().optional(),
+// Esquema de validación para el formulario
+const transferFormSchema = z.object({
+  tripId: z.string().min(1, "Debes seleccionar un viaje"),
+  targetCompanyId: z.string().min(1, "Debes seleccionar una empresa destino"),
+  reason: z.string().min(10, "Proporciona una razón detallada para la transferencia").max(500, "La razón no puede exceder los 500 caracteres"),
 });
+
+type TransferFormValues = z.infer<typeof transferFormSchema>;
+
+interface Trip {
+  id: number;
+  departureDate: Date;
+  departureTime: string;
+  origin: string;
+  destination: string;
+  availableSeats: number;
+}
+
+interface Company {
+  id: string;
+  name: string;
+}
 
 interface NewTransferModalProps {
   isOpen: boolean;
@@ -50,259 +64,193 @@ interface NewTransferModalProps {
 
 export const NewTransferModal = ({ isOpen, onClose, onTransferCreated }: NewTransferModalProps) => {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const [selectedSourceCompany, setSelectedSourceCompany] = useState<string | null>(
-    user?.companyId || null
-  );
-  const [selectedTargetCompany, setSelectedTargetCompany] = useState<string | null>(null);
-  
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+
+  // Consultar viajes disponibles para transferir
+  const { data: trips, isLoading: isLoadingTrips } = useQuery({ 
+    queryKey: ["/api/trips/transferable"], 
+    queryFn: async () => {
+      const response = await fetch("/api/trips/transferable");
+      if (!response.ok) throw new Error("Error al cargar viajes");
+      return response.json();
+    },
+    enabled: isOpen
+  });
+
+  // Consultar empresas disponibles para transferir
+  const { data: companies, isLoading: isLoadingCompanies } = useQuery({ 
+    queryKey: ["/api/companies/available"], 
+    queryFn: async () => {
+      const response = await fetch("/api/companies/available");
+      if (!response.ok) throw new Error("Error al cargar empresas");
+      return response.json();
+    },
+    enabled: isOpen
+  });
+
+  // Configurar el formulario con react-hook-form
+  const form = useForm<TransferFormValues>({
+    resolver: zodResolver(transferFormSchema),
     defaultValues: {
-      sourceCompanyId: user?.companyId || "",
+      tripId: "",
       targetCompanyId: "",
-      sourceTripId: 0,
-      targetTripId: 0,
       reason: "",
     },
   });
-  
-  // Consulta para obtener compañías
-  const { data: companies } = useQuery({
-    queryKey: ["/api/companies"],
-    queryFn: async () => {
-      const response = await fetch("/api/companies");
-      if (!response.ok) {
-        throw new Error("Error al cargar compañías");
-      }
-      return response.json();
-    },
-    refetchOnWindowFocus: false,
-  });
-  
-  // Consulta para obtener viajes de la compañía de origen
-  const { data: sourceTrips, isLoading: isLoadingSourceTrips } = useQuery({
-    queryKey: ["/api/trips", selectedSourceCompany],
-    queryFn: async () => {
-      if (!selectedSourceCompany) return [];
-      
-      const response = await fetch(`/api/trips?companyId=${selectedSourceCompany}`);
-      if (!response.ok) {
-        throw new Error("Error al cargar viajes de origen");
-      }
-      return response.json();
-    },
-    enabled: !!selectedSourceCompany,
-    refetchOnWindowFocus: false,
-  });
-  
-  // Consulta para obtener viajes de la compañía destino
-  const { data: targetTrips, isLoading: isLoadingTargetTrips } = useQuery({
-    queryKey: ["/api/trips", selectedTargetCompany],
-    queryFn: async () => {
-      if (!selectedTargetCompany) return [];
-      
-      const response = await fetch(`/api/trips?companyId=${selectedTargetCompany}`);
-      if (!response.ok) {
-        throw new Error("Error al cargar viajes destino");
-      }
-      return response.json();
-    },
-    enabled: !!selectedTargetCompany,
-    refetchOnWindowFocus: false,
-  });
-  
-  // Mutación para crear transferencia
+
+  // Manejar la creación de la transferencia
   const createTransferMutation = useMutation({
-    mutationFn: (data: z.infer<typeof formSchema>) => {
-      return apiRequest("POST", "/api/transfers", {
+    mutationFn: async (data: TransferFormValues) => {
+      const response = await apiRequest("POST", "/api/transfers", {
         ...data,
-        createdBy: user?.id,
+        tripId: parseInt(data.tripId)
       });
+      return await response.json();
     },
     onSuccess: () => {
-      form.reset();
       onTransferCreated();
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo crear la transferencia",
-        variant: "destructive",
-      });
-    },
+      form.reset();
+    }
   });
-  
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
+
+  const onSubmit = (data: TransferFormValues) => {
     createTransferMutation.mutate(data);
   };
-  
-  const handleSourceCompanyChange = (value: string) => {
-    form.setValue("sourceCompanyId", value);
-    form.setValue("sourceTripId", 0);
-    setSelectedSourceCompany(value);
+
+  const handleTripChange = (tripId: string) => {
+    if (tripId && trips) {
+      const trip = trips.find((t: Trip) => t.id.toString() === tripId);
+      setSelectedTrip(trip || null);
+    } else {
+      setSelectedTrip(null);
+    }
   };
-  
-  const handleTargetCompanyChange = (value: string) => {
-    form.setValue("targetCompanyId", value);
-    form.setValue("targetTripId", 0);
-    setSelectedTargetCompany(value);
+
+  const formatTripOption = (trip: Trip) => {
+    return `${format(new Date(trip.departureDate), "dd/MM/yyyy")} - ${trip.departureTime} - ${trip.origin} a ${trip.destination}`;
   };
-  
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Nueva transferencia</DialogTitle>
           <DialogDescription>
-            Crea una solicitud para transferir reservaciones entre viajes de diferentes compañías
+            Crea una solicitud para transferir reservaciones a otra empresa
           </DialogDescription>
         </DialogHeader>
-        
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
-              <FormField
-                control={form.control}
-                name="sourceCompanyId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Compañía de origen</FormLabel>
+            <FormField
+              control={form.control}
+              name="tripId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Viaje a transferir</FormLabel>
+                  <FormControl>
                     <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        handleTripChange(value);
+                      }}
                       value={field.value}
-                      onValueChange={handleSourceCompanyChange}
-                      disabled={user?.role !== "superAdmin"}
+                      disabled={isLoadingTrips || createTransferMutation.isPending}
                     >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona compañía de origen" />
-                        </SelectTrigger>
-                      </FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un viaje" />
+                      </SelectTrigger>
                       <SelectContent>
-                        {companies?.map((company: any) => (
-                          <SelectItem key={company.identifier} value={company.identifier}>
-                            {company.name}
+                        {trips && trips.length > 0 ? (
+                          trips.map((trip: Trip) => (
+                            <SelectItem key={trip.id} value={trip.id.toString()}>
+                              {formatTripOption(trip)}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no-trips" disabled>
+                            No hay viajes disponibles para transferir
                           </SelectItem>
-                        ))}
+                        )}
                       </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="targetCompanyId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Compañía destino</FormLabel>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {selectedTrip && (
+              <div className="bg-muted p-3 rounded-md text-sm">
+                <p><strong>Viaje seleccionado:</strong> {formatTripOption(selectedTrip)}</p>
+                <p><strong>Asientos disponibles:</strong> {selectedTrip.availableSeats}</p>
+              </div>
+            )}
+
+            <FormField
+              control={form.control}
+              name="targetCompanyId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Empresa destino</FormLabel>
+                  <FormControl>
                     <Select
+                      onValueChange={field.onChange}
                       value={field.value}
-                      onValueChange={handleTargetCompanyChange}
+                      disabled={isLoadingCompanies || createTransferMutation.isPending}
                     >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona compañía destino" />
-                        </SelectTrigger>
-                      </FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona una empresa" />
+                      </SelectTrigger>
                       <SelectContent>
-                        {companies?.filter((c: any) => c.identifier !== selectedSourceCompany)
-                          .map((company: any) => (
-                            <SelectItem key={company.identifier} value={company.identifier}>
+                        {companies && companies.length > 0 ? (
+                          companies.map((company: Company) => (
+                            <SelectItem key={company.id} value={company.id}>
                               {company.name}
                             </SelectItem>
                           ))
-                        }
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="sourceTripId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Viaje de origen</FormLabel>
-                    <Select
-                      value={field.value ? String(field.value) : ""}
-                      onValueChange={(value) => form.setValue("sourceTripId", parseInt(value))}
-                      disabled={!selectedSourceCompany || isLoadingSourceTrips}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona viaje de origen" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {sourceTrips?.map((trip: any) => (
-                          <SelectItem key={trip.id} value={String(trip.id)}>
-                            {trip.route.name} - {new Date(trip.departureDate).toLocaleDateString()} - {trip.departureTime}
+                        ) : (
+                          <SelectItem value="no-companies" disabled>
+                            No hay empresas disponibles
                           </SelectItem>
-                        ))}
+                        )}
                       </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="targetTripId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Viaje destino</FormLabel>
-                    <Select
-                      value={field.value ? String(field.value) : ""}
-                      onValueChange={(value) => form.setValue("targetTripId", parseInt(value))}
-                      disabled={!selectedTargetCompany || isLoadingTargetTrips}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona viaje destino" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {targetTrips?.map((trip: any) => (
-                          <SelectItem key={trip.id} value={String(trip.id)}>
-                            {trip.route.name} - {new Date(trip.departureDate).toLocaleDateString()} - {trip.departureTime}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="reason"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Motivo de la transferencia</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Indica el motivo de la transferencia" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            
-            <DialogFooter>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="reason"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Motivo de la transferencia</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Explica la razón por la que necesitas transferir este viaje"
+                      className="min-h-[100px]"
+                      {...field}
+                      disabled={createTransferMutation.isPending}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end space-x-2 pt-4">
               <Button
-                type="button"
                 variant="outline"
                 onClick={onClose}
+                type="button"
+                disabled={createTransferMutation.isPending}
               >
                 Cancelar
               </Button>
-              <Button
+              <Button 
                 type="submit"
                 disabled={createTransferMutation.isPending}
               >
@@ -315,10 +263,12 @@ export const NewTransferModal = ({ isOpen, onClose, onTransferCreated }: NewTran
                   "Crear transferencia"
                 )}
               </Button>
-            </DialogFooter>
+            </div>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
   );
 };
+
+export default NewTransferModal;
