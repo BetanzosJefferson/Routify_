@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId, normalizeToStartOfDay, isSameLocalDay } from "@/lib/utils";
+import { formatTripTime } from "@/lib/trip-utils";
 import { useLocation } from "wouter";
 import { 
   UserIcon, 
@@ -534,7 +535,7 @@ export function ReservationList() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{formatDate(reservation.trip.departureDate)}</div>
-                      <div className="text-sm text-gray-500">{reservation.trip.departureTime}</div>
+                      <div className="text-sm text-gray-500">{formatTripTime(reservation.trip.departureTime, true, 'pretty')}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {reservation.passengers.length}
@@ -831,7 +832,7 @@ export function ReservationList() {
                     
                     <div>
                       <div className="text-xs text-gray-500">Hora</div>
-                      <div>{reservation.trip.departureTime}</div>
+                      <div>{formatTripTime(reservation.trip.departureTime, true, 'pretty')}</div>
                     </div>
                     
                     <div>
@@ -1113,7 +1114,7 @@ export function ReservationList() {
                     <span className="text-gray-500">Fecha:</span> {formatDate(editingReservation.trip.departureDate)}
                   </div>
                   <div className="text-sm">
-                    <span className="text-gray-500">Hora de salida:</span> {editingReservation.trip.departureTime}
+                    <span className="text-gray-500">Hora de salida:</span> {formatTripTime(editingReservation.trip.departureTime, true, 'pretty')}
                   </div>
                 </div>
               </div>
