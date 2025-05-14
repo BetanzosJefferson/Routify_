@@ -3313,7 +3313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     sourceCompanyId: z.string(),
     targetCompanyId: z.string(),
     sourceTripId: z.number(),
-    targetTripId: z.number(),
+    targetTripId: z.number().nullable().optional(),
     reason: z.string().optional(),
     createdBy: z.number(),
     routeMapping: z.object({
@@ -3350,14 +3350,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verificar que los viajes existen
       const sourceTrip = await storage.getTripWithRouteInfo(req.body.sourceTripId);
-      const targetTrip = await storage.getTripWithRouteInfo(req.body.targetTripId);
       
       if (!sourceTrip) {
         return res.status(404).json({ message: "El viaje de origen no existe" });
       }
       
-      if (!targetTrip) {
-        return res.status(404).json({ message: "El viaje destino no existe" });
+      // Viaje destino es opcional en la primera etapa de la transferencia
+      let targetTrip = null;
+      if (req.body.targetTripId) {
+        targetTrip = await storage.getTripWithRouteInfo(req.body.targetTripId);
+        if (!targetTrip) {
+          return res.status(404).json({ message: "El viaje destino no existe" });
+        }
       }
       
       // Verificamos que el usuario tenga acceso a la compañía de origen
@@ -3372,27 +3376,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let routeMapping = req.body.routeMapping;
       
       if (!routeMapping) {
-        // Extraemos información de las rutas
-        const sourceRoute = sourceTrip.route;
-        const targetRoute = targetTrip.route;
-        
-        // Comprobamos coincidencia de origen y destino
-        const originMatches = sourceRoute.origin === targetRoute.origin;
-        const destinationMatches = sourceRoute.destination === targetRoute.destination;
-        
-        // Calculamos paradas omitidas y adicionales
-        const sourceStops = [sourceRoute.origin, ...sourceRoute.stops, sourceRoute.destination];
-        const targetStops = [targetRoute.origin, ...targetRoute.stops, targetRoute.destination];
-        
-        const skippedStops = sourceStops.filter(stop => !targetStops.includes(stop));
-        const additionalStops = targetStops.filter(stop => !sourceStops.includes(stop));
-        
-        routeMapping = {
-          originMatches,
-          destinationMatches,
-          skippedStops,
-          additionalStops
-        };
+        if (targetTrip) {
+          // Extraemos información de las rutas
+          const sourceRoute = sourceTrip.route;
+          const targetRoute = targetTrip.route;
+          
+          // Comprobamos coincidencia de origen y destino
+          const originMatches = sourceRoute.origin === targetRoute.origin;
+          const destinationMatches = sourceRoute.destination === targetRoute.destination;
+          
+          // Calculamos paradas omitidas y adicionales
+          const sourceStops = [sourceRoute.origin, ...sourceRoute.stops, sourceRoute.destination];
+          const targetStops = [targetRoute.origin, ...targetRoute.stops, targetRoute.destination];
+          
+          const skippedStops = sourceStops.filter(stop => !targetStops.includes(stop));
+          const additionalStops = targetStops.filter(stop => !sourceStops.includes(stop));
+          
+          routeMapping = {
+            originMatches,
+            destinationMatches,
+            skippedStops,
+            additionalStops
+          };
+        } else {
+          // Si todavía no hay viaje destino, creamos un mapeo vacío
+          routeMapping = {
+            originMatches: false,
+            destinationMatches: false,
+            skippedStops: [],
+            additionalStops: []
+          };
+        }
       }
       
       // Crear la transferencia
