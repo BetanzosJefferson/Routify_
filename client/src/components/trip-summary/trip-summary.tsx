@@ -12,6 +12,7 @@ import { Trip, TripWithRouteInfo, Reservation, Passenger } from "@shared/schema"
 import { useTrips } from "@/hooks/use-trips";
 import { useReservations } from "@/hooks/use-reservations";
 import { usePackages, Package } from "@/hooks/use-packages";
+import { formatTripTime } from "@/lib/trip-utils";
 
 type TripSummaryProps = {
   className?: string;
@@ -321,7 +322,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                         <div className="font-medium">{trip.route.name}</div>
                         <div className="text-sm mt-1 flex justify-between">
                           <span className={selectedTrip === trip.id ? 'text-white' : 'text-gray-500'}>
-                            {trip.departureTime}
+                            {formatTripTime(trip.departureTime, true, 'pretty')}
                           </span>
                         </div>
                       </div>
@@ -376,11 +377,15 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <Label className="text-gray-500">Salida</Label>
-                                  <div className="font-medium">{trips.find(t => t.id === selectedTrip)?.departureTime}</div>
+                                  <div className="font-medium">
+                                    {formatTripTime(trips.find(t => t.id === selectedTrip)?.departureTime || "", true, 'pretty')}
+                                  </div>
                                 </div>
                                 <div>
                                   <Label className="text-gray-500">Llegada</Label>
-                                  <div className="font-medium">{trips.find(t => t.id === selectedTrip)?.arrivalTime}</div>
+                                  <div className="font-medium">
+                                    {formatTripTime(trips.find(t => t.id === selectedTrip)?.arrivalTime || "", true, 'pretty')}
+                                  </div>
                                 </div>
                               </div>
                               <div>
@@ -543,7 +548,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                           {reservation.trip?.segmentDestination || reservation.trip?.route.destination}
                                         </div>
                                         <div className="text-xs text-gray-500">
-                                          {reservation.trip.departureTime} - {reservation.trip.arrivalTime}
+                                          {formatTripTime(reservation.trip.departureTime, true, 'pretty')} - {formatTripTime(reservation.trip.arrivalTime, true, 'pretty')}
                                         </div>
                                       </td>
                                       <td className="py-3 px-4 whitespace-nowrap">
