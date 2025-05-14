@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice } from "@/lib/utils";
+import { formatTripTime } from "@/lib/trip-utils";
 import { TripWithRouteInfo } from "@shared/schema";
 
 import {
@@ -172,9 +173,9 @@ export function ReservationModal({ trip, isOpen, onClose }: ReservationModalProp
             <div className="text-gray-500">Date:</div>
             <div className="font-medium">{formatDate(trip.departureDate)}</div>
             <div className="text-gray-500">Departure:</div>
-            <div className="font-medium">{trip.departureTime}</div>
+            <div className="font-medium">{formatTripTime(trip.departureTime, true, 'pretty')}</div>
             <div className="text-gray-500">Arrival:</div>
-            <div className="font-medium">{trip.arrivalTime}</div>
+            <div className="font-medium">{formatTripTime(trip.arrivalTime, true, 'pretty')}</div>
             <div className="text-gray-500">Price per passenger:</div>
             <div className="font-medium">{formatPrice(trip.price)}</div>
           </div>
