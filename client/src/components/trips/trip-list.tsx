@@ -4,7 +4,7 @@ import { Loader2Icon, MapPinIcon, CalendarIcon, FilterIcon, ChevronLeftIcon, Che
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { format } from "date-fns";
-import { extractLocationsFromTrips } from "@/lib/trip-utils";
+import { extractLocationsFromTrips, formatTripTime } from "@/lib/trip-utils";
 
 // Función para abreviar ubicaciones en móvil
 function abbreviateLocation(location: string): string {
@@ -30,12 +30,22 @@ function abbreviateLocation(location: string): string {
   return location.substring(0, 7) + '.';
 }
 
-// Función para calcular la duración entre horas
+// Función para calcular la duración entre horas, considerando indicadores de día siguiente
 function calculateDuration(departureTime: string, arrivalTime: string): string {
   if (!departureTime || !arrivalTime) return "1h";
   
+  // Primero, limpiar los posibles indicadores de día para extraer solo el tiempo
+  const cleanDepartureTime = departureTime.replace(/\s*\+\d+d$/, '');
+  const cleanArrivalTime = arrivalTime.replace(/\s*\+\d+d$/, '');
+  
+  // Extraer el número de días adicionales, si existe
+  const departureExtraDays = departureTime.match(/\+(\d+)d$/) ? 
+    parseInt(departureTime.match(/\+(\d+)d$/)![1], 10) : 0;
+  const arrivalExtraDays = arrivalTime.match(/\+(\d+)d$/) ? 
+    parseInt(arrivalTime.match(/\+(\d+)d$/)![1], 10) : 0;
+  
   // Convertir a formato 24 horas para cálculos
-  const parseDepartureTime = (time: string) => {
+  const parseTime = (time: string) => {
     let [hourMin, period] = time.split(' ');
     let [hours, minutes] = hourMin.split(':').map(Number);
     
@@ -46,15 +56,16 @@ function calculateDuration(departureTime: string, arrivalTime: string): string {
     return { hours, minutes };
   };
   
-  const departure = parseDepartureTime(departureTime);
-  const arrival = parseDepartureTime(arrivalTime);
+  const departure = parseTime(cleanDepartureTime);
+  const arrival = parseTime(cleanArrivalTime);
   
-  // Calcular diferencia en minutos
-  let totalMinutesDeparture = departure.hours * 60 + departure.minutes;
-  let totalMinutesArrival = arrival.hours * 60 + arrival.minutes;
+  // Calcular diferencia en minutos, considerando días adicionales
+  let totalMinutesDeparture = (departure.hours * 60 + departure.minutes) + (departureExtraDays * 24 * 60);
+  let totalMinutesArrival = (arrival.hours * 60 + arrival.minutes) + (arrivalExtraDays * 24 * 60);
   
-  // Si la llegada es al día siguiente (tiempo de llegada es menor que salida)
-  if (totalMinutesArrival < totalMinutesDeparture) {
+  // Si no hay indicadores de día explícitos y la llegada parece ser antes que la salida,
+  // asumimos que cruza medianoche
+  if (arrivalExtraDays === 0 && departureExtraDays === 0 && totalMinutesArrival < totalMinutesDeparture) {
     totalMinutesArrival += 24 * 60; // Agregar 24 horas en minutos
   }
   
@@ -435,7 +446,9 @@ export function TripList() {
               <div className="p-4">
                 <div className="grid grid-cols-3 gap-4">
                   <div className="flex flex-col">
-                    <div className="text-lg font-bold">{trip.departureTime}</div>
+                    <div className="text-lg font-bold">
+                      {formatTripTime(trip.departureTime, true, 'pretty')}
+                    </div>
                     <div className="text-sm text-gray-500 mt-1">
                       {trip.isSubTrip ? trip.segmentOrigin : trip.route.origin}
                     </div>
@@ -457,7 +470,9 @@ export function TripList() {
                   </div>
                   
                   <div className="flex flex-col items-end">
-                    <div className="text-lg font-bold">{trip.arrivalTime}</div>
+                    <div className="text-lg font-bold">
+                      {formatTripTime(trip.arrivalTime, true, 'pretty')}
+                    </div>
                     <div className="text-sm text-gray-500 mt-1 text-right">
                       {trip.isSubTrip ? trip.segmentDestination : trip.route.destination}
                     </div>
