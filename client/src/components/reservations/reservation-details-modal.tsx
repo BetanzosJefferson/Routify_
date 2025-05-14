@@ -16,7 +16,7 @@ import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { hasRequiredRole } from "@/lib/role-based-permissions";
-import { formatTripTime } from "@/lib/trip-utils";
+import { formatTripTime, extractDayIndicator } from "@/lib/trip-utils";
 import TicketCheckedModal from "@/components/reservations/ticket-checked-modal";
 
 interface ReservationDetailsModalProps {
@@ -312,6 +312,20 @@ export default function ReservationDetailsModal({
                         <div>
                           <div className="text-sm text-gray-500 font-medium">HORA DE LLEGADA</div>
                           <div>{formatTripTime(reservation.trip.arrivalTime, true, 'pretty')}</div>
+                        </div>
+                      )}
+                      
+                      {/* Mensaje descriptivo para viajes que cruzan la medianoche */}
+                      {(extractDayIndicator(reservation.trip.departureTime) > 0 || extractDayIndicator(reservation.trip.arrivalTime) > 0) && (
+                        <div className="mt-2">
+                          <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded-md flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10"></circle>
+                              <line x1="12" y1="8" x2="12" y2="12"></line>
+                              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            {formatTripTime(reservation.trip.departureTime, true, 'descriptive', reservation.trip.departureDate)}
+                          </div>
                         </div>
                       )}
                     </div>
