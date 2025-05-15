@@ -43,10 +43,9 @@ export default function PassengerTransferPage() {
                   <Label htmlFor="origin-date">Fecha</Label>
                   <div className="mt-1">
                     <DatePicker
-                      id="origin-date"
-                      selected={selectedDate}
-                      onSelect={(date) => setSelectedDate(date)}
-                      locale={es}
+                      date={selectedDate}
+                      onDateChange={setSelectedDate}
+                      placeholder="Seleccionar fecha"
                     />
                   </div>
                 </div>
@@ -122,10 +121,9 @@ export default function PassengerTransferPage() {
                   <Label htmlFor="target-date">Fecha</Label>
                   <div className="mt-1">
                     <DatePicker
-                      id="target-date"
-                      selected={selectedDate}
-                      onSelect={(date) => setSelectedDate(date)}
-                      locale={es}
+                      date={selectedDate}
+                      onDateChange={setSelectedDate}
+                      placeholder="Seleccionar fecha"
                     />
                   </div>
                 </div>
