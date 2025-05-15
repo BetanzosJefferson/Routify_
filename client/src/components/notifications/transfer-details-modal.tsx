@@ -14,7 +14,20 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
-import { Notification } from '@/types';
+
+// Definir la interfaz de Notification localmente para evitar dependencias circulares
+interface Notification {
+  id: number;
+  title: string;
+  message: string;
+  type: string;
+  userId: number;
+  relatedId: number | null;
+  metaData?: string;
+  read: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface TransferDetailsModalProps {
   open: boolean;
