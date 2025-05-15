@@ -2449,26 +2449,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // SEGURIDAD: Control de acceso a datos por compañía
       let companyId: string | null = null;
       
+      // Verificar si la reservación ha sido transferida a la compañía del usuario
+      const isTransferredToUser = await storage.checkReservationTransferPermission(id, user?.id);
+      
+      console.log(`[GET /reservations/${id}] ¿Reservación transferida al usuario?: ${isTransferredToUser}`);
+      
       // REGLAS DE ACCESO:
       // 1. superAdmin, admin, checador y taquilla pueden ver TODAS las reservaciones (sin filtro)
-      // 2. Todos los demás roles solo pueden ver reservaciones de SU COMPAÑÍA
+      // 2. Si la reservación ha sido transferida al usuario o su compañía, puede verla
+      // 3. Todos los demás roles solo pueden ver reservaciones de SU COMPAÑÍA
       if (user) {
         if (user.role !== UserRole.SUPER_ADMIN && 
             user.role !== UserRole.ADMIN && 
             user.role !== UserRole.TICKET_OFFICE && 
             user.role !== UserRole.CHECKER) {
-          // Obtener la compañía del usuario
-          companyId = user.companyId || user.company;
-          
-          if (!companyId) {
-            console.log(`[GET /reservations/${id}] ACCESO DENEGADO: Usuario sin compañía asignada`);
-            return res.status(403).json({ 
-              error: "Acceso denegado", 
-              details: "Usuario sin compañía asignada" 
-            });
+              
+          // Si ha sido transferida al usuario, se permite el acceso sin verificar compañía
+          if (isTransferredToUser) {
+            console.log(`[GET /reservations/${id}] Acceso permitido: Reservación transferida al usuario`);
+          } else {
+            // Obtener la compañía del usuario para verificación normal
+            companyId = user.companyId || user.company;
+            
+            if (!companyId) {
+              console.log(`[GET /reservations/${id}] ACCESO DENEGADO: Usuario sin compañía asignada`);
+              return res.status(403).json({ 
+                error: "Acceso denegado", 
+                details: "Usuario sin compañía asignada" 
+              });
+            }
+            
+            console.log(`[GET /reservations/${id}] Verificando permisos para compañía: ${companyId}`);
           }
-          
-          console.log(`[GET /reservations/${id}] Verificando permisos para compañía: ${companyId}`);
         } else {
           console.log(`[GET /reservations/${id}] Usuario con rol ${user.role} puede ver todas las reservaciones`);
         }

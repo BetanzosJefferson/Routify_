@@ -111,6 +111,9 @@ export interface IStorage {
   markNotificationAsRead(id: number): Promise<Notification>;
   getUnreadNotificationsCount(userId: number): Promise<number>;
   
+  // Transferencia de pasajeros
+  checkReservationTransferPermission(reservationId: number, userId: number): Promise<boolean>;
+  
   // Pagos de comisiones
   markCommissionsAsPaid(reservationIds: number[]): Promise<{
     success: boolean;
