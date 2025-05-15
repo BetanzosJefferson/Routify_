@@ -169,6 +169,9 @@ export const reservations = pgTable("reservations", {
   checkedBy: integer("checked_by"), // ID del usuario que escaneó el ticket
   checkedAt: timestamp("checked_at"), // Fecha y hora del escaneo
   checkCount: integer("check_count").default(0), // Contador de veces que se ha escaneado el ticket
+  // Campos para transferencia entre empresas
+  transferredAt: timestamp("transferred_at"), // Fecha y hora de la transferencia
+  transferredFrom: text("transferred_from"), // ID de la compañía de origen
 });
 
 export const insertReservationSchema = createInsertSchema(reservations);
