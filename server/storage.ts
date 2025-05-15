@@ -21,7 +21,11 @@ import {
   InsertCoupon,
   InsertNotification,
   Notification,
-  ReservationRequest
+  ReservationRequest,
+  CompanyPartnership,
+  InsertCompanyPartnership,
+  CompanyInvitation,
+  InsertCompanyInvitation
 } from "@shared/schema";
 
 export interface IStorage {
