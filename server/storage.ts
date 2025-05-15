@@ -145,6 +145,11 @@ export interface IStorage {
   
   // Company methods
   getCompanyById(companyId: string): Promise<{id: string, name: string} | null>;
+  
+  // Métodos para transferencia y programación de reservaciones
+  checkReservationTransferPermission(reservationId: number, userId: number): Promise<boolean>;
+  getReservationById(id: number): Promise<Reservation | undefined>;
+  getTripById(id: number): Promise<Trip | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -794,6 +799,20 @@ export class MemStorage implements IStorage {
   
   async deleteUser(id: number): Promise<boolean> {
     return this.users.delete(id);
+  }
+  
+  // Métodos para transferencia y programación de reservaciones
+  async checkReservationTransferPermission(reservationId: number, userId: number): Promise<boolean> {
+    // En memoria siempre retornamos true para pruebas
+    return true;
+  }
+  
+  async getReservationById(id: number): Promise<Reservation | undefined> {
+    return this.reservations.get(id);
+  }
+  
+  async getTripById(id: number): Promise<Trip | undefined> {
+    return this.trips.get(id);
   }
 }
 
