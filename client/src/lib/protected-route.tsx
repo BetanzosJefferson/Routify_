@@ -1,7 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { Route, Redirect } from "wouter";
-import { useEffect } from "react";
 
 // Componente de ruta protegida que requiere autenticación
 export function ProtectedRoute({
@@ -28,21 +27,9 @@ export function ProtectedRoute({
   }
 
   if (!user) {
-    console.log("ProtectedRoute: Usuario no autenticado, redirigiendo a /auth");
     return (
       <Route path={path}>
-        {() => {
-          // Para evitar un flash de contenido vacío, usamos un efecto para la redirección
-          useEffect(() => {
-            window.location.href = "/auth";
-          }, []);
-          return (
-            <div className="flex items-center justify-center min-h-screen">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-2">Redirigiendo al inicio de sesión...</span>
-            </div>
-          );
-        }}
+        {() => <Redirect to="/auth" />}
       </Route>
     );
   }
