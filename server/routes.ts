@@ -5271,14 +5271,31 @@ function setupPackageRoutes(app: Express) {
       console.log('[GET /transfer-history] Obteniendo historial de transferencias');
       const user = req.user!;
       
-      let history = [];
+      let details = [];
       // Si es superAdmin o desarrollador, mostrar todo el historial
-      if (hasRequiredRole(user, ['superAdmin', 'desarrollador'])) {
-        history = await storage.getAllTransferDetails();
+      if (user.role === 'superAdmin' || user.role === 'desarrollador') {
+        // Obtener todos los detalles de transferencia
+        const transferRequests = await storage.getTransferRequests();
+        for (const request of transferRequests) {
+          const reqDetails = await storage.getTransferDetails(request.id);
+          details = [...details, ...reqDetails];
+        }
       } 
       // Si es dueño o admin, mostrar historial de su empresa
-      else if (hasRequiredRole(user, ['dueño', 'admin'])) {
-        history = await storage.getTransferDetailsByCompany(user.company);
+      else if (user.role === 'dueño' || user.role === 'admin') {
+        if (!user.company) {
+          return res.status(403).json({ message: 'No tienes una empresa asignada' });
+        }
+        
+        // Obtener solicitudes enviadas y recibidas
+        const sentRequests = await storage.getSentTransferRequests(user.company);
+        const receivedRequests = await storage.getReceivedTransferRequests(user.company);
+        
+        // Obtener detalles de cada solicitud
+        for (const request of [...sentRequests, ...receivedRequests]) {
+          const reqDetails = await storage.getTransferDetails(request.id);
+          details = [...details, ...reqDetails];
+        }
       }
       
       // Si no hay historial, devolver array vacío
