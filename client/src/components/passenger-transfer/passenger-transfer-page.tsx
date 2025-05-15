@@ -32,6 +32,25 @@ export function PassengerTransferPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [showCompanySelection, setShowCompanySelection] = useState(false);
   const [selectedReservationIds, setSelectedReservationIds] = useState<number[]>([]);
+  const [selectedReservations, setSelectedReservations] = useState<Record<number, boolean>>({});
+  const [selectedTrips, setSelectedTrips] = useState<Record<number, boolean>>({});
+  
+  // Manejar la selección de una empresa
+  const handleCompanySelected = (company: Company) => {
+    console.log(`Empresa seleccionada: ${company.name} (${company.identifier})`);
+    console.log(`Transferir reservaciones: ${selectedReservationIds.join(', ')} a empresa ${company.identifier}`);
+    
+    // Aquí iría la lógica para hacer la transferencia
+    // Por ahora, mostrar un mensaje de éxito
+    alert(`Se transferirían ${selectedReservationIds.length} reservaciones a la empresa ${company.name}`);
+    
+    // Cerrar los modales
+    setShowCompanySelection(false);
+    setIsDialogOpen(false);
+    
+    // Limpiar el estado
+    setSelectedReservationIds([]);
+  };
   
   return (
     <div className="container mx-auto px-4 py-8">
@@ -59,6 +78,14 @@ export function PassengerTransferPage() {
       <ReservationSelectionModal 
         isOpen={isDialogOpen} 
         onClose={() => setIsDialogOpen(false)} 
+      />
+      
+      {/* Modal de selección de empresa */}
+      <CompanySelectionModal
+        isOpen={showCompanySelection}
+        onClose={() => setShowCompanySelection(false)}
+        selectedReservationIds={selectedReservationIds}
+        onCompanySelected={handleCompanySelected}
       />
     </div>
   );
@@ -282,7 +309,8 @@ function ReservationSelectionModal({ isOpen, onClose }: ReservationSelectionModa
               
               console.log("Reservaciones seleccionadas:", selectedIds);
               
-              // Abrir el modal de selección de empresa
+              // Guardar IDs seleccionadas y abrir el modal de selección de empresa
+              setSelectedReservationIds(selectedIds);
               setShowCompanySelection(true);
             }}
           >
