@@ -5623,4 +5623,180 @@ function setupPackageRoutes(app: Express) {
       return res.status(500).json({ message: 'Error al obtener lista de empresas' });
     }
   });
+  
+  // Ruta para obtener viajes disponibles para programar reservaciones transferidas
+  app.get(apiRouter('/trips/available'), async (req, res) => {
+    try {
+      const { 
+        originState, 
+        originCity, 
+        destinationState, 
+        destinationCity,
+        futureOnly,
+        withAvailableSeats
+      } = req.query as { 
+        originState?: string; 
+        originCity?: string; 
+        destinationState?: string; 
+        destinationCity?: string;
+        futureOnly?: 'true' | 'false';
+        withAvailableSeats?: 'true' | 'false';
+      };
+      
+      // Verificar autenticación
+      if (!req.session?.user?.id) {
+        return res.status(401).json({ message: 'No autenticado' });
+      }
+      
+      // Verificar que todos los parámetros necesarios estén presentes
+      if (!originState || !originCity || !destinationState || !destinationCity) {
+        return res.status(400).json({ 
+          message: 'Se requiere información completa de origen y destino para buscar viajes disponibles' 
+        });
+      }
+      
+      console.log(`[/trips/available] Buscando viajes disponibles para: ${originCity}, ${originState} → ${destinationCity}, ${destinationState}`);
+      
+      // Obtener todos los viajes
+      let allTrips = await storage.getTrips();
+      
+      // Obtener rutas para enriquecer los datos de viajes
+      const routes = await storage.getRoutes();
+      const routesMap = new Map();
+      routes.forEach(route => routesMap.set(route.id, route));
+      
+      // Filtrar viajes que coincidan con los criterios geográficos
+      let filteredTrips = allTrips.filter(trip => {
+        // Obtener información de la ruta
+        const route = routesMap.get(trip.routeId);
+        if (!route) return false;
+        
+        // Verificar si la ruta contiene la información geográfica solicitada
+        const hasOriginData = 
+          route.originState === originState && 
+          route.originCity === originCity;
+          
+        const hasDestinationData = 
+          route.destinationState === destinationState && 
+          route.destinationCity === destinationCity;
+        
+        // Solo incluir viajes donde tanto origen como destino coinciden
+        return hasOriginData && hasDestinationData;
+      });
+      
+      // Aplicar filtro de viajes futuros si se solicita
+      if (futureOnly === 'true') {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        filteredTrips = filteredTrips.filter(trip => {
+          const tripDate = new Date(trip.departureDate);
+          return tripDate >= today;
+        });
+      }
+      
+      // Aplicar filtro de asientos disponibles si se solicita
+      if (withAvailableSeats === 'true') {
+        filteredTrips = filteredTrips.filter(trip => trip.availableSeats > 0);
+      }
+      
+      // Enriquecer datos de viajes con información de ruta
+      const enrichedTrips = filteredTrips.map(trip => {
+        const route = routesMap.get(trip.routeId);
+        return {
+          ...trip,
+          route: {
+            ...route,
+          }
+        };
+      });
+      
+      // Ordenar por fecha de salida (más cercana primero)
+      enrichedTrips.sort((a, b) => {
+        const dateA = new Date(a.departureDate);
+        const dateB = new Date(b.departureDate);
+        return dateA.getTime() - dateB.getTime();
+      });
+      
+      console.log(`[/trips/available] Encontrados ${enrichedTrips.length} viajes disponibles`);
+      
+      return res.json(enrichedTrips);
+    } catch (error) {
+      console.error(`[/trips/available] Error:`, error);
+      return res.status(500).json({ message: 'Error al obtener viajes disponibles' });
+    }
+  });
+  
+  // Ruta para programar reservaciones en un viaje específico
+  app.post(apiRouter('/reservations/schedule'), async (req, res) => {
+    try {
+      // Verificar autenticación
+      if (!req.session?.user?.id) {
+        return res.status(401).json({ message: 'No autenticado' });
+      }
+      
+      const { reservationIds, tripId } = req.body;
+      
+      if (!reservationIds || !Array.isArray(reservationIds) || !tripId) {
+        return res.status(400).json({ message: 'Información incompleta' });
+      }
+      
+      // Verificar que el tripId exista
+      const trip = await storage.getTripById(tripId);
+      if (!trip) {
+        return res.status(404).json({ message: 'Viaje no encontrado' });
+      }
+      
+      // Verificar que haya suficientes asientos disponibles
+      if (trip.availableSeats < reservationIds.length) {
+        return res.status(400).json({ 
+          message: `No hay suficientes asientos disponibles. Asientos necesarios: ${reservationIds.length}, Asientos disponibles: ${trip.availableSeats}` 
+        });
+      }
+      
+      // Verificar acceso a las reservaciones
+      const userId = req.session.user.id;
+      const processedReservations = [];
+      
+      for (const reservationId of reservationIds) {
+        // Verificar que la reservación exista
+        const reservation = await storage.getReservationById(reservationId);
+        if (!reservation) {
+          continue; // Ignorar reservaciones que no existen
+        }
+        
+        // Verificar permisos para modificar esta reservación
+        const hasPermission = await storage.checkReservationTransferPermission(reservationId, userId);
+        if (!hasPermission) {
+          continue; // Ignorar reservaciones sin permiso
+        }
+        
+        // Actualizar la reservación para asignarla al nuevo viaje
+        const updatedReservation = await storage.updateReservation(reservationId, {
+          tripId: tripId,
+          status: 'confirmado' // Marcar como confirmada en el nuevo viaje
+        });
+        
+        if (updatedReservation) {
+          processedReservations.push(updatedReservation);
+        }
+      }
+      
+      // Actualizar asientos disponibles en el viaje
+      if (processedReservations.length > 0) {
+        await storage.updateTrip(tripId, {
+          availableSeats: trip.availableSeats - processedReservations.length
+        });
+      }
+      
+      return res.json({
+        success: true,
+        count: processedReservations.length,
+        message: `${processedReservations.length} reservaciones programadas exitosamente en el viaje seleccionado`
+      });
+    } catch (error) {
+      console.error(`[/reservations/schedule] Error:`, error);
+      return res.status(500).json({ message: 'Error al programar reservaciones' });
+    }
+  });
 }
