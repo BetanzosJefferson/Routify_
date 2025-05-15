@@ -29,6 +29,7 @@ interface Notification {
   type: string;
   userId: number;
   relatedId: number | null;
+  metaData?: string; // Datos adicionales en formato JSON
   read: boolean;
   createdAt: string;
   updatedAt: string;
@@ -191,6 +192,8 @@ interface NotificationItemProps {
 }
 
 function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps) {
+  const [, setLocation] = useLocation();
+  
   // Formatear tiempo
   const timeAgo = formatDistance(new Date(notification.createdAt), new Date(), {
     addSuffix: true,
@@ -207,6 +210,7 @@ function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps)
       reservation_approved: { bg: "bg-green-100", text: "text-green-600" },
       reservation_rejected: { bg: "bg-red-100", text: "text-red-600" },
       reservation_request: { bg: "bg-blue-100", text: "text-blue-600" },
+      transfer: { bg: "bg-purple-100", text: "text-purple-600" }, // Agregar tipo de transferencia
     };
     
     // Determinar colores basados en el tipo
@@ -222,10 +226,27 @@ function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps)
     );
   };
   
+  // Manejar el clic en la notificación
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Si es una notificación de transferencia, navegar a la página de notificaciones con el ID
+    if (notification.type === 'transfer') {
+      setLocation(`/notifications?transferId=${notification.id}`);
+    }
+    
+    // Si no está leída, marcarla como leída
+    if (!notification.read) {
+      onMarkAsRead();
+    }
+  };
+  
   return (
     <DropdownMenuItem 
-      className={`flex items-start gap-3 px-4 py-3 cursor-default ${notification.read ? 'opacity-70' : 'bg-primary/5'}`}
+      className={`flex items-start gap-3 px-4 py-3 ${notification.type === 'transfer' ? 'cursor-pointer' : 'cursor-default'} ${notification.read ? 'opacity-70' : 'bg-primary/5'}`}
       onSelect={(e) => e.preventDefault()}
+      onClick={notification.type === 'transfer' ? handleClick : undefined}
     >
       {getAvatar()}
       <div className="flex-1 space-y-1">
@@ -241,20 +262,33 @@ function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps)
           <span className="text-xs text-muted-foreground">{timeAgo}</span>
         </div>
         <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
-        {!notification.read && (
-          <Button 
-            variant="link" 
-            size="sm" 
-            className="h-auto p-0 text-xs text-primary"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onMarkAsRead();
-            }}
-          >
-            Marcar como leída
-          </Button>
-        )}
+        <div className="flex justify-between items-center">
+          {!notification.read && (
+            <Button 
+              variant="link" 
+              size="sm" 
+              className="h-auto p-0 text-xs text-primary"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onMarkAsRead();
+              }}
+            >
+              Marcar como leída
+            </Button>
+          )}
+          
+          {notification.type === 'transfer' && (
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto p-0 text-xs text-purple-600 ml-auto"
+              onClick={handleClick}
+            >
+              Ver detalles
+            </Button>
+          )}
+        </div>
       </div>
     </DropdownMenuItem>
   );
