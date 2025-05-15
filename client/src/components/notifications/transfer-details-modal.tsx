@@ -171,51 +171,145 @@ const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
               {reservationsData.map((reservation: any) => (
                 <div 
                   key={reservation.id} 
-                  className="border rounded-md p-3 hover:bg-accent/10 transition-colors"
+                  className="border rounded-md p-4 hover:bg-accent/10 transition-colors"
                 >
-                  <div className="flex justify-between items-start mb-2">
+                  {/* Encabezado */}
+                  <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h4 className="font-medium text-sm">
+                      <h4 className="font-medium text-base">
                         Reservación #{reservation.id}
                       </h4>
-                      <p className="text-sm text-muted-foreground">
+                      <div className="text-sm text-muted-foreground mt-1">
                         {reservation.trip?.route?.origin} → {reservation.trip?.route?.destination}
-                      </p>
+                      </div>
                     </div>
                     <Badge variant={
-                      reservation.status === 'confirmado' ? 'default' :
+                      reservation.status === 'confirmado' || reservation.status === 'confirmed' ? 'default' :
                       reservation.status === 'pendiente' ? 'outline' :
                       reservation.status === 'cancelado' ? 'destructive' : 'secondary'
-                    }>
+                    } className="ml-2">
                       {reservation.status}
                     </Badge>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-2 text-xs mb-2">
-                    <div>
-                      <span className="text-muted-foreground">Fecha:</span>{' '}
-                      {reservation.trip?.departureDate && (
+                  {/* Información de la reservación */}
+                  <div className="bg-muted/30 rounded-md p-3 mb-3">
+                    <h5 className="text-sm font-medium mb-2">Información de la reservación</h5>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-muted-foreground">ID:</span>{' '}
+                        <span className="font-medium">{reservation.id}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Precio:</span>{' '}
+                        <span className="font-medium">${reservation.totalAmount}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Estado de pago:</span>{' '}
+                        <span className="font-medium">{reservation.paymentStatus || 'No definido'}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Método de pago:</span>{' '}
+                        <span className="font-medium">{reservation.paymentMethod || 'No definido'}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Email:</span>{' '}
+                        <span className="font-medium">{reservation.email}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Teléfono:</span>{' '}
+                        <span className="font-medium">{reservation.phone}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Creada:</span>{' '}
                         <span>
-                          {format(new Date(reservation.trip.departureDate), "dd MMM yyyy", { locale: es })}
+                          {reservation.createdAt && 
+                            format(new Date(reservation.createdAt), "dd MMM yyyy HH:mm", { locale: es })}
                         </span>
-                      )}
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Hora:</span>{' '}
-                      <span>{reservation.trip?.departureTime}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Actualizada:</span>{' '}
+                        <span>
+                          {reservation.updatedAt && 
+                            format(new Date(reservation.updatedAt), "dd MMM yyyy HH:mm", { locale: es })}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   
-                  <Separator className="my-2" />
-                  
-                  <h5 className="text-xs font-medium mb-1">Pasajeros</h5>
-                  <div className="space-y-1">
-                    {reservation.passengers?.map((passenger: any) => (
-                      <div key={passenger.id} className="text-xs flex items-center">
-                        <span className="h-1.5 w-1.5 rounded-full bg-primary mr-1.5"></span>
-                        <span>{passenger.firstName} {passenger.lastName}</span>
+                  {/* Información del viaje */}
+                  <div className="bg-muted/30 rounded-md p-3 mb-3">
+                    <h5 className="text-sm font-medium mb-2">Información del viaje (ID: {reservation.trip?.id})</h5>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-muted-foreground">Fecha:</span>{' '}
+                        {reservation.trip?.departureDate && (
+                          <span className="font-medium">
+                            {format(new Date(reservation.trip.departureDate), "dd MMM yyyy", { locale: es })}
+                          </span>
+                        )}
                       </div>
-                    ))}
+                      <div>
+                        <span className="text-muted-foreground">Hora salida:</span>{' '}
+                        <span className="font-medium">{reservation.trip?.departureTime}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Hora llegada:</span>{' '}
+                        <span className="font-medium">{reservation.trip?.arrivalTime}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Precio:</span>{' '}
+                        <span className="font-medium">${reservation.trip?.price}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Asientos disponibles:</span>{' '}
+                        <span className="font-medium">{reservation.trip?.availableSeats}/{reservation.trip?.capacity}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Ruta ID:</span>{' '}
+                        <span className="font-medium">{reservation.trip?.routeId}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Paradas */}
+                    {reservation.trip?.segmentPrices && reservation.trip.segmentPrices.length > 0 && (
+                      <div className="mt-2">
+                        <div className="text-xs font-medium mb-1">Segmentos del viaje:</div>
+                        <div className="space-y-1 text-xs">
+                          {reservation.trip.segmentPrices.map((segment: any, index: number) => (
+                            <div key={index} className="border-l-2 border-primary/50 pl-2 py-1">
+                              <div className="flex justify-between">
+                                <div className="font-medium">{segment.origin} → {segment.destination}</div>
+                                <div>${segment.price}</div>
+                              </div>
+                              <div className="text-muted-foreground mt-0.5">
+                                {segment.departureTime} - {segment.arrivalTime}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Pasajeros */}
+                  <div className="bg-muted/30 rounded-md p-3">
+                    <h5 className="text-sm font-medium mb-2">Pasajeros</h5>
+                    <div className="space-y-2">
+                      {reservation.passengers?.map((passenger: any) => (
+                        <div key={passenger.id} className="text-xs border-l-2 border-primary pl-2 py-1">
+                          <div className="flex justify-between">
+                            <span className="font-medium">{passenger.firstName} {passenger.lastName}</span>
+                            <span className="text-muted-foreground">ID: {passenger.id}</span>
+                          </div>
+                          {passenger.seatNumber && (
+                            <div className="text-muted-foreground mt-0.5">
+                              Asiento: {passenger.seatNumber}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ))}
