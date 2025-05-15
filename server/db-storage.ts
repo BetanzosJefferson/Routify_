@@ -3784,9 +3784,15 @@ export class DatabaseStorage implements IStorage {
           createdAt: new Date()
         });
       
+      // Construir la URL completa de la invitación
+      const appUrl = process.env.APP_URL || "";
+      const invitationUrl = `${appUrl}/invitacion/${updatedInvitation.token}`;
+      
+      console.log(`[useCompanyInvitation] URL recuperada: ${invitationUrl}`);
+      
       return {
         ...updatedInvitation,
-        url: `${process.env.APP_URL || ""}/invitacion/${updatedInvitation.token}`
+        url: invitationUrl
       };
     } catch (error) {
       console.error(`[useCompanyInvitation] Error al utilizar invitación ID ${id}:`, error);
