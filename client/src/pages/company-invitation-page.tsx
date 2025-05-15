@@ -202,8 +202,8 @@ const CompanyInvitationPage: React.FC = () => {
     );
   }
 
-  // Si el usuario está autenticado pero no tiene el rol correcto
-  if (user && user.role !== 'dueño') {
+  // Si el usuario está autenticado pero no tiene el rol correcto (debe ser Dueño/Owner)
+  if (user && user.role !== 'Dueño') {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
         <Card className="w-full max-w-md">
