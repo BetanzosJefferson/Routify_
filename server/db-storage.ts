@@ -22,7 +22,11 @@ import {
   InsertNotification,
   UserRole,
   Coupon,
-  InsertCoupon
+  InsertCoupon,
+  CompanyPartnership,
+  InsertCompanyPartnership,
+  CompanyInvitation,
+  InsertCompanyInvitation
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db } from "./db";
@@ -3474,6 +3478,337 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error(`[getCompanyById] Error al buscar compañía ID ${companyId}:`, error);
       return null;
+    }
+  }
+
+  // Implementación de métodos de partenariados entre empresas
+  async getCompanyPartnerships(companyId: string): Promise<CompanyPartnership[]> {
+    try {
+      console.log(`[getCompanyPartnerships] Obteniendo partenariados para compañía ID: ${companyId}`);
+      
+      // Realizar la consulta para obtener todos los partenariados activos donde la compañía sea la principal
+      const partnerships = await db
+        .select()
+        .from(schema.companyPartnerships)
+        .leftJoin(
+          schema.companies, 
+          eq(schema.companyPartnerships.partnerCompanyId, schema.companies.identifier)
+        )
+        .where(
+          and(
+            eq(schema.companyPartnerships.companyId, companyId),
+            eq(schema.companyPartnerships.isActive, true)
+          )
+        );
+      
+      // Transformar los resultados a nuestro tipo CompanyPartnership con información de la empresa asociada
+      return partnerships.map(row => ({
+        id: row.company_partnerships.id,
+        companyId: row.company_partnerships.companyId,
+        partnerCompanyId: row.company_partnerships.partnerCompanyId,
+        createdAt: row.company_partnerships.createdAt,
+        isActive: row.company_partnerships.isActive,
+        partnerCompany: {
+          name: row.companies?.name || '',
+          identifier: row.companies?.identifier || '',
+          logo: row.companies?.logo || undefined
+        }
+      }));
+    } catch (error) {
+      console.error(`[getCompanyPartnerships] Error al obtener partenariados:`, error);
+      return [];
+    }
+  }
+
+  async getCompanyPartnership(id: number): Promise<CompanyPartnership | undefined> {
+    try {
+      // Obtener el partenariado específico por ID
+      const [partnership] = await db
+        .select()
+        .from(schema.companyPartnerships)
+        .leftJoin(
+          schema.companies, 
+          eq(schema.companyPartnerships.partnerCompanyId, schema.companies.identifier)
+        )
+        .where(eq(schema.companyPartnerships.id, id));
+      
+      if (!partnership) {
+        return undefined;
+      }
+      
+      return {
+        id: partnership.company_partnerships.id,
+        companyId: partnership.company_partnerships.companyId,
+        partnerCompanyId: partnership.company_partnerships.partnerCompanyId,
+        createdAt: partnership.company_partnerships.createdAt,
+        isActive: partnership.company_partnerships.isActive,
+        partnerCompany: {
+          name: partnership.companies?.name || '',
+          identifier: partnership.companies?.identifier || '',
+          logo: partnership.companies?.logo || undefined
+        }
+      };
+    } catch (error) {
+      console.error(`[getCompanyPartnership] Error al obtener partenariado ID ${id}:`, error);
+      return undefined;
+    }
+  }
+
+  async createCompanyPartnership(partnership: InsertCompanyPartnership): Promise<CompanyPartnership> {
+    try {
+      console.log(`[createCompanyPartnership] Creando nuevo partenariado: ${JSON.stringify(partnership)}`);
+      
+      // Insertar el nuevo partenariado en la base de datos
+      const [newPartnership] = await db
+        .insert(schema.companyPartnerships)
+        .values(partnership)
+        .returning();
+      
+      // Obtener información de la empresa asociada
+      const [partnerCompany] = await db
+        .select()
+        .from(schema.companies)
+        .where(eq(schema.companies.identifier, newPartnership.partnerCompanyId));
+      
+      return {
+        ...newPartnership,
+        partnerCompany: {
+          name: partnerCompany?.name || '',
+          identifier: partnerCompany?.identifier || '',
+          logo: partnerCompany?.logo || undefined
+        }
+      };
+    } catch (error) {
+      console.error(`[createCompanyPartnership] Error al crear partenariado:`, error);
+      throw new Error(`Error al crear partenariado: ${error}`);
+    }
+  }
+
+  async updateCompanyPartnership(id: number, partnershipData: Partial<CompanyPartnership>): Promise<CompanyPartnership | undefined> {
+    try {
+      console.log(`[updateCompanyPartnership] Actualizando partenariado ID ${id}: ${JSON.stringify(partnershipData)}`);
+      
+      // Actualizar el partenariado existente
+      const [updatedPartnership] = await db
+        .update(schema.companyPartnerships)
+        .set(partnershipData)
+        .where(eq(schema.companyPartnerships.id, id))
+        .returning();
+      
+      if (!updatedPartnership) {
+        return undefined;
+      }
+      
+      // Obtener información de la empresa asociada
+      const [partnerCompany] = await db
+        .select()
+        .from(schema.companies)
+        .where(eq(schema.companies.identifier, updatedPartnership.partnerCompanyId));
+      
+      return {
+        ...updatedPartnership,
+        partnerCompany: {
+          name: partnerCompany?.name || '',
+          identifier: partnerCompany?.identifier || '',
+          logo: partnerCompany?.logo || undefined
+        }
+      };
+    } catch (error) {
+      console.error(`[updateCompanyPartnership] Error al actualizar partenariado ID ${id}:`, error);
+      return undefined;
+    }
+  }
+
+  async deleteCompanyPartnership(id: number): Promise<boolean> {
+    try {
+      console.log(`[deleteCompanyPartnership] Eliminando partenariado ID ${id}`);
+      
+      // Eliminar el partenariado de la base de datos (eliminación lógica)
+      await db
+        .update(schema.companyPartnerships)
+        .set({ isActive: false })
+        .where(eq(schema.companyPartnerships.id, id));
+      
+      return true;
+    } catch (error) {
+      console.error(`[deleteCompanyPartnership] Error al eliminar partenariado ID ${id}:`, error);
+      return false;
+    }
+  }
+
+  // Implementación de métodos de invitaciones entre empresas
+  async getCompanyInvitations(companyId: string): Promise<CompanyInvitation[]> {
+    try {
+      console.log(`[getCompanyInvitations] Obteniendo invitaciones para compañía ID: ${companyId}`);
+      
+      // Obtener todas las invitaciones activas de la compañía
+      const invitations = await db
+        .select()
+        .from(schema.companyInvitations)
+        .where(eq(schema.companyInvitations.companyId, companyId));
+      
+      // Añadir la URL completa para compartir a cada invitación
+      return invitations.map(invitation => ({
+        ...invitation,
+        url: `${process.env.APP_URL || ""}/invitacion/${invitation.token}` // URL para compartir
+      }));
+    } catch (error) {
+      console.error(`[getCompanyInvitations] Error al obtener invitaciones:`, error);
+      return [];
+    }
+  }
+
+  async getCompanyInvitation(id: number): Promise<CompanyInvitation | undefined> {
+    try {
+      const [invitation] = await db
+        .select()
+        .from(schema.companyInvitations)
+        .where(eq(schema.companyInvitations.id, id));
+      
+      if (!invitation) {
+        return undefined;
+      }
+      
+      return {
+        ...invitation,
+        url: `${process.env.APP_URL || ""}/invitacion/${invitation.token}`
+      };
+    } catch (error) {
+      console.error(`[getCompanyInvitation] Error al obtener invitación ID ${id}:`, error);
+      return undefined;
+    }
+  }
+
+  async getCompanyInvitationByToken(token: string): Promise<CompanyInvitation | undefined> {
+    try {
+      const [invitation] = await db
+        .select()
+        .from(schema.companyInvitations)
+        .where(eq(schema.companyInvitations.token, token));
+      
+      if (!invitation) {
+        return undefined;
+      }
+      
+      return {
+        ...invitation,
+        url: `${process.env.APP_URL || ""}/invitacion/${invitation.token}`
+      };
+    } catch (error) {
+      console.error(`[getCompanyInvitationByToken] Error al obtener invitación con token ${token}:`, error);
+      return undefined;
+    }
+  }
+
+  async createCompanyInvitation(invitation: InsertCompanyInvitation): Promise<CompanyInvitation> {
+    try {
+      console.log(`[createCompanyInvitation] Creando nueva invitación: ${JSON.stringify(invitation)}`);
+      
+      // Insertar la nueva invitación en la base de datos
+      const [newInvitation] = await db
+        .insert(schema.companyInvitations)
+        .values(invitation)
+        .returning();
+      
+      return {
+        ...newInvitation,
+        url: `${process.env.APP_URL || ""}/invitacion/${newInvitation.token}`
+      };
+    } catch (error) {
+      console.error(`[createCompanyInvitation] Error al crear invitación:`, error);
+      throw new Error(`Error al crear invitación: ${error}`);
+    }
+  }
+
+  async useCompanyInvitation(id: number, usedBy: string): Promise<CompanyInvitation | undefined> {
+    try {
+      console.log(`[useCompanyInvitation] Utilizando invitación ID ${id} por compañía ${usedBy}`);
+      
+      // Marcar la invitación como utilizada
+      const [updatedInvitation] = await db
+        .update(schema.companyInvitations)
+        .set({ 
+          isUsed: true,
+          usedBy: usedBy,
+          usedAt: new Date()
+        })
+        .where(eq(schema.companyInvitations.id, id))
+        .returning();
+      
+      if (!updatedInvitation) {
+        return undefined;
+      }
+      
+      // También crear el partenariado entre ambas empresas
+      await db
+        .insert(schema.companyPartnerships)
+        .values({
+          companyId: updatedInvitation.companyId,
+          partnerCompanyId: usedBy,
+          isActive: true,
+          createdAt: new Date()
+        });
+      
+      // Crear también el partenariado inverso (bidireccional)
+      await db
+        .insert(schema.companyPartnerships)
+        .values({
+          companyId: usedBy,
+          partnerCompanyId: updatedInvitation.companyId,
+          isActive: true,
+          createdAt: new Date()
+        });
+      
+      return {
+        ...updatedInvitation,
+        url: `${process.env.APP_URL || ""}/invitacion/${updatedInvitation.token}`
+      };
+    } catch (error) {
+      console.error(`[useCompanyInvitation] Error al utilizar invitación ID ${id}:`, error);
+      return undefined;
+    }
+  }
+
+  async deleteCompanyInvitation(id: number): Promise<boolean> {
+    try {
+      console.log(`[deleteCompanyInvitation] Eliminando invitación ID ${id}`);
+      
+      await db
+        .delete(schema.companyInvitations)
+        .where(eq(schema.companyInvitations.id, id));
+      
+      return true;
+    } catch (error) {
+      console.error(`[deleteCompanyInvitation] Error al eliminar invitación ID ${id}:`, error);
+      return false;
+    }
+  }
+
+  // Implementación del método de transferencia de reservaciones
+  async transferReservations(reservationIds: number[], fromCompanyId: string, toCompanyId: string): Promise<boolean> {
+    try {
+      console.log(`[transferReservations] Transfiriendo reservaciones de ${fromCompanyId} a ${toCompanyId}`);
+      
+      // Actualizar las reservaciones seleccionadas cambiando su companyId
+      await db
+        .update(schema.reservations)
+        .set({ 
+          companyId: toCompanyId, 
+          updatedAt: new Date(),
+          transferredAt: new Date(),
+          transferredFrom: fromCompanyId
+        })
+        .where(
+          and(
+            inArray(schema.reservations.id, reservationIds),
+            eq(schema.reservations.companyId, fromCompanyId)
+          )
+        );
+      
+      return true;
+    } catch (error) {
+      console.error(`[transferReservations] Error al transferir reservaciones:`, error);
+      return false;
     }
   }
 }
