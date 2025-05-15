@@ -707,11 +707,10 @@ export type ReservationRequest = typeof reservationRequests.$inferSelect;
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(), // Usuario al que va dirigida la notificación
-  type: text("type").notNull(), // tipo: 'reservation_request', 'payment', 'transfer', etc.
+  type: text("type").notNull(), // tipo: 'reservation_request', 'payment', etc.
   title: text("title").notNull(),
   message: text("message").notNull(),
   relatedId: integer("related_id"), // ID del objeto relacionado (ej: id de solicitud)
-  data: json("data"), // Datos adicionales en formato JSON para tipos específicos de notificaciones
   read: boolean("read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
