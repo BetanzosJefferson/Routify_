@@ -112,7 +112,7 @@ export default function VerifyCompanyLinkPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Alert variant="warning" className="mb-4">
+            <Alert className="bg-yellow-50 border-yellow-200 mb-4">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Atención</AlertTitle>
               <AlertDescription>
@@ -191,7 +191,7 @@ export default function VerifyCompanyLinkPage() {
               <div className="flex justify-center mb-6">
                 <AlertTriangle className="h-16 w-16 text-yellow-500" />
               </div>
-              <Alert variant="warning" className="mb-6">
+              <Alert className="bg-yellow-50 border-yellow-200 mb-6">
                 <AlertTitle>Enlace expirado</AlertTitle>
                 <AlertDescription>
                   Este enlace ha expirado. Por favor, solicita un nuevo enlace a la empresa remitente.
