@@ -18,7 +18,8 @@ import {
   UsersIcon,
   BellIcon,
   FileTextIcon,
-  TagIcon
+  TagIcon,
+  ArrowRightLeftIcon
 } from "lucide-react";
 
 interface SidebarProps {
@@ -149,7 +150,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           )}
           
           {/* Sección de Reservaciones y Reportes */}
-          {(canAccess("reservations") || canAccess("trip-summary") || canAccess("boarding-list")) && (
+          {(canAccess("reservations") || canAccess("trip-summary") || canAccess("boarding-list") || canAccess("passenger-transfer")) && (
             <NavSection title="Reservaciones y Reportes">
               {canAccess("reservations") && (
                 <NavItem 
@@ -185,6 +186,15 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   onClick={() => handleTabClick("boarding-list")}
                 >
                   Lista de Abordaje
+                </NavItem>
+              )}
+              {canAccess("passenger-transfer") && (
+                <NavItem 
+                  icon={<ArrowRightLeftIcon className="h-5 w-5" />} 
+                  active={(location === '/' || location === '/dashboard') && activeTab === "passenger-transfer"}
+                  onClick={() => handleTabClick("passenger-transfer")}
+                >
+                  Transferencia de Pasajeros
                 </NavItem>
               )}
             </NavSection>
