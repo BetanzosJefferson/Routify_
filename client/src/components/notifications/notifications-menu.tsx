@@ -20,7 +20,6 @@ import { NotificationBadge } from "@/components/notifications/notification-badge
 import { CheckCircle, BellIcon, BellOff, ExternalLink } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { TransferDetailsModal } from "@/components/transfer/transfer-details-modal";
 
 // Interfaz para el tipo de notificación
 interface Notification {
@@ -30,13 +29,6 @@ interface Notification {
   type: string;
   userId: number;
   relatedId: number | null;
-  data?: {
-    transferId?: number;
-    reservationIds?: number[];
-    sourceCompanyId?: string;
-    targetCompanyId?: string;
-    timestamp?: string;
-  };
   read: boolean;
   createdAt: string;
   updatedAt: string;
@@ -199,8 +191,6 @@ interface NotificationItemProps {
 }
 
 function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps) {
-  const [showTransferModal, setShowTransferModal] = useState(false);
-  
   // Formatear tiempo
   const timeAgo = formatDistance(new Date(notification.createdAt), new Date(), {
     addSuffix: true,
@@ -217,7 +207,6 @@ function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps)
       reservation_approved: { bg: "bg-green-100", text: "text-green-600" },
       reservation_rejected: { bg: "bg-red-100", text: "text-red-600" },
       reservation_request: { bg: "bg-blue-100", text: "text-blue-600" },
-      transfer: { bg: "bg-purple-100", text: "text-purple-600" },
     };
     
     // Determinar colores basados en el tipo
@@ -232,71 +221,41 @@ function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps)
       </Avatar>
     );
   };
-
-  // Manejar el clic en la notificación
-  const handleNotificationClick = () => {
-    // Solo muestra el modal si es una notificación de tipo transfer
-    if (notification.type === 'transfer') {
-      setShowTransferModal(true);
-      // Marcar como leída automáticamente
-      if (!notification.read) {
-        onMarkAsRead();
-      }
-    }
-  };
   
   return (
-    <>
-      <DropdownMenuItem 
-        className={`flex items-start gap-3 px-4 py-3 cursor-default ${notification.read ? 'opacity-70' : 'bg-primary/5'} 
-          ${notification.type === 'transfer' ? 'hover:bg-purple-50 cursor-pointer' : ''}`}
-        onSelect={(e) => {
-          e.preventDefault();
-          if (notification.type === 'transfer') {
-            handleNotificationClick();
-          }
-        }}
-      >
-        {getAvatar()}
-        <div className="flex-1 space-y-1">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">
-              {notification.title}
-              {!notification.read && (
-                <Badge variant="outline" className="ml-2 bg-primary text-white text-[10px] py-0 h-4">
-                  Nueva
-                </Badge>
-              )}
-            </p>
-            <span className="text-xs text-muted-foreground">{timeAgo}</span>
-          </div>
-          <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
-          {!notification.read && (
-            <Button 
-              variant="link" 
-              size="sm" 
-              className="h-auto p-0 text-xs text-primary"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onMarkAsRead();
-              }}
-            >
-              Marcar como leída
-            </Button>
-          )}
+    <DropdownMenuItem 
+      className={`flex items-start gap-3 px-4 py-3 cursor-default ${notification.read ? 'opacity-70' : 'bg-primary/5'}`}
+      onSelect={(e) => e.preventDefault()}
+    >
+      {getAvatar()}
+      <div className="flex-1 space-y-1">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium">
+            {notification.title}
+            {!notification.read && (
+              <Badge variant="outline" className="ml-2 bg-primary text-white text-[10px] py-0 h-4">
+                Nueva
+              </Badge>
+            )}
+          </p>
+          <span className="text-xs text-muted-foreground">{timeAgo}</span>
         </div>
-      </DropdownMenuItem>
-      
-      {/* Modal de detalles de transferencia */}
-      {notification.type === 'transfer' && (
-        <TransferDetailsModal
-          open={showTransferModal}
-          onClose={() => setShowTransferModal(false)}
-          notificationId={notification.id}
-          transferData={notification.data}
-        />
-      )}
-    </>
+        <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
+        {!notification.read && (
+          <Button 
+            variant="link" 
+            size="sm" 
+            className="h-auto p-0 text-xs text-primary"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onMarkAsRead();
+            }}
+          >
+            Marcar como leída
+          </Button>
+        )}
+      </div>
+    </DropdownMenuItem>
   );
 }

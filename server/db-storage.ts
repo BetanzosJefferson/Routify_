@@ -2891,21 +2891,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getNotificationById(id: number): Promise<Notification | undefined> {
-    try {
-      const notification = await db
-        .select()
-        .from(schema.notifications)
-        .where(eq(schema.notifications.id, id))
-        .limit(1);
-      
-      return notification[0];
-    } catch (error) {
-      console.error(`Error al obtener notificación con ID ${id}:`, error);
-      return undefined;
-    }
-  }
-  
   async markNotificationAsRead(id: number): Promise<Notification> {
     try {
       const [updatedNotification] = await db
