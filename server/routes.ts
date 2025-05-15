@@ -3284,8 +3284,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
+  // Función para obtener usuarios por empresa y roles
+  const getUsersByCompanyAndRoles = async (companyId: string, roles: string[]): Promise<any[]> => {
+    try {
+      const users = await storage.getAllUsers();
+      const filteredUsers = users.filter(user => 
+        user.companyId === companyId && 
+        roles.includes(user.role)
+      );
+      console.log(`[getUsersByCompanyAndRoles] Encontrados ${filteredUsers.length} usuarios para la empresa ${companyId} con roles ${roles.join(', ')}`);
+      return filteredUsers;
+    } catch (error) {
+      console.error('[getUsersByCompanyAndRoles] Error al obtener usuarios:', error);
+      return [];
+    }
+  };
+  
   // Función para enviar notificaciones a través de WebSocket
   const sendNotificationToUsers = (userIds: number[], notification: any) => {
+    console.log(`[WebSocket] Intentando enviar notificación a ${userIds.length} usuarios: ${userIds.join(', ')}`);
+    
     for (const userId of userIds) {
       const userIdStr = userId.toString();
       const client = clients.get(userIdStr);
@@ -3297,7 +3315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }));
         console.log(`[WebSocket] Notificación enviada al usuario ${userIdStr}`);
       } else {
-        console.log(`[WebSocket] Usuario ${userIdStr} no conectado o conexión no abierta`);
+        console.log(`[WebSocket] Usuario ${userIdStr} no conectado o conexión no abierta. Estado: ${client ? client.readyState : 'No conectado'}`);
       }
     }
   };
