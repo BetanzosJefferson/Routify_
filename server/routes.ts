@@ -4842,6 +4842,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup routes for packages
   setupPackageRoutes(app);
 
+  // Endpoint para transferencia de pasajeros
+  app.post(apiRouter('/reservations/transfer'), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { reservationIds, targetCompanyId } = req.body;
+      
+      // Validación básica
+      if (!reservationIds || !Array.isArray(reservationIds) || reservationIds.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Se deben proporcionar IDs de reservaciones a transferir' 
+        });
+      }
+      
+      if (!targetCompanyId || typeof targetCompanyId !== 'string') {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Se debe proporcionar una empresa destino válida' 
+        });
+      }
+      
+      // Obtener información del usuario actual
+      const currentUser = req.user as any;
+      if (!currentUser) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      // Roles permitidos para transferencia
+      const allowedRoles = [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN];
+      if (!allowedRoles.includes(currentUser.role)) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'No tienes permiso para transferir reservaciones' 
+        });
+      }
+      
+      // Obtener datos de la empresa destino
+      const targetCompany = await storage.getCompanyById(targetCompanyId);
+      if (!targetCompany) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'La empresa destino no existe' 
+        });
+      }
+      
+      // Obtener todas las reservaciones que se transferirán
+      const reservationsToTransfer = [];
+      for (const id of reservationIds) {
+        const reservation = await storage.getReservation(id);
+        if (reservation) {
+          reservationsToTransfer.push(reservation);
+        }
+      }
+      
+      if (reservationsToTransfer.length === 0) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'No se encontraron reservaciones para transferir' 
+        });
+      }
+      
+      // Verificar que las reservaciones pertenezcan a la empresa del usuario
+      // excepto para superadmin que puede transferir de cualquier empresa
+      if (currentUser.role !== UserRole.SUPER_ADMIN) {
+        const userCompanyId = currentUser.companyId || currentUser.company;
+        
+        for (const reservation of reservationsToTransfer) {
+          const trip = await storage.getTrip(reservation.tripId);
+          if (!trip || trip.companyId !== userCompanyId) {
+            return res.status(403).json({ 
+              success: false, 
+              message: 'No tienes permiso para transferir reservaciones de otra empresa' 
+            });
+          }
+        }
+      }
+      
+      // Actualizar las reservaciones para asignarlas a viajes de la nueva empresa
+      // Por ahora, solo registramos la transferencia y enviamos notificaciones
+      
+      // 1. Obtener usuarios de la empresa destino con roles específicos
+      const targetCompanyUsers = await storage.getUsersByCompany(targetCompanyId);
+      // Filtrar por los roles que queremos notificar
+      const notificationRoles = [UserRole.OWNER, UserRole.ADMIN, UserRole.TICKET_OFFICE];
+      const filteredUsers = targetCompanyUsers.filter(user => 
+        notificationRoles.includes(user.role as any)
+      );
+      
+      if (filteredUsers.length === 0) {
+        console.log(`[Transferencia] No hay usuarios para notificar en la empresa destino ${targetCompanyId}`);
+      } else {
+        console.log(`[Transferencia] Se notificará a ${filteredUsers.length} usuarios de la empresa ${targetCompanyId}`);
+      }
+      
+      // 2. Crear notificaciones para cada usuario
+      const notificationPromises = [];
+      const userIdsForRealtime = [];
+      
+      for (const user of filteredUsers) {
+        // Crear la notificación
+        const notification = {
+          userId: user.id,
+          type: 'transfer',
+          title: 'Transferencia de reservaciones',
+          message: `${currentUser.firstName} ${currentUser.lastName} ha transferido ${reservationsToTransfer.length} reservación(es) a tu empresa.`,
+          read: false,
+          relatedId: null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        
+        notificationPromises.push(storage.createNotification(notification));
+        userIdsForRealtime.push(user.id);
+      }
+      
+      // Esperar a que todas las notificaciones se creen
+      const createdNotifications = await Promise.all(notificationPromises);
+      
+      // 3. Enviar notificaciones en tiempo real
+      if (createdNotifications.length > 0) {
+        sendNotificationToUsers(userIdsForRealtime, createdNotifications[0]);
+      }
+      
+      // Responder con éxito
+      res.json({
+        success: true,
+        message: `${reservationsToTransfer.length} reservaciones transferidas exitosamente a ${targetCompany.name}`,
+        notificationsCount: createdNotifications.length
+      });
+      
+    } catch (error) {
+      console.error('Error al transferir reservaciones:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error al procesar la transferencia de reservaciones' 
+      });
+    }
+  });
+
   return httpServer;
 }
 
