@@ -5821,8 +5821,14 @@ function setupPackageRoutes(app: Express) {
         return res.status(400).json({ message: 'Información incompleta' });
       }
       
+      // Asegurarse de que tripId sea un número
+      const tripIdNumber = parseInt(tripId.toString(), 10);
+      if (isNaN(tripIdNumber)) {
+        return res.status(400).json({ message: 'ID de viaje inválido' });
+      }
+      
       // Verificar que el tripId exista
-      const trip = await storage.getTripById(tripId);
+      const trip = await storage.getTripById(tripIdNumber);
       if (!trip) {
         return res.status(404).json({ message: 'Viaje no encontrado' });
       }
@@ -5839,15 +5845,24 @@ function setupPackageRoutes(app: Express) {
       const processedReservations = [];
       
       for (const reservationId of reservationIds) {
+        // Verificar formato del ID
+        const reservationIdNumber = parseInt(reservationId.toString(), 10);
+        if (isNaN(reservationIdNumber)) {
+          console.error(`[/reservations/schedule] ID de reservación inválido: ${reservationId}`);
+          continue; // Ignorar IDs no válidos
+        }
+        
         // Verificar que la reservación exista
-        const reservation = await storage.getReservationById(reservationId);
+        const reservation = await storage.getReservationById(reservationIdNumber);
         if (!reservation) {
+          console.error(`[/reservations/schedule] Reservación no encontrada: ${reservationIdNumber}`);
           continue; // Ignorar reservaciones que no existen
         }
         
         // Verificar permisos para modificar esta reservación
-        const hasPermission = await storage.checkReservationTransferPermission(reservationId, userId);
+        const hasPermission = await storage.checkReservationTransferPermission(reservationIdNumber, userId);
         if (!hasPermission) {
+          console.error(`[/reservations/schedule] Sin permiso para: ${reservationIdNumber}`);
           continue; // Ignorar reservaciones sin permiso
         }
         
