@@ -711,6 +711,7 @@ export const notifications = pgTable("notifications", {
   title: text("title").notNull(),
   message: text("message").notNull(),
   relatedId: integer("related_id"), // ID del objeto relacionado (ej: id de solicitud)
+  metaData: text("meta_data"), // Datos adicionales en formato JSON (para almacenar información extra)
   read: boolean("read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
