@@ -10,9 +10,6 @@ import {
   insertReservationSchema, 
   insertPassengerSchema,
   insertPackageSchema,
-  insertCompanyLinkSchema,
-  insertTransferRequestSchema,
-  insertTransferDetailSchema,
   createRouteValidationSchema,
   publishTripValidationSchema,
   createReservationValidationSchema,
@@ -78,10 +75,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Setup session-based auth system
   const { isAuthenticated, hasRole } = setupAuthentication(app);
-  
-  // Definir los middleware de roles comunes
-  const hasOwnerRole = hasRole([UserRole.OWNER]);
-  const hasOwnerOrAdminRole = hasRole([UserRole.OWNER, UserRole.ADMIN]);
   
   // Setup authentication routes (both old and new)
   // Pasamos el middleware de autenticación al setup de rutas de autenticación
@@ -4786,6 +4779,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   return httpServer;
 }
+
+/**
  * Configura las rutas para la funcionalidad de paqueterías
  * @param app - Instancia de Express
  */
@@ -4799,30 +4794,6 @@ function setupPackageRoutes(app: Express) {
       return next();
     }
     res.status(401).json({ message: 'No autenticado' });
-  }
-  
-  // Middleware para verificar roles - transferencias
-  function hasOwnerRole(req: Request, res: Response, next: Function) {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: 'No autenticado' });
-    }
-    const user = req.user as any;
-    if (user.role === UserRole.OWNER) {
-      return next();
-    }
-    res.status(403).json({ message: 'Acceso denegado' });
-  }
-  
-  // Middleware para verificar roles de owner o admin
-  function hasOwnerOrAdminRole(req: Request, res: Response, next: Function) {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: 'No autenticado' });
-    }
-    const user = req.user as any;
-    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
-      return next();
-    }
-    res.status(403).json({ message: 'Acceso denegado' });
   }
   
   // Constantes para roles que pueden crear/editar paquetes
@@ -4996,4 +4967,268 @@ function setupPackageRoutes(app: Express) {
       // Actualizar estado de entrega si corresponde
       if (req.body.deliveryStatus === 'entregado' && existingPackage.deliveryStatus !== 'entregado') {
         req.body.deliveredAt = new Date();
+      }
+      
+      // Actualizar el paquete
+      const updatedPackage = await storage.updatePackage(id, req.body);
+      
+      res.json(updatedPackage);
+    } catch (error) {
+      console.error(`Error al actualizar paquete con ID ${req.params.id}:`, error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
+  
+  // DELETE /api/packages/:id - Eliminar un paquete
+  app.delete(apiRouter('/packages/:id'), isAuthenticated, hasPackageWriteAccess, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Verificar que el paquete existe
+      const existingPackage = await storage.getPackageById(id);
+      if (!existingPackage) {
+        return res.status(404).json({ message: 'Paquete no encontrado' });
+      }
+      
+      // Verificar permisos de compañía
+      if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
+        const userCompany = req.user.company || req.user.companyId;
+        if (existingPackage.companyId !== userCompany) {
+          return res.status(403).json({ message: 'No tiene permisos para eliminar este paquete' });
+        }
+      }
+      
+      // Eliminar el paquete
+      await storage.deletePackage(id);
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error(`Error al eliminar paquete con ID ${req.params.id}:`, error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
+  
+  // GET /api/cash-register - Obtener reservaciones pagadas por el usuario actual
+  app.get(apiRouter('/cash-register'), isAuthenticated, async (req, res) => {
+    try {
+      const { user } = req as any;
+      console.log(`[GET /cash-register] Usuario ${user.firstName} ${user.lastName} solicitando datos de caja`);
+      
+      // Si el usuario es taquillero (tiene acceso a empresas específicas)
+      if (user.role === UserRole.TICKET_OFFICE) {
+        console.log(`[GET /cash-register] Usuario taquillero: obteniendo compañías asociadas`);
+        
+        // Obtener las compañías asociadas al usuario de taquilla
+        const userCompanyAssociations = await db
+          .select()
+          .from(userCompanies)
+          .where(eq(userCompanies.userId, user.id));
+        
+        console.log(`[GET /cash-register] Usuario taquillero: ${userCompanyAssociations.length} compañías asociadas`);
+        
+        if (userCompanyAssociations.length === 0) {
+          console.log(`[GET /cash-register] Usuario taquillero sin empresas asociadas: no se mostrarán reservaciones`);
+          return res.json([]);
+        }
+        
+        // Obtener todos los IDs de compañías a las que tiene acceso
+        const associatedCompanyIds = userCompanyAssociations.map(assoc => assoc.companyId);
+        console.log(`[GET /cash-register] IDs de compañías asociadas: ${associatedCompanyIds.join(', ')}`);
+        
+        // Obtener todas las reservaciones marcadas como pagadas por este taquillero
+        const taquilleroReservations = await storage.getPaidReservationsByUser(user.id);
+        
+        // Filtrar las reservaciones para mostrar solo las de las compañías asociadas
+        const filteredReservations = taquilleroReservations.filter(reservation => {
+          const tripCompanyId = reservation.trip?.companyId || null;
+          return tripCompanyId && associatedCompanyIds.includes(tripCompanyId);
+        });
+        
+        console.log(`[GET /cash-register] Filtrando ${taquilleroReservations.length} reservaciones a ${filteredReservations.length} (solo compañías asociadas)`);
+        
+        // Agregar información adicional para identificar a qué empresa pertenece cada reserva
+        const enrichedReservations = await Promise.all(
+          filteredReservations.map(async (reservation) => {
+            // Obtener la compañía del viaje
+            let companyId = null;
+            let companyName = "Desconocida";
+            
+            if (reservation.trip && reservation.trip.companyId) {
+              companyId = reservation.trip.companyId;
+              
+              // Intentar obtener el nombre de la compañía si está disponible
+              try {
+                const company = await storage.getCompanyById(companyId);
+                if (company) {
+                  companyName = company.name || companyId;
+                }
+              } catch (err) {
+                console.error(`Error al obtener información de la compañía ${companyId}:`, err);
+              }
+            }
+            
+            return {
+              ...reservation,
+              companyInfo: {
+                id: companyId,
+                name: companyName
+              }
+            };
+          })
+        );
+        
+        return res.json(enrichedReservations);
+      }
+      
+      // Si el usuario es dueño o administrador, mostrar todas las reservaciones de la compañía
+      if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
+        // Obtener ID de la compañía
+        const companyId = user.companyId || user.company;
+        
+        if (!companyId) {
+          console.log(`[GET /cash-register] Usuario dueño/admin sin compañía asignada. Usando vista limitada.`);
+          const paidReservations = await storage.getPaidReservationsByUser(user.id);
+          
+          // Agregar información adicional para identificar a qué empresa pertenece cada reserva
+          const enrichedReservations = await Promise.all(
+            paidReservations.map(async (reservation) => {
+              // Obtener la compañía del viaje
+              let companyId = null;
+              let companyName = "Desconocida";
+              
+              if (reservation.trip && reservation.trip.companyId) {
+                companyId = reservation.trip.companyId;
+                
+                // Intentar obtener el nombre de la compañía si está disponible
+                try {
+                  const company = await storage.getCompanyById(companyId);
+                  if (company) {
+                    companyName = company.name || companyId;
+                  }
+                } catch (err) {
+                  console.error(`Error al obtener información de la compañía ${companyId}:`, err);
+                }
+              }
+              
+              return {
+                ...reservation,
+                companyInfo: {
+                  id: companyId,
+                  name: companyName
+                }
+              };
+            })
+          );
+          
+          return res.json(enrichedReservations);
+        }
+        
+        console.log(`[GET /cash-register] Usuario dueño/admin: mostrando todas las reservaciones pagadas de la compañía ${companyId}`);
+        
+        // Modificación: Obtener todas las reservaciones pagadas de su compañía, incluidas las marcadas
+        // por taquilleros para viajes de esta compañía
+        
+        // 1. Obtener reservaciones pagadas por usuarios de la compañía
+        const companyUsersReservations = await storage.getPaidReservationsByCompany(companyId);
+        
+        // 2. Obtener reservaciones pagadas por taquilleros para viajes de esta compañía
+        // Primero, buscar todos los usuarios con rol taquilla
+        const ticketOfficeUsers = await storage.getUsersByRole(UserRole.TICKET_OFFICE);
+        
+        // Array para almacenar todas las reservaciones
+        let allReservations = [...companyUsersReservations];
+        
+        // Para cada taquillero, obtener las reservaciones que marcó como pagadas
+        for (const ticketOfficeUser of ticketOfficeUsers) {
+          const ticketOfficeReservations = await storage.getPaidReservationsByUser(ticketOfficeUser.id);
+          
+          // Filtrar solo las que pertenecen a la compañía actual
+          const companyTicketOfficeReservations = ticketOfficeReservations.filter(
+            reservation => reservation.trip && reservation.trip.companyId === companyId
+          );
+          
+          // Agregar las reservaciones al array total
+          allReservations = [...allReservations, ...companyTicketOfficeReservations];
+        }
+        
+        // Eliminar duplicados (si un taquillero marcó como pagada una reservación que ya está incluida)
+        const uniqueReservations = allReservations.filter((reservation, index, self) => 
+          self.findIndex(r => r.id === reservation.id) === index
+        );
+        
+        // Agregar información adicional para identificar a qué empresa pertenece cada reserva
+        const enrichedReservations = await Promise.all(
+          uniqueReservations.map(async (reservation) => {
+            // Obtener la compañía del viaje
+            let companyId = null;
+            let companyName = "Desconocida";
+            
+            if (reservation.trip && reservation.trip.companyId) {
+              companyId = reservation.trip.companyId;
+              
+              // Intentar obtener el nombre de la compañía si está disponible
+              try {
+                const company = await storage.getCompanyById(companyId);
+                if (company) {
+                  companyName = company.name || companyId;
+                }
+              } catch (err) {
+                console.error(`Error al obtener información de la compañía ${companyId}:`, err);
+              }
+            }
+            
+            return {
+              ...reservation,
+              companyInfo: {
+                id: companyId,
+                name: companyName
+              }
+            };
+          })
+        );
+        
+        return res.json(enrichedReservations);
+      }
+      
+      // Para otros roles, mostrar solo sus propias reservaciones
+      const paidReservations = await storage.getPaidReservationsByUser(user.id);
+      
+      // Agregar información adicional para identificar a qué empresa pertenece cada reserva
+      const enrichedReservations = await Promise.all(
+        paidReservations.map(async (reservation) => {
+          // Obtener la compañía del viaje
+          let companyId = null;
+          let companyName = "Desconocida";
+          
+          if (reservation.trip && reservation.trip.companyId) {
+            companyId = reservation.trip.companyId;
+            
+            // Intentar obtener el nombre de la compañía si está disponible
+            try {
+              const company = await storage.getCompanyById(companyId);
+              if (company) {
+                companyName = company.name || companyId;
+              }
+            } catch (err) {
+              console.error(`Error al obtener información de la compañía ${companyId}:`, err);
+            }
+          }
+          
+          return {
+            ...reservation,
+            companyInfo: {
+              id: companyId,
+              name: companyName
+            }
+          };
+        })
+      );
+      
+      console.log(`[GET /cash-register] Enviando ${enrichedReservations.length} reservaciones pagadas por el usuario ${user.id}`);
+      return res.json(enrichedReservations);
+    } catch (error) {
+      console.error('[GET /cash-register] Error:', error);
+      res.status(500).json({ message: 'Error al cargar datos de caja' });
+    }
+  });
 }
