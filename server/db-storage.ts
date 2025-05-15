@@ -3476,4 +3476,67 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
   }
+  
+  async checkReservationTransferPermission(reservationId: number, userId: number): Promise<boolean> {
+    try {
+      console.log(`[checkReservationTransferPermission] Verificando permisos de transferencia para reserva ${reservationId} y usuario ${userId}`);
+      
+      // Si el usuario no está autenticado, no tiene permiso
+      if (!userId) {
+        console.log(`[checkReservationTransferPermission] Sin usuario autenticado`);
+        return false;
+      }
+      
+      // Obtener usuario para verificar su compañía
+      const user = await this.getUserById(userId);
+      if (!user) {
+        console.log(`[checkReservationTransferPermission] Usuario ${userId} no encontrado`);
+        return false;
+      }
+      
+      const userCompanyId = user.company || user.companyId;
+      if (!userCompanyId) {
+        console.log(`[checkReservationTransferPermission] Usuario ${userId} sin compañía asignada`);
+        return false;
+      }
+      
+      // Obtener todas las notificaciones de transferencia para el usuario
+      const notifications = await db
+        .select()
+        .from(schema.notifications)
+        .where(
+          and(
+            eq(schema.notifications.userId, userId),
+            eq(schema.notifications.type, 'transfer')
+          )
+        );
+      
+      console.log(`[checkReservationTransferPermission] Encontradas ${notifications.length} notificaciones de transferencia para el usuario ${userId}`);
+      
+      // Verificar en cada notificación si contiene el ID de la reservación en metaData
+      for (const notification of notifications) {
+        if (notification.metaData) {
+          try {
+            const transferData = JSON.parse(notification.metaData);
+            
+            if (transferData.reservationIds && Array.isArray(transferData.reservationIds)) {
+              if (transferData.reservationIds.includes(reservationId)) {
+                console.log(`[checkReservationTransferPermission] Permiso concedido: Reserva ${reservationId} transferida al usuario ${userId}`);
+                return true;
+              }
+            }
+          } catch (error) {
+            console.error(`[checkReservationTransferPermission] Error al parsear metaData:`, error);
+            // Continuar con la siguiente notificación si hay error
+          }
+        }
+      }
+      
+      console.log(`[checkReservationTransferPermission] Permiso denegado: Reserva ${reservationId} no transferida al usuario ${userId}`);
+      return false;
+    } catch (error) {
+      console.error(`[checkReservationTransferPermission] Error:`, error);
+      return false;
+    }
+  }
 }
