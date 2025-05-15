@@ -37,6 +37,15 @@ export default function NotificationsPage() {
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const search = useSearch();
   
+  // Consulta para obtener notificaciones
+  const { data: notifications, isLoading, refetch } = useQuery<Notification[]>({
+    queryKey: ["/api/notifications"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/notifications");
+      return await response.json();
+    },
+  });
+
   // Extraer transferId del query string si existe
   useEffect(() => {
     const params = new URLSearchParams(search);
@@ -52,15 +61,6 @@ export default function NotificationsPage() {
       }
     }
   }, [search, notifications]);
-
-  // Consulta para obtener notificaciones
-  const { data: notifications, isLoading, refetch } = useQuery<Notification[]>({
-    queryKey: ["/api/notifications"],
-    queryFn: async () => {
-      const response = await apiRequest("GET", "/api/notifications");
-      return await response.json();
-    },
-  });
 
   // Mutación para marcar como leída
   const markAsReadMutation = useMutation({
@@ -98,6 +98,23 @@ export default function NotificationsPage() {
       variant: "default",
     });
   };
+  
+  // Efectos para escuchar eventos de transferencia
+  useEffect(() => {
+    const handleTransferClick = (event: any) => {
+      const { notification } = event.detail;
+      if (notification && notification.type === 'transfer') {
+        setSelectedNotification(notification);
+        setTransferModalOpen(true);
+      }
+    };
+    
+    window.addEventListener('transferclick', handleTransferClick);
+    
+    return () => {
+      window.removeEventListener('transferclick', handleTransferClick);
+    };
+  }, []);
 
   // Función para el cambio de pestañas en el sidebar
   const [, setLocation] = useLocation();
@@ -167,6 +184,13 @@ export default function NotificationsPage() {
           </main>
         </div>
       </div>
+      
+      {/* Modal de detalles de transferencia */}
+      <TransferDetailsModal 
+        open={transferModalOpen}
+        onOpenChange={setTransferModalOpen}
+        notification={selectedNotification}
+      />
     </div>
   );
 }
