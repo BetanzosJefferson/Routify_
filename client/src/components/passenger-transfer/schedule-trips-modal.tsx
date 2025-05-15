@@ -111,17 +111,45 @@ export default function ScheduleTripsModal({ open, onOpenChange, reservationIds 
   const extractLocationInfo = (location: string | undefined) => {
     if (!location) return { state: null, city: null };
     
-    // El formato típico es "Ciudad, Estado - Terminal"
+    console.log("Analizando ubicación:", location);
+    
+    // Detectar diferentes formatos posibles
+    // Formato 1: "Ciudad, Estado - Terminal"
+    // Formato 2: "Ciudad de Estado - Terminal"
+    
+    // Primero intentar con el formato principal "Ciudad, Estado - Terminal"
     const parts = location.split(' - ');
     if (parts.length < 1) return { state: null, city: null };
     
-    const cityState = parts[0].split(', ');
-    if (cityState.length < 2) return { state: null, city: null };
+    const cityStatePart = parts[0];
     
-    return {
-      city: cityState[0].trim(),
-      state: cityState[1].trim()
-    };
+    // Intentar detectar el formato "Ciudad, Estado"
+    if (cityStatePart.includes(', ')) {
+      const cityState = cityStatePart.split(', ');
+      if (cityState.length >= 2) {
+        console.log("Formato detectado: Ciudad, Estado");
+        return {
+          city: cityState[0].trim(),
+          state: cityState[1].trim()
+        };
+      }
+    }
+    
+    // Intentar detectar formato alternativo "Ciudad de Estado"
+    // Por ejemplo: "Acapulco de Juárez, Guerrero" o "Ciudad de México"
+    if (cityStatePart.includes(' de ')) {
+      const matches = cityStatePart.match(/(.*?) de (.*?)(?:,\s*(.*))?$/);
+      if (matches && matches.length >= 3) {
+        const city = matches[1].trim() + ' de ' + matches[2].trim();
+        const state = matches[3] ? matches[3].trim() : matches[2].trim();
+        console.log("Formato detectado: Ciudad de Estado", {city, state});
+        return { city, state };
+      }
+    }
+    
+    // Si llegamos aquí, no pudimos extraer correctamente
+    console.log("No se pudo extraer información de ubicación de:", location);
+    return { state: null, city: null };
   };
   
   // Extraer información de estado y ciudad cuando no estén disponibles como campos separados
@@ -361,7 +389,7 @@ export default function ScheduleTripsModal({ open, onOpenChange, reservationIds 
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cerrar
           </Button>
-          {!allReservationsScheduled && canShowTrips && (
+          {!allReservationsScheduled && hasCompleteLocationInfo && (
             <Button 
               onClick={handleSchedule} 
               disabled={!selectedTripId || scheduleMutation.isPending}

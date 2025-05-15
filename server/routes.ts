@@ -5664,6 +5664,38 @@ function setupPackageRoutes(app: Express) {
       const routes = await storage.getRoutes();
       const routesMap = new Map();
       routes.forEach(route => routesMap.set(route.id, route));
+
+      // Función para extraer información de ubicación en diferentes formatos
+      const extractLocationInfo = (location) => {
+        if (!location) return { state: null, city: null };
+        
+        // Eliminar terminal si existe (después de guión)
+        const mainPart = location.split(' - ')[0];
+        
+        // Intentar formato "Ciudad, Estado"
+        if (mainPart.includes(', ')) {
+          const parts = mainPart.split(', ');
+          if (parts.length >= 2) {
+            return {
+              city: parts[0].trim(),
+              state: parts[1].trim()
+            };
+          }
+        }
+        
+        // Intentar formato "Ciudad de Estado" 
+        if (mainPart.includes(' de ')) {
+          const matches = mainPart.match(/(.*?) de (.*?)(?:,\s*(.*))?$/);
+          if (matches && matches.length >= 3) {
+            return {
+              city: `${matches[1].trim()} de ${matches[2].trim()}`,
+              state: matches[3] ? matches[3].trim() : matches[2].trim()
+            };
+          }
+        }
+        
+        return { state: null, city: null };
+      };
       
       // Filtrar viajes que coincidan con los criterios geográficos
       let filteredTrips = allTrips.filter(trip => {
@@ -5671,14 +5703,62 @@ function setupPackageRoutes(app: Express) {
         const route = routesMap.get(trip.routeId);
         if (!route) return false;
         
-        // Verificar si la ruta contiene la información geográfica solicitada
-        const hasOriginData = 
-          route.originState === originState && 
-          route.originCity === originCity;
+        let routeOriginState = route.originState;
+        let routeOriginCity = route.originCity;
+        let routeDestinationState = route.destinationState;
+        let routeDestinationCity = route.destinationCity;
+        
+        // Si no tenemos datos específicos, intentar extraerlos del origen/destino completos
+        if (!routeOriginState || !routeOriginCity) {
+          console.log(`[DEBUG] Extrayendo información de origen para ruta ${route.id}: ${route.origin}`);
+          const originInfo = extractLocationInfo(route.origin);
+          routeOriginState = originInfo.state;
+          routeOriginCity = originInfo.city;
+          console.log(`[DEBUG] Información extraída: ${routeOriginCity}, ${routeOriginState}`);
+        }
+        
+        if (!routeDestinationState || !routeDestinationCity) {
+          console.log(`[DEBUG] Extrayendo información de destino para ruta ${route.id}: ${route.destination}`);
+          const destinationInfo = extractLocationInfo(route.destination);
+          routeDestinationState = destinationInfo.state;
+          routeDestinationCity = destinationInfo.city;
+          console.log(`[DEBUG] Información extraída: ${routeDestinationCity}, ${routeDestinationState}`);
+        }
+        
+        // Comparación normalizada (ignorando mayúsculas/minúsculas y acentos)
+        const normalize = (str) => str ? str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : '';
+        
+        // Verificar si la ciudad contiene el texto buscado o viceversa (buscar coincidencias parciales)
+        const cityMatches = (routeCity, searchCity) => {
+          if (!routeCity || !searchCity) return false;
+          const normalizedRouteCity = normalize(routeCity);
+          const normalizedSearchCity = normalize(searchCity);
           
-        const hasDestinationData = 
-          route.destinationState === destinationState && 
-          route.destinationCity === destinationCity;
+          // Comprobaciones exactas y parciales
+          return normalizedRouteCity === normalizedSearchCity || 
+                 normalizedRouteCity.includes(normalizedSearchCity) || 
+                 normalizedSearchCity.includes(normalizedRouteCity);
+        };
+        
+        // Verificar si el estado coincide
+        const stateMatches = (routeState, searchState) => {
+          if (!routeState || !searchState) return false;
+          return normalize(routeState) === normalize(searchState);
+        };
+        
+        const hasOriginData = stateMatches(routeOriginState, originState) && 
+                              cityMatches(routeOriginCity, originCity);
+          
+        const hasDestinationData = stateMatches(routeDestinationState, destinationState) && 
+                                   cityMatches(routeDestinationCity, destinationCity);
+        
+        // Imprimir información de depuración para cada ruta que no coincide
+        if (!hasOriginData || !hasDestinationData) {
+          console.log(`[DEBUG] Ruta ${route.id} no coincide:`);
+          console.log(`  Origen - Ruta: ${routeOriginCity}, ${routeOriginState} | Buscado: ${originCity}, ${originState}`);
+          console.log(`  Destino - Ruta: ${routeDestinationCity}, ${routeDestinationState} | Buscado: ${destinationCity}, ${destinationState}`);
+          console.log(`  Coincidencia origen: ${hasOriginData}, Coincidencia destino: ${hasDestinationData}`);
+        }
         
         // Solo incluir viajes donde tanto origen como destino coinciden
         return hasOriginData && hasDestinationData;
