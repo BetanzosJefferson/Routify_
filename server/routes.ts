@@ -5867,8 +5867,8 @@ function setupPackageRoutes(app: Express) {
         }
         
         // Actualizar la reservación para asignarla al nuevo viaje
-        const updatedReservation = await storage.updateReservation(reservationId, {
-          tripId: tripId,
+        const updatedReservation = await storage.updateReservation(reservationIdNumber, {
+          tripId: tripIdNumber,
           status: 'confirmado' // Marcar como confirmada en el nuevo viaje
         });
         
@@ -5879,9 +5879,11 @@ function setupPackageRoutes(app: Express) {
       
       // Actualizar asientos disponibles en el viaje
       if (processedReservations.length > 0) {
-        await storage.updateTrip(tripId, {
+        await storage.updateTrip(tripIdNumber, {
           availableSeats: trip.availableSeats - processedReservations.length
         });
+        
+        console.log(`[/reservations/schedule] Actualizados asientos disponibles en viaje ${tripIdNumber}: ${trip.availableSeats} - ${processedReservations.length} = ${trip.availableSeats - processedReservations.length}`);
       }
       
       return res.json({

@@ -193,7 +193,26 @@ export default function ScheduleTripsModal({ open, onOpenChange, reservationIds 
         
         const data = await response.json();
         console.log('Viajes encontrados (sin filtrar):', data.length);
-        const filteredData = data.filter((trip: Trip) => trip.availableSeats >= reservationIds.length);
+        
+        if (data.length > 0) {
+          console.log('Ejemplo de primer viaje:', {
+            id: data[0].id,
+            asientos: data[0].availableSeats,
+            ruta: `${data[0].route.origin} → ${data[0].route.destination}`,
+            fecha: data[0].departureDate
+          });
+        }
+        
+        // Verificar cuántos pasajeros necesitamos colocar
+        console.log('Necesitamos asientos para:', reservationIds.length, 'pasajeros');
+        
+        // Filtrar por asientos disponibles y mostrar detalle de cada viaje
+        const filteredData = data.filter((trip: Trip) => {
+          const tieneAsientosSuficientes = trip.availableSeats >= reservationIds.length;
+          console.log(`Viaje ID ${trip.id}: ${trip.availableSeats} asientos disponibles, ${tieneAsientosSuficientes ? 'INCLUIDO' : 'EXCLUIDO'}`);
+          return tieneAsientosSuficientes;
+        });
+        
         console.log('Viajes filtrados por asientos disponibles:', filteredData.length);
         return filteredData;
       } catch (error) {
