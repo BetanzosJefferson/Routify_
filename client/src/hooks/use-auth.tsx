@@ -11,7 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
-  isAuthenticated: boolean;
   error: Error | null;
   loginMutation: UseMutationResult<User, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
@@ -175,7 +174,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user: user ?? null,
         isLoading,
-        isAuthenticated: !!user,
         error,
         loginMutation,
         logoutMutation,

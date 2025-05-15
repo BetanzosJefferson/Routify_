@@ -169,9 +169,6 @@ export const reservations = pgTable("reservations", {
   checkedBy: integer("checked_by"), // ID del usuario que escaneó el ticket
   checkedAt: timestamp("checked_at"), // Fecha y hora del escaneo
   checkCount: integer("check_count").default(0), // Contador de veces que se ha escaneado el ticket
-  // Campos para transferencia entre empresas
-  transferredAt: timestamp("transferred_at"), // Fecha y hora de la transferencia
-  transferredFrom: text("transferred_from"), // ID de la compañía de origen
 });
 
 export const insertReservationSchema = createInsertSchema(reservations);
@@ -527,36 +524,6 @@ export const insertCompanySchema = createInsertSchema(companies);
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
 export type Company = typeof companies.$inferSelect;
 
-// TABLA DE EMPRESAS VINCULADAS (PARA TRANSFERENCIA DE PASAJEROS)
-export const companyPartnerships = pgTable("company_partnerships", {
-  id: serial("id").primaryKey(),
-  companyId: text("company_id").notNull().references(() => companies.identifier),
-  partnerCompanyId: text("partner_company_id").notNull().references(() => companies.identifier),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  // Campo para enlaces temporales de un solo uso
-  isActive: boolean("is_active").default(true),
-});
-
-// TABLA DE INVITACIONES DE VINCULACIÓN
-export const companyInvitations = pgTable("company_invitations", {
-  id: serial("id").primaryKey(),
-  companyId: text("company_id").notNull().references(() => companies.identifier),
-  token: uuid("token").notNull().defaultRandom(),
-  expiresAt: timestamp("expires_at").notNull(),
-  isUsed: boolean("is_used").default(false),
-  usedBy: text("used_by").references(() => companies.identifier),
-  usedAt: timestamp("used_at"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  createdBy: integer("created_by").references(() => users.id),
-});
-
-export const insertCompanyPartnershipSchema = createInsertSchema(companyPartnerships);
-export const insertCompanyInvitationSchema = createInsertSchema(companyInvitations);
-export type InsertCompanyPartnership = z.infer<typeof insertCompanyPartnershipSchema>;
-export type InsertCompanyInvitation = z.infer<typeof insertCompanyInvitationSchema>;
-export type CompanyPartnership = typeof companyPartnerships.$inferSelect;
-export type CompanyInvitation = typeof companyInvitations.$inferSelect;
-
 // USER SCHEMA
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -679,9 +646,6 @@ export const companyRelations = relations(companies, ({ many, one }) => ({
   users: many(users),
   trips: many(trips),
   vehicles: many(vehicles),
-  partnerships: many(companyPartnerships, { relationName: 'companyPartnerships' }),
-  partnerRelationships: many(companyPartnerships, { relationName: 'partnerCompanyPartnerships' }),
-  invitations: many(companyInvitations),
   createdByUser: one(users, {
     fields: [companies.createdBy],
     references: [users.id]
