@@ -5318,68 +5318,40 @@ function setupPackageRoutes(app: Express) {
         return res.status(404).json({ message: "No se encontró información de la empresa destino" });
       }
       
-      console.log(`[POST /reservations/transfer] Transferencia de ${reservationIds.length} reservaciones desde ${originCompany.name} a ${destinationCompany.name}`);
+      console.log(`[POST /reservations/transfer] Transferencia de ${reservationIds.length} reservaciones desde ${origCompany.name} a ${destCompany.name}`);
       
       // Verificar que las reservaciones existan y pertenezcan a la empresa del usuario
       const transferResults = [];
       const transferredReservations = [];
       
       for (const reservationId of reservationIds) {
-        // Obtener la reservación
-        const reservationResult = await db.select().from(schema.reservations).where(
-          and(
-            eq(schema.reservations.id, reservationId),
-            eq(schema.reservations.companyId, originCompanyId)
-          )
-        );
-        
-        const reservation = reservationResult.length > 0 ? reservationResult[0] : null;
-        
-        if (!reservation) {
-          transferResults.push({
-            id: reservationId,
-            success: false,
-            message: "Reservación no encontrada o no pertenece a su empresa"
-          });
-          continue;
-        }
-        
-        // Obtener información completa de la reservación para las notificaciones
-        const passengerResult = await db.select().from(schema.passengers).where(eq(schema.passengers.reservationId, reservationId));
-        const tripResult = await db.select().from(schema.trips).where(eq(schema.trips.id, reservation.tripId));
-        const trip = tripResult.length > 0 ? tripResult[0] : null;
-        
-        let routeInfo = null;
-        if (trip) {
-          const routeResult = await db.select().from(schema.routes).where(eq(schema.routes.id, trip.routeId));
-          routeInfo = routeResult.length > 0 ? routeResult[0] : null;
-        }
-        
-        // Guardar la información completa para las notificaciones
-        const reservationDetails = {
-          ...reservation,
-          passengers: passengerResult,
-          trip: trip ? {
-            ...trip,
-            route: routeInfo || { name: "Ruta no disponible" }
-          } : null
-        };
-        
-        // Actualizar la reservación con el nuevo companyId
         try {
-          const result = await db.update(schema.reservations)
-            .set({ companyId: destinationCompanyId })
-            .where(eq(schema.reservations.id, reservationId))
-            .returning();
+          // Obtener la reservación con detalles
+          const reservation = await storage.getReservationWithDetails(reservationId, originCompanyId);
           
-          if (result.length > 0) {
+          if (!reservation) {
+            transferResults.push({
+              id: reservationId,
+              success: false,
+              message: "Reservación no encontrada o no pertenece a su empresa"
+            });
+            continue;
+          }
+          
+          // Actualizar la reservación con el nuevo companyId
+          const updatedReservation = await storage.updateReservation(reservationId, {
+            companyId: destinationCompanyId
+          });
+          
+          if (updatedReservation) {
             transferResults.push({
               id: reservationId,
               success: true,
               message: "Transferencia exitosa"
             });
             
-            transferredReservations.push(reservationDetails);
+            // Añadir a la lista de reservaciones transferidas para notificaciones
+            transferredReservations.push(reservation);
           } else {
             transferResults.push({
               id: reservationId,
@@ -5401,33 +5373,30 @@ function setupPackageRoutes(app: Express) {
       if (transferredReservations.length > 0) {
         try {
           // Obtener usuarios de la empresa destino con roles específicos
-          const targetUsers = await db.select().from(schema.users).where(
-            and(
-              eq(schema.users.companyId, destinationCompanyId),
-              inArray(schema.users.role, [UserRole.OWNER, UserRole.ADMIN, UserRole.CALL_CENTER])
-            )
-          );
+          const allUsersInCompany = await storage.getUsersByCompany(destinationCompanyId);
           
-          console.log(`[POST /reservations/transfer] Notificando a ${targetUsers.length} usuarios de la empresa destino`);
+          // Filtrar solo los roles Dueño, Admin y Call Center
+          const targetRoles = ["dueño", "admin", "call center"];
+          const targetUsers = allUsersInCompany.filter(user => targetRoles.includes(user.role));
           
-          // Información para el mensaje de notificación
-          const reservationInfo = transferredReservations.map(res => {
+          console.log(`[POST /reservations/transfer] Notificando a ${targetUsers.length} usuarios de la empresa destino (${destCompany.name})`);
+          
+          // Crear texto con información de las reservaciones para el mensaje
+          const reservationInfoTexts = transferredReservations.map(res => {
             const passengers = res.passengers ? res.passengers.length : 0;
             const tripName = res.trip && res.trip.route ? res.trip.route.name : "Viaje no disponible";
             const tripDate = res.trip ? new Date(res.trip.departureDate).toLocaleDateString() : "Fecha no disponible";
             
             return `Reserva #${res.id}: ${passengers} pasajero(s) en viaje ${tripName} (${tripDate})`;
-          }).join("\n");
+          });
           
-          const notificationsToCreate = [];
-          
-          // Para cada usuario, crear una notificación
+          // Para cada usuario destino, crear y enviar notificación
           for (const targetUser of targetUsers) {
-            notificationsToCreate.push({
+            await storage.createNotification({
               userId: targetUser.id,
               type: "reservation_transfer",
-              title: `Reservaciones transferidas desde ${originCompany.name}`,
-              message: `Se han transferido ${transferredReservations.length} reservación(es) a su empresa.\n\nDetalles:\n${reservationInfo}\n\nContacte al cliente para confirmar los detalles del servicio.`,
+              title: `Reservaciones transferidas desde ${origCompany.name}`,
+              message: `Se han transferido ${transferredReservations.length} reservación(es) a su empresa.\n\nDetalles:\n${reservationInfoTexts.join("\n")}\n\nContacte al cliente para confirmar los detalles del servicio.`,
               relatedId: transferredReservations[0].id, // ID de la primera reservación como referencia
               read: false,
               createdAt: new Date(),
@@ -5435,10 +5404,7 @@ function setupPackageRoutes(app: Express) {
             });
           }
           
-          // Insertar todas las notificaciones
-          if (notificationsToCreate.length > 0) {
-            await db.insert(schema.notifications).values(notificationsToCreate);
-          }
+          console.log(`[POST /reservations/transfer] Se enviaron ${targetUsers.length} notificaciones de transferencia`);
         } catch (error) {
           console.error("Error al enviar notificaciones:", error);
           // Continuamos a pesar del error en notificaciones
