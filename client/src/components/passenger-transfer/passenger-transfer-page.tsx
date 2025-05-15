@@ -6,10 +6,11 @@ import { PageTitle } from "@/components/ui/page-title";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowRightLeft, Users, Calendar } from "lucide-react";
-import { ReservationWithDetails } from "@shared/schema";
+import { ReservationWithDetails, Company } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { useReservations } from "@/hooks/use-reservations";
 import { normalizeToStartOfDay } from "@/lib/utils";
+import { CompanySelectionModal } from "./company-selection-modal";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,8 @@ import {
 
 export function PassengerTransferPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showCompanySelection, setShowCompanySelection] = useState(false);
+  const [selectedReservationIds, setSelectedReservationIds] = useState<number[]>([]);
   
   return (
     <div className="container mx-auto px-4 py-8">
@@ -279,11 +282,8 @@ function ReservationSelectionModal({ isOpen, onClose }: ReservationSelectionModa
               
               console.log("Reservaciones seleccionadas:", selectedIds);
               
-              // Mostrar un mensaje temporal en la consola
-              alert(`Seleccionadas ${selectedIds.length} reservaciones para transferencia. Función en desarrollo.`);
-              
-              // Cerrar el modal
-              onClose();
+              // Abrir el modal de selección de empresa
+              setShowCompanySelection(true);
             }}
           >
             Continuar con {Object.values(selectedReservations).filter(Boolean).length} seleccionada(s)

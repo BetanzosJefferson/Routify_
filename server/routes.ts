@@ -5231,4 +5231,55 @@ function setupPackageRoutes(app: Express) {
       res.status(500).json({ message: 'Error al cargar datos de caja' });
     }
   });
+  
+  // Endpoint para obtener todas las empresas registradas
+  app.get(apiRouter('/companies'), isAuthenticated, async (req, res) => {
+    try {
+      const { user } = req as any;
+      console.log(`[GET /companies] Usuario ${user.firstName} ${user.lastName} solicitando lista de empresas`);
+      
+      // Obtener todas las empresas desde la base de datos
+      let allCompanies = await db.select().from(companies);
+      console.log(`[GET /companies] Encontradas ${allCompanies.length} empresas en total`);
+      
+      // Filtrar según el rol del usuario
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        // Para Owner y Admin, solo mostrar su propia compañía si no son ellos quienes están transfiriendo
+        if ((user.role === UserRole.OWNER || user.role === UserRole.ADMIN) && 
+            req.query.forTransfer === 'true') {
+          // Para transferencias, mostrar todas las compañías excepto la propia
+          const userCompanyId = user.companyId || user.company;
+          if (userCompanyId) {
+            allCompanies = allCompanies.filter(company => company.identifier !== userCompanyId);
+            console.log(`[GET /companies] Filtradas para transferencia: ${allCompanies.length} empresas (excluyendo ${userCompanyId})`);
+          }
+        } else if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
+          // Para otros casos, solo mostrar su propia compañía
+          const userCompanyId = user.companyId || user.company;
+          if (userCompanyId) {
+            allCompanies = allCompanies.filter(company => company.identifier === userCompanyId);
+          }
+        }
+        
+        // Para taquilleros, mostrar solo las compañías asignadas
+        if (user.role === UserRole.TICKET_OFFICE) {
+          // Obtener las asignaciones de compañías para este taquillero
+          const userCompanyAssociations = await db
+            .select()
+            .from(userCompanies)
+            .where(eq(userCompanies.userId, user.id));
+          
+          const assignedCompanyIds = userCompanyAssociations.map(uc => uc.companyId);
+          allCompanies = allCompanies.filter(company => assignedCompanyIds.includes(company.identifier));
+          console.log(`[GET /companies] Taquillero: ${allCompanies.length} empresas asignadas`);
+        }
+      }
+      
+      // Devolver las empresas filtradas
+      return res.json(allCompanies);
+    } catch (error) {
+      console.error('[GET /companies] Error:', error);
+      return res.status(500).json({ message: 'Error al obtener lista de empresas' });
+    }
+  });
 }
