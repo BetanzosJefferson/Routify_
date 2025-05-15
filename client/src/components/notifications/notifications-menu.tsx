@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { NotificationBadge } from "@/components/notifications/notification-badge";
+import TransferDetailsModal from "@/components/notifications/transfer-details-modal";
 import { CheckCircle, BellIcon, BellOff, ExternalLink } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +40,8 @@ export function NotificationsMenu() {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
 
   // Consulta para obtener notificaciones
   const { data: notifications, isLoading, refetch: refetchNotifications } = useQuery<Notification[]>({
@@ -169,6 +172,11 @@ export function NotificationsMenu() {
                         refetchNotifications();
                       }
                     });
+                  }}
+                  onShowTransferDetails={(notification) => {
+                    setSelectedNotification(notification);
+                    setTransferModalOpen(true);
+                    setOpen(false); // Cerrar el dropdown al abrir el modal
                   }} 
                 />
               ))}
@@ -182,6 +190,13 @@ export function NotificationsMenu() {
           <span>Ver todas las notificaciones</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
+      
+      {/* Modal de detalles de transferencia */}
+      <TransferDetailsModal 
+        open={transferModalOpen}
+        onOpenChange={setTransferModalOpen}
+        notification={selectedNotification}
+      />
     </DropdownMenu>
   );
 }
@@ -189,9 +204,10 @@ export function NotificationsMenu() {
 interface NotificationItemProps {
   notification: Notification;
   onMarkAsRead: () => void;
+  onShowTransferDetails?: (notification: Notification) => void;
 }
 
-function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps) {
+function NotificationItem({ notification, onMarkAsRead, onShowTransferDetails }: NotificationItemProps) {
   const [, setLocation] = useLocation();
   
   // Formatear tiempo
@@ -231,9 +247,13 @@ function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps)
     e.preventDefault();
     e.stopPropagation();
     
-    // Si es una notificación de transferencia, navegar a la página de notificaciones con el ID
+    // Si es una notificación de transferencia, mostrar detalles en lugar de navegar
     if (notification.type === 'transfer') {
-      setLocation(`/notifications?transferId=${notification.id}`);
+      if (onShowTransferDetails) {
+        onShowTransferDetails(notification);
+      } else {
+        setLocation(`/notifications?transferId=${notification.id}`);
+      }
     }
     
     // Si no está leída, marcarla como leída
