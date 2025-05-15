@@ -14,10 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
-import { Calendar, MapPin } from 'lucide-react';
-
-// Importar el modal de programación de viajes
-import ScheduleTripsModal from '../passenger-transfer/schedule-trips-modal';
 
 // Definir la interfaz de Notification localmente para evitar dependencias circulares
 interface Notification {
@@ -50,9 +46,12 @@ interface TransferData {
   count: number;
 }
 
-const TransferDetailsModal = ({ open, onOpenChange, notification }: TransferDetailsModalProps) => {
+const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({ 
+  open, 
+  onOpenChange,
+  notification 
+}) => {
   const [transferData, setTransferData] = useState<TransferData | null>(null);
-  const [scheduleModalOpen, setScheduleModalOpen] = useState<boolean>(false);
 
   // Extraer los datos de la transferencia desde metaData
   useEffect(() => {
@@ -111,151 +110,130 @@ const TransferDetailsModal = ({ open, onOpenChange, notification }: TransferDeta
 
   if (!notification) return null;
 
-  // Renderizamos la modal principal y la modal de programación si hay datos
   return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Detalles de Transferencia</DialogTitle>
-            <DialogDescription>
-              Información de las reservaciones transferidas
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="flex flex-col space-y-3 mb-3">
-            <div className="bg-muted/30 p-4 rounded-md">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-sm font-semibold">Información de transferencia</h3>
-                {transferData && (
-                  <Badge variant="outline">
-                    {format(new Date(transferData.transferDate), "dd MMM yyyy • HH:mm", { locale: es })}
-                  </Badge>
-                )}
-              </div>
-              
-              {transferData ? (
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Empresa origen:</span>{' '}
-                    <span className="font-medium">{transferData.sourceCompany}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Transferido por:</span>{' '}
-                    <span className="font-medium">{transferData.sourceUser.name}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Cantidad:</span>{' '}
-                    <span className="font-medium">{transferData.count} reservación(es)</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-3/4" />
-                </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Detalles de Transferencia</DialogTitle>
+          <DialogDescription>
+            Información de las reservaciones transferidas
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="flex flex-col space-y-3 mb-3">
+          <div className="bg-muted/30 p-4 rounded-md">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-semibold">Información de transferencia</h3>
+              {transferData && (
+                <Badge variant="outline">
+                  {format(new Date(transferData.transferDate), "dd MMM yyyy • HH:mm", { locale: es })}
+                </Badge>
               )}
             </div>
-          </div>
-          
-          <Separator />
-          
-          <h3 className="text-sm font-semibold my-2">Detalles de pasajeros</h3>
-          
-          <ScrollArea className="flex-1 h-[400px] px-1">
-            {isLoading ? (
-              <div className="space-y-4">
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-              </div>
-            ) : reservationsData?.length ? (
-              <div className="space-y-4">
-                {reservationsData.map((reservation: any) => (
-                  <div 
-                    key={reservation.id} 
-                    className="border rounded-md p-3 hover:bg-accent/10 transition-colors"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h4 className="font-medium text-sm">
-                          Reservación #{reservation.id}
-                        </h4>
-                        <p className="text-sm text-muted-foreground">
-                          {reservation.trip?.route?.origin} → {reservation.trip?.route?.destination}
-                        </p>
-                      </div>
-                      <Badge variant={
-                        reservation.status === 'confirmado' ? 'default' :
-                        reservation.status === 'pendiente' ? 'outline' :
-                        reservation.status === 'cancelado' ? 'destructive' : 'secondary'
-                      }>
-                        {reservation.status}
-                      </Badge>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-2 text-xs mb-2">
-                      <div>
-                        <span className="text-muted-foreground">Fecha:</span>{' '}
-                        {reservation.trip?.departureDate && (
-                          <span>
-                            {format(new Date(reservation.trip.departureDate), "dd MMM yyyy", { locale: es })}
-                          </span>
-                        )}
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Hora:</span>{' '}
-                        <span>{reservation.trip?.departureTime}</span>
-                      </div>
-                    </div>
-                    
-                    <Separator className="my-2" />
-                    
-                    <h5 className="text-xs font-medium mb-1">Pasajeros</h5>
-                    <div className="space-y-1">
-                      {reservation.passengers?.map((passenger: any) => (
-                        <div key={passenger.id} className="text-xs flex items-center">
-                          <span className="h-1.5 w-1.5 rounded-full bg-primary mr-1.5"></span>
-                          <span>{passenger.firstName} {passenger.lastName}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+            
+            {transferData ? (
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Empresa origen:</span>{' '}
+                  <span className="font-medium">{transferData.sourceCompany}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Transferido por:</span>{' '}
+                  <span className="font-medium">{transferData.sourceUser.name}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Cantidad:</span>{' '}
+                  <span className="font-medium">{transferData.count} reservación(es)</span>
+                </div>
               </div>
             ) : (
-              <div className="text-center py-8 text-muted-foreground text-sm">
-                No se encontraron detalles de las reservaciones transferidas.
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
               </div>
             )}
-          </ScrollArea>
-          
-          <div className="flex justify-end mt-4 space-x-2">
-            {transferData?.reservationIds?.length > 0 && (
-              <Button 
-                onClick={() => setScheduleModalOpen(true)}
-                className="gap-2"
-              >
-                <Calendar className="h-4 w-4" />
-                Agendar reservaciones
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cerrar
-            </Button>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal para agendar las reservaciones */}
-      {transferData && transferData.reservationIds && transferData.reservationIds.length > 0 && (
-        <ScheduleTripsModal 
-          open={scheduleModalOpen} 
-          onOpenChange={setScheduleModalOpen} 
-          reservationIds={transferData.reservationIds} 
-        />
-      )}
-    </>
+        </div>
+        
+        <Separator />
+        
+        <h3 className="text-sm font-semibold my-2">Detalles de pasajeros</h3>
+        
+        <ScrollArea className="flex-1 h-[400px] px-1">
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          ) : reservationsData?.length ? (
+            <div className="space-y-4">
+              {reservationsData.map((reservation: any) => (
+                <div 
+                  key={reservation.id} 
+                  className="border rounded-md p-3 hover:bg-accent/10 transition-colors"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 className="font-medium text-sm">
+                        Reservación #{reservation.id}
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        {reservation.trip?.route?.origin} → {reservation.trip?.route?.destination}
+                      </p>
+                    </div>
+                    <Badge variant={
+                      reservation.status === 'confirmado' ? 'default' :
+                      reservation.status === 'pendiente' ? 'outline' :
+                      reservation.status === 'cancelado' ? 'destructive' : 'secondary'
+                    }>
+                      {reservation.status}
+                    </Badge>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 text-xs mb-2">
+                    <div>
+                      <span className="text-muted-foreground">Fecha:</span>{' '}
+                      {reservation.trip?.departureDate && (
+                        <span>
+                          {format(new Date(reservation.trip.departureDate), "dd MMM yyyy", { locale: es })}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Hora:</span>{' '}
+                      <span>{reservation.trip?.departureTime}</span>
+                    </div>
+                  </div>
+                  
+                  <Separator className="my-2" />
+                  
+                  <h5 className="text-xs font-medium mb-1">Pasajeros</h5>
+                  <div className="space-y-1">
+                    {reservation.passengers?.map((passenger: any) => (
+                      <div key={passenger.id} className="text-xs flex items-center">
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary mr-1.5"></span>
+                        <span>{passenger.firstName} {passenger.lastName}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              No se encontraron detalles de las reservaciones transferidas.
+            </div>
+          )}
+        </ScrollArea>
+        
+        <div className="flex justify-end mt-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cerrar
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

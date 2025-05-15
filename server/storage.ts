@@ -145,11 +145,6 @@ export interface IStorage {
   
   // Company methods
   getCompanyById(companyId: string): Promise<{id: string, name: string} | null>;
-  
-  // Métodos para transferencia y programación de reservaciones
-  checkReservationTransferPermission(reservationId: number, userId: number): Promise<boolean>;
-  getReservationById(id: number): Promise<Reservation | undefined>;
-  getTripById(id: number): Promise<Trip | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -306,19 +301,6 @@ export class MemStorage implements IStorage {
   }
   
   async getTrip(id: number): Promise<Trip | undefined> {
-    if (isNaN(id)) {
-      console.error(`[getTrip] ID inválido: ${id}`);
-      return undefined;
-    }
-    return this.trips.get(id);
-  }
-  
-  // Función específica para obtener un viaje por ID (usada en la API)
-  async getTripById(id: number): Promise<Trip | undefined> {
-    if (isNaN(id)) {
-      console.error(`[getTripById] ID inválido: ${id}`);
-      return undefined;
-    }
     return this.trips.get(id);
   }
   
@@ -562,19 +544,6 @@ export class MemStorage implements IStorage {
   }
   
   async getReservation(id: number): Promise<Reservation | undefined> {
-    if (isNaN(id)) {
-      console.error(`[getReservation] ID inválido: ${id}`);
-      return undefined;
-    }
-    return this.reservations.get(id);
-  }
-  
-  // Método específico para la API
-  async getReservationById(id: number): Promise<Reservation | undefined> {
-    if (isNaN(id)) {
-      console.error(`[getReservationById] ID inválido: ${id}`);
-      return undefined;
-    }
     return this.reservations.get(id);
   }
   
@@ -825,20 +794,6 @@ export class MemStorage implements IStorage {
   
   async deleteUser(id: number): Promise<boolean> {
     return this.users.delete(id);
-  }
-  
-  // Métodos para transferencia y programación de reservaciones
-  async checkReservationTransferPermission(reservationId: number, userId: number): Promise<boolean> {
-    // En memoria siempre retornamos true para pruebas
-    return true;
-  }
-  
-  async getReservationById(id: number): Promise<Reservation | undefined> {
-    return this.reservations.get(id);
-  }
-  
-  async getTripById(id: number): Promise<Trip | undefined> {
-    return this.trips.get(id);
   }
 }
 
