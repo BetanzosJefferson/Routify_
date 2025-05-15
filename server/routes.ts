@@ -5382,8 +5382,8 @@ function setupPackageRoutes(app: Express) {
       
       console.log(`[POST /company-invitations] Creando invitación para compañía ${companyId}`);
       
-      // Generar un token único para la invitación
-      const token = crypto.randomBytes(32).toString('hex');
+      // No necesitamos especificar el token, ya que el esquema de la base de datos usa defaultRandom()
+      // para generar automáticamente un UUID válido
       
       // Calcular fecha de expiración (30 días)
       const expiresAt = new Date();
@@ -5392,7 +5392,6 @@ function setupPackageRoutes(app: Express) {
       // Crear la invitación
       const newInvitation = await storage.createCompanyInvitation({
         companyId,
-        token,
         expiresAt,
         isUsed: false,
         usedBy: null,
