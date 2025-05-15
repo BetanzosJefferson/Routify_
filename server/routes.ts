@@ -4992,6 +4992,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[Transferencia] Se notificará a ${filteredUsers.length} usuarios de la empresa ${targetCompanyId}`);
       }
       
+      // Preparar datos de la transferencia para incluir en la notificación
+      const transferDataForNotification = {
+        reservationIds: reservationsToTransfer.map(r => r.id),
+        transferDate: new Date().toISOString(),
+        sourceCompany: currentUser.company || currentUser.companyId,
+        sourceUser: {
+          id: currentUser.id,
+          name: `${currentUser.firstName} ${currentUser.lastName}`
+        },
+        count: reservationsToTransfer.length
+      };
+      
+      // Serializar los datos como JSON para almacenarlos en la notificación
+      const transferDataAsJson = JSON.stringify(transferDataForNotification);
+      
       // 2. Crear notificaciones para cada usuario
       const notificationPromises = [];
       const userIdsForRealtime = [];
@@ -5004,7 +5019,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           title: 'Transferencia de reservaciones',
           message: `${currentUser.firstName} ${currentUser.lastName} ha transferido ${reservationsToTransfer.length} reservación(es) a tu empresa.`,
           read: false,
-          relatedId: null,
+          // Usar relatedId para almacenar el ID de la primera reservación como referencia
+          relatedId: reservationsToTransfer.length > 0 ? reservationsToTransfer[0].id : null,
+          // Almacenar los datos completos en metaData
+          metaData: transferDataAsJson,
           createdAt: new Date(),
           updatedAt: new Date()
         };
