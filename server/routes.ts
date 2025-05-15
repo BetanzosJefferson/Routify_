@@ -5265,6 +5265,151 @@ function setupPackageRoutes(app: Express) {
   
   // RUTAS PARA LA TRANSFERENCIA DE PASAJEROS ENTRE EMPRESAS
 
+  // Endpoints para obtener historial de transferencias
+  app.get('/api/transfer-history', isAuthenticated, async (req, res) => {
+    try {
+      console.log('[GET /transfer-history] Obteniendo historial de transferencias');
+      const user = req.user!;
+      
+      let history = [];
+      // Si es superAdmin o desarrollador, mostrar todo el historial
+      if (hasRequiredRole(user, ['superAdmin', 'desarrollador'])) {
+        history = await storage.getAllTransferDetails();
+      } 
+      // Si es dueño o admin, mostrar historial de su empresa
+      else if (hasRequiredRole(user, ['dueño', 'admin'])) {
+        history = await storage.getTransferDetailsByCompany(user.company);
+      }
+      
+      // Si no hay historial, devolver array vacío
+      if (!history || history.length === 0) {
+        return res.json([]);
+      }
+      
+      // Enriquecer con detalles adicionales
+      const enrichedDetails = await Promise.all(
+        history.map(async (detail) => {
+          try {
+            // Obtener detalles del pasajero - usamos la reservación en lugar del passengerId
+            let passengerName = 'Desconocido';
+            if (detail.reservationId) {
+              const reservation = await storage.getReservation(detail.reservationId);
+              if (reservation && reservation.passengers && reservation.passengers.length > 0) {
+                const passenger = reservation.passengers[0];
+                passengerName = `${passenger.firstName} ${passenger.lastName}`;
+              }
+            }
+            
+            // Obtener detalles de las empresas
+            const sourceCompany = await storage.getCompanyById(detail.sourceCompanyId);
+            const targetCompany = await storage.getCompanyById(detail.targetCompanyId);
+            
+            // Obtener detalles del viaje de origen
+            const sourceTrip = await storage.getTrip(detail.sourceTripId);
+            
+            // Obtener detalles del viaje de destino (si existe)
+            let targetTrip = null;
+            if (detail.targetTripId) {
+              targetTrip = await storage.getTrip(detail.targetTripId);
+            }
+            
+            return {
+              ...detail,
+              passengerName,
+              sourceCompanyName: sourceCompany?.name || detail.sourceCompanyId,
+              targetCompanyName: targetCompany?.name || detail.targetCompanyId,
+              sourceTrip,
+              targetTrip
+            };
+          } catch (error) {
+            console.error('Error al enriquecer detalles de transferencia:', error);
+            return {
+              ...detail,
+              passengerName: 'Desconocido',
+              sourceCompanyName: detail.sourceCompanyId,
+              targetCompanyName: detail.targetCompanyId,
+              sourceTrip: { id: detail.sourceTripId, origin: 'Desconocido', destination: 'Desconocido', departureDate: new Date().toISOString(), departureTime: '00:00', tripNumber: 'N/A' },
+              targetTrip: null
+            };
+          }
+        })
+      );
+      
+      return res.json(enrichedDetails);
+    } catch (error) {
+      console.error('[GET /transfer-history] Error:', error);
+      return res.status(500).json({ message: 'Error al obtener historial de transferencias' });
+    }
+  });
+
+  // Endpoint para obtener todas las solicitudes de transferencia para la empresa del usuario
+  app.get('/api/transfer-requests', isAuthenticated, async (req, res) => {
+    try {
+      console.log('[GET /transfer-requests] Obteniendo solicitudes de transferencia');
+      const user = req.user!;
+      
+      let requests = [];
+      
+      // Si es superAdmin o desarrollador, mostrar todas las solicitudes
+      if (hasRequiredRole(user, ['superAdmin', 'desarrollador'])) {
+        requests = await storage.getAllTransferRequests();
+      }
+      // Para dueños y administradores, mostrar solicitudes relacionadas con su empresa
+      else if (hasRequiredRole(user, ['dueño', 'admin'])) {
+        // Obtener solicitudes donde la empresa es origen o destino
+        const companyRequests = await storage.getTransferRequestsByCompany(user.company);
+        requests = companyRequests;
+      }
+      
+      // Si no hay solicitudes, devolver array vacío
+      if (!requests || requests.length === 0) {
+        return res.json([]);
+      }
+      
+      // Enriquecer las solicitudes con información adicional
+      const enrichedRequests = await Promise.all(
+        requests.map(async (request) => {
+          try {
+            const sourceCompany = await storage.getCompanyById(request.sourceCompanyId);
+            const targetCompany = await storage.getCompanyById(request.targetCompanyId);
+            
+            let createdByUser = null;
+            if (request.createdBy) {
+              createdByUser = await storage.getUser(request.createdBy);
+            }
+            
+            let approvedByUser = null;
+            if (request.approvedBy) {
+              approvedByUser = await storage.getUser(request.approvedBy);
+            }
+            
+            return {
+              ...request,
+              sourceCompanyName: sourceCompany?.name || request.sourceCompanyId,
+              targetCompanyName: targetCompany?.name || request.targetCompanyId,
+              createdByName: createdByUser ? `${createdByUser.firstName} ${createdByUser.lastName}` : 'Desconocido',
+              approvedByName: approvedByUser ? `${approvedByUser.firstName} ${approvedByUser.lastName}` : null
+            };
+          } catch (error) {
+            console.error('Error al enriquecer solicitud de transferencia:', error);
+            return {
+              ...request,
+              sourceCompanyName: request.sourceCompanyId,
+              targetCompanyName: request.targetCompanyId,
+              createdByName: 'Desconocido',
+              approvedByName: null
+            };
+          }
+        })
+      );
+      
+      return res.json(enrichedRequests);
+    } catch (error) {
+      console.error('[GET /transfer-requests] Error:', error);
+      return res.status(500).json({ message: 'Error al obtener solicitudes de transferencia' });
+    }
+  });
+
   // 1. Rutas para la gestión de vínculos entre empresas
   
   // Endpoint para generar un enlace de un solo uso
