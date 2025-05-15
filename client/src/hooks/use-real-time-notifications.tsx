@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useNotificationSound } from '@/hooks/use-notification-sound';
+import { useWebSocket } from '@/hooks/use-websocket';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -29,13 +30,50 @@ export function useRealTimeNotifications() {
   // Consulta de notificaciones
   const { data: notifications } = useQuery<Notification[]>({
     queryKey: ['/api/notifications'],
-    // Refetch automático cada 30 segundos
-    refetchInterval: 30000,
+    // Reducir la frecuencia de refetch ya que ahora usamos WebSocket
+    refetchInterval: 60000,
     // Solo consultar si el usuario está autenticado
     enabled: !!user,
   });
   
-  // Efecto para mostrar notificaciones nuevas
+  // Manejador de mensajes WebSocket
+  const handleWebSocketMessage = (data: any) => {
+    if (data.type === 'notification') {
+      console.log('[WebSocket] Recibida notificación por WebSocket:', data.data);
+      
+      // Reproducir sonido
+      playNotificationSound();
+      
+      // Mostrar notificación en toast
+      const notification = data.data;
+      const formattedDate = format(new Date(notification.createdAt), 'HH:mm', { locale: es });
+      
+      toast({
+        title: notification.title,
+        description: (
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm">{notification.message}</p>
+            <p className="text-xs text-muted-foreground">{formattedDate}</p>
+          </div>
+        ),
+        variant: notification.type === 'error' ? 'destructive' : 'default',
+        duration: 5000,
+      });
+      
+      // Actualizar la caché de datos
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread-count'] });
+    }
+  };
+  
+  // Inicializar WebSocket
+  const { status: wsStatus } = useWebSocket({
+    onMessage: handleWebSocketMessage,
+    debug: true,
+    autoReconnect: true
+  });
+  
+  // Efecto para mostrar notificaciones existentes al cargar
   useEffect(() => {
     if (!notifications || !notifications.length) return;
     
@@ -89,5 +127,8 @@ export function useRealTimeNotifications() {
     }
   }, [notifications, toast, queryClient, playNotificationSound]);
   
-  return { notifications };
+  return { 
+    notifications,
+    wsStatus
+  };
 }

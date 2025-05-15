@@ -2,8 +2,8 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { db } from "./db";
 import { eq, inArray } from "drizzle-orm";
+import { WebSocketServer, WebSocket } from 'ws';
 import { 
   insertRouteSchema, 
   insertTripSchema, 
@@ -3237,6 +3237,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  
+  // Configuración del servidor WebSocket
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  // Mantener un registro de conexiones activas
+  const clients = new Map<string, WebSocket>();
+  
+  wss.on('connection', (ws, req) => {
+    console.log('[WebSocket] Nueva conexión establecida');
+    
+    // Manejar mensajes entrantes
+    ws.on('message', (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        console.log('[WebSocket] Mensaje recibido:', data);
+        
+        // Si el mensaje incluye una autenticación de usuario, almacenar la conexión
+        if (data.type === 'auth' && data.userId) {
+          const userId = data.userId.toString();
+          clients.set(userId, ws);
+          console.log(`[WebSocket] Usuario ${userId} autenticado`);
+          
+          // Confirmar autenticación al cliente
+          ws.send(JSON.stringify({ 
+            type: 'auth_success', 
+            message: 'Autenticación exitosa' 
+          }));
+        }
+      } catch (error) {
+        console.error('[WebSocket] Error al procesar mensaje:', error);
+      }
+    });
+    
+    // Manejar cierre de conexión
+    ws.on('close', () => {
+      console.log('[WebSocket] Conexión cerrada');
+      
+      // Eliminar la conexión del registro
+      clients.forEach((client, userId) => {
+        if (client === ws) {
+          clients.delete(userId);
+          console.log(`[WebSocket] Usuario ${userId} desconectado`);
+        }
+      });
+    });
+  });
+  
+  // Función para enviar notificaciones a través de WebSocket
+  const sendNotificationToUsers = (userIds: number[], notification: any) => {
+    for (const userId of userIds) {
+      const userIdStr = userId.toString();
+      const client = clients.get(userIdStr);
+      
+      if (client && client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({
+          type: 'notification',
+          data: notification
+        }));
+        console.log(`[WebSocket] Notificación enviada al usuario ${userIdStr}`);
+      } else {
+        console.log(`[WebSocket] Usuario ${userIdStr} no conectado o conexión no abierta`);
+      }
+    }
+  };
+  
   // Endpoint para obtener reservaciones creadas por comisionistas
   app.get(apiRouter("/commissions/reservations"), async (req: Request, res: Response) => {
     try {
