@@ -5299,13 +5299,13 @@ function setupPackageRoutes(app: Express) {
       }
       
       // Si no hay historial, devolver array vacío
-      if (!history || history.length === 0) {
+      if (!details || details.length === 0) {
         return res.json([]);
       }
       
       // Enriquecer con detalles adicionales
       const enrichedDetails = await Promise.all(
-        history.map(async (detail) => {
+        details.map(async (detail) => {
           try {
             // Obtener detalles del pasajero - usamos la reservación en lugar del passengerId
             let passengerName = 'Desconocido';
@@ -5368,14 +5368,24 @@ function setupPackageRoutes(app: Express) {
       let requests = [];
       
       // Si es superAdmin o desarrollador, mostrar todas las solicitudes
-      if (hasRequiredRole(user, ['superAdmin', 'desarrollador'])) {
-        requests = await storage.getAllTransferRequests();
+      if (user.role === 'superAdmin' || user.role === 'desarrollador') {
+        // Obtener solicitudes enviadas y recibidas por todas las empresas
+        const allCompanies = await storage.getCompanies();
+        for (const company of allCompanies) {
+          const sentRequests = await storage.getSentTransferRequests(company.identifier);
+          const receivedRequests = await storage.getReceivedTransferRequests(company.identifier);
+          requests = [...requests, ...sentRequests, ...receivedRequests];
+        }
       }
       // Para dueños y administradores, mostrar solicitudes relacionadas con su empresa
-      else if (hasRequiredRole(user, ['dueño', 'admin'])) {
+      else if (user.role === 'dueño' || user.role === 'admin') {
+        if (!user.company) {
+          return res.status(403).json({ message: 'No tienes una empresa asignada' });
+        }
         // Obtener solicitudes donde la empresa es origen o destino
-        const companyRequests = await storage.getTransferRequestsByCompany(user.company);
-        requests = companyRequests;
+        const sentRequests = await storage.getSentTransferRequests(user.company);
+        const receivedRequests = await storage.getReceivedTransferRequests(user.company);
+        requests = [...sentRequests, ...receivedRequests];
       }
       
       // Si no hay solicitudes, devolver array vacío

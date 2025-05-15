@@ -29,13 +29,6 @@ export function CompanyLinkList() {
     error,
   } = useQuery<CompanyLink[]>({
     queryKey: ['/api/company-links'],
-    onError: (error: Error) => {
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los vínculos entre empresas.',
-        variant: 'destructive',
-      });
-    },
   });
 
   const getStatusBadge = (status: string) => {
