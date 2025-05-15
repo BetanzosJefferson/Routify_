@@ -57,13 +57,6 @@ export function TransferHistoryList() {
     queryKey: ['/api/transfer-history'],
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000, // 5 minutos
-    onError: () => {
-      toast({
-        title: 'Error',
-        description: 'No se pudo cargar el historial de transferencias.',
-        variant: 'destructive',
-      });
-    },
   });
 
   const getStatusBadge = (status: string) => {
