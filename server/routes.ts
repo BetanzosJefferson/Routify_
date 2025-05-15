@@ -4803,6 +4803,25 @@ function setupPackageRoutes(app: Express) {
     res.status(401).json({ message: 'No autenticado' });
   }
   
+  // Middleware para verificar roles
+  function hasRole(roles: string[]) {
+    return (req: Request, res: Response, next: Function) => {
+      if (!req.user || !req.user.role) {
+        return res.status(403).json({ message: 'Acceso no autorizado' });
+      }
+      
+      if (roles.includes(req.user.role)) {
+        return next();
+      }
+      
+      res.status(403).json({ message: 'No tienes permiso para acceder a este recurso' });
+    };
+  }
+  
+  // Roles comunes
+  const hasOwnerRole = hasRole([UserRole.OWNER]);
+  const hasOwnerOrAdminRole = hasRole([UserRole.OWNER, UserRole.ADMIN]);
+  
   // Constantes para roles que pueden crear/editar paquetes
   const PACKAGE_WRITE_ROLES = [UserRole.OWNER, UserRole.ADMIN, UserRole.CALL_CENTER, UserRole.CHECKER];
   // Roles que solo pueden ver paquetes
@@ -5601,7 +5620,7 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
-  app.get('/api/transfer-requests/:id', requireAuthentication, requireOwnerOrAdminRole, async (req, res) => {
+  app.get('/api/transfer-requests/:id', isAuthenticated, hasOwnerOrAdminRole, async (req, res) => {
     try {
       console.log(`[GET /transfer-requests] Obteniendo solicitud ${req.params.id}`);
       const user = req.user!;
@@ -5677,7 +5696,7 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
-  app.patch('/api/transfer-requests/:id', requireAuthentication, requireOwnerOrAdminRole, async (req, res) => {
+  app.patch('/api/transfer-requests/:id', isAuthenticated, hasOwnerOrAdminRole, async (req, res) => {
     try {
       console.log(`[PATCH /transfer-requests] Actualizando solicitud ${req.params.id}`);
       const user = req.user!;
@@ -5696,8 +5715,8 @@ function setupPackageRoutes(app: Express) {
       }
       
       // Solo la empresa destino puede actualizar el estado de la solicitud
-      if (user.companyId !== request.targetCompanyId) {
-        console.log(`[PATCH /transfer-requests] Usuario de empresa ${user.companyId} intenta actualizar solicitud para ${request.targetCompanyId}`);
+      if (user.company !== request.targetCompanyId) {
+        console.log(`[PATCH /transfer-requests] Usuario de empresa ${user.company} intenta actualizar solicitud para ${request.targetCompanyId}`);
         return res.status(403).json({ message: 'No tienes permisos para actualizar esta solicitud' });
       }
       
@@ -5743,7 +5762,7 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
-  app.get('/api/trips/compatible-for-transfer', requireAuthentication, requireOwnerOrAdminRole, async (req, res) => {
+  app.get('/api/trips/compatible-for-transfer', isAuthenticated, hasOwnerOrAdminRole, async (req, res) => {
     try {
       console.log('[GET /trips/compatible-for-transfer] Buscando viajes compatibles para transferencia');
       const user = req.user!;
