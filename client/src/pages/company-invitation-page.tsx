@@ -46,7 +46,7 @@ const CompanyInvitationPage: React.FC = () => {
 
       try {
         const response = await apiRequest('GET', `/api/company-invitations/${token}/verify`);
-        setInvitationDetails(response);
+        setInvitationDetails(response as InvitationDetails);
         setIsLoading(false);
       } catch (err) {
         console.error('Error al verificar la invitación:', err);
@@ -287,7 +287,7 @@ const CompanyInvitationPage: React.FC = () => {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Tu empresa:</span>
-              <span className="font-medium">{user?.companyName}</span>
+              <span className="font-medium">{user?.company}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Fecha de expiración:</span>
