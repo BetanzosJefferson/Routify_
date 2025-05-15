@@ -4803,6 +4803,30 @@ function setupPackageRoutes(app: Express) {
     res.status(401).json({ message: 'No autenticado' });
   }
   
+  // Middleware para verificar roles - transferencias
+  function hasOwnerRole(req: Request, res: Response, next: Function) {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: 'No autenticado' });
+    }
+    const user = req.user as any;
+    if (user.role === UserRole.OWNER) {
+      return next();
+    }
+    res.status(403).json({ message: 'Acceso denegado' });
+  }
+  
+  // Middleware para verificar roles de owner o admin
+  function hasOwnerOrAdminRole(req: Request, res: Response, next: Function) {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: 'No autenticado' });
+    }
+    const user = req.user as any;
+    if (user.role === UserRole.OWNER || user.role === UserRole.ADMIN) {
+      return next();
+    }
+    res.status(403).json({ message: 'Acceso denegado' });
+  }
+  
   // Constantes para roles que pueden crear/editar paquetes
   const PACKAGE_WRITE_ROLES = [UserRole.OWNER, UserRole.ADMIN, UserRole.CALL_CENTER, UserRole.CHECKER];
   // Roles que solo pueden ver paquetes
@@ -5601,7 +5625,7 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
-  app.get('/api/transfer-requests/:id', requireAuthentication, requireOwnerOrAdminRole, async (req, res) => {
+  app.get('/api/transfer-requests/:id', isAuthenticated, hasOwnerOrAdminRole, async (req, res) => {
     try {
       console.log(`[GET /transfer-requests] Obteniendo solicitud ${req.params.id}`);
       const user = req.user!;
@@ -5677,7 +5701,7 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
-  app.patch('/api/transfer-requests/:id', requireAuthentication, requireOwnerOrAdminRole, async (req, res) => {
+  app.patch('/api/transfer-requests/:id', isAuthenticated, hasOwnerOrAdminRole, async (req, res) => {
     try {
       console.log(`[PATCH /transfer-requests] Actualizando solicitud ${req.params.id}`);
       const user = req.user!;
@@ -5743,7 +5767,7 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
-  app.get('/api/trips/compatible-for-transfer', requireAuthentication, requireOwnerOrAdminRole, async (req, res) => {
+  app.get('/api/trips/compatible-for-transfer', isAuthenticated, hasOwnerOrAdminRole, async (req, res) => {
     try {
       console.log('[GET /trips/compatible-for-transfer] Buscando viajes compatibles para transferencia');
       const user = req.user!;
