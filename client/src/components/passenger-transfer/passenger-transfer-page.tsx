@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { PageTitle } from "@/components/ui/page-title";
@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { useReservations } from "@/hooks/use-reservations";
 import { normalizeToStartOfDay } from "@/lib/utils";
 import { CompanySelectionModal } from "./company-selection-modal";
-import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -35,71 +34,22 @@ export function PassengerTransferPage() {
   const [selectedReservationIds, setSelectedReservationIds] = useState<number[]>([]);
   const [selectedReservations, setSelectedReservations] = useState<Record<number, boolean>>({});
   const [selectedTrips, setSelectedTrips] = useState<Record<number, boolean>>({});
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
   
-  // Manejar la selección de una empresa y realizar la transferencia
-  const handleCompanySelected = async (company: Company) => {
+  // Manejar la selección de una empresa
+  const handleCompanySelected = (company: Company) => {
     console.log(`Empresa seleccionada: ${company.name} (${company.identifier})`);
     console.log(`Transferir reservaciones: ${selectedReservationIds.join(', ')} a empresa ${company.identifier}`);
     
-    try {
-      // Mostrar una notificación de "procesando"
-      toast({
-        title: "Procesando transferencia",
-        description: `Transfiriendo ${selectedReservationIds.length} reservaciones a ${company.name}...`,
-        variant: "default",
-      });
-      
-      // Llamar al endpoint de transferencia
-      const response = await fetch('/api/reservations/transfer', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reservationIds: selectedReservationIds,
-          destinationCompanyId: company.identifier
-        }),
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok && data.success) {
-        // Mostrar mensaje de éxito
-        toast({
-          title: "Transferencia exitosa",
-          description: data.message,
-          variant: "default",
-        });
-        
-        // Invalidar consulta de reservaciones para refrescar los datos
-        queryClient.invalidateQueries({ queryKey: ['/api/reservations'] });
-      } else {
-        // Mostrar mensaje de error
-        toast({
-          title: "Error en la transferencia",
-          description: data.message || "Ha ocurrido un error al realizar la transferencia",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error al realizar la transferencia:", error);
-      toast({
-        title: "Error de conexión",
-        description: "No se pudo conectar con el servidor para realizar la transferencia",
-        variant: "destructive",
-      });
-    } finally {
-      // Cerrar los modales
-      setShowCompanySelection(false);
-      setIsDialogOpen(false);
-      
-      // Limpiar el estado
-      setSelectedReservationIds([]);
-      setSelectedReservations({});
-      setSelectedTrips({});
-    }
+    // Aquí iría la lógica para hacer la transferencia
+    // Por ahora, mostrar un mensaje de éxito
+    alert(`Se transferirían ${selectedReservationIds.length} reservaciones a la empresa ${company.name}`);
+    
+    // Cerrar los modales
+    setShowCompanySelection(false);
+    setIsDialogOpen(false);
+    
+    // Limpiar el estado
+    setSelectedReservationIds([]);
   };
   
   return (
