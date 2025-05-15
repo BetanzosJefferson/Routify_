@@ -3304,19 +3304,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const sendNotificationToUsers = (userIds: number[], notification: any) => {
     console.log(`[WebSocket] Intentando enviar notificación a ${userIds.length} usuarios: ${userIds.join(', ')}`);
     
+    // Verificar clientes conectados
+    console.log(`[WebSocket] Total de clientes conectados: ${clients.size}`);
+    clients.forEach((_, key) => {
+      console.log(`[WebSocket] Cliente conectado: ID=${key}`);
+    });
+    
+    let sentCount = 0;
+    
     for (const userId of userIds) {
       const userIdStr = userId.toString();
       const client = clients.get(userIdStr);
       
-      if (client && client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({
-          type: 'notification',
-          data: notification
-        }));
-        console.log(`[WebSocket] Notificación enviada al usuario ${userIdStr}`);
+      if (client) {
+        if (client.readyState === WebSocket.OPEN) {
+          try {
+            // Asegurarse de que la notificación tenga todos los campos necesarios
+            const enhancedNotification = {
+              ...notification,
+              id: notification.id || Date.now(),
+              title: notification.title || 'Nueva notificación',
+              message: notification.message || 'Has recibido una nueva notificación',
+              type: notification.type || 'default',
+              createdAt: notification.createdAt || new Date().toISOString(),
+              updatedAt: notification.updatedAt || new Date().toISOString()
+            };
+            
+            // Formato del mensaje para el cliente
+            const message = JSON.stringify({
+              type: 'notification',
+              data: enhancedNotification
+            });
+            
+            // Enviar notificación
+            client.send(message);
+            console.log(`[WebSocket] Notificación enviada al usuario ${userIdStr}:`, JSON.stringify(enhancedNotification));
+            sentCount++;
+          } catch (error) {
+            console.error(`[WebSocket] Error al enviar notificación al usuario ${userIdStr}:`, error);
+          }
+        } else {
+          console.log(`[WebSocket] Usuario ${userIdStr} tiene conexión pero no está abierta. Estado: ${client.readyState}`);
+        }
       } else {
-        console.log(`[WebSocket] Usuario ${userIdStr} no conectado o conexión no abierta. Estado: ${client ? client.readyState : 'No conectado'}`);
+        console.log(`[WebSocket] Usuario ${userIdStr} no está conectado actualmente`);
       }
+    }
+    
+    console.log(`[WebSocket] Resumen: ${sentCount}/${userIds.length} notificaciones enviadas exitosamente`);
+    
+    // Si no se enviaron notificaciones, intentamos guardarlas para cuando los usuarios se conecten
+    if (sentCount === 0) {
+      console.log('[WebSocket] Ninguna notificación enviada en tiempo real. Las notificaciones deberán ser recuperadas por API.');
     }
   };
   
@@ -4982,8 +5021,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Asegurarnos que la notificación tenga la estructura correcta esperada por el cliente
         const formattedNotification = {
           ...createdNotifications[0],
-          message: createdNotifications[0].message || createdNotifications[0].content,
-          content: createdNotifications[0].message || createdNotifications[0].content,
+          message: createdNotifications[0].message || 'Has recibido una nueva notificación',
           createdAt: createdNotifications[0].createdAt || new Date(),
           updatedAt: createdNotifications[0].updatedAt || new Date()
         };

@@ -38,18 +38,27 @@ export function useRealTimeNotifications() {
   
   // Manejador de mensajes WebSocket
   const handleWebSocketMessage = (data: any) => {
+    // Registrar todos los mensajes WebSocket para depuración
+    console.log('[WebSocket] Mensaje recibido:', data);
+    
     if (data.type === 'notification') {
-      console.log('[WebSocket] Recibida notificación por WebSocket:', data.data);
+      console.log('[WebSocket] NOTIFICACIÓN RECIBIDA', data.data);
       
       try {
-        // Reproducir sonido de notificación
+        // Reproducir sonido de notificación - llamar esto primero para mejorar la experiencia
         console.log('[Notificación] Intentando reproducir sonido...');
-        playNotificationSound();
+        
+        // IMPORTANTE: Usar setTimeout para asegurar que el sonido se reproduzca después de un breve retraso
+        // Esto ayuda en navegadores que requieren interacción del usuario antes de reproducir audio
+        setTimeout(() => {
+          playNotificationSound();
+          console.log('[Notificación] Llamada de reproducción de sonido ejecutada');
+        }, 100);
         
         // Extraer el mensaje de la notificación - aceptar diferentes estructuras
         const notification = data.data;
         let title = notification.title || 'Nueva notificación';
-        let message = notification.message || notification.content || 'Has recibido una nueva notificación';
+        let message = notification.message || 'Has recibido una nueva notificación';
         let notificationType = notification.type || 'default';
         let createdAt = notification.createdAt || new Date().toISOString();
         
@@ -60,18 +69,21 @@ export function useRealTimeNotifications() {
         // Formatear fecha
         const formattedDate = format(new Date(createdAt), 'HH:mm', { locale: es });
         
-        // Mostrar notificación en toast
-        toast({
-          title: title,
-          description: (
-            <div className="flex flex-col space-y-1">
-              <p className="text-sm">{message}</p>
-              <p className="text-xs text-muted-foreground">{formattedDate}</p>
-            </div>
-          ),
-          variant: notificationType === 'error' ? 'destructive' : 'default',
-          duration: 8000, // Más tiempo para que el usuario pueda ver la notificación
-        });
+        // Mostrar notificación en toast con un pequeño retraso
+        // para que no compita con la reproducción del sonido
+        setTimeout(() => {
+          toast({
+            title: title,
+            description: (
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm">{message}</p>
+                <p className="text-xs text-muted-foreground">{formattedDate}</p>
+              </div>
+            ),
+            variant: notificationType === 'error' ? 'destructive' : 'default',
+            duration: 8000, // Más tiempo para que el usuario pueda ver la notificación
+          });
+        }, 300);
         
         // Actualizar la caché de datos
         console.log('[Notificación] Actualizando caché de notificaciones');
