@@ -107,36 +107,73 @@ export default function ScheduleTripsModal({ open, onOpenChange, reservationIds 
   // Extraer información de origen y destino para filtrar viajes disponibles
   const originInfo = reservationsData?.[0]?.trip?.route || null;
   
+  // Función para extraer estado y ciudad de una ubicación completa
+  const extractLocationInfo = (location: string | undefined) => {
+    if (!location) return { state: null, city: null };
+    
+    // El formato típico es "Ciudad, Estado - Terminal"
+    const parts = location.split(' - ');
+    if (parts.length < 1) return { state: null, city: null };
+    
+    const cityState = parts[0].split(', ');
+    if (cityState.length < 2) return { state: null, city: null };
+    
+    return {
+      city: cityState[0].trim(),
+      state: cityState[1].trim()
+    };
+  };
+  
+  // Extraer información de estado y ciudad cuando no estén disponibles como campos separados
+  const originLocation = originInfo?.origin;
+  const destinationLocation = originInfo?.destination;
+  
+  // Intentar obtener datos de estado y ciudad, primero de campos específicos, luego de la cadena completa
+  const originState = originInfo?.originState || extractLocationInfo(originLocation).state;
+  const originCity = originInfo?.originCity || extractLocationInfo(originLocation).city;
+  const destinationState = originInfo?.destinationState || extractLocationInfo(destinationLocation).state;
+  const destinationCity = originInfo?.destinationCity || extractLocationInfo(destinationLocation).city;
+  
+  // Verificar si tenemos toda la información necesaria
+  const hasCompleteLocationInfo = !!originState && !!originCity && !!destinationState && !!destinationCity;
+  
   // Consultar viajes disponibles con la misma ruta y con asientos disponibles
   const { data: availableTrips, isLoading: isLoadingTrips } = useQuery({
-    queryKey: ['/api/trips/available', originInfo?.originState, originInfo?.originCity, originInfo?.destinationState, originInfo?.destinationCity],
+    queryKey: ['/api/trips/available', originState, originCity, destinationState, destinationCity],
     queryFn: async () => {
-      if (!originInfo?.originState || !originInfo?.originCity || !originInfo?.destinationState || !originInfo?.destinationCity) {
+      if (!hasCompleteLocationInfo) {
+        console.log('Información geográfica incompleta:', {
+          originState, originCity, destinationState, destinationCity
+        });
         return [];
       }
       
       // Filtrar por información geográfica
       const params = new URLSearchParams({
-        originState: originInfo.originState,
-        originCity: originInfo.originCity,
-        destinationState: originInfo.destinationState,
-        destinationCity: originInfo.destinationCity,
+        originState: originState!,
+        originCity: originCity!,
+        destinationState: destinationState!,
+        destinationCity: destinationCity!,
         futureOnly: 'true',
         withAvailableSeats: 'true'
       });
       
       try {
+        console.log('Buscando viajes con parámetros:', Object.fromEntries(params.entries()));
         const response = await fetch(`/api/trips/available?${params.toString()}`);
         if (!response.ok) throw new Error('Error al obtener viajes disponibles');
         
         const data = await response.json();
-        return data.filter((trip: Trip) => trip.availableSeats >= reservationIds.length);
+        console.log('Viajes encontrados (sin filtrar):', data.length);
+        const filteredData = data.filter((trip: Trip) => trip.availableSeats >= reservationIds.length);
+        console.log('Viajes filtrados por asientos disponibles:', filteredData.length);
+        return filteredData;
       } catch (error) {
         console.error('Error al consultar viajes disponibles:', error);
         return [];
       }
     },
-    enabled: open && !!originInfo?.originState && !!originInfo?.originCity && !!originInfo?.destinationState && !!originInfo?.destinationCity
+    enabled: open && hasCompleteLocationInfo
   });
 
   // Mutación para programar las reservaciones en un viaje seleccionado
@@ -200,9 +237,7 @@ export default function ScheduleTripsModal({ open, onOpenChange, reservationIds 
     scheduleMutation.mutate();
   };
 
-  // Verificar si se pueden mostrar viajes disponibles
-  const canShowTrips = originInfo?.originState && originInfo?.originCity && 
-                       originInfo?.destinationState && originInfo?.destinationCity;
+  // La variable hasCompleteLocationInfo ya verifica si se pueden mostrar viajes disponibles
 
   // Verificar si ya se programaron todas las reservaciones
   const allReservationsScheduled = scheduledReservationIds.length === reservationIds.length;
@@ -222,7 +257,7 @@ export default function ScheduleTripsModal({ open, onOpenChange, reservationIds 
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
           </div>
-        ) : !canShowTrips ? (
+        ) : !hasCompleteLocationInfo ? (
           <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded my-4">
             <p className="font-medium">No se puede mostrar viajes disponibles</p>
             <p className="text-sm">
@@ -244,14 +279,14 @@ export default function ScheduleTripsModal({ open, onOpenChange, reservationIds 
                   <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
                   <span className="text-muted-foreground">Origen:</span>{' '}
                   <span className="font-medium ml-1">
-                    {originInfo?.originCity}, {originInfo?.originState}
+                    {originCity}, {originState}
                   </span>
                 </div>
                 <div className="flex items-center">
                   <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
                   <span className="text-muted-foreground">Destino:</span>{' '}
                   <span className="font-medium ml-1">
-                    {originInfo?.destinationCity}, {originInfo?.destinationState}
+                    {destinationCity}, {destinationState}
                   </span>
                 </div>
                 <div className="flex items-center">
