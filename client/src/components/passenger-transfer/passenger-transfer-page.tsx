@@ -1,8 +1,35 @@
-import React from "react";
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { PageTitle } from "@/components/ui/page-title";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Loader2, ArrowRightLeft, Users, Calendar } from "lucide-react";
+import { ReservationWithDetails } from "@shared/schema";
+import { Badge } from "@/components/ui/badge";
+import { useReservations } from "@/hooks/use-reservations";
+import { normalizeToStartOfDay } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export function PassengerTransferPage() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
   return (
     <div className="container mx-auto px-4 py-8">
       <PageTitle title="Transferencia de pasajeros" description="Gestión de transferencias de pasajeros entre viajes" />
@@ -11,13 +38,190 @@ export function PassengerTransferPage() {
         <CardHeader>
           <CardTitle>Transferencia de pasajeros</CardTitle>
           <CardDescription>
-            Esta sección está en desarrollo. Próximamente podrá gestionar la transferencia de pasajeros entre viajes.
+            Desde esta sección puede gestionar la transferencia de pasajeros entre diferentes viajes.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Sección vacía por ahora, como se solicitó */}
+          <Button 
+            onClick={() => setIsDialogOpen(true)}
+            className="mt-2"
+          >
+            <ArrowRightLeft className="mr-2 h-4 w-4" />
+            Transferir pasajeros
+          </Button>
         </CardContent>
       </Card>
+      
+      {/* Modal de selección de reservaciones */}
+      <ReservationSelectionModal 
+        isOpen={isDialogOpen} 
+        onClose={() => setIsDialogOpen(false)} 
+      />
     </div>
+  );
+}
+
+interface ReservationSelectionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+function ReservationSelectionModal({ isOpen, onClose }: ReservationSelectionModalProps) {
+  // Cargar reservaciones actuales y futuras
+  const { data: reservations, isLoading, error } = useReservations();
+  
+  // Agrupar reservaciones por viaje
+  const groupedReservations = React.useMemo(() => {
+    if (!reservations) return {};
+    
+    const today = normalizeToStartOfDay(new Date());
+    
+    // Filtrar solo reservaciones confirmadas y cuya fecha sea hoy o futura
+    const activeReservations = reservations.filter(reservation => {
+      if (reservation.status !== 'confirmed') return false;
+      
+      // Verificar la fecha del viaje
+      const tripDate = normalizeToStartOfDay(new Date(reservation.trip.departureDate));
+      return tripDate >= today;
+    });
+    
+    // Agrupar por tripId
+    return activeReservations.reduce((groups: Record<string, ReservationWithDetails[]>, reservation) => {
+      const key = reservation.tripId.toString();
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(reservation);
+      return groups;
+    }, {});
+  }, [reservations]);
+  
+  // Ordenar viajes por fecha
+  const sortedTrips = React.useMemo(() => {
+    if (!groupedReservations) return [];
+    
+    return Object.entries(groupedReservations)
+      .map(([tripId, reservations]) => ({
+        tripId: Number(tripId),
+        tripInfo: reservations[0].trip, // Usamos la info del primer viaje
+        reservations
+      }))
+      .sort((a, b) => {
+        // Ordenar por fecha de salida
+        const dateA = new Date(a.tripInfo.departureDate);
+        const dateB = new Date(b.tripInfo.departureDate);
+        return dateA.getTime() - dateB.getTime();
+      });
+  }, [groupedReservations]);
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Reservaciones disponibles para transferencia</DialogTitle>
+          <DialogDescription>
+            Seleccione reservaciones para transferir pasajeros entre viajes
+          </DialogDescription>
+        </DialogHeader>
+        
+        {isLoading ? (
+          <div className="flex justify-center items-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-2">Cargando reservaciones...</span>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8 text-red-500">
+            Error al cargar reservaciones. Intente nuevamente.
+          </div>
+        ) : sortedTrips.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            No hay reservaciones disponibles para transferir.
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {sortedTrips.map(trip => (
+              <Card key={trip.tripId} className="overflow-hidden">
+                <CardHeader className="bg-muted">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">
+                        {trip.tripInfo.route.name}
+                      </CardTitle>
+                      <CardDescription className="flex items-center mt-1">
+                        <Calendar className="h-4 w-4 mr-1" />
+                        {format(new Date(trip.tripInfo.departureDate), "EEEE d 'de' MMMM 'de' yyyy, HH:mm", { locale: es })}
+                        <Badge className="ml-3" variant="outline">
+                          {trip.reservations.length} reservaciones
+                        </Badge>
+                      </CardDescription>
+                    </div>
+                    <div>
+                      <Button size="sm" variant="outline" onClick={() => {}}>
+                        <Users className="h-4 w-4 mr-2" />
+                        Seleccionar
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Contacto</TableHead>
+                        <TableHead>Pasajeros</TableHead>
+                        <TableHead>Método de pago</TableHead>
+                        <TableHead>Estado de pago</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {trip.reservations.slice(0, 3).map(reservation => (
+                        <TableRow key={reservation.id}>
+                          <TableCell className="font-medium">{reservation.id}</TableCell>
+                          <TableCell>
+                            <div className="text-sm">{reservation.email}</div>
+                            <div className="text-xs text-muted-foreground">{reservation.phone}</div>
+                          </TableCell>
+                          <TableCell>
+                            {reservation.passengers?.length || 0} pasajeros
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {reservation.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={reservation.paymentStatus === 'pagado' ? 'success' : 'warning'}>
+                              {reservation.paymentStatus === 'pagado' ? 'Pagado' : 'Pendiente'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {}}
+                            >
+                              Seleccionar
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {trip.reservations.length > 3 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
+                            {trip.reservations.length - 3} reservaciones más...
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
