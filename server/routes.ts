@@ -5352,6 +5352,110 @@ function setupPackageRoutes(app: Express) {
   
   // === Rutas para Invitaciones de Empresas ===
   
+  // Verificar si una invitación es válida (accesible sin autenticar)
+  app.get(apiRouter("/company-invitations/:token/verify"), async (req: Request, res: Response) => {
+    try {
+      const token = req.params.token;
+      
+      console.log(`[GET /company-invitations/:token/verify] Verificando invitación con token: ${token}`);
+      
+      // Buscar la invitación por token
+      const invitation = await storage.getCompanyInvitationByToken(token);
+      
+      if (!invitation) {
+        return res.status(404).json({ valid: false, message: "Invitación no encontrada" });
+      }
+      
+      // Verificar si la invitación no ha sido usada y no ha expirado
+      const now = new Date();
+      const isExpired = new Date(invitation.expiresAt) < now;
+      
+      if (invitation.isUsed) {
+        return res.status(400).json({ valid: false, message: "Esta invitación ya ha sido utilizada" });
+      }
+      
+      if (isExpired) {
+        return res.status(400).json({ valid: false, message: "Esta invitación ha expirado" });
+      }
+      
+      // Obtener información de la compañía que envió la invitación
+      const company = await storage.getCompanyById(invitation.companyId);
+      
+      return res.status(200).json({ 
+        valid: true, 
+        invitation: {
+          ...invitation,
+          company: company ? { name: company.name, id: company.id } : null
+        } 
+      });
+    } catch (error) {
+      console.error('[GET /company-invitations/:token/verify] Error:', error);
+      return res.status(500).json({ valid: false, message: "Error al verificar la invitación" });
+    }
+  });
+
+  // Aceptar una invitación (accesible sólo para dueños)
+  app.post(apiRouter("/company-invitations/:token/accept"), isAuthenticated, hasRole([UserRole.OWNER]), async (req: Request, res: Response) => {
+    try {
+      const token = req.params.token;
+      const { companyId } = req.user as { companyId: string };
+      
+      if (!companyId) {
+        return res.status(400).json({ success: false, message: "Se requiere ID de compañía" });
+      }
+      
+      console.log(`[POST /company-invitations/:token/accept] Usuario de compañía ${companyId} aceptando invitación con token: ${token}`);
+      
+      // Buscar la invitación por token
+      const invitation = await storage.getCompanyInvitationByToken(token);
+      
+      if (!invitation) {
+        return res.status(404).json({ success: false, message: "Invitación no encontrada" });
+      }
+      
+      // Verificar que la invitación no sea de la misma compañía
+      if (invitation.companyId === companyId) {
+        return res.status(400).json({ success: false, message: "No puedes aceptar una invitación de tu propia compañía" });
+      }
+      
+      // Verificar si la invitación no ha sido usada y no ha expirado
+      const now = new Date();
+      const isExpired = new Date(invitation.expiresAt) < now;
+      
+      if (invitation.isUsed) {
+        return res.status(400).json({ success: false, message: "Esta invitación ya ha sido utilizada" });
+      }
+      
+      if (isExpired) {
+        return res.status(400).json({ success: false, message: "Esta invitación ha expirado" });
+      }
+      
+      // Crear el partenariado bidireccional
+      await storage.createCompanyPartnership({
+        companyId: invitation.companyId,
+        partnerCompanyId: companyId,
+        isActive: true,
+        createdAt: new Date()
+      });
+      
+      // Crear el partenariado en dirección inversa también
+      await storage.createCompanyPartnership({
+        companyId: companyId,
+        partnerCompanyId: invitation.companyId,
+        isActive: true,
+        createdAt: new Date()
+      });
+      
+      // Marcar la invitación como utilizada
+      await storage.useCompanyInvitation(invitation.id, companyId);
+      
+      return res.status(200).json({ success: true, message: "Partenariado entre empresas creado correctamente" });
+    } catch (error) {
+      console.error('[POST /company-invitations/:token/accept] Error:', error);
+      return res.status(500).json({ success: false, message: "Error al aceptar la invitación" });
+    }
+  });
+  
   // Obtener todas las invitaciones de una empresa
   app.get(apiRouter("/company-invitations"), isAuthenticated, hasRole([UserRole.OWNER, UserRole.ADMIN]), async (req: Request, res: Response) => {
     try {
