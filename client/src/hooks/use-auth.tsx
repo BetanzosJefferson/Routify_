@@ -175,6 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user: user ?? null,
         isLoading,
+        isAuthenticated: !!user,
         error,
         loginMutation,
         logoutMutation,

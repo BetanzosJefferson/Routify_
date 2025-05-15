@@ -3710,9 +3710,15 @@ export class DatabaseStorage implements IStorage {
         .values(invitation)
         .returning();
       
+      // Construir la URL completa de la invitación que apunta a nuestra página de procesamiento
+      const appUrl = process.env.APP_URL || "";
+      const invitationUrl = `${appUrl}/invitacion/${newInvitation.token}`;
+      
+      console.log(`[createCompanyInvitation] URL generada: ${invitationUrl}`);
+      
       return {
         ...newInvitation,
-        url: `${process.env.APP_URL || ""}/invitacion/${newInvitation.token}`
+        url: invitationUrl
       };
     } catch (error) {
       console.error(`[createCompanyInvitation] Error al crear invitación:`, error);
