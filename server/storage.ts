@@ -306,6 +306,19 @@ export class MemStorage implements IStorage {
   }
   
   async getTrip(id: number): Promise<Trip | undefined> {
+    if (isNaN(id)) {
+      console.error(`[getTrip] ID inválido: ${id}`);
+      return undefined;
+    }
+    return this.trips.get(id);
+  }
+  
+  // Función específica para obtener un viaje por ID (usada en la API)
+  async getTripById(id: number): Promise<Trip | undefined> {
+    if (isNaN(id)) {
+      console.error(`[getTripById] ID inválido: ${id}`);
+      return undefined;
+    }
     return this.trips.get(id);
   }
   
@@ -549,6 +562,19 @@ export class MemStorage implements IStorage {
   }
   
   async getReservation(id: number): Promise<Reservation | undefined> {
+    if (isNaN(id)) {
+      console.error(`[getReservation] ID inválido: ${id}`);
+      return undefined;
+    }
+    return this.reservations.get(id);
+  }
+  
+  // Método específico para la API
+  async getReservationById(id: number): Promise<Reservation | undefined> {
+    if (isNaN(id)) {
+      console.error(`[getReservationById] ID inválido: ${id}`);
+      return undefined;
+    }
     return this.reservations.get(id);
   }
   
