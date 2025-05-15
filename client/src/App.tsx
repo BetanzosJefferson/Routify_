@@ -24,8 +24,6 @@ import PackagesPage from "@/pages/packages-page";
 import PackageDetailPage from "@/pages/package-detail-page";
 import EditTripPage from "@/pages/edit-trip-page";
 import CashRegisterPageRoute from "@/pages/cash-register-page";
-import TransfersPage from "@/pages/transfers-page";
-import VerifyCompanyLinkPage from "@/pages/verify-company-link-page";
 import { UsersPage } from "@/components/users/users-page";
 
 function Router() {
@@ -42,13 +40,11 @@ function Router() {
       <ProtectedRoute path="/packages" component={PackagesPage} />
       <ProtectedRoute path="/cash-register" component={CashRegisterPageRoute} />
       <ProtectedRoute path="/edit-trip/:id" component={EditTripPage} />
-      <ProtectedRoute path="/transfers" component={TransfersPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register/:token" component={RegisterPage} />
       <Route path="/reservation-details" component={ReservationDetails} />
       <Route path="/reservation-details/:id" component={ReservationDetails} />
       <Route path="/package/:id" component={PackageDetailPage} />
-      <Route path="/verify-company-link/:token" component={VerifyCompanyLinkPage} />
       <Route component={NotFound} />
     </Switch>
   );
