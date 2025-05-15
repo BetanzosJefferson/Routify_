@@ -4,6 +4,8 @@ import { storage } from "./storage";
 import { z } from "zod";
 import { db } from "./db";
 import { eq, inArray } from "drizzle-orm";
+import crypto from "crypto";
+import { setupAuthentication } from "./auth-session";
 import { 
   insertRouteSchema, 
   insertTripSchema, 
@@ -4788,8 +4790,11 @@ function setupPackageRoutes(app: Express) {
   // Helper para rutas API
   const apiRouter = (path: string) => `/api${path}`;
   
-  // Middleware para verificar autenticación
-  function isAuthenticated(req: Request, res: Response, next: Function) {
+  // Usar la autenticación configurada en auth-session.ts
+  const { isAuthenticated, hasRole } = setupAuthentication(app);
+  
+  // Middleware alternativo para verificar autenticación (por si acaso)
+  function isAuthenticatedLocal(req: Request, res: Response, next: Function) {
     if (req.isAuthenticated && req.isAuthenticated()) {
       return next();
     }
@@ -5229,6 +5234,303 @@ function setupPackageRoutes(app: Express) {
     } catch (error) {
       console.error('[GET /cash-register] Error:', error);
       res.status(500).json({ message: 'Error al cargar datos de caja' });
+    }
+  });
+
+  // === Rutas para Partenariados entre Empresas ===
+  
+  // Obtener todos los partenariados de una empresa
+  app.get(apiRouter("/company-partnerships"), isAuthenticated, hasRole([UserRole.OWNER, UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.user as { companyId: string };
+      
+      if (!companyId) {
+        return res.status(400).json({ message: "Se requiere ID de compañía" });
+      }
+      
+      console.log(`[GET /company-partnerships] Obteniendo partenariados para compañía ${companyId}`);
+      const partnerships = await storage.getCompanyPartnerships(companyId);
+      
+      return res.json(partnerships);
+    } catch (error) {
+      console.error('[GET /company-partnerships] Error:', error);
+      res.status(500).json({ message: 'Error al obtener partenariados' });
+    }
+  });
+  
+  // Crear un nuevo partenariado entre empresas
+  app.post(apiRouter("/company-partnerships"), isAuthenticated, hasRole([UserRole.OWNER]), async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.user as { companyId: string };
+      const { partnerCompanyId } = req.body;
+      
+      if (!companyId || !partnerCompanyId) {
+        return res.status(400).json({ message: "Se requieren IDs de ambas compañías" });
+      }
+      
+      console.log(`[POST /company-partnerships] Creando partenariado entre ${companyId} y ${partnerCompanyId}`);
+      
+      // Verificar que la compañía partner exista
+      const partnerCompany = await storage.getCompanyById(partnerCompanyId);
+      if (!partnerCompany) {
+        return res.status(404).json({ message: "La compañía partner no existe" });
+      }
+      
+      // Verificar que no exista ya un partenariado activo
+      const existingPartnerships = await storage.getCompanyPartnerships(companyId);
+      const alreadyPartner = existingPartnerships.some(p => 
+        p.partnerCompanyId === partnerCompanyId && p.isActive
+      );
+      
+      if (alreadyPartner) {
+        return res.status(409).json({ message: "Ya existe un partenariado activo con esta compañía" });
+      }
+      
+      // Crear el partenariado bidireccional
+      const newPartnership = await storage.createCompanyPartnership({
+        companyId,
+        partnerCompanyId,
+        isActive: true,
+        createdAt: new Date()
+      });
+      
+      // También crear la relación inversa
+      await storage.createCompanyPartnership({
+        companyId: partnerCompanyId,
+        partnerCompanyId: companyId,
+        isActive: true,
+        createdAt: new Date()
+      });
+      
+      return res.status(201).json(newPartnership);
+    } catch (error) {
+      console.error('[POST /company-partnerships] Error:', error);
+      res.status(500).json({ message: 'Error al crear partenariado' });
+    }
+  });
+  
+  // Eliminar un partenariado (desactivarlo)
+  app.delete(apiRouter("/company-partnerships/:id"), isAuthenticated, hasRole([UserRole.OWNER]), async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.user as { companyId: string };
+      const partnershipId = parseInt(req.params.id);
+      
+      if (isNaN(partnershipId)) {
+        return res.status(400).json({ message: "ID de partenariado inválido" });
+      }
+      
+      // Verificar que el partenariado pertenezca a la empresa del usuario
+      const partnership = await storage.getCompanyPartnership(partnershipId);
+      
+      if (!partnership) {
+        return res.status(404).json({ message: "Partenariado no encontrado" });
+      }
+      
+      if (partnership.companyId !== companyId) {
+        return res.status(403).json({ message: "No tienes permiso para eliminar este partenariado" });
+      }
+      
+      console.log(`[DELETE /company-partnerships/${partnershipId}] Eliminando partenariado entre ${partnership.companyId} y ${partnership.partnerCompanyId}`);
+      
+      // Desactivar el partenariado
+      await storage.updateCompanyPartnership(partnershipId, { isActive: false });
+      
+      // También buscar y desactivar el partenariado inverso
+      const inversePartnerships = await storage.getCompanyPartnerships(partnership.partnerCompanyId);
+      const inversePartnership = inversePartnerships.find(p => p.partnerCompanyId === companyId);
+      
+      if (inversePartnership) {
+        await storage.updateCompanyPartnership(inversePartnership.id, { isActive: false });
+      }
+      
+      return res.status(200).json({ message: "Partenariado eliminado correctamente" });
+    } catch (error) {
+      console.error(`[DELETE /company-partnerships] Error:`, error);
+      res.status(500).json({ message: 'Error al eliminar partenariado' });
+    }
+  });
+  
+  // === Rutas para Invitaciones de Empresas ===
+  
+  // Obtener todas las invitaciones de una empresa
+  app.get(apiRouter("/company-invitations"), isAuthenticated, hasRole([UserRole.OWNER, UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.user as { companyId: string };
+      
+      if (!companyId) {
+        return res.status(400).json({ message: "Se requiere ID de compañía" });
+      }
+      
+      console.log(`[GET /company-invitations] Obteniendo invitaciones para compañía ${companyId}`);
+      const invitations = await storage.getCompanyInvitations(companyId);
+      
+      return res.json(invitations);
+    } catch (error) {
+      console.error('[GET /company-invitations] Error:', error);
+      res.status(500).json({ message: 'Error al obtener invitaciones' });
+    }
+  });
+  
+  // Crear una nueva invitación
+  app.post(apiRouter("/company-invitations"), isAuthenticated, hasRole([UserRole.OWNER]), async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.user as { companyId: string };
+      
+      if (!companyId) {
+        return res.status(400).json({ message: "Se requiere ID de compañía" });
+      }
+      
+      console.log(`[POST /company-invitations] Creando invitación para compañía ${companyId}`);
+      
+      // Generar un token único para la invitación
+      const token = crypto.randomBytes(32).toString('hex');
+      
+      // Calcular fecha de expiración (30 días)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+      
+      // Crear la invitación
+      const newInvitation = await storage.createCompanyInvitation({
+        companyId,
+        token,
+        expiresAt,
+        isUsed: false,
+        usedBy: null,
+        createdAt: new Date()
+      });
+      
+      return res.status(201).json(newInvitation);
+    } catch (error) {
+      console.error('[POST /company-invitations] Error:', error);
+      res.status(500).json({ message: 'Error al crear invitación' });
+    }
+  });
+  
+  // Validar y usar una invitación
+  app.post(apiRouter("/company-invitations/:token/use"), isAuthenticated, hasRole(["Dueño"]), async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.user as { companyId: string };
+      const { token } = req.params;
+      
+      if (!companyId || !token) {
+        return res.status(400).json({ message: "Se requiere ID de compañía y token" });
+      }
+      
+      console.log(`[POST /company-invitations/${token}/use] Utilizando invitación para compañía ${companyId}`);
+      
+      // Verificar que la invitación exista y sea válida
+      const invitation = await storage.getCompanyInvitationByToken(token);
+      
+      if (!invitation) {
+        return res.status(404).json({ message: "Invitación no encontrada" });
+      }
+      
+      // Verificar que la invitación no esté usada
+      if (invitation.isUsed) {
+        return res.status(409).json({ message: "La invitación ya ha sido utilizada" });
+      }
+      
+      // Verificar que la invitación no esté expirada
+      if (new Date() > new Date(invitation.expiresAt)) {
+        return res.status(410).json({ message: "La invitación ha expirado" });
+      }
+      
+      // Verificar que no sea la misma compañía
+      if (invitation.companyId === companyId) {
+        return res.status(409).json({ message: "No puedes vincular tu empresa contigo misma" });
+      }
+      
+      // Marcar la invitación como usada y crear los partenariados
+      await storage.useCompanyInvitation(invitation.id, companyId);
+      
+      return res.status(200).json({ 
+        message: "Invitación utilizada correctamente", 
+        companyId: invitation.companyId 
+      });
+    } catch (error) {
+      console.error(`[POST /company-invitations/${req.params.token}/use] Error:`, error);
+      res.status(500).json({ message: 'Error al utilizar invitación' });
+    }
+  });
+  
+  // Eliminar una invitación
+  app.delete(apiRouter("/company-invitations/:id"), isAuthenticated, hasRole([UserRole.OWNER]), async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.user as { companyId: string };
+      const invitationId = parseInt(req.params.id);
+      
+      if (isNaN(invitationId)) {
+        return res.status(400).json({ message: "ID de invitación inválido" });
+      }
+      
+      // Verificar que la invitación pertenezca a la empresa del usuario
+      const invitation = await storage.getCompanyInvitation(invitationId);
+      
+      if (!invitation) {
+        return res.status(404).json({ message: "Invitación no encontrada" });
+      }
+      
+      if (invitation.companyId !== companyId) {
+        return res.status(403).json({ message: "No tienes permiso para eliminar esta invitación" });
+      }
+      
+      console.log(`[DELETE /company-invitations/${invitationId}] Eliminando invitación de la compañía ${companyId}`);
+      
+      // Eliminar la invitación
+      await storage.deleteCompanyInvitation(invitationId);
+      
+      return res.status(200).json({ message: "Invitación eliminada correctamente" });
+    } catch (error) {
+      console.error(`[DELETE /company-invitations] Error:`, error);
+      res.status(500).json({ message: 'Error al eliminar invitación' });
+    }
+  });
+  
+  // === Ruta para Transferencia de Reservaciones ===
+  
+  // Transferir reservaciones a otra empresa
+  app.post(apiRouter("/reservations/transfer"), isAuthenticated, hasRole(["Dueño", "Administrador"]), async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.user as { companyId: string };
+      const { reservationIds, targetCompanyId } = req.body;
+      
+      if (!companyId || !targetCompanyId || !Array.isArray(reservationIds) || reservationIds.length === 0) {
+        return res.status(400).json({ message: "Se requiere ID de compañía origen, destino y reservaciones" });
+      }
+      
+      console.log(`[POST /reservations/transfer] Transfiriendo ${reservationIds.length} reservaciones de ${companyId} a ${targetCompanyId}`);
+      
+      // Verificar que la compañía destino exista
+      const targetCompany = await storage.getCompanyById(targetCompanyId);
+      if (!targetCompany) {
+        return res.status(404).json({ message: "La compañía destino no existe" });
+      }
+      
+      // Verificar que exista un partenariado activo entre las compañías
+      const partnerships = await storage.getCompanyPartnerships(companyId);
+      const isPartner = partnerships.some(p => 
+        p.partnerCompanyId === targetCompanyId && p.isActive
+      );
+      
+      if (!isPartner) {
+        return res.status(403).json({ message: "No existe un partenariado activo con la compañía destino" });
+      }
+      
+      // Realizar la transferencia de reservaciones
+      const transferred = await storage.transferReservations(reservationIds, companyId, targetCompanyId);
+      
+      if (!transferred) {
+        return res.status(500).json({ message: "Error al transferir reservaciones" });
+      }
+      
+      return res.status(200).json({ 
+        message: "Reservaciones transferidas correctamente",
+        transferredCount: reservationIds.length,
+        targetCompany: targetCompany.name 
+      });
+    } catch (error) {
+      console.error(`[POST /reservations/transfer] Error:`, error);
+      res.status(500).json({ message: 'Error al transferir reservaciones' });
     }
   });
 }
