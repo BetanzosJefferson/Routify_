@@ -36,22 +36,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: async ({ queryKey }) => {
       try {
         const path = queryKey[0] as string;
-        console.log("Verificando autenticación...");
         const response = await fetch(path, {
           credentials: "include", // Importante: incluir cookies en la petición
         });
         
         if (!response.ok) {
           if (response.status === 401) {
-            console.log("Usuario no autenticado, redirección necesaria");
             return null;
           }
           throw new Error(`Error ${response.status}: ${response.statusText}`);
         }
         
-        const userData = await response.json();
-        console.log("Usuario autenticado:", userData.email);
-        return userData;
+        return await response.json();
       } catch (error) {
         console.error("Error fetching user:", error);
         return null;
