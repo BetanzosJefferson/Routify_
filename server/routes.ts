@@ -5233,6 +5233,46 @@ function setupPackageRoutes(app: Express) {
   });
   
   // Endpoint para obtener todas las empresas registradas
+  // Endpoint específico para obtener compañías para transferencia de pasajeros
+  app.get(apiRouter('/companies/transfer'), isAuthenticated, async (req, res) => {
+    try {
+      const { user } = req as any;
+      if (!user) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      console.log(`[GET /companies/transfer] Usuario ${user.firstName} ${user.lastName} solicitando lista de empresas para transferencia`);
+      
+      // Verificar que el usuario tenga permisos (Admin o Dueño o SuperAdmin)
+      if (![UserRole.ADMIN, UserRole.OWNER, UserRole.SUPER_ADMIN].includes(user.role)) {
+        console.log(`[GET /companies/transfer] Acceso denegado para usuario con rol ${user.role}`);
+        return res.status(403).json({ message: "No tiene permisos para esta operación" });
+      }
+      
+      // Obtener todas las empresas desde la base de datos
+      let companiesList = await db.select().from(companies);
+      console.log(`[GET /companies/transfer] Encontradas ${companiesList.length} empresas en total`);
+      
+      // Para Owner y Admin, mostrar todas las compañías excepto la propia
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        const userCompanyId = user.companyId || user.company;
+        if (userCompanyId) {
+          companiesList = companiesList.filter(company => company.identifier !== userCompanyId);
+          console.log(`[GET /companies/transfer] Filtrando a ${companiesList.length} empresas (excluyendo la propia: ${userCompanyId})`);
+        }
+      }
+      
+      // Filtrar sólo empresas activas
+      companiesList = companiesList.filter(company => company.status === "active");
+      
+      console.log(`[GET /companies/transfer] Devolviendo ${companiesList.length} empresas activas para transferencia`);
+      return res.json(companiesList);
+    } catch (error) {
+      console.error(`[GET /companies/transfer] Error: ${error}`);
+      res.status(500).json({ message: "Error al obtener empresas" });
+    }
+  });
+
   app.get(apiRouter('/companies'), isAuthenticated, async (req, res) => {
     try {
       const { user } = req as any;
