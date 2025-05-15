@@ -78,6 +78,12 @@ export function PassengerTransferPage() {
       <ReservationSelectionModal 
         isOpen={isDialogOpen} 
         onClose={() => setIsDialogOpen(false)} 
+        selectedReservations={selectedReservations}
+        setSelectedReservations={setSelectedReservations}
+        selectedTrips={selectedTrips}
+        setSelectedTrips={setSelectedTrips}
+        setSelectedReservationIds={setSelectedReservationIds}
+        setShowCompanySelection={setShowCompanySelection}
       />
       
       {/* Modal de selección de empresa */}
@@ -94,16 +100,26 @@ export function PassengerTransferPage() {
 interface ReservationSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  selectedReservations: Record<number, boolean>;
+  setSelectedReservations: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
+  selectedTrips: Record<number, boolean>;
+  setSelectedTrips: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
+  setSelectedReservationIds: React.Dispatch<React.SetStateAction<number[]>>;
+  setShowCompanySelection: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-function ReservationSelectionModal({ isOpen, onClose }: ReservationSelectionModalProps) {
+function ReservationSelectionModal({ 
+  isOpen, 
+  onClose, 
+  selectedReservations, 
+  setSelectedReservations, 
+  selectedTrips, 
+  setSelectedTrips,
+  setSelectedReservationIds,
+  setShowCompanySelection
+}: ReservationSelectionModalProps) {
   // Cargar reservaciones actuales y futuras
   const { data: reservations, isLoading, error } = useReservations();
-  
-  // Estado para rastrear reservaciones seleccionadas
-  const [selectedReservations, setSelectedReservations] = useState<Record<number, boolean>>({});
-  // Estado para rastrear selección de viajes completos
-  const [selectedTrips, setSelectedTrips] = useState<Record<number, boolean>>({});
   
   // Manejar selección/deselección individual
   const handleReservationSelect = (reservationId: number) => {
@@ -312,6 +328,7 @@ function ReservationSelectionModal({ isOpen, onClose }: ReservationSelectionModa
               // Guardar IDs seleccionadas y abrir el modal de selección de empresa
               setSelectedReservationIds(selectedIds);
               setShowCompanySelection(true);
+              onClose(); // Cerrar el modal actual
             }}
           >
             Continuar con {Object.values(selectedReservations).filter(Boolean).length} seleccionada(s)

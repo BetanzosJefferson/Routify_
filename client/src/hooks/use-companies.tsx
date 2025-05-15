@@ -1,20 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
 import { Company } from "@shared/schema";
 
-// Hook para obtener todas las empresas
+/**
+ * Hook para obtener las compañías registradas en el sistema
+ * @param forTransfer - Si es true, sólo devuelve las compañías disponibles para transferencia
+ * @returns Query result con las compañías registradas
+ */
 export function useCompanies(forTransfer: boolean = false) {
-  return useQuery({
-    queryKey: ['/api/companies', forTransfer ? 'transfer' : 'all'],
+  const endpoint = forTransfer 
+    ? "/api/companies?forTransfer=true" 
+    : "/api/companies";
+
+  return useQuery<Company[]>({
+    queryKey: ["companies", { forTransfer }],
     queryFn: async () => {
-      const url = forTransfer ? '/api/companies?forTransfer=true' : '/api/companies';
-      const response = await fetch(url);
-      
+      const response = await fetch(endpoint);
       if (!response.ok) {
-        throw new Error('Error al obtener empresas');
+        throw new Error("Error al obtener las compañías");
       }
-      
-      const data = await response.json();
-      return data as Company[];
-    }
+      return response.json();
+    },
   });
 }
