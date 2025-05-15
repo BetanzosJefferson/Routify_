@@ -70,6 +70,35 @@ function ReservationSelectionModal({ isOpen, onClose }: ReservationSelectionModa
   // Cargar reservaciones actuales y futuras
   const { data: reservations, isLoading, error } = useReservations();
   
+  // Estado para rastrear reservaciones seleccionadas
+  const [selectedReservations, setSelectedReservations] = useState<Record<number, boolean>>({});
+  // Estado para rastrear selección de viajes completos
+  const [selectedTrips, setSelectedTrips] = useState<Record<number, boolean>>({});
+  
+  // Manejar selección/deselección individual
+  const handleReservationSelect = (reservationId: number) => {
+    setSelectedReservations(prev => ({
+      ...prev,
+      [reservationId]: !prev[reservationId]
+    }));
+  };
+  
+  // Manejar selección/deselección de todas las reservaciones de un viaje
+  const handleTripSelect = (tripId: number, tripReservations: ReservationWithDetails[]) => {
+    const newTripSelected = !selectedTrips[tripId];
+    setSelectedTrips(prev => ({
+      ...prev,
+      [tripId]: newTripSelected
+    }));
+    
+    // Actualizar todas las reservaciones de este viaje
+    const newSelectedReservations = { ...selectedReservations };
+    tripReservations.forEach(reservation => {
+      newSelectedReservations[reservation.id] = newTripSelected;
+    });
+    setSelectedReservations(newSelectedReservations);
+  };
+  
   // Agrupar reservaciones por viaje
   const groupedReservations = React.useMemo(() => {
     if (!reservations) return {};
@@ -155,11 +184,16 @@ function ReservationSelectionModal({ isOpen, onClose }: ReservationSelectionModa
                         </Badge>
                       </CardDescription>
                     </div>
-                    <div>
-                      <Button size="sm" variant="outline" onClick={() => {}}>
-                        <Users className="h-4 w-4 mr-2" />
-                        Seleccionar
-                      </Button>
+                    <div className="flex items-center space-x-2">
+                      <label className="text-sm font-medium flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          checked={selectedTrips[trip.tripId] || false}
+                          onChange={() => handleTripSelect(trip.tripId, trip.reservations)}
+                        />
+                        <span>Seleccionar todo</span>
+                      </label>
                     </div>
                   </div>
                 </CardHeader>
@@ -192,18 +226,25 @@ function ReservationSelectionModal({ isOpen, onClose }: ReservationSelectionModa
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={reservation.paymentStatus === 'pagado' ? 'success' : 'warning'}>
-                              {reservation.paymentStatus === 'pagado' ? 'Pagado' : 'Pendiente'}
-                            </Badge>
+                            {reservation.paymentStatus === 'pagado' ? (
+                              <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">
+                                Pagado
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+                                Pendiente
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => {}}
-                            >
-                              Seleccionar
-                            </Button>
+                            <div className="flex items-center justify-end">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                checked={selectedReservations[reservation.id] || false}
+                                onChange={() => handleReservationSelect(reservation.id)}
+                              />
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -221,6 +262,33 @@ function ReservationSelectionModal({ isOpen, onClose }: ReservationSelectionModa
             ))}
           </div>
         )}
+        
+        {/* Botones de acción */}
+        <div className="mt-6 flex justify-end space-x-2 pt-4 border-t">
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          
+          <Button 
+            disabled={Object.values(selectedReservations).filter(Boolean).length === 0}
+            onClick={() => {
+              // Obtener IDs de reservaciones seleccionadas
+              const selectedIds = Object.entries(selectedReservations)
+                .filter(([_, isSelected]) => isSelected)
+                .map(([id]) => Number(id));
+              
+              console.log("Reservaciones seleccionadas:", selectedIds);
+              
+              // Mostrar un mensaje temporal en la consola
+              alert(`Seleccionadas ${selectedIds.length} reservaciones para transferencia. Función en desarrollo.`);
+              
+              // Cerrar el modal
+              onClose();
+            }}
+          >
+            Continuar con {Object.values(selectedReservations).filter(Boolean).length} seleccionada(s)
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
