@@ -111,9 +111,9 @@ export default function CompanyPartnershipModal({
   // Mutación para transferir pasajeros a una empresa vinculada
   const transferPassengersMutation = useMutation({
     mutationFn: async (partnerCompanyId: string) => {
-      return await apiRequest('POST', '/api/passenger-transfers', {
+      return await apiRequest('POST', '/api/reservations/transfer', {
         reservationIds: selectedReservationIds,
-        partnerCompanyId
+        targetCompanyId: partnerCompanyId
       });
     },
     onSuccess: () => {
