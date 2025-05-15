@@ -12,6 +12,7 @@ import { UsersPage } from "@/components/users/users-page";
 import VehiclesPage from "@/components/vehicles/vehicles-page";
 import CommissionsPage from "@/components/commissions/commissions-page";
 import { BoardingList } from "@/components/boarding-list/boarding-list";
+import { PassengerTransferPage } from "@/components/passenger-transfer/passenger-transfer-page";
 import { TabType } from "@/hooks/use-active-tab";
 import { useAuth } from "@/hooks/use-auth";
 import { hasAccessToSection } from "@/lib/role-based-permissions";
@@ -129,6 +130,12 @@ export default function Dashboard() {
             {activeTab === "commissions" && canAccess("commissions") ? (
               <CommissionsPage />
             ) : activeTab === "commissions" && (
+              <AccessDeniedAlert />
+            )}
+            
+            {activeTab === "passenger-transfer" && canAccess("passenger-transfer") ? (
+              <PassengerTransferPage />
+            ) : activeTab === "passenger-transfer" && (
               <AccessDeniedAlert />
             )}
           </main>

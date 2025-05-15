@@ -18,7 +18,9 @@ import {
   UsersIcon,
   BellIcon,
   FileTextIcon,
-  TagIcon
+  TagIcon,
+  Users,
+  ArrowRightLeft
 } from "lucide-react";
 
 interface SidebarProps {
@@ -212,6 +214,19 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                 onClick={() => setLocation("/reservation-requests")}
               >
                 Solicitudes de Reservación
+              </NavItem>
+            </NavSection>
+          )}
+          
+          {/* Sección de Transferencia de Pasajeros */}
+          {canAccess("passenger-transfer") && (
+            <NavSection title="Operaciones">
+              <NavItem 
+                icon={<ArrowRightLeft className="h-5 w-5" />} 
+                active={(location === '/' || location === '/dashboard') && activeTab === "passenger-transfer"}
+                onClick={() => handleTabClick("passenger-transfer")}
+              >
+                Transferencia de pasajeros
               </NavItem>
             </NavSection>
           )}
