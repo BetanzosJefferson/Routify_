@@ -4900,6 +4900,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupPackageRoutes(app);
 
   // Endpoint para transferencia de pasajeros
+  // Endpoint para obtener detalles de una transferencia específica
+  // Endpoint para obtener varias reservaciones por sus IDs
+  app.get(apiRouter('/reservations/by-ids'), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // Obtener información del usuario autenticado
+      const currentUser = req.user as any;
+      if (!currentUser) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      // Obtener IDs de la query string
+      const ids = req.query.ids;
+      
+      if (!ids) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Se deben proporcionar IDs de reservaciones' 
+        });
+      }
+      
+      // Convertir a array de números
+      let reservationIds: number[] = [];
+      
+      if (typeof ids === 'string') {
+        // Si es un solo ID o una cadena separada por comas
+        reservationIds = ids.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
+      } else if (Array.isArray(ids)) {
+        // Si es un array de IDs
+        reservationIds = ids.map(id => parseInt(String(id).trim(), 10)).filter(id => !isNaN(id));
+      }
+      
+      if (reservationIds.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'IDs de reservaciones inválidos' 
+        });
+      }
+      
+      // Obtener las reservaciones con detalles adicionales
+      const reservations = [];
+      
+      for (const id of reservationIds) {
+        const reservation = await storage.getReservation(id);
+        
+        if (reservation) {
+          // Obtener información adicional
+          const trip = await storage.getTrip(reservation.tripId);
+          
+          // Si se encontró el viaje, obtener detalles adicionales
+          if (trip) {
+            const route = await storage.getRoute(trip.routeId);
+            
+            // Construir un objeto con todos los detalles que necesita el frontend
+            const reservationWithDetails = {
+              ...reservation,
+              departureDate: trip.departureDate,
+              origin: route ? route.origin : 'Desconocido',
+              destination: route ? route.destination : 'Desconocido',
+              companyId: trip.companyId
+            };
+            
+            reservations.push(reservationWithDetails);
+          } else {
+            // Si no se encuentra el viaje, agregar solo la reservación
+            reservations.push(reservation);
+          }
+        }
+      }
+      
+      // Responder con las reservaciones encontradas
+      res.json(reservations);
+      
+    } catch (error) {
+      console.error('Error al obtener reservaciones por IDs:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error al obtener las reservaciones' 
+      });
+    }
+  });
+  
+  app.get(apiRouter('/transfers/details/:notificationId'), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const notificationId = parseInt(req.params.notificationId, 10);
+      
+      // Validar parámetro
+      if (isNaN(notificationId)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'ID de notificación inválido' 
+        });
+      }
+      
+      // Obtener información del usuario autenticado
+      const currentUser = req.user as any;
+      if (!currentUser) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      // Obtener la notificación
+      const notification = await storage.getNotificationById(notificationId);
+      
+      if (!notification) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Notificación no encontrada' 
+        });
+      }
+      
+      // Verificar que la notificación pertenezca al usuario actual
+      if (notification.userId !== currentUser.id) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'No tienes permisos para ver esta notificación' 
+        });
+      }
+      
+      // Verificar que sea una notificación de tipo transfer
+      if (notification.type !== 'transfer') {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'La notificación no es de tipo transferencia' 
+        });
+      }
+      
+      // Extraer los datos de transferencia y enviarlos
+      const transferData = notification.data || {};
+      
+      // Validar si hay datos de transferencia
+      if (!transferData.reservationIds || !Array.isArray(transferData.reservationIds) || transferData.reservationIds.length === 0) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Datos de transferencia no disponibles' 
+        });
+      }
+      
+      // Obtener información de la empresa de origen
+      let sourceCompany = null;
+      if (transferData.sourceCompanyId) {
+        sourceCompany = await storage.getCompanyById(transferData.sourceCompanyId);
+      }
+      
+      // Responder con los datos de transferencia
+      res.json({
+        success: true,
+        transferData: {
+          ...transferData,
+          sourceCompanyName: sourceCompany ? sourceCompany.name : 'Empresa desconocida'
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error al obtener detalles de transferencia:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error al obtener detalles de la transferencia' 
+      });
+    }
+  });
+  
   app.post(apiRouter('/reservations/transfer'), isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { reservationIds, targetCompanyId } = req.body;
@@ -4997,7 +5157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userIdsForRealtime = [];
       
       for (const user of filteredUsers) {
-        // Crear la notificación
+        // Crear la notificación con datos adicionales para el modal
         const notification = {
           userId: user.id,
           type: 'transfer',
@@ -5005,6 +5165,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: `${currentUser.firstName} ${currentUser.lastName} ha transferido ${reservationsToTransfer.length} reservación(es) a tu empresa.`,
           read: false,
           relatedId: null,
+          data: {
+            transferId: Date.now(), // Identificador único para esta transferencia
+            reservationIds: reservationIds,
+            sourceCompanyId: currentUser.companyId || currentUser.company,
+            targetCompanyId: targetCompanyId,
+            timestamp: new Date().toISOString()
+          },
           createdAt: new Date(),
           updatedAt: new Date()
         };
@@ -5022,6 +5189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const formattedNotification = {
           ...createdNotifications[0],
           message: createdNotifications[0].message || 'Has recibido una nueva notificación',
+          data: createdNotifications[0].data, // Incluir los datos de transferencia
           createdAt: createdNotifications[0].createdAt || new Date(),
           updatedAt: createdNotifications[0].updatedAt || new Date()
         };
