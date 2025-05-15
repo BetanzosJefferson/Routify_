@@ -41,28 +41,45 @@ export function useRealTimeNotifications() {
     if (data.type === 'notification') {
       console.log('[WebSocket] Recibida notificación por WebSocket:', data.data);
       
-      // Reproducir sonido
-      playNotificationSound();
-      
-      // Mostrar notificación en toast
-      const notification = data.data;
-      const formattedDate = format(new Date(notification.createdAt), 'HH:mm', { locale: es });
-      
-      toast({
-        title: notification.title,
-        description: (
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm">{notification.message}</p>
-            <p className="text-xs text-muted-foreground">{formattedDate}</p>
-          </div>
-        ),
-        variant: notification.type === 'error' ? 'destructive' : 'default',
-        duration: 5000,
-      });
-      
-      // Actualizar la caché de datos
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread-count'] });
+      try {
+        // Reproducir sonido de notificación
+        console.log('[Notificación] Intentando reproducir sonido...');
+        playNotificationSound();
+        
+        // Extraer el mensaje de la notificación - aceptar diferentes estructuras
+        const notification = data.data;
+        let title = notification.title || 'Nueva notificación';
+        let message = notification.message || notification.content || 'Has recibido una nueva notificación';
+        let notificationType = notification.type || 'default';
+        let createdAt = notification.createdAt || new Date().toISOString();
+        
+        console.log('[Notificación] Datos procesados:', {
+          title, message, notificationType, createdAt
+        });
+        
+        // Formatear fecha
+        const formattedDate = format(new Date(createdAt), 'HH:mm', { locale: es });
+        
+        // Mostrar notificación en toast
+        toast({
+          title: title,
+          description: (
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm">{message}</p>
+              <p className="text-xs text-muted-foreground">{formattedDate}</p>
+            </div>
+          ),
+          variant: notificationType === 'error' ? 'destructive' : 'default',
+          duration: 8000, // Más tiempo para que el usuario pueda ver la notificación
+        });
+        
+        // Actualizar la caché de datos
+        console.log('[Notificación] Actualizando caché de notificaciones');
+        queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread-count'] });
+      } catch (error) {
+        console.error('[Notificación] Error al procesar notificación:', error);
+      }
     }
   };
   

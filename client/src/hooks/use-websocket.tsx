@@ -78,14 +78,26 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       
       socket.current.onmessage = (event) => {
         try {
+          log('Mensaje WebSocket recibido (raw):', event.data);
+          
           const data = JSON.parse(event.data);
-          log('Mensaje recibido:', data);
+          log('Mensaje WebSocket procesado:', data);
+          
+          // Añadir logging específico para notificaciones
+          if (data.type === 'notification') {
+            console.log('=== NOTIFICACIÓN RECIBIDA ===');
+            console.log('Tipo:', data.type);
+            console.log('Datos:', data.data);
+            console.log('Timestamp:', new Date().toISOString());
+            console.log('===========================');
+          }
           
           if (onMessage) {
             onMessage(data);
           }
         } catch (error) {
           console.error('[WebSocket] Error al procesar mensaje:', error);
+          console.error('[WebSocket] Contenido del mensaje:', event.data);
         }
       };
       
