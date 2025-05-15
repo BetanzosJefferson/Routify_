@@ -5266,6 +5266,47 @@ function setupPackageRoutes(app: Express) {
   // RUTAS PARA LA TRANSFERENCIA DE PASAJEROS ENTRE EMPRESAS
 
   // 1. Rutas para la gestión de vínculos entre empresas
+  
+  // Endpoint para generar un enlace de un solo uso
+  app.post('/api/company-links/generate-link', isAuthenticated, hasOwnerRole, async (req, res) => {
+    try {
+      console.log('[POST /company-links/generate-link] Generando enlace de un solo uso');
+      const user = req.user!;
+      
+      // Generar token único para URL de un solo uso
+      const oneTimeToken = generateUniqueToken();
+      
+      // Calcular fecha de expiración (48 horas desde ahora)
+      const expiryDate = new Date();
+      expiryDate.setHours(expiryDate.getHours() + 48);
+      
+      // Crear enlace temporal en la base de datos
+      const linkData = {
+        sourceCompanyId: user.company,
+        // targetCompanyId se establecerá cuando se use el enlace
+        targetCompanyId: 'pending',  
+        status: 'pending',
+        oneTimeUrl: oneTimeToken,
+        oneTimeUrlExpiry: expiryDate,
+        createdAt: new Date()
+      };
+      
+      const link = await storage.createCompanyLink(linkData);
+      
+      // Construir URL completa para compartir
+      const baseUrl = process.env.BASE_URL || `http://${req.headers.host}`;
+      const linkUrl = `${baseUrl}/verify-company-link/${oneTimeToken}`;
+      
+      return res.status(200).json({ 
+        success: true, 
+        linkUrl,
+        expiresAt: expiryDate
+      });
+    } catch (error) {
+      console.error('[POST /company-links/generate-link] Error:', error);
+      return res.status(500).json({ message: 'Error al generar enlace' });
+    }
+  });
 
   app.post('/api/company-links', isAuthenticated, hasOwnerRole, async (req, res) => {
     try {
