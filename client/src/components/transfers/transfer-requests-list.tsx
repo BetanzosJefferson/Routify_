@@ -70,14 +70,7 @@ export function TransferRequestsList() {
     isLoading: isLoadingIncoming,
     isError: isErrorIncoming,
   } = useQuery<TransferRequest[]>({
-    queryKey: ['/api/transfer-requests/incoming'],
-    onError: (error: Error) => {
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las solicitudes de transferencia entrantes.',
-        variant: 'destructive',
-      });
-    },
+    queryKey: ['/api/transfer-requests/received'],
   });
 
   const {
@@ -85,14 +78,7 @@ export function TransferRequestsList() {
     isLoading: isLoadingOutgoing,
     isError: isErrorOutgoing,
   } = useQuery<TransferRequest[]>({
-    queryKey: ['/api/transfer-requests/outgoing'],
-    onError: (error: Error) => {
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las solicitudes de transferencia salientes.',
-        variant: 'destructive',
-      });
-    },
+    queryKey: ['/api/transfer-requests/sent'],
   });
 
   const approveRequestMutation = useMutation({
