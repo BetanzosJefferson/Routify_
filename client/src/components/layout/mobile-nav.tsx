@@ -108,6 +108,14 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
                 Usuarios
               </NavLink>
             )}
+            {canAccess("passenger-transfer") && (
+              <NavLink 
+                active={activeTab === "passenger-transfer"}
+                onClick={() => handleNavClick("passenger-transfer")}
+              >
+                Transferencia de pasajeros
+              </NavLink>
+            )}
             {canAccess("vehicles") && (
               <NavLink 
                 active={activeTab === "vehicles"}
