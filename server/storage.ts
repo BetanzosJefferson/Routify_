@@ -108,6 +108,7 @@ export interface IStorage {
   // Notification methods (new)
   createNotification(notificationData: InsertNotification): Promise<Notification>;
   getNotifications(userId: number): Promise<Notification[]>;
+  getNotificationById(id: number): Promise<Notification | undefined>;
   markNotificationAsRead(id: number): Promise<Notification>;
   getUnreadNotificationsCount(userId: number): Promise<number>;
   

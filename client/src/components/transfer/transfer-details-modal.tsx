@@ -61,6 +61,14 @@ export function TransferDetailsModal({
   const { data: transferDetails, isLoading } = useQuery({
     queryKey: ['/api/transfers/details', notificationId],
     enabled: open && notificationId > 0 && !transferData,
+    queryFn: async () => {
+      const response = await fetch(`/api/transfers/details/${notificationId}`);
+      if (!response.ok) {
+        throw new Error('Error al obtener detalles de la transferencia');
+      }
+      const data = await response.json();
+      return data.transferData;
+    }
   });
 
   // Combinar datos de transferencia proporcionados o recuperados de la API
@@ -70,6 +78,17 @@ export function TransferDetailsModal({
   const { data: reservations, isLoading: isLoadingReservations } = useQuery<Reservation[]>({
     queryKey: ['/api/reservations/by-ids', details?.reservationIds],
     enabled: open && details?.reservationIds && details.reservationIds.length > 0,
+    queryFn: async () => {
+      if (!details?.reservationIds || details.reservationIds.length === 0) {
+        return [];
+      }
+      const ids = details.reservationIds.join(',');
+      const response = await fetch(`/api/reservations/by-ids?ids=${ids}`);
+      if (!response.ok) {
+        throw new Error('Error al obtener detalles de las reservaciones');
+      }
+      return response.json();
+    }
   });
 
   // Contar el número total de pasajeros
