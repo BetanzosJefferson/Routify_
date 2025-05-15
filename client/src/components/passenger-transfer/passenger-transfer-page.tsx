@@ -1,12 +1,14 @@
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { PageTitle } from "@/components/ui/page-title";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowRightLeft, Users, Calendar } from "lucide-react";
+import { Loader2, ArrowRightLeft, Users, Calendar, Check } from "lucide-react";
 import { ReservationWithDetails, Company } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { Badge } from "@/components/ui/badge";
 import { useReservations } from "@/hooks/use-reservations";
 import { normalizeToStartOfDay } from "@/lib/utils";
@@ -34,22 +36,75 @@ export function PassengerTransferPage() {
   const [selectedReservationIds, setSelectedReservationIds] = useState<number[]>([]);
   const [selectedReservations, setSelectedReservations] = useState<Record<number, boolean>>({});
   const [selectedTrips, setSelectedTrips] = useState<Record<number, boolean>>({});
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  // Mutación para transferir reservaciones
+  const transferMutation = useMutation({
+    mutationFn: async ({ reservationIds, targetCompanyId }: { reservationIds: number[], targetCompanyId: string }) => {
+      console.log("Enviando solicitud de transferencia:", {
+        reservationIds,
+        targetCompanyId
+      });
+      
+      try {
+        const response = await apiRequest("POST", "/api/reservations/transfer", {
+          reservationIds,
+          targetCompanyId
+        });
+        
+        console.log("Respuesta de transferencia recibida:", response.status);
+        const data = await response.json();
+        console.log("Datos de transferencia:", data);
+        return data;
+      } catch (error) {
+        console.error("Error en solicitud de transferencia:", error);
+        throw error;
+      }
+    },
+    onSuccess: (data) => {
+      // Mostrar toast de éxito
+      toast({
+        title: "Transferencia exitosa",
+        description: data.message,
+        variant: "default",
+      });
+      
+      // Invalidar consultas relacionadas para refrescar los datos
+      queryClient.invalidateQueries({ queryKey: ['/api/reservations'] });
+      
+      // Cerrar los modales
+      setShowCompanySelection(false);
+      setIsDialogOpen(false);
+      
+      // Limpiar el estado
+      setSelectedReservationIds([]);
+      setSelectedReservations({});
+      setSelectedTrips({});
+    },
+    onError: (error: any) => {
+      // Mostrar toast de error
+      toast({
+        title: "Error al transferir",
+        description: error.message || "Ha ocurrido un error al transferir las reservaciones.",
+        variant: "destructive",
+      });
+      
+      // Mantener el modal abierto para permitir reintentar
+      console.error("Error al transferir reservaciones:", error);
+    }
+  });
   
   // Manejar la selección de una empresa
   const handleCompanySelected = (company: Company) => {
     console.log(`Empresa seleccionada: ${company.name} (${company.identifier})`);
     console.log(`Transferir reservaciones: ${selectedReservationIds.join(', ')} a empresa ${company.identifier}`);
     
-    // Aquí iría la lógica para hacer la transferencia
-    // Por ahora, mostrar un mensaje de éxito
-    alert(`Se transferirían ${selectedReservationIds.length} reservaciones a la empresa ${company.name}`);
-    
-    // Cerrar los modales
-    setShowCompanySelection(false);
-    setIsDialogOpen(false);
-    
-    // Limpiar el estado
-    setSelectedReservationIds([]);
+    // Ejecutar la mutación para transferir reservaciones
+    transferMutation.mutate({
+      reservationIds: selectedReservationIds,
+      targetCompanyId: company.identifier
+    });
   };
   
   return (
