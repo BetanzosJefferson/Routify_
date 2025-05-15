@@ -69,29 +69,44 @@ const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
   }, [notification]);
 
   // Consultar los detalles de las reservaciones transferidas
-  const { data: reservationsData, isLoading } = useQuery({
+  const { data: reservationsData, isLoading, error } = useQuery({
     queryKey: ['/api/reservations', transferData?.reservationIds],
     queryFn: async () => {
       if (!transferData?.reservationIds?.length) return [];
+      
+      console.log('Consultando reservaciones con IDs:', transferData.reservationIds);
       
       // Obtener cada reservación individualmente
       const reservationPromises = transferData.reservationIds.map(id => 
         fetch(`/api/reservations/${id}`)
           .then(res => {
-            if (!res.ok) throw new Error(`Error al obtener reservación ${id}`);
+            if (!res.ok) {
+              console.error(`Error al obtener reservación ${id}: ${res.status} ${res.statusText}`);
+              throw new Error(`Error al obtener reservación ${id}`);
+            }
             return res.json();
           })
       );
       
       try {
-        return await Promise.all(reservationPromises);
+        const results = await Promise.all(reservationPromises);
+        console.log('Reservaciones obtenidas:', results);
+        return results;
       } catch (error) {
         console.error('Error al obtener reservaciones:', error);
         return [];
       }
     },
-    enabled: !!transferData?.reservationIds?.length
+    enabled: !!transferData?.reservationIds?.length,
+    retry: 1 // Solo intentar una vez más en caso de error
   });
+  
+  // Si hay error, mostrar en consola
+  useEffect(() => {
+    if (error) {
+      console.error('Error en la consulta de reservaciones:', error);
+    }
+  }, [error]);
 
   if (!notification) return null;
 
