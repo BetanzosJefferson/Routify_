@@ -1,62 +1,63 @@
 import { useState } from 'react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CompanyLinkCreator } from '@/components/transfers/company-link-creator';
 import { CompanyLinkList } from '@/components/transfers/company-link-list';
 import { TransferRequestsList } from '@/components/transfers/transfer-requests-list';
 import { TransferHistoryList } from '@/components/transfers/transfer-history-list';
-import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Helmet } from 'react-helmet-async';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function TransfersPage() {
-  const [activeTab, setActiveTab] = useState('vinculos');
-  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('links');
+  const { user } = useAuth();
+  const isOwner = user?.role === 'dueño';
 
   return (
-    <div className="container p-6">
+    <div className="container mx-auto py-6 space-y-6">
       <Helmet>
-        <title>Transferencias entre Empresas | TransRoute</title>
+        <title>Transferencias | TransRoute</title>
       </Helmet>
       
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Transferencias entre Empresas</h1>
-      </div>
-      
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Sistema de Transferencias</CardTitle>
-          <CardDescription>
-            Gestiona vínculos entre empresas y coordina la transferencia de pasajeros de manera eficiente.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p>
-            El sistema de transferencias permite a empresas colaborar para ofrecer un mejor servicio a los pasajeros,
-            facilitando el traslado de pasajeros entre diferentes empresas cuando sea necesario, manteniendo
-            toda la información de reservas y garantizando una experiencia fluida.
-          </p>
-        </CardContent>
-      </Card>
-      
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-3 mb-8">
-          <TabsTrigger value="vinculos">Vínculos Empresariales</TabsTrigger>
-          <TabsTrigger value="solicitudes">Solicitudes de Transferencia</TabsTrigger>
-          <TabsTrigger value="historial">Historial de Transferencias</TabsTrigger>
+      <header>
+        <h1 className="text-3xl font-bold tracking-tight">Transferencias entre Empresas</h1>
+        <p className="text-muted-foreground mt-2">
+          Gestiona las transferencias de pasajeros entre empresas vinculadas
+        </p>
+      </header>
+
+      <Tabs 
+        defaultValue="links" 
+        value={activeTab} 
+        onValueChange={setActiveTab}
+        className="w-full"
+      >
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="links">Vínculos Empresariales</TabsTrigger>
+          <TabsTrigger value="requests">Solicitudes</TabsTrigger>
+          <TabsTrigger value="history">Historial</TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="vinculos" className="mt-4">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <CompanyLinkCreator />
-            <CompanyLinkList />
-          </div>
+
+        <TabsContent value="links" className="space-y-6 mt-6">
+          {isOwner && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CompanyLinkCreator />
+              <CompanyLinkList />
+            </div>
+          )}
+          {!isOwner && (
+            <div className="py-12 text-center">
+              <p className="text-muted-foreground">
+                Solo los usuarios con rol de dueño pueden gestionar vínculos entre empresas.
+              </p>
+            </div>
+          )}
         </TabsContent>
-        
-        <TabsContent value="solicitudes" className="mt-4">
+
+        <TabsContent value="requests" className="space-y-6 mt-6">
           <TransferRequestsList />
         </TabsContent>
-        
-        <TabsContent value="historial" className="mt-4">
+
+        <TabsContent value="history" className="space-y-6 mt-6">
           <TransferHistoryList />
         </TabsContent>
       </Tabs>

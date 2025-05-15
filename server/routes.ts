@@ -5307,6 +5307,107 @@ function setupPackageRoutes(app: Express) {
       return res.status(500).json({ message: 'Error al generar enlace' });
     }
   });
+  
+  // Verificar la validez de un enlace de un solo uso
+  app.get('/api/company-links/verify/:token', async (req, res) => {
+    try {
+      console.log('[GET /company-links/verify] Verificando token:', req.params.token);
+      const token = req.params.token;
+      
+      // Buscar el enlace por token
+      const link = await storage.getCompanyLinkByToken(token);
+      
+      if (!link) {
+        return res.status(200).json({ valid: false });
+      }
+      
+      // Verificar si ha expirado
+      const now = new Date();
+      if (link.oneTimeUrlExpiry < now) {
+        return res.status(200).json({
+          valid: true,
+          expired: true,
+          sourceCompanyId: link.sourceCompanyId,
+          sourceCompanyName: (await storage.getCompanyById(link.sourceCompanyId))?.name || 'Empresa Desconocida'
+        });
+      }
+      
+      // Verificar si ya fue usado
+      if (link.status !== 'pending' && link.targetCompanyId !== 'pending') {
+        return res.status(200).json({ 
+          valid: true, 
+          alreadyUsed: true,
+          sourceCompanyId: link.sourceCompanyId,
+          sourceCompanyName: (await storage.getCompanyById(link.sourceCompanyId))?.name || 'Empresa Desconocida'
+        });
+      }
+      
+      // Enlace válido
+      const sourceCompany = await storage.getCompanyById(link.sourceCompanyId);
+      
+      return res.status(200).json({
+        valid: true,
+        sourceCompanyId: link.sourceCompanyId,
+        sourceCompanyName: sourceCompany?.name || 'Empresa Desconocida'
+      });
+    } catch (error) {
+      console.error('[GET /company-links/verify] Error:', error);
+      return res.status(500).json({ message: 'Error al verificar el enlace' });
+    }
+  });
+  
+  // Aceptar un enlace y establecer el vínculo entre empresas
+  app.post('/api/company-links/accept/:token', isAuthenticated, hasOwnerRole, async (req, res) => {
+    try {
+      console.log('[POST /company-links/accept] Aceptando enlace con token:', req.params.token);
+      const token = req.params.token;
+      const user = req.user!;
+      
+      // Buscar el enlace por token
+      const link = await storage.getCompanyLinkByToken(token);
+      
+      if (!link) {
+        return res.status(404).json({ message: 'Enlace no encontrado' });
+      }
+      
+      // Verificar si ha expirado
+      const now = new Date();
+      if (link.oneTimeUrlExpiry < now) {
+        return res.status(400).json({ message: 'El enlace ha expirado' });
+      }
+      
+      // Verificar si ya fue usado
+      if (link.status !== 'pending' || link.targetCompanyId !== 'pending') {
+        return res.status(400).json({ message: 'Este enlace ya ha sido utilizado' });
+      }
+      
+      // Actualizar el enlace
+      const updatedLink = await storage.updateCompanyLink(link.id, {
+        status: 'active',
+        targetCompanyId: user.company,
+        updatedAt: new Date()
+      });
+      
+      // Buscar detalles de ambas empresas para la respuesta
+      const sourceCompany = await storage.getCompanyById(link.sourceCompanyId);
+      const targetCompany = await storage.getCompanyById(user.company);
+      
+      return res.status(200).json({
+        success: true,
+        sourceCompany: {
+          id: sourceCompany?.id,
+          name: sourceCompany?.name
+        },
+        targetCompany: {
+          id: targetCompany?.id,
+          name: targetCompany?.name
+        }
+      });
+    } catch (error) {
+      console.error('[POST /company-links/accept] Error:', error);
+      return res.status(500).json({ message: 'Error al aceptar el enlace' });
+    }
+  });
 
   app.post('/api/company-links', isAuthenticated, hasOwnerRole, async (req, res) => {
     try {
