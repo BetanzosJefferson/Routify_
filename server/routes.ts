@@ -1,5 +1,12 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
+
+// Añadir tipos globales para las funciones de notificación
+declare global {
+  var sendNotification: (targetUserId: number, notification: any) => boolean;
+  var sendCompanyNotification: (targetCompanyId: string, notification: any) => boolean;
+}
 import { storage } from "./storage";
 import { z } from "zod";
 import { db } from "./db";
@@ -70,6 +77,9 @@ import { populateLocationData } from "./populate-locations";
 import { db } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Create HTTP server
+  const httpServer = createServer(app);
+  
   // prefix all routes with /api
   const apiRouter = (path: string) => `/api${path}`;
 
@@ -3236,7 +3246,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
   // Endpoint para obtener reservaciones creadas por comisionistas
   app.get(apiRouter("/commissions/reservations"), async (req: Request, res: Response) => {
     try {
@@ -4777,6 +4786,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup routes for packages
   setupPackageRoutes(app);
 
+  // Configuración del WebSocket Server
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  // Mapas para almacenar conexiones
+  const userConnections = new Map<number, WebSocket[]>();
+  const companyConnections = new Map<string, WebSocket[]>();
+  
+  // Manejo de conexiones WebSocket
+  wss.on('connection', (ws: WebSocket) => {
+    console.log('[WebSocket] Nueva conexión establecida');
+    
+    // Cliente envía su información de autenticación
+    ws.on('message', async (message: string) => {
+      try {
+        const data = JSON.parse(message);
+        
+        if (data.type === 'auth') {
+          // Autenticar la conexión
+          const { userId, companyId } = data;
+          
+          if (userId) {
+            if (!userConnections.has(userId)) {
+              userConnections.set(userId, []);
+            }
+            userConnections.get(userId)?.push(ws);
+            console.log(`[WebSocket] Usuario ${userId} autenticado`);
+          }
+          
+          if (companyId) {
+            if (!companyConnections.has(companyId)) {
+              companyConnections.set(companyId, []);
+            }
+            companyConnections.get(companyId)?.push(ws);
+            console.log(`[WebSocket] Conexión registrada para compañía ${companyId}`);
+          }
+          
+          // Confirmar autenticación exitosa
+          ws.send(JSON.stringify({ 
+            type: 'auth_success',
+            message: 'Conexión autenticada correctamente'
+          }));
+        }
+      } catch (error) {
+        console.error('[WebSocket] Error procesando mensaje:', error);
+      }
+    });
+    
+    // Manejo de desconexión
+    ws.on('close', () => {
+      console.log('[WebSocket] Conexión cerrada');
+      
+      // Eliminar conexión de los mapas
+      userConnections.forEach((connections, userId) => {
+        const index = connections.indexOf(ws);
+        if (index !== -1) {
+          connections.splice(index, 1);
+          console.log(`[WebSocket] Conexión de usuario ${userId} eliminada`);
+        }
+      });
+      
+      companyConnections.forEach((connections, companyId) => {
+        const index = connections.indexOf(ws);
+        if (index !== -1) {
+          connections.splice(index, 1);
+          console.log(`[WebSocket] Conexión de compañía ${companyId} eliminada`);
+        }
+      });
+    });
+  });
+  
+  // Función para enviar notificaciones por WebSocket
+  global.sendNotification = (targetUserId: number, notification: any) => {
+    const connections = userConnections.get(targetUserId);
+    if (connections && connections.length > 0) {
+      const notificationData = JSON.stringify({
+        type: 'notification',
+        data: notification
+      });
+      
+      connections.forEach(conn => {
+        if (conn.readyState === WebSocket.OPEN) {
+          conn.send(notificationData);
+        }
+      });
+      
+      console.log(`[WebSocket] Notificación enviada a usuario ${targetUserId}`);
+      return true;
+    }
+    return false;
+  };
+  
+  // Función para enviar notificaciones a una compañía
+  global.sendCompanyNotification = (targetCompanyId: string, notification: any) => {
+    const connections = companyConnections.get(targetCompanyId);
+    if (connections && connections.length > 0) {
+      const notificationData = JSON.stringify({
+        type: 'company_notification',
+        data: notification
+      });
+      
+      connections.forEach(conn => {
+        if (conn.readyState === WebSocket.OPEN) {
+          conn.send(notificationData);
+        }
+      });
+      
+      console.log(`[WebSocket] Notificación enviada a compañía ${targetCompanyId}`);
+      return true;
+    }
+    return false;
+  };
+
   return httpServer;
 }
 
@@ -5392,7 +5513,8 @@ function setupPackageRoutes(app: Express) {
           
           // Para cada usuario destino, crear y enviar notificación
           for (const targetUser of targetUsers) {
-            await storage.createNotification({
+            // Crear la notificación en la base de datos
+            const notification = await storage.createNotification({
               userId: targetUser.id,
               type: "reservation_transfer",
               title: `Reservaciones transferidas desde ${origCompany.name}`,
@@ -5402,6 +5524,43 @@ function setupPackageRoutes(app: Express) {
               createdAt: new Date(),
               updatedAt: new Date()
             });
+            
+            // Enviar notificación en tiempo real si hay conexión WebSocket
+            if (global.sendNotification) {
+              global.sendNotification(targetUser.id, {
+                id: notification.id,
+                type: "reservation_transfer",
+                title: `Reservaciones transferidas desde ${origCompany.name}`,
+                message: `Se han transferido ${transferredReservations.length} reservación(es) a su empresa.`,
+                details: reservationInfoTexts,
+                timestamp: new Date().toISOString(),
+                originCompany: {
+                  id: origCompany.identifier,
+                  name: origCompany.name
+                },
+                reservations: transferredReservations.map(res => ({
+                  id: res.id,
+                  passengers: res.passengers ? res.passengers.length : 0,
+                  tripId: res.tripId,
+                  tripInfo: res.trip ? {
+                    id: res.trip.id,
+                    route: res.trip.route ? res.trip.route.name : null,
+                    date: res.trip.departureDate
+                  } : null
+                }))
+              });
+            }
+            
+            // También enviar notificación a nivel de empresa
+            if (global.sendCompanyNotification) {
+              global.sendCompanyNotification(destinationCompanyId, {
+                type: "new_transfer",
+                title: `Nuevas reservaciones transferidas`,
+                message: `${origCompany.name} ha transferido ${transferredReservations.length} reservaciones a su empresa`,
+                count: transferredReservations.length,
+                timestamp: new Date().toISOString()
+              });
+            }
           }
           
           console.log(`[POST /reservations/transfer] Se enviaron ${targetUsers.length} notificaciones de transferencia`);
@@ -5473,4 +5632,7 @@ function setupPackageRoutes(app: Express) {
       return res.status(500).json({ message: 'Error al obtener lista de empresas' });
     }
   });
+
+  // La configuración de WebSocket y las funciones de notificación globales 
+  // ya están definidas en registerRoutes, no es necesario duplicarlas aquí.
 }
