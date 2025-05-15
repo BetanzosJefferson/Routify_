@@ -5262,10 +5262,10 @@ function setupPackageRoutes(app: Express) {
         }
       }
       
-      // Filtrar sólo empresas activas
-      companiesList = companiesList.filter(company => company.status === "active");
+      // No filtrar por estado, mostrar todas las empresas disponibles
+      // Si en el futuro se necesita filtrar por estado, podemos habilitarlo nuevamente
       
-      console.log(`[GET /companies/transfer] Devolviendo ${companiesList.length} empresas activas para transferencia`);
+      console.log(`[GET /companies/transfer] Devolviendo ${companiesList.length} empresas para transferencia`);
       return res.json(companiesList);
     } catch (error) {
       console.error(`[GET /companies/transfer] Error: ${error}`);
