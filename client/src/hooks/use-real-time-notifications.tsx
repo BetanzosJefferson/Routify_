@@ -15,6 +15,13 @@ interface Notification {
   type: string;
   userId: number;
   relatedId: number | null;
+  data?: {
+    transferId?: number;
+    reservationIds?: number[];
+    sourceCompanyId?: string;
+    targetCompanyId?: string;
+    timestamp?: string;
+  };
   read: boolean;
   createdAt: string;
   updatedAt: string;
