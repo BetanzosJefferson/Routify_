@@ -3647,11 +3647,18 @@ export class DatabaseStorage implements IStorage {
         .from(schema.companyInvitations)
         .where(eq(schema.companyInvitations.companyId, companyId));
       
+      // Construir las URLs completas para compartir
+      const appUrl = process.env.APP_URL || "";
+      console.log(`[getCompanyInvitations] Generando URLs con base: ${appUrl}`);
+      
       // Añadir la URL completa para compartir a cada invitación
-      return invitations.map(invitation => ({
-        ...invitation,
-        url: `${process.env.APP_URL || ""}/invitacion/${invitation.token}` // URL para compartir
-      }));
+      return invitations.map(invitation => {
+        const invitationUrl = `${appUrl}/invitacion/${invitation.token}`;
+        return {
+          ...invitation,
+          url: invitationUrl // URL para compartir
+        };
+      });
     } catch (error) {
       console.error(`[getCompanyInvitations] Error al obtener invitaciones:`, error);
       return [];
@@ -3669,9 +3676,15 @@ export class DatabaseStorage implements IStorage {
         return undefined;
       }
       
+      // Construir la URL completa de la invitación
+      const appUrl = process.env.APP_URL || "";
+      const invitationUrl = `${appUrl}/invitacion/${invitation.token}`;
+      
+      console.log(`[getCompanyInvitation] URL recuperada: ${invitationUrl}`);
+      
       return {
         ...invitation,
-        url: `${process.env.APP_URL || ""}/invitacion/${invitation.token}`
+        url: invitationUrl
       };
     } catch (error) {
       console.error(`[getCompanyInvitation] Error al obtener invitación ID ${id}:`, error);
@@ -3690,9 +3703,15 @@ export class DatabaseStorage implements IStorage {
         return undefined;
       }
       
+      // Construir la URL completa de la invitación que apunta a nuestra página de procesamiento
+      const appUrl = process.env.APP_URL || "";
+      const invitationUrl = `${appUrl}/invitacion/${invitation.token}`;
+      
+      console.log(`[getCompanyInvitationByToken] URL recuperada: ${invitationUrl}`);
+      
       return {
         ...invitation,
-        url: `${process.env.APP_URL || ""}/invitacion/${invitation.token}`
+        url: invitationUrl
       };
     } catch (error) {
       console.error(`[getCompanyInvitationByToken] Error al obtener invitación con token ${token}:`, error);
