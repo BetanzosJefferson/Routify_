@@ -28,20 +28,50 @@ export function useNotificationSound() {
   
   // Función para reproducir el sonido
   const playNotificationSound = () => {
-    if (audioRef.current) {
-      // Reiniciar el audio en caso de que ya esté reproduciéndose
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+    console.log('[Audio] Intentando reproducir sonido de notificación');
+    
+    try {
+      // Intentar crear un nuevo elemento de audio cada vez
+      // Esto ayuda a evitar problemas con navegadores que no permiten reproducir
+      // el mismo elemento de audio múltiples veces
+      const tempAudio = new Audio(notificationSound);
+      tempAudio.volume = 0.6; // Aumentar volumen ligeramente
+      
+      // Añadir evento para detectar si la reproducción inicia correctamente
+      tempAudio.onplay = () => {
+        console.log('[Audio] Reproducción de sonido iniciada correctamente');
+      };
+      
+      // Añadir evento para detectar cuando finaliza la reproducción
+      tempAudio.onended = () => {
+        console.log('[Audio] Reproducción de sonido finalizada');
+      };
       
       // Reproducir el sonido
-      const playPromise = audioRef.current.play();
+      const playPromise = tempAudio.play();
       
-      // Manejar posibles errores (algunos navegadores bloquean la reproducción automática)
+      // Manejar posibles errores
       if (playPromise !== undefined) {
-        playPromise.catch((error) => {
-          console.error('Error al reproducir sonido de notificación:', error);
-        });
+        playPromise
+          .then(() => {
+            console.log('[Audio] Promesa de reproducción resuelta exitosamente');
+          })
+          .catch((error) => {
+            console.error('[Audio] Error al reproducir sonido:', error);
+            
+            // Intentar reproducir con el audio de referencia como fallback
+            if (audioRef.current) {
+              console.log('[Audio] Intentando reproducir con el audio de referencia...');
+              audioRef.current.pause();
+              audioRef.current.currentTime = 0;
+              audioRef.current.play().catch(err => {
+                console.error('[Audio] Error en segundo intento de reproducción:', err);
+              });
+            }
+          });
       }
+    } catch (error) {
+      console.error('[Audio] Error al crear/inicializar audio:', error);
     }
   };
   

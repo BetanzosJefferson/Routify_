@@ -4979,7 +4979,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // 3. Enviar notificaciones en tiempo real
       if (createdNotifications.length > 0) {
-        sendNotificationToUsers(userIdsForRealtime, createdNotifications[0]);
+        // Asegurarnos que la notificación tenga la estructura correcta esperada por el cliente
+        const formattedNotification = {
+          ...createdNotifications[0],
+          message: createdNotifications[0].message || createdNotifications[0].content,
+          content: createdNotifications[0].message || createdNotifications[0].content,
+          createdAt: createdNotifications[0].createdAt || new Date(),
+          updatedAt: createdNotifications[0].updatedAt || new Date()
+        };
+        
+        console.log(`[Transferencia] Enviando notificación en tiempo real:`, JSON.stringify(formattedNotification));
+        sendNotificationToUsers(userIdsForRealtime, formattedNotification);
+      } else {
+        console.log(`[Transferencia] No se crearon notificaciones para enviar en tiempo real`);
       }
       
       // Responder con éxito
