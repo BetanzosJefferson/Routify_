@@ -21,11 +21,7 @@ import {
   InsertCoupon,
   InsertNotification,
   Notification,
-  ReservationRequest,
-  CompanyPartnership,
-  InsertCompanyPartnership,
-  CompanyInvitation,
-  InsertCompanyInvitation
+  ReservationRequest
 } from "@shared/schema";
 
 export interface IStorage {
@@ -146,24 +142,6 @@ export interface IStorage {
   
   // Company methods
   getCompanyById(companyId: string): Promise<{id: string, name: string} | null>;
-  
-  // Company Partnerships methods
-  getCompanyPartnerships(companyId: string): Promise<CompanyPartnership[]>;
-  getCompanyPartnership(id: number): Promise<CompanyPartnership | undefined>;
-  createCompanyPartnership(partnership: InsertCompanyPartnership): Promise<CompanyPartnership>;
-  updateCompanyPartnership(id: number, partnership: Partial<CompanyPartnership>): Promise<CompanyPartnership | undefined>;
-  deleteCompanyPartnership(id: number): Promise<boolean>;
-  
-  // Company Invitations methods
-  getCompanyInvitations(companyId: string): Promise<CompanyInvitation[]>;
-  getCompanyInvitation(id: number): Promise<CompanyInvitation | undefined>;
-  getCompanyInvitationByToken(token: string): Promise<CompanyInvitation | undefined>;
-  createCompanyInvitation(invitation: InsertCompanyInvitation): Promise<CompanyInvitation>;
-  useCompanyInvitation(id: number, usedBy: string): Promise<CompanyInvitation | undefined>;
-  deleteCompanyInvitation(id: number): Promise<boolean>;
-  
-  // Reservation transfer methods
-  transferReservations(reservationIds: number[], fromCompanyId: string, toCompanyId: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {

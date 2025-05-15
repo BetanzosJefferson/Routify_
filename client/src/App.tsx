@@ -24,7 +24,6 @@ import PackagesPage from "@/pages/packages-page";
 import PackageDetailPage from "@/pages/package-detail-page";
 import EditTripPage from "@/pages/edit-trip-page";
 import CashRegisterPageRoute from "@/pages/cash-register-page";
-import CompanyInvitationPage from "@/pages/company-invitation-page";
 import { UsersPage } from "@/components/users/users-page";
 
 function Router() {
@@ -43,7 +42,6 @@ function Router() {
       <ProtectedRoute path="/edit-trip/:id" component={EditTripPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register/:token" component={RegisterPage} />
-      <Route path="/invitacion/:token" component={CompanyInvitationPage} />
       <Route path="/reservation-details" component={ReservationDetails} />
       <Route path="/reservation-details/:id" component={ReservationDetails} />
       <Route path="/package/:id" component={PackageDetailPage} />
