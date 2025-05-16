@@ -73,8 +73,8 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         const trips = await response.json();
         console.log('Viajes obtenidos:', trips.length);
         
-        // Filtrar viajes que sean "padre" y tengan origen/destino coincidente
-        const filtered = trips.filter((trip: any) => {
+        // 1. Primero buscamos viajes padre con coincidencia directa
+        const directMatches = trips.filter((trip: any) => {
           // Verificar que sea un viaje padre
           const isParentTrip = !trip.isSubTrip && !trip.parentTripId;
           
@@ -91,8 +91,56 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
           return originsMatch && destinationsMatch;
         });
         
-        console.log('Viajes filtrados coincidentes:', filtered.length);
-        return filtered;
+        console.log('Viajes con coincidencia directa:', directMatches.length);
+        
+        // 2. Si no hay coincidencias directas, buscamos viajes padre que tengan sub-viajes coincidentes
+        if (directMatches.length === 0) {
+          console.log('Buscando viajes con sub-segmentos que coincidan...');
+          
+          // Primero identificamos todos los viajes padre
+          const parentTrips = trips.filter((trip: any) => !trip.isSubTrip && !trip.parentTripId);
+          
+          // Luego verificamos si alguno de sus sub-viajes coincide con nuestro origen/destino
+          const parentTripsWithMatchingSubTrips = parentTrips.filter((parentTrip: any) => {
+            // Buscar todos los sub-viajes asociados a este viaje padre
+            const subTrips = trips.filter((trip: any) => 
+              trip.isSubTrip && trip.parentTripId === parentTrip.id
+            );
+            
+            console.log(`Viaje padre ID ${parentTrip.id} tiene ${subTrips.length} sub-viajes`);
+            
+            // Verificar si algún sub-viaje coincide con nuestro origen/destino
+            return subTrips.some((subTrip: any) => {
+              if (!subTrip.segmentOrigin || !subTrip.segmentDestination) return false;
+              
+              const subTripOrigin = getLocationInfo(subTrip.segmentOrigin);
+              const subTripDestination = getLocationInfo(subTrip.segmentDestination);
+              
+              console.log(`  Sub-viaje ID ${subTrip.id}: ${subTripOrigin} → ${subTripDestination}`);
+              
+              const originsMatch = subTripOrigin.includes(originLocation) || originLocation.includes(subTripOrigin);
+              const destinationsMatch = subTripDestination.includes(destinationLocation) || destinationLocation.includes(subTripDestination);
+              
+              const matches = originsMatch && destinationsMatch;
+              if (matches) {
+                console.log(`  ✓ Coincidencia encontrada en sub-viaje ${subTrip.id}!`);
+              }
+              
+              return matches;
+            });
+          });
+          
+          console.log('Viajes padre con sub-viajes coincidentes:', parentTripsWithMatchingSubTrips.length);
+          
+          // Combinamos los resultados: primero las coincidencias directas, luego las coincidencias por sub-viajes
+          const combined = [...directMatches, ...parentTripsWithMatchingSubTrips];
+          console.log('Total viajes encontrados (directos + por sub-viajes):', combined.length);
+          
+          return combined;
+        }
+        
+        // Si hay coincidencias directas, las devolvemos
+        return directMatches;
       } catch (error) {
         console.error('Error al buscar viajes coincidentes:', error);
         return [];
@@ -250,6 +298,60 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       
       if (!selectedTripData) {
         throw new Error('No se encontró el viaje seleccionado');
+      }
+      
+      // Verificar si el viaje seleccionado tiene sub-viajes que coincidan con el origen/destino
+      // Si es así, intentaremos usar el sub-viaje coincidente en lugar del viaje padre
+      let matchingSubTrip = null;
+      
+      // Obtener todos los subviajes del viaje seleccionado
+      try {
+        // Solo buscamos subviajes si tenemos origen y destino claros
+        if (originLocation && destinationLocation) {
+          console.log(`Buscando sub-viajes para el viaje padre ID ${selectedTrip} que coincidan con origen: ${originLocation}, destino: ${destinationLocation}`);
+          
+          // Obtener todos los viajes 
+          const response = await fetch('/api/trips');
+          const allTrips = await response.json();
+          
+          // Filtrar subviajes del viaje seleccionado
+          const subTrips = allTrips.filter((trip: any) => 
+            trip.isSubTrip === true && trip.parentTripId === selectedTrip
+          );
+          
+          console.log(`Encontrados ${subTrips.length} sub-viajes para viaje padre ID ${selectedTrip}`);
+          
+          // Buscar un subviaje que coincida con el origen y destino
+          matchingSubTrip = subTrips.find((subTrip: any) => {
+            if (!subTrip.segmentOrigin || !subTrip.segmentDestination) return false;
+            
+            const subTripOrigin = getLocationInfo(subTrip.segmentOrigin);
+            const subTripDestination = getLocationInfo(subTrip.segmentDestination);
+            
+            console.log(`  Sub-viaje ID ${subTrip.id}: ${subTripOrigin} → ${subTripDestination}`);
+            
+            const originsMatch = subTripOrigin.includes(originLocation) || originLocation.includes(subTripOrigin);
+            const destinationsMatch = subTripDestination.includes(destinationLocation) || destinationLocation.includes(subTripDestination);
+            
+            const matches = originsMatch && destinationsMatch;
+            if (matches) {
+              console.log(`  ✓ Coincidencia encontrada en sub-viaje ${subTrip.id}!`);
+            }
+            
+            return matches;
+          });
+          
+          if (matchingSubTrip) {
+            console.log('Se utilizará un sub-viaje específico para la transferencia:', matchingSubTrip);
+            toast({
+              title: "Sub-viaje encontrado",
+              description: `Se asignará al segmento ${getLocationInfo(matchingSubTrip.segmentOrigin)} → ${getLocationInfo(matchingSubTrip.segmentDestination)}`,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error al buscar sub-viajes coincidentes:', error);
+        // No interrumpimos el proceso si falla la búsqueda de sub-viajes
       }
       
       // Determinar si estamos procesando varias reservaciones o solo una
