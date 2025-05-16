@@ -113,28 +113,7 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       // Preservar la estructura exacta de los pagos originales
       // Adaptamos el precio total al nuevo viaje pero mantenemos proporciones
       const originalTotal = currentReservation.totalAmount || 0;
-      let newTotal = tripData.price || 0;
-
-      // Manejar información del cupón aplicado si existe
-      let couponCode = currentReservation.couponCode || '';
-      let couponDiscount = 0;
-
-      if (currentReservation.couponCode && currentReservation.couponDiscount) {
-        couponCode = currentReservation.couponCode;
-        
-        // Si el descuento original era un porcentaje, aplicamos el mismo porcentaje al nuevo precio
-        if (currentReservation.discountType === 'percentage' && currentReservation.discountValue) {
-          const percentageDiscount = currentReservation.discountValue;
-          couponDiscount = Math.round((percentageDiscount / 100) * newTotal);
-        }
-        // Si el descuento era fijo, mantenemos el mismo monto de descuento
-        else {
-          couponDiscount = currentReservation.couponDiscount;
-        }
-        
-        // Aplicamos el descuento
-        newTotal = Math.max(0, newTotal - couponDiscount);
-      }
+      const newTotal = tripData.price || 0;
       
       // Si no hay información de pago original, usamos valores predeterminados
       let advanceAmount = 0;
@@ -145,17 +124,11 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       
       // Si hay información de anticipo, la preservamos proporcionalmente
       if (typeof currentReservation.advanceAmount === 'number') {
-        // Si el monto de anticipo es igual al total con descuento, significa que está pagado
-        if (currentReservation.advanceAmount === currentReservation.discountedTotal) {
-          advanceAmount = newTotal;
-          restAmount = 0;
-        } else {
-          // Calculamos la proporción del anticipo respecto al total original
-          const proportion = originalTotal > 0 ? currentReservation.advanceAmount / originalTotal : 0;
-          // Aplicamos esa misma proporción al nuevo total
-          advanceAmount = Math.round(newTotal * proportion);
-          restAmount = newTotal - advanceAmount;
-        }
+        // Calculamos la proporción del anticipo respecto al total original
+        const proportion = originalTotal > 0 ? currentReservation.advanceAmount / originalTotal : 0;
+        // Aplicamos esa misma proporción al nuevo total
+        advanceAmount = Math.round(newTotal * proportion);
+        restAmount = newTotal - advanceAmount;
         
         // Determinamos el estado de pago
         if (advanceAmount >= newTotal) {
@@ -178,7 +151,7 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       // Creamos la estructura básica de la reservación con solo los campos requeridos
       const newReservationData = {
         tripId: tripData.id,
-        totalAmount: tripData.price || 0, // Siempre usamos el precio original del viaje
+        totalAmount: newTotal,
         email: currentReservation.email || 'transferencia@ejemplo.com',
         phone: currentReservation.phone || '0000000000',
         notes: `Reservación transferida desde ID: ${currentReservation.id}`,
@@ -191,17 +164,7 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         passengers: passengers,
         // Solo incluimos estos campos si tienen valores
         ...(restAmount > 0 ? { restAmount } : {}),
-        ...(restPaymentMethod && restAmount > 0 ? { restPaymentMethod } : {}),
-        
-        // Añadimos información del cupón si existe
-        ...(couponCode ? { 
-          couponCode,
-          couponDiscount,
-          discountedTotal: newTotal,
-          // Incluimos los campos adicionales si están disponibles
-          ...(currentReservation.discountType ? { discountType: currentReservation.discountType } : {}),
-          ...(currentReservation.discountValue ? { discountValue: currentReservation.discountValue } : {})
-        } : {})
+        ...(restPaymentMethod && restAmount > 0 ? { restPaymentMethod } : {})
       };
       
       console.log('Creando nueva reservación con datos:', newReservationData);
