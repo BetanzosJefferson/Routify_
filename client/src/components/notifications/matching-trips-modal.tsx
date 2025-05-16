@@ -149,9 +149,39 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       }
       
       // Creamos la estructura básica de la reservación con solo los campos requeridos
+      // Verificar si la reservación original tenía un descuento aplicado
+      let discountAmount = 0;
+      let couponCode = '';
+      let finalTotal = newTotal;
+      
+      // Si hay un cupón o descuento en la reservación original, lo preservamos
+      if (currentReservation.discountAmount > 0 || currentReservation.couponCode) {
+        // Calculamos el porcentaje de descuento respecto al total original
+        const discountPercentage = currentReservation.discountAmount && originalTotal > 0 
+          ? (currentReservation.discountAmount / originalTotal) * 100 
+          : 0;
+        
+        // Aplicamos ese mismo porcentaje al nuevo total
+        if (discountPercentage > 0) {
+          discountAmount = Math.round((discountPercentage / 100) * newTotal);
+          finalTotal = newTotal - discountAmount;
+          couponCode = currentReservation.couponCode || 'TRANSFERIDO';
+          
+          console.log('Aplicando descuento transferido:', {
+            originalDiscount: currentReservation.discountAmount,
+            discountPercentage,
+            newDiscount: discountAmount,
+            couponCode,
+            originalTotal,
+            newTotal,
+            finalTotal
+          });
+        }
+      }
+      
       const newReservationData = {
         tripId: tripData.id,
-        totalAmount: newTotal,
+        totalAmount: finalTotal, // Usamos el total con descuento si aplica
         email: currentReservation.email || 'transferencia@ejemplo.com',
         phone: currentReservation.phone || '0000000000',
         notes: `Reservación transferida desde ID: ${currentReservation.id}`,
@@ -164,7 +194,13 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         passengers: passengers,
         // Solo incluimos estos campos si tienen valores
         ...(restAmount > 0 ? { restAmount } : {}),
-        ...(restPaymentMethod && restAmount > 0 ? { restPaymentMethod } : {})
+        ...(restPaymentMethod && restAmount > 0 ? { restPaymentMethod } : {}),
+        // Incluimos información de descuento si aplica
+        ...(discountAmount > 0 ? { 
+          discountAmount,
+          originalPrice: newTotal, // Guardamos el precio original antes del descuento
+          couponCode
+        } : {})
       };
       
       console.log('Creando nueva reservación con datos:', newReservationData);
