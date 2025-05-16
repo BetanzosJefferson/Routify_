@@ -191,7 +191,20 @@ const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
             )}
           </ScrollArea>
           
-          <div className="flex justify-end mt-4">
+          <div className="flex justify-between mt-4">
+            <Button 
+              variant="default" 
+              disabled={!reservationsData?.length || isLoading}
+              onClick={() => {
+                // Seleccionamos todas las reservaciones y abrimos el modal para seleccionar viaje
+                if (reservationsData?.length) {
+                  setSelectedReservation(reservationsData);
+                  setShowMatchingTripsModal(true);
+                }
+              }}
+            >
+              Continuar con todas las transferencias
+            </Button>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cerrar
             </Button>

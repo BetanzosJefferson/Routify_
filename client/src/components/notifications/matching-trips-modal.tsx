@@ -20,7 +20,7 @@ import { Loader2 } from 'lucide-react';
 interface MatchingTripsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  reservation: any;
+  reservation: any; // Puede ser un objeto de reservación o un array de reservaciones
 }
 
 const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
@@ -30,6 +30,14 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
 }) => {
   const [selectedTrip, setSelectedTrip] = useState<number | null>(null);
   const [isCreatingReservation, setIsCreatingReservation] = useState(false);
+  const [processingIndex, setProcessingIndex] = useState(0);
+  const [totalToProcess, setTotalToProcess] = useState(0);
+  
+  // Determinar si estamos procesando múltiples reservaciones
+  const isMultipleReservations = Array.isArray(reservation);
+  
+  // Si es un array de reservaciones, usamos la primera para la búsqueda de viajes coincidentes
+  const primaryReservation = isMultipleReservations ? reservation[0] : reservation;
 
   // Extraer origen y destino de la reservación
   const getLocationInfo = (location: string) => {
@@ -39,12 +47,12 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
     return parts[0].trim();
   };
 
-  const originLocation = reservation?.trip?.route?.origin 
-    ? getLocationInfo(reservation.trip.route.origin)
+  const originLocation = primaryReservation?.trip?.route?.origin 
+    ? getLocationInfo(primaryReservation.trip.route.origin)
     : '';
   
-  const destinationLocation = reservation?.trip?.route?.destination 
-    ? getLocationInfo(reservation.trip.route.destination)
+  const destinationLocation = primaryReservation?.trip?.route?.destination 
+    ? getLocationInfo(primaryReservation.trip.route.destination)
     : '';
 
   // Obtener viajes que coincidan con origen y destino
@@ -93,58 +101,34 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
     enabled: open && !!originLocation && !!destinationLocation
   });
 
-  const handleNextAction = async () => {
-    if (!selectedTrip) {
-      toast({
-        title: "Selección requerida",
-        description: "Por favor, selecciona un viaje para continuar",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsCreatingReservation(true);
-    console.log('Viaje seleccionado para asignar reservación:', selectedTrip);
-    
+  // Función para crear una reservación
+  const createSingleReservation = async (currentReservation: any, tripData: any) => {
     try {
-      // Obtener el viaje seleccionado de nuestra lista de viajes
-      const selectedTripData = matchingTrips?.find((trip: any) => trip.id === selectedTrip);
-      
-      if (!selectedTripData) {
-        throw new Error('No se encontró el viaje seleccionado');
-      }
-      
       // Preparar los datos de la nueva reservación a partir de la reservación transferida
-      const passengers = reservation.passengers?.map((passenger: any) => ({
+      const passengers = currentReservation.passengers?.map((passenger: any) => ({
         firstName: passenger.firstName || 'Pasajero',
         lastName: passenger.lastName || 'Transferido'
       })) || [{firstName: 'Pasajero', lastName: 'Transferido'}];
       
       // Conservamos la información original importante y actualizamos solo lo del viaje
-      const price = selectedTripData.price || 0;
-      const isPaid = price > 0 && price === (reservation.advanceAmount || reservation.totalAmount);
+      const price = tripData.price || 0;
+      const isPaid = price > 0 && price === (currentReservation.advanceAmount || currentReservation.totalAmount);
       
       const newReservationData = {
-        tripId: selectedTrip,
+        tripId: tripData.id,
         totalAmount: price,
-        email: reservation.email || 'transferencia@ejemplo.com',
-        phone: reservation.phone || '0000000000',
-        notes: `Reservación transferida desde ID: ${reservation.id}`,
-        paymentMethod: reservation.paymentMethod || 'efectivo',
+        email: currentReservation.email || 'transferencia@ejemplo.com',
+        phone: currentReservation.phone || '0000000000',
+        notes: `Reservación transferida desde ID: ${currentReservation.id}`,
+        paymentMethod: currentReservation.paymentMethod || 'efectivo',
         paymentStatus: isPaid ? 'pagado' : 'pendiente',
         advanceAmount: isPaid ? price : 0,
-        advancePaymentMethod: reservation.advancePaymentMethod || 'efectivo',
+        advancePaymentMethod: currentReservation.advancePaymentMethod || 'efectivo',
         numPassengers: passengers.length,
         passengers: passengers
       };
       
       console.log('Creando nueva reservación con datos:', newReservationData);
-      
-      // Mostrar notificación de proceso
-      toast({
-        title: "Creando reservación...",
-        description: "Espera mientras procesamos la información",
-      });
       
       // Enviar la solicitud para crear la nueva reservación
       const response = await fetch('/api/reservations', {
@@ -161,13 +145,102 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       }
       
       const result = await response.json();
-      
-      // Mostrar mensaje de éxito
+      return result;
+    } catch (error) {
+      console.error('Error al crear la reservación individual:', error);
+      throw error;
+    }
+  };
+
+  // Función principal para manejar la acción de asignar reservaciones
+  const handleNextAction = async () => {
+    if (!selectedTrip) {
       toast({
-        title: "¡Reservación creada!",
-        description: `Reservación creada exitosamente con ID: ${result.id}`,
-        variant: "default",
+        title: "Selección requerida",
+        description: "Por favor, selecciona un viaje para continuar",
+        variant: "destructive",
       });
+      return;
+    }
+    
+    setIsCreatingReservation(true);
+    console.log('Viaje seleccionado para asignar reservación(es):', selectedTrip);
+    
+    try {
+      // Obtener el viaje seleccionado de nuestra lista de viajes
+      const selectedTripData = matchingTrips?.find((trip: any) => trip.id === selectedTrip);
+      
+      if (!selectedTripData) {
+        throw new Error('No se encontró el viaje seleccionado');
+      }
+      
+      // Determinar si estamos procesando varias reservaciones o solo una
+      if (isMultipleReservations) {
+        // Estamos procesando múltiples reservaciones
+        const reservationsArray = reservation as any[];
+        setTotalToProcess(reservationsArray.length);
+        
+        toast({
+          title: "Procesando múltiples reservaciones",
+          description: `Creando ${reservationsArray.length} reservaciones...`,
+        });
+        
+        const createdReservations = [];
+        let errors = 0;
+        
+        // Procesar cada reservación secuencialmente
+        for (let i = 0; i < reservationsArray.length; i++) {
+          setProcessingIndex(i + 1);
+          
+          try {
+            // Notificar al usuario del progreso
+            toast({
+              title: `Procesando ${i + 1} de ${reservationsArray.length}`,
+              description: `Reservación #${reservationsArray[i].id}`,
+            });
+            
+            const result = await createSingleReservation(reservationsArray[i], selectedTripData);
+            createdReservations.push(result);
+            
+            // Pequeña pausa para evitar sobrecargar el servidor
+            await new Promise(resolve => setTimeout(resolve, 500));
+          } catch (error) {
+            errors++;
+            console.error(`Error en reservación #${reservationsArray[i].id}:`, error);
+          }
+        }
+        
+        // Mostrar resumen final
+        if (errors === 0) {
+          toast({
+            title: "¡Todas las reservaciones creadas!",
+            description: `Se crearon ${createdReservations.length} reservaciones exitosamente`,
+            variant: "default",
+          });
+        } else {
+          toast({
+            title: "Proceso completado con errores",
+            description: `Se crearon ${createdReservations.length} de ${reservationsArray.length} reservaciones`,
+            variant: errors > createdReservations.length ? "destructive" : "default",
+          });
+        }
+        
+      } else {
+        // Estamos procesando una sola reservación
+        toast({
+          title: "Creando reservación...",
+          description: "Espera mientras procesamos la información",
+        });
+        
+        const result = await createSingleReservation(reservation, selectedTripData);
+        
+        // Mostrar mensaje de éxito
+        toast({
+          title: "¡Reservación creada!",
+          description: `Reservación creada exitosamente con ID: ${result.id}`,
+          variant: "default",
+        });
+      }
       
       // Cerrar el modal
       onOpenChange(false);
@@ -178,14 +251,16 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       }, 1500);
       
     } catch (error) {
-      console.error('Error al crear la reservación:', error);
+      console.error('Error en el proceso de creación de reservaciones:', error);
       toast({
-        title: "Error al crear la reservación",
+        title: "Error en el proceso",
         description: error instanceof Error ? error.message : 'Error desconocido',
         variant: "destructive",
       });
     } finally {
       setIsCreatingReservation(false);
+      setProcessingIndex(0);
+      setTotalToProcess(0);
     }
   };
 
@@ -195,7 +270,10 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         <DialogHeader>
           <DialogTitle>Viajes Disponibles</DialogTitle>
           <DialogDescription>
-            Selecciona un viaje disponible para asignar la reservación transferida
+            {isMultipleReservations 
+              ? `Selecciona un viaje para asignar las ${Array.isArray(reservation) ? reservation.length : 0} reservaciones transferidas`
+              : "Selecciona un viaje disponible para asignar la reservación transferida"
+            }
           </DialogDescription>
         </DialogHeader>
         
@@ -210,14 +288,34 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
               <span className="text-muted-foreground">Destino:</span>{' '}
               <span className="font-medium">{destinationLocation}</span>
             </div>
-            <div>
-              <span className="text-muted-foreground">Reservación ID:</span>{' '}
-              <span className="font-medium">#{reservation?.id}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Pasajeros:</span>{' '}
-              <span className="font-medium">{reservation?.passengers?.length || 0}</span>
-            </div>
+            {isMultipleReservations ? (
+              <>
+                <div>
+                  <span className="text-muted-foreground">Cantidad de reservaciones:</span>{' '}
+                  <span className="font-medium">{Array.isArray(reservation) ? reservation.length : 0}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">IDs:</span>{' '}
+                  <span className="font-medium">
+                    {Array.isArray(reservation) 
+                      ? reservation.slice(0, 3).map((r: any) => `#${r.id}`).join(', ') + 
+                        (reservation.length > 3 ? ` y ${reservation.length - 3} más...` : '')
+                      : ''}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <span className="text-muted-foreground">Reservación ID:</span>{' '}
+                  <span className="font-medium">#{primaryReservation?.id}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Pasajeros:</span>{' '}
+                  <span className="font-medium">{primaryReservation?.passengers?.length || 0}</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
         
@@ -303,10 +401,22 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
             {isCreatingReservation ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creando reservación...
+                {isMultipleReservations ? (
+                  totalToProcess > 0 ? (
+                    `Procesando ${processingIndex}/${totalToProcess}...`
+                  ) : (
+                    'Procesando reservaciones...'
+                  )
+                ) : (
+                  'Creando reservación...'
+                )}
               </>
             ) : (
-              'Asignar a este viaje'
+              isMultipleReservations ? (
+                `Asignar ${Array.isArray(reservation) ? reservation.length : 0} reservaciones`
+              ) : (
+                'Asignar a este viaje'
+              )
             )}
           </Button>
         </DialogFooter>
