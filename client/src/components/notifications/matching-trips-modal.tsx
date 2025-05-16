@@ -153,6 +153,7 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       let discountAmount = 0;
       let couponCode = '';
       let finalTotal = newTotal;
+      let originalAmount = null;
       
       // Si hay un cupón o descuento en la reservación original, lo preservamos
       if (currentReservation.discountAmount > 0 || currentReservation.couponCode) {
@@ -165,6 +166,7 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         if (discountPercentage > 0) {
           discountAmount = Math.round((discountPercentage / 100) * newTotal);
           finalTotal = newTotal - discountAmount;
+          originalAmount = newTotal; // Guardamos el precio original antes del descuento
           couponCode = currentReservation.couponCode || 'TRANSFERIDO';
           
           console.log('Aplicando descuento transferido:', {
@@ -174,31 +176,32 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
             couponCode,
             originalTotal,
             newTotal,
-            finalTotal
+            finalTotal,
+            originalAmount
           });
         }
       }
       
+      // Construir el objeto de reservación con los campos obligatorios
       const newReservationData = {
+        // Campos requeridos por la validación en el backend
         tripId: tripData.id,
-        totalAmount: finalTotal, // Usamos el total con descuento si aplica
+        totalAmount: finalTotal,
         email: currentReservation.email || 'transferencia@ejemplo.com',
         phone: currentReservation.phone || '0000000000',
-        notes: `Reservación transferida desde ID: ${currentReservation.id}`,
-        paymentMethod: currentReservation.paymentMethod || 'efectivo',
-        status: 'confirmed', // La reservación se crea como 'confirmed' por defecto
-        paymentStatus: paymentStatus,
-        advanceAmount: advanceAmount,
-        advancePaymentMethod: advancePaymentMethod,
+        paymentMethod: 'efectivo', // Siempre usamos efectivo como valor predeterminado
         numPassengers: passengers.length,
         passengers: passengers,
-        // Solo incluimos estos campos si tienen valores
-        ...(restAmount > 0 ? { restAmount } : {}),
-        ...(restPaymentMethod && restAmount > 0 ? { restPaymentMethod } : {}),
-        // Incluimos información de descuento si aplica
-        ...(discountAmount > 0 ? { 
+        
+        // Campos opcionales
+        notes: `Reservación transferida desde ID: ${currentReservation.id}`,
+        advanceAmount: advanceAmount || 0,
+        advancePaymentMethod: advancePaymentMethod || 'efectivo',
+        
+        // Solo agregamos discountAmount, originalAmount y couponCode si hay un descuento
+        ...(discountAmount > 0 ? {
           discountAmount,
-          originalAmount: newTotal, // Guardamos el precio original antes del descuento (nombre de campo corregido)
+          originalAmount,
           couponCode
         } : {})
       };
