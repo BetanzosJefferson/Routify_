@@ -47,13 +47,41 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
     return parts[0].trim();
   };
 
-  const originLocation = primaryReservation?.trip?.route?.origin 
-    ? getLocationInfo(primaryReservation.trip.route.origin)
-    : '';
-  
-  const destinationLocation = primaryReservation?.trip?.route?.destination 
-    ? getLocationInfo(primaryReservation.trip.route.destination)
-    : '';
+  // Determinar el origen y destino según si es un sub-viaje o un viaje normal
+  let originLocation = '';
+  let destinationLocation = '';
+
+  if (primaryReservation?.trip?.isSubTrip) {
+    // Si es un sub-viaje, usamos segment_origin y segment_destination
+    originLocation = primaryReservation?.trip?.segmentOrigin 
+      ? getLocationInfo(primaryReservation.trip.segmentOrigin)
+      : '';
+    
+    destinationLocation = primaryReservation?.trip?.segmentDestination 
+      ? getLocationInfo(primaryReservation.trip.segmentDestination)
+      : '';
+    
+    console.log('Usando datos de segmento para sub-viaje:', { 
+      origin: originLocation, 
+      destination: destinationLocation,
+      reservationId: primaryReservation?.id
+    });
+  } else {
+    // Si es un viaje normal, usamos origin y destination del route
+    originLocation = primaryReservation?.trip?.route?.origin 
+      ? getLocationInfo(primaryReservation.trip.route.origin)
+      : '';
+    
+    destinationLocation = primaryReservation?.trip?.route?.destination 
+      ? getLocationInfo(primaryReservation.trip.route.destination)
+      : '';
+    
+    console.log('Usando datos de ruta para viaje normal:', { 
+      origin: originLocation, 
+      destination: destinationLocation,
+      reservationId: primaryReservation?.id
+    });
+  }
 
   // Obtener todos los viajes disponibles
   const { data: matchingTrips, isLoading } = useQuery({
