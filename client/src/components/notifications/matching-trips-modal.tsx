@@ -115,21 +115,22 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       }
       
       // Preparar los datos de la nueva reservación a partir de la reservación transferida
+      const passengers = reservation.passengers?.map((passenger: any) => ({
+        firstName: passenger.firstName || 'Pasajero',
+        lastName: passenger.lastName || 'Transferido'
+      })) || [{firstName: 'Pasajero', lastName: 'Transferido'}];
+      
       const newReservationData = {
         tripId: selectedTrip,
-        totalAmount: selectedTripData.price,
-        email: reservation.email,
-        phone: reservation.phone,
+        totalAmount: selectedTripData.price || 0,
+        email: reservation.email || 'transferencia@ejemplo.com',
+        phone: reservation.phone || '0000000000',
         notes: `Reservación transferida desde ID: ${reservation.id}`,
-        paymentMethod: reservation.paymentMethod || 'efectivo',
-        paymentStatus: reservation.paymentStatus || 'pagado',
-        status: 'confirmed',
-        advanceAmount: reservation.advanceAmount || reservation.totalAmount,
-        advancePaymentMethod: reservation.advancePaymentMethod || reservation.paymentMethod || 'efectivo',
-        passengers: reservation.passengers.map((passenger: any) => ({
-          firstName: passenger.firstName,
-          lastName: passenger.lastName
-        }))
+        paymentMethod: 'efectivo',
+        advanceAmount: selectedTripData.price || 0,
+        advancePaymentMethod: 'efectivo',
+        numPassengers: passengers.length,
+        passengers: passengers
       };
       
       console.log('Creando nueva reservación con datos:', newReservationData);
