@@ -375,6 +375,34 @@ export default function ReservationDetailsModal({
                         </div>
                       )}
                       
+                      {/* Información de descuento si hay cupón aplicado */}
+                      {reservation.couponCode && reservation.discountAmount > 0 && (
+                        <>
+                          <div className="grid grid-cols-2 items-center mt-2 pt-2 border-t border-gray-200">
+                            <div className="text-sm text-gray-500 font-medium">CUPÓN APLICADO</div>
+                            <div className="text-right">
+                              <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200">
+                                {reservation.couponCode}
+                              </Badge>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 items-center">
+                            <div className="text-sm text-gray-500 font-medium">PRECIO ORIGINAL</div>
+                            <div className="text-right font-medium text-gray-500 line-through">
+                              {formatPrice(reservation.originalAmount || (reservation.totalAmount + reservation.discountAmount))}
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 items-center">
+                            <div className="text-sm text-gray-500 font-medium">DESCUENTO</div>
+                            <div className="text-right font-medium text-green-600">
+                              -{formatPrice(reservation.discountAmount)}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                      
                       <div className="grid grid-cols-2 items-center border-t border-gray-200 pt-2 mt-2">
                         <div className="text-sm text-gray-500 font-medium">TOTAL</div>
                         <div className="text-right font-medium">{formatPrice(reservation.totalAmount)}</div>

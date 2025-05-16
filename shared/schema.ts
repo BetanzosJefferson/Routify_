@@ -169,6 +169,10 @@ export const reservations = pgTable("reservations", {
   checkedBy: integer("checked_by"), // ID del usuario que escaneó el ticket
   checkedAt: timestamp("checked_at"), // Fecha y hora del escaneo
   checkCount: integer("check_count").default(0), // Contador de veces que se ha escaneado el ticket
+  // Campos para cupones y descuentos
+  couponCode: text("coupon_code"), // Código del cupón aplicado
+  discountAmount: doublePrecision("discount_amount").default(0), // Monto del descuento aplicado
+  originalAmount: doublePrecision("original_amount"), // Monto original antes del descuento
 });
 
 export const insertReservationSchema = createInsertSchema(reservations);
@@ -289,7 +293,11 @@ export const createReservationValidationSchema = z.object({
     required_error: "Estado de pago es requerido"
   }).optional(),
   notes: z.string().optional(),
-  createdBy: z.number().optional()
+  createdBy: z.number().optional(),
+  // Campos para cupones y descuentos
+  couponCode: z.string().optional(),
+  discountAmount: z.number().min(0).optional(),
+  originalAmount: z.number().min(0).optional()
 }).superRefine((data, ctx) => {
   // Validar que el anticipo no sea mayor que el monto total
   if (data.advanceAmount && data.advanceAmount > data.totalAmount) {
