@@ -110,20 +110,54 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         lastName: passenger.lastName || 'Transferido'
       })) || [{firstName: 'Pasajero', lastName: 'Transferido'}];
       
-      // Conservamos la información original importante y actualizamos solo lo del viaje
-      const price = tripData.price || 0;
-      const isPaid = price > 0 && price === (currentReservation.advanceAmount || currentReservation.totalAmount);
+      // Preservar la estructura exacta de los pagos originales
+      // Adaptamos el precio total al nuevo viaje pero mantenemos proporciones
+      const originalTotal = currentReservation.totalAmount || 0;
+      const newTotal = tripData.price || 0;
+      
+      // Si no hay información de pago original, usamos valores predeterminados
+      let advanceAmount = 0;
+      let restAmount = 0;
+      let advancePaymentMethod = currentReservation.advancePaymentMethod || 'efectivo';
+      let restPaymentMethod = currentReservation.restPaymentMethod || 'transferencia';
+      let paymentStatus = 'pendiente';
+      
+      // Si hay información de anticipo, la preservamos proporcionalmente
+      if (typeof currentReservation.advanceAmount === 'number') {
+        // Calculamos la proporción del anticipo respecto al total original
+        const proportion = originalTotal > 0 ? currentReservation.advanceAmount / originalTotal : 0;
+        // Aplicamos esa misma proporción al nuevo total
+        advanceAmount = Math.round(newTotal * proportion);
+        restAmount = newTotal - advanceAmount;
+        
+        // Determinamos el estado de pago
+        if (advanceAmount >= newTotal) {
+          paymentStatus = 'pagado';
+          advanceAmount = newTotal;
+          restAmount = 0;
+        } else if (advanceAmount > 0) {
+          paymentStatus = 'parcial';
+        } else {
+          paymentStatus = 'pendiente';
+        }
+        
+        // Preservamos los métodos de pago
+        advancePaymentMethod = currentReservation.advancePaymentMethod || 'efectivo';
+        restPaymentMethod = currentReservation.restPaymentMethod || 'transferencia';
+      }
       
       const newReservationData = {
         tripId: tripData.id,
-        totalAmount: price,
+        totalAmount: newTotal,
         email: currentReservation.email || 'transferencia@ejemplo.com',
         phone: currentReservation.phone || '0000000000',
         notes: `Reservación transferida desde ID: ${currentReservation.id}`,
         paymentMethod: currentReservation.paymentMethod || 'efectivo',
-        paymentStatus: isPaid ? 'pagado' : 'pendiente',
-        advanceAmount: isPaid ? price : 0,
-        advancePaymentMethod: currentReservation.advancePaymentMethod || 'efectivo',
+        paymentStatus: paymentStatus,
+        advanceAmount: advanceAmount,
+        advancePaymentMethod: advancePaymentMethod,
+        restAmount: restAmount,
+        restPaymentMethod: restPaymentMethod,
         numPassengers: passengers.length,
         passengers: passengers
       };
