@@ -2567,9 +2567,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Registrando usuario creador de la reservación: ID ${createdByUserId}`);
       }
       
+      // Verificar si hay un cupón y manejar el descuento
+      let finalAmount = totalAmount;
+      let discountAmount = 0;
+      let couponCode = reservationData.couponCode || null;
+      
+      // Si se proporciona un código de cupón, verificar su validez y calcular el descuento
+      if (couponCode) {
+        try {
+          console.log(`[POST /reservations] Verificando cupón: ${couponCode}`);
+          const couponValidity = await storage.verifyCouponValidity(couponCode);
+          
+          if (couponValidity.valid && couponValidity.coupon) {
+            const coupon = couponValidity.coupon;
+            
+            // Calcular descuento según el tipo
+            if (coupon.discountType === 'percentage') {
+              discountAmount = Math.round((totalAmount * coupon.discountValue) / 100);
+            } else {
+              discountAmount = Math.min(coupon.discountValue, totalAmount);
+            }
+            
+            finalAmount = totalAmount - discountAmount;
+            
+            console.log(`[POST /reservations] Cupón válido: ${couponCode}, descuento: ${discountAmount}, monto final: ${finalAmount}`);
+            
+            // Incrementar el contador de uso del cupón
+            await storage.incrementCouponUsage(coupon.id);
+          } else {
+            console.log(`[POST /reservations] Cupón inválido: ${couponCode}, mensaje: ${couponValidity.message}`);
+            couponCode = null; // Si el cupón no es válido, no lo guardamos
+          }
+        } catch (error) {
+          console.error(`[POST /reservations] Error al verificar cupón: ${error}`);
+          couponCode = null;
+        }
+      }
+      
       const reservation = await storage.createReservation({
         tripId: reservationData.tripId,
-        totalAmount,
+        totalAmount: finalAmount, // Usamos el monto final con descuento
         email: reservationData.email,
         phone: reservationData.phone,
         paymentMethod: reservationData.paymentMethod || "cash", // Método de pago desde el formulario
@@ -2580,7 +2617,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         advanceAmount: reservationData.advanceAmount || 0, // Añadir campo de anticipo
         advancePaymentMethod: reservationData.advancePaymentMethod || "efectivo", // Añadir método de pago del anticipo
         paymentStatus: paymentStatus, // Estado del pago basado en el anticipo
-        createdBy: createdByUserId // ID del usuario que crea la reservación (para comisiones)
+        createdBy: createdByUserId, // ID del usuario que crea la reservación (para comisiones)
+        couponCode: couponCode, // Guardar el código del cupón aplicado
+        discountAmount: discountAmount, // Guardar el monto del descuento
+        originalAmount: discountAmount > 0 ? totalAmount : null // Guardar el monto original si hay descuento
       });
       
       // Create the passengers
