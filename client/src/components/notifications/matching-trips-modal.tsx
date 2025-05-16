@@ -113,28 +113,7 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       // Preservar la estructura exacta de los pagos originales
       // Adaptamos el precio total al nuevo viaje pero mantenemos proporciones
       const originalTotal = currentReservation.totalAmount || 0;
-      let newTotal = tripData.price || 0;
-
-      // Manejar información del cupón aplicado si existe
-      let couponCode = currentReservation.couponCode || '';
-      let couponDiscount = 0;
-
-      if (currentReservation.couponCode && currentReservation.couponDiscount) {
-        couponCode = currentReservation.couponCode;
-        
-        // Si el descuento original era un porcentaje, aplicamos el mismo porcentaje al nuevo precio
-        if (currentReservation.discountType === 'percentage' && currentReservation.discountValue) {
-          const percentageDiscount = currentReservation.discountValue;
-          couponDiscount = Math.round((percentageDiscount / 100) * newTotal);
-        }
-        // Si el descuento era fijo, mantenemos el mismo monto de descuento
-        else {
-          couponDiscount = currentReservation.couponDiscount;
-        }
-        
-        // Aplicamos el descuento
-        newTotal = Math.max(0, newTotal - couponDiscount);
-      }
+      const newTotal = tripData.price || 0;
       
       // Si no hay información de pago original, usamos valores predeterminados
       let advanceAmount = 0;
@@ -145,17 +124,11 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       
       // Si hay información de anticipo, la preservamos proporcionalmente
       if (typeof currentReservation.advanceAmount === 'number') {
-        // Si el monto de anticipo es igual al total con descuento, significa que está pagado
-        if (currentReservation.advanceAmount === currentReservation.discountedTotal) {
-          advanceAmount = newTotal;
-          restAmount = 0;
-        } else {
-          // Calculamos la proporción del anticipo respecto al total original
-          const proportion = originalTotal > 0 ? currentReservation.advanceAmount / originalTotal : 0;
-          // Aplicamos esa misma proporción al nuevo total
-          advanceAmount = Math.round(newTotal * proportion);
-          restAmount = newTotal - advanceAmount;
-        }
+        // Calculamos la proporción del anticipo respecto al total original
+        const proportion = originalTotal > 0 ? currentReservation.advanceAmount / originalTotal : 0;
+        // Aplicamos esa misma proporción al nuevo total
+        advanceAmount = Math.round(newTotal * proportion);
+        restAmount = newTotal - advanceAmount;
         
         // Determinamos el estado de pago
         if (advanceAmount >= newTotal) {
@@ -176,9 +149,39 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       }
       
       // Creamos la estructura básica de la reservación con solo los campos requeridos
+      // Verificar si la reservación original tenía un descuento aplicado
+      let discountAmount = 0;
+      let couponCode = '';
+      let finalTotal = newTotal;
+      
+      // Si hay un cupón o descuento en la reservación original, lo preservamos
+      if (currentReservation.discountAmount > 0 || currentReservation.couponCode) {
+        // Calculamos el porcentaje de descuento respecto al total original
+        const discountPercentage = currentReservation.discountAmount && originalTotal > 0 
+          ? (currentReservation.discountAmount / originalTotal) * 100 
+          : 0;
+        
+        // Aplicamos ese mismo porcentaje al nuevo total
+        if (discountPercentage > 0) {
+          discountAmount = Math.round((discountPercentage / 100) * newTotal);
+          finalTotal = newTotal - discountAmount;
+          couponCode = currentReservation.couponCode || 'TRANSFERIDO';
+          
+          console.log('Aplicando descuento transferido:', {
+            originalDiscount: currentReservation.discountAmount,
+            discountPercentage,
+            newDiscount: discountAmount,
+            couponCode,
+            originalTotal,
+            newTotal,
+            finalTotal
+          });
+        }
+      }
+      
       const newReservationData = {
         tripId: tripData.id,
-        totalAmount: tripData.price || 0, // Siempre usamos el precio original del viaje
+        totalAmount: finalTotal, // Usamos el total con descuento si aplica
         email: currentReservation.email || 'transferencia@ejemplo.com',
         phone: currentReservation.phone || '0000000000',
         notes: `Reservación transferida desde ID: ${currentReservation.id}`,
@@ -192,15 +195,11 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         // Solo incluimos estos campos si tienen valores
         ...(restAmount > 0 ? { restAmount } : {}),
         ...(restPaymentMethod && restAmount > 0 ? { restPaymentMethod } : {}),
-        
-        // Añadimos información del cupón si existe
-        ...(couponCode ? { 
-          couponCode,
-          couponDiscount,
-          discountedTotal: newTotal,
-          // Incluimos los campos adicionales si están disponibles
-          ...(currentReservation.discountType ? { discountType: currentReservation.discountType } : {}),
-          ...(currentReservation.discountValue ? { discountValue: currentReservation.discountValue } : {})
+        // Incluimos información de descuento si aplica
+        ...(discountAmount > 0 ? { 
+          discountAmount,
+          originalPrice: newTotal, // Guardamos el precio original antes del descuento
+          couponCode
         } : {})
       };
       
