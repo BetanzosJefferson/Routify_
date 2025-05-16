@@ -132,8 +132,8 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         
         // Determinamos el estado de pago
         if (advanceAmount >= newTotal) {
-          // Si es pago completo, usamos "confirmed" que es el valor esperado en el backend
-          paymentStatus = 'confirmed';
+          // Si es pago completo, usamos "pagado" que es el valor correcto en el backend
+          paymentStatus = 'pagado';
           advanceAmount = newTotal;
           restAmount = 0;
         } else if (advanceAmount > 0) {
@@ -198,7 +198,7 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         // Incluimos información de descuento si aplica
         ...(discountAmount > 0 ? { 
           discountAmount,
-          originalPrice: newTotal, // Guardamos el precio original antes del descuento
+          originalAmount: newTotal, // Guardamos el precio original antes del descuento (nombre de campo corregido)
           couponCode
         } : {})
       };
