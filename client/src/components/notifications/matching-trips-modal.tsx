@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,7 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
   reservation
 }) => {
   const [selectedTrip, setSelectedTrip] = useState<number | null>(null);
+  const [isCreatingReservation, setIsCreatingReservation] = useState(false);
 
   // Extraer origen y destino de la reservación
   const getLocationInfo = (location: string) => {
@@ -91,17 +93,94 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
     enabled: open && !!originLocation && !!destinationLocation
   });
 
-  const handleNextAction = () => {
+  const handleNextAction = async () => {
     if (!selectedTrip) {
-      alert('Por favor, selecciona un viaje para continuar');
+      toast({
+        title: "Selección requerida",
+        description: "Por favor, selecciona un viaje para continuar",
+        variant: "destructive",
+      });
       return;
     }
     
-    // Aquí implementaremos la acción al seleccionar un viaje
+    setIsCreatingReservation(true);
     console.log('Viaje seleccionado para asignar reservación:', selectedTrip);
     
-    // Cerrar el modal
-    onOpenChange(false);
+    try {
+      // Obtener el viaje seleccionado de nuestra lista de viajes
+      const selectedTripData = matchingTrips?.find((trip: any) => trip.id === selectedTrip);
+      
+      if (!selectedTripData) {
+        throw new Error('No se encontró el viaje seleccionado');
+      }
+      
+      // Preparar los datos de la nueva reservación a partir de la reservación transferida
+      const newReservationData = {
+        tripId: selectedTrip,
+        totalAmount: selectedTripData.price,
+        email: reservation.email,
+        phone: reservation.phone,
+        notes: `Reservación transferida desde ID: ${reservation.id}`,
+        paymentMethod: reservation.paymentMethod || 'efectivo',
+        paymentStatus: reservation.paymentStatus || 'pagado',
+        status: 'confirmed',
+        advanceAmount: reservation.advanceAmount || reservation.totalAmount,
+        advancePaymentMethod: reservation.advancePaymentMethod || reservation.paymentMethod || 'efectivo',
+        passengers: reservation.passengers.map((passenger: any) => ({
+          firstName: passenger.firstName,
+          lastName: passenger.lastName
+        }))
+      };
+      
+      console.log('Creando nueva reservación con datos:', newReservationData);
+      
+      // Mostrar notificación de proceso
+      toast({
+        title: "Creando reservación...",
+        description: "Espera mientras procesamos la información",
+      });
+      
+      // Enviar la solicitud para crear la nueva reservación
+      const response = await fetch('/api/reservations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newReservationData)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al crear la reservación');
+      }
+      
+      const result = await response.json();
+      
+      // Mostrar mensaje de éxito
+      toast({
+        title: "¡Reservación creada!",
+        description: `Reservación creada exitosamente con ID: ${result.id}`,
+        variant: "default",
+      });
+      
+      // Cerrar el modal
+      onOpenChange(false);
+      
+      // Esperar un momento antes de redirigir para que el usuario vea la notificación
+      setTimeout(() => {
+        window.location.href = '/reservations';
+      }, 1500);
+      
+    } catch (error) {
+      console.error('Error al crear la reservación:', error);
+      toast({
+        title: "Error al crear la reservación",
+        description: error instanceof Error ? error.message : 'Error desconocido',
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingReservation(false);
+    }
   };
 
   return (
@@ -208,14 +287,21 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         </ScrollArea>
         
         <DialogFooter className="flex justify-between gap-2 mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isCreatingReservation}>
             Cancelar
           </Button>
           <Button 
-            disabled={!selectedTrip || isLoading} 
+            disabled={!selectedTrip || isLoading || isCreatingReservation} 
             onClick={handleNextAction}
           >
-            Asignar a este viaje
+            {isCreatingReservation ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creando reservación...
+              </>
+            ) : (
+              'Asignar a este viaje'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
