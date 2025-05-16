@@ -132,11 +132,13 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         
         // Determinamos el estado de pago
         if (advanceAmount >= newTotal) {
-          paymentStatus = 'pagado';
+          // Si es pago completo, usamos "confirmed" que es el valor esperado en el backend
+          paymentStatus = 'confirmed';
           advanceAmount = newTotal;
           restAmount = 0;
         } else if (advanceAmount > 0) {
-          paymentStatus = 'parcial';
+          // Para pagos parciales usamos "pendiente" por ahora
+          paymentStatus = 'pendiente';
         } else {
           paymentStatus = 'pendiente';
         }
@@ -146,6 +148,7 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         restPaymentMethod = currentReservation.restPaymentMethod || 'transferencia';
       }
       
+      // Creamos la estructura básica de la reservación con solo los campos requeridos
       const newReservationData = {
         tripId: tripData.id,
         totalAmount: newTotal,
@@ -153,13 +156,15 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         phone: currentReservation.phone || '0000000000',
         notes: `Reservación transferida desde ID: ${currentReservation.id}`,
         paymentMethod: currentReservation.paymentMethod || 'efectivo',
+        status: 'confirmed', // La reservación se crea como 'confirmed' por defecto
         paymentStatus: paymentStatus,
         advanceAmount: advanceAmount,
         advancePaymentMethod: advancePaymentMethod,
-        restAmount: restAmount,
-        restPaymentMethod: restPaymentMethod,
         numPassengers: passengers.length,
-        passengers: passengers
+        passengers: passengers,
+        // Solo incluimos estos campos si tienen valores
+        ...(restAmount > 0 ? { restAmount } : {}),
+        ...(restPaymentMethod && restAmount > 0 ? { restPaymentMethod } : {})
       };
       
       console.log('Creando nueva reservación con datos:', newReservationData);
