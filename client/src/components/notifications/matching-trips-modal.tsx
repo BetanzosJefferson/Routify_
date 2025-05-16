@@ -73,8 +73,11 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         const trips = await response.json();
         console.log('Viajes obtenidos:', trips.length);
         
-        // 1. Primero buscamos viajes padre con coincidencia directa
-        const directMatches = trips.filter((trip: any) => {
+        // Obtener todos los viajes disponibles: tanto padres como sub-viajes
+        const availableTrips = [];
+        
+        // 1. Primero agregamos viajes padre con coincidencia directa
+        const directParentMatches = trips.filter((trip: any) => {
           // Verificar que sea un viaje padre
           const isParentTrip = !trip.isSubTrip && !trip.parentTripId;
           
@@ -91,56 +94,82 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
           return originsMatch && destinationsMatch;
         });
         
-        console.log('Viajes con coincidencia directa:', directMatches.length);
+        console.log('Viajes padre con coincidencia directa:', directParentMatches.length);
+        availableTrips.push(...directParentMatches);
         
-        // 2. Si no hay coincidencias directas, buscamos viajes padre que tengan sub-viajes coincidentes
-        if (directMatches.length === 0) {
-          console.log('Buscando viajes con sub-segmentos que coincidan...');
+        // 2. Buscamos sub-viajes con coincidencia directa
+        const directSubTripMatches = trips.filter((trip: any) => {
+          // Verificar que sea un sub-viaje
+          if (!trip.isSubTrip || !trip.parentTripId) return false;
           
-          // Primero identificamos todos los viajes padre
-          const parentTrips = trips.filter((trip: any) => !trip.isSubTrip && !trip.parentTripId);
+          // Verificar que tenga origen y destino de segmento
+          if (!trip.segmentOrigin || !trip.segmentDestination) return false;
           
-          // Luego verificamos si alguno de sus sub-viajes coincide con nuestro origen/destino
-          const parentTripsWithMatchingSubTrips = parentTrips.filter((parentTrip: any) => {
-            // Buscar todos los sub-viajes asociados a este viaje padre
-            const subTrips = trips.filter((trip: any) => 
-              trip.isSubTrip && trip.parentTripId === parentTrip.id
-            );
+          const subTripOrigin = getLocationInfo(trip.segmentOrigin);
+          const subTripDestination = getLocationInfo(trip.segmentDestination);
+          
+          // Comparar orígenes y destinos
+          const originsMatch = subTripOrigin.includes(originLocation) || originLocation.includes(subTripOrigin);
+          const destinationsMatch = subTripDestination.includes(destinationLocation) || destinationLocation.includes(subTripDestination);
+          
+          const matches = originsMatch && destinationsMatch;
+          
+          if (matches) {
+            console.log(`Sub-viaje con coincidencia directa: ID ${trip.id}, ${subTripOrigin} → ${subTripDestination}`);
             
-            console.log(`Viaje padre ID ${parentTrip.id} tiene ${subTrips.length} sub-viajes`);
+            // Para sub-viajes, modificamos temporalmente los campos para mostrar en la interfaz
+            trip.displayName = `Sub-viaje #${trip.id}`;
+            trip.displayOrigin = trip.segmentOrigin;
+            trip.displayDestination = trip.segmentDestination;
             
-            // Verificar si algún sub-viaje coincide con nuestro origen/destino
-            return subTrips.some((subTrip: any) => {
-              if (!subTrip.segmentOrigin || !subTrip.segmentDestination) return false;
-              
-              const subTripOrigin = getLocationInfo(subTrip.segmentOrigin);
-              const subTripDestination = getLocationInfo(subTrip.segmentDestination);
-              
-              console.log(`  Sub-viaje ID ${subTrip.id}: ${subTripOrigin} → ${subTripDestination}`);
-              
-              const originsMatch = subTripOrigin.includes(originLocation) || originLocation.includes(subTripOrigin);
-              const destinationsMatch = subTripDestination.includes(destinationLocation) || destinationLocation.includes(subTripDestination);
-              
-              const matches = originsMatch && destinationsMatch;
-              if (matches) {
-                console.log(`  ✓ Coincidencia encontrada en sub-viaje ${subTrip.id}!`);
-              }
-              
-              return matches;
-            });
+            // Agregamos un enlace visual al viaje padre
+            const parentTrip = trips.find((parent) => parent.id === trip.parentTripId);
+            if (parentTrip) {
+              trip.parentTripInfo = `(Parte de: Viaje #${parentTrip.id})`;
+            }
+          }
+          
+          return matches;
+        });
+        
+        console.log('Sub-viajes con coincidencia directa:', directSubTripMatches.length);
+        availableTrips.push(...directSubTripMatches);
+        
+        // 3. Buscamos viajes padre que tengan sub-viajes coincidentes y aún no estén en la lista
+        const parentTrips = trips.filter((trip: any) => !trip.isSubTrip && !trip.parentTripId);
+        
+        // Para cada viaje padre, verificamos si tiene sub-viajes coincidentes
+        parentTrips.forEach((parentTrip: any) => {
+          // Si ya está en la lista, no lo procesamos nuevamente
+          if (availableTrips.some(trip => trip.id === parentTrip.id)) return;
+          
+          // Buscar todos los sub-viajes asociados a este viaje padre
+          const subTrips = trips.filter((trip: any) => 
+            trip.isSubTrip && trip.parentTripId === parentTrip.id
+          );
+          
+          const hasMatchingSubTrips = subTrips.some((subTrip: any) => {
+            if (!subTrip.segmentOrigin || !subTrip.segmentDestination) return false;
+            
+            const subTripOrigin = getLocationInfo(subTrip.segmentOrigin);
+            const subTripDestination = getLocationInfo(subTrip.segmentDestination);
+            
+            const originsMatch = subTripOrigin.includes(originLocation) || originLocation.includes(subTripOrigin);
+            const destinationsMatch = subTripDestination.includes(destinationLocation) || destinationLocation.includes(subTripDestination);
+            
+            return originsMatch && destinationsMatch;
           });
           
-          console.log('Viajes padre con sub-viajes coincidentes:', parentTripsWithMatchingSubTrips.length);
-          
-          // Combinamos los resultados: primero las coincidencias directas, luego las coincidencias por sub-viajes
-          const combined = [...directMatches, ...parentTripsWithMatchingSubTrips];
-          console.log('Total viajes encontrados (directos + por sub-viajes):', combined.length);
-          
-          return combined;
-        }
+          // Si tiene sub-viajes coincidentes y no está ya en la lista, lo agregamos
+          if (hasMatchingSubTrips) {
+            console.log(`Viaje padre ID ${parentTrip.id} tiene sub-viajes coincidentes`);
+            parentTrip.hasMatchingSubtrips = true; // Marcamos que tiene sub-viajes coincidentes
+            availableTrips.push(parentTrip);
+          }
+        });
         
-        // Si hay coincidencias directas, las devolvemos
-        return directMatches;
+        console.log('Total viajes disponibles:', availableTrips.length);
+        return availableTrips;
       } catch (error) {
         console.error('Error al buscar viajes coincidentes:', error);
         return [];
@@ -251,6 +280,14 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
           discountAmount,
           originalAmount,
           couponCode
+        } : {}),
+        
+        // Si el viaje es un sub-viaje, incluimos la información relacionada
+        ...(tripData.isSubTrip ? {
+          isSubtripReservation: true,
+          parentTripId: tripData.parentTripId,
+          segmentOrigin: tripData.segmentOrigin,
+          segmentDestination: tripData.segmentDestination
         } : {})
       };
       
@@ -528,11 +565,20 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <h4 className="font-medium">
-                        Viaje #{trip.id}
+                        {trip.isSubTrip ? `Sub-viaje #${trip.id}` : `Viaje #${trip.id}`}
                       </h4>
                       <div className="text-sm text-muted-foreground">
-                        {trip.route?.name || `${trip.route?.origin} → ${trip.route?.destination}`}
+                        {trip.route?.name || 
+                         (trip.isSubTrip && trip.segmentOrigin && trip.segmentDestination) 
+                         ? `${trip.segmentOrigin} → ${trip.segmentDestination}` 
+                         : trip.route ? `${trip.route.origin} → ${trip.route.destination}` : 'Sin ruta'
+                        }
                       </div>
+                      {trip.isSubTrip && trip.parentTripId && (
+                        <div className="text-xs text-blue-600 mt-1">
+                          (Parte de: Viaje #{trip.parentTripId})
+                        </div>
+                      )}
                     </div>
                     <Badge>
                       {trip.availableSeats} asientos disponibles
@@ -566,9 +612,29 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
                   <Separator className="my-2" />
                   <div className="text-xs">
                     <div className="font-medium mb-1">Origen:</div>
-                    <div className="text-muted-foreground mb-1">{trip.route?.origin}</div>
+                    <div className="text-muted-foreground mb-1">
+                      {trip.isSubTrip && trip.segmentOrigin 
+                        ? trip.segmentOrigin 
+                        : trip.route?.origin}
+                    </div>
                     <div className="font-medium mb-1">Destino:</div>
-                    <div className="text-muted-foreground">{trip.route?.destination}</div>
+                    <div className="text-muted-foreground">
+                      {trip.isSubTrip && trip.segmentDestination 
+                        ? trip.segmentDestination 
+                        : trip.route?.destination}
+                    </div>
+                    
+                    {/* Información adicional sobre sub-viajes */}
+                    {trip.hasMatchingSubtrips && (
+                      <div className="mt-2 text-indigo-600">
+                        ℹ️ Este viaje tiene sub-segmentos coincidentes
+                      </div>
+                    )}
+                    {trip.isSubTrip && (
+                      <div className="mt-2 text-green-600">
+                        ✓ Sub-viaje con coincidencia directa
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
