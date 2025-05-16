@@ -291,31 +291,21 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         }
       }
       
-      // Construir el objeto de reservación con los campos obligatorios
+      // Vamos a simplificar la reservación al mínimo para depurar
       const newReservationData = {
-        // Campos requeridos por la validación en el backend
+        // Solo campos requeridos por el schema de validación
         tripId: tripData.id,
-        totalAmount: finalTotal,
+        totalAmount: tripData.price || 120, // Usamos el precio directo del viaje
         email: currentReservation.email || 'transferencia@ejemplo.com',
         phone: currentReservation.phone || '0000000000',
-        paymentMethod: 'efectivo', // Siempre usamos efectivo como valor predeterminado
-        numPassengers: passengers.length,
-        passengers: passengers,
-        paymentStatus: paymentStatus, // Añadimos explícitamente el estado de pago
+        paymentMethod: 'efectivo',
+        numPassengers: 1, // Forzar a 1 pasajero
+        passengers: [{ firstName: 'Pasajero', lastName: 'Transferido' }],
         
-        // Campos opcionales
+        // Sin campos opcionales para depurar qué está causando el error
         notes: `Reservación transferida desde ID: ${currentReservation.id}`,
-        advanceAmount: advanceAmount || 0,
-        advancePaymentMethod: advancePaymentMethod || 'efectivo',
         
-        // Solo agregamos discountAmount, originalAmount y couponCode si hay un descuento
-        ...(discountAmount > 0 ? {
-          discountAmount,
-          originalAmount,
-          couponCode
-        } : {}),
-        
-        // Si el viaje es un sub-viaje, incluimos la información relacionada
+        // Si el viaje es un sub-viaje, incluimos solo la información esencial
         ...(tripData.isSubTrip ? {
           isSubtripReservation: true,
           parentTripId: tripData.parentTripId,
@@ -323,6 +313,8 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
           segmentDestination: tripData.segmentDestination
         } : {})
       };
+      
+      console.log('DATOS SIMPLIFICADOS para depuración:', newReservationData);
       
       console.log('Creando nueva reservación con datos:', newReservationData);
       
