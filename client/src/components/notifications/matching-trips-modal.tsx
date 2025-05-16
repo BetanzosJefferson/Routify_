@@ -291,30 +291,103 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         }
       }
       
-      // Vamos a simplificar la reservación al mínimo para depurar
+      // Preparar los datos para la nueva reservación
+      // Obtener pasajeros desde la reservación original
+      const passengers = currentReservation.passengers?.map((passenger: any) => ({
+        firstName: passenger.firstName || 'Pasajero',
+        lastName: passenger.lastName || 'Transferido'
+      })) || [{firstName: 'Pasajero', lastName: 'Transferido'}];
+      
+      // Calculamos el precio base del nuevo viaje
+      const newBasePrice = tripData.price || 120;
+      
+      // Variables para calcular pagos y descuentos
+      let originalPrice = newBasePrice;
+      let finalPrice = originalPrice;
+      let discountAmount = 0;
+      let couponCode = null;
+      
+      // Verificamos si la reservación original tenía descuento
+      if (currentReservation.discountAmount > 0 && currentReservation.couponCode) {
+        // Calculamos el porcentaje de descuento original
+        const originalTotal = currentReservation.totalAmount + currentReservation.discountAmount;
+        const discountPercentage = (currentReservation.discountAmount / originalTotal) * 100;
+        
+        // Aplicamos el mismo porcentaje al nuevo precio
+        discountAmount = Math.round((discountPercentage / 100) * newBasePrice);
+        finalPrice = newBasePrice - discountAmount;
+        couponCode = currentReservation.couponCode;
+        
+        console.log('Aplicando descuento transferido:', {
+          originalDiscount: currentReservation.discountAmount,
+          discountPercentage,
+          newDiscount: discountAmount,
+          couponCode,
+          originalTotal,
+          newBasePrice,
+          finalPrice
+        });
+      }
+      
+      // Calcular el anticipo y método de pago
+      let advanceAmount = 0;
+      let advancePaymentMethod = 'efectivo';
+      let paymentStatus = 'pendiente';
+      
+      // Si la reservación tenía un anticipo, transferimos el porcentaje
+      if (typeof currentReservation.advanceAmount === 'number' && currentReservation.advanceAmount > 0) {
+        const originalTotal = currentReservation.totalAmount || 0;
+        
+        // Calculamos la proporción del anticipo original
+        const proportion = originalTotal > 0 ? currentReservation.advanceAmount / originalTotal : 0;
+        
+        // Aplicamos esa proporción al nuevo precio final
+        advanceAmount = Math.round(finalPrice * proportion);
+        
+        // Si el anticipo cubre todo el precio, marcamos como pagado
+        if (advanceAmount >= finalPrice) {
+          paymentStatus = 'pagado';
+          advanceAmount = finalPrice; // No puede ser mayor al precio
+        }
+        
+        // Conservamos el método de pago original
+        advancePaymentMethod = currentReservation.advancePaymentMethod || 'efectivo';
+      }
+      
+      // Construir el objeto completo
       const newReservationData = {
-        // Solo campos requeridos por el schema de validación
+        // Campos obligatorios
         tripId: tripData.id,
-        totalAmount: tripData.price || 120, // Usamos el precio directo del viaje
+        totalAmount: finalPrice,
         email: currentReservation.email || 'transferencia@ejemplo.com',
         phone: currentReservation.phone || '0000000000',
-        paymentMethod: 'efectivo',
-        numPassengers: 1, // Forzar a 1 pasajero
-        passengers: [{ firstName: 'Pasajero', lastName: 'Transferido' }],
+        paymentMethod: 'efectivo', // Siempre usamos efectivo como predeterminado
+        numPassengers: passengers.length,
+        passengers: passengers,
+        paymentStatus: paymentStatus,
         
-        // Sin campos opcionales para depurar qué está causando el error
-        notes: `Reservación transferida desde ID: ${currentReservation.id}`,
+        // Campos de pago
+        advanceAmount: advanceAmount,
+        advancePaymentMethod: advancePaymentMethod,
         
-        // Si el viaje es un sub-viaje, incluimos solo la información esencial
+        // Campos de descuento
+        ...(discountAmount > 0 ? {
+          discountAmount,
+          originalAmount: originalPrice,
+          couponCode
+        } : {}),
+        
+        // Sub-viaje
         ...(tripData.isSubTrip ? {
           isSubtripReservation: true,
           parentTripId: tripData.parentTripId,
           segmentOrigin: tripData.segmentOrigin,
           segmentDestination: tripData.segmentDestination
-        } : {})
+        } : {}),
+        
+        // Metadatos
+        notes: `Reservación transferida desde ID: ${currentReservation.id}`
       };
-      
-      console.log('DATOS SIMPLIFICADOS para depuración:', newReservationData);
       
       console.log('Creando nueva reservación con datos:', newReservationData);
       
