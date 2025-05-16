@@ -2551,12 +2551,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const companyId = trip.companyId;
       console.log(`Asignando companyId: ${companyId || 'null'} a la nueva reservación (heredado del viaje ${trip.id})`);
       
-      // Determinar estado de pago basado en anticipo
-      let paymentStatus = "pendiente";
-      if (reservationData.advanceAmount && reservationData.advanceAmount >= totalAmount) {
-        paymentStatus = "pagado";
-      }
-
       // Obtener el usuario autenticado, si existe
       const { user } = req as any;
       
@@ -2602,6 +2596,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`[POST /reservations] Error al verificar cupón: ${error}`);
           couponCode = null;
         }
+      }
+      
+      // Recalcular el estado de pago basado en el monto final con descuento aplicado
+      let paymentStatus = "pendiente";
+      if (reservationData.advanceAmount && reservationData.advanceAmount >= finalAmount) {
+        paymentStatus = "pagado";
+        console.log(`[POST /reservations] Marcando como PAGADO: anticipo ${reservationData.advanceAmount} cubre el monto final ${finalAmount}`);
       }
       
       const reservation = await storage.createReservation({
