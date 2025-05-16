@@ -120,15 +120,20 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         lastName: passenger.lastName || 'Transferido'
       })) || [{firstName: 'Pasajero', lastName: 'Transferido'}];
       
+      // Conservamos la información original importante y actualizamos solo lo del viaje
+      const price = selectedTripData.price || 0;
+      const isPaid = price > 0 && price === (reservation.advanceAmount || reservation.totalAmount);
+      
       const newReservationData = {
         tripId: selectedTrip,
-        totalAmount: selectedTripData.price || 0,
+        totalAmount: price,
         email: reservation.email || 'transferencia@ejemplo.com',
         phone: reservation.phone || '0000000000',
         notes: `Reservación transferida desde ID: ${reservation.id}`,
-        paymentMethod: 'efectivo',
-        advanceAmount: selectedTripData.price || 0,
-        advancePaymentMethod: 'efectivo',
+        paymentMethod: reservation.paymentMethod || 'efectivo',
+        paymentStatus: isPaid ? 'pagado' : 'pendiente',
+        advanceAmount: isPaid ? price : 0,
+        advancePaymentMethod: reservation.advancePaymentMethod || 'efectivo',
         numPassengers: passengers.length,
         passengers: passengers
       };
