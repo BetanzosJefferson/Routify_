@@ -354,6 +354,16 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         // No interrumpimos el proceso si falla la búsqueda de sub-viajes
       }
       
+          // Determinar qué viaje usar: si encontramos un sub-viaje coincidente, lo usamos
+      // De lo contrario, usamos el viaje padre seleccionado
+      const tripToUse = matchingSubTrip || selectedTripData;
+      console.log('Viaje que se utilizará para la transferencia:', {
+        id: tripToUse.id,
+        isSubTrip: !!tripToUse.isSubTrip,
+        origin: tripToUse.segmentOrigin || tripToUse.route?.origin,
+        destination: tripToUse.segmentDestination || tripToUse.route?.destination
+      });
+      
       // Determinar si estamos procesando varias reservaciones o solo una
       if (isMultipleReservations) {
         // Estamos procesando múltiples reservaciones
@@ -379,7 +389,7 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
               description: `Reservación #${reservationsArray[i].id}`,
             });
             
-            const result = await createSingleReservation(reservationsArray[i], selectedTripData);
+            const result = await createSingleReservation(reservationsArray[i], tripToUse);
             createdReservations.push(result);
             
             // Pequeña pausa para evitar sobrecargar el servidor
@@ -412,7 +422,7 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
           description: "Espera mientras procesamos la información",
         });
         
-        const result = await createSingleReservation(reservation, selectedTripData);
+        const result = await createSingleReservation(reservation, tripToUse);
         
         // Mostrar mensaje de éxito
         toast({
