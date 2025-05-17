@@ -529,13 +529,25 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         });
       }
       
-      // Cerrar el modal
+      // Cerrar el modal de selección de viajes
       onOpenChange(false);
       
-      // Esperar un momento antes de redirigir para que el usuario vea la notificación
-      setTimeout(() => {
-        window.location.href = '/reservations';
-      }, 1500);
+      // Notificamos al componente padre que procesamos una reservación
+      if (isMultipleReservations) {
+        // Si hay múltiples reservaciones, se notifica que se completó todo el proceso
+        window.dispatchEvent(new CustomEvent('transferComplete', {
+          detail: { success: true, message: 'Todas las reservaciones transferidas' }
+        }));
+      } else {
+        // Si es una sola reservación, notificamos que debemos continuar con las demás
+        window.dispatchEvent(new CustomEvent('singleTransferComplete', {
+          detail: { 
+            success: true, 
+            reservationId: reservation.id,
+            message: `Reservación #${reservation.id} transferida exitosamente`
+          }
+        }));
+      }
       
     } catch (error) {
       console.error('Error en el proceso de creación de reservaciones:', error);

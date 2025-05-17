@@ -17,7 +17,8 @@ import { ChevronDown } from 'lucide-react';
 
 interface TransferredReservationCardProps {
   reservation: any;
-  onContinue: (reservation: any) => void;
+  onContinue?: (reservation: any) => void;
+  processed?: boolean;
 }
 
 const TransferredReservationCard: React.FC<TransferredReservationCardProps> = ({
