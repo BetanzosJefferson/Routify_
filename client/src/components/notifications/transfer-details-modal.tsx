@@ -192,44 +192,19 @@ const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
           </ScrollArea>
           
           <div className="flex justify-between mt-4">
-            <div className="flex flex-col space-y-2 w-full">
-              <p className="text-sm text-muted-foreground mb-2">
-                Para transferir múltiples reservaciones con diferentes rutas, selecciona cada una individualmente:
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {reservationsData?.map((res: any) => {
-                  // Determinamos origen y destino según si es un sub-viaje o viaje normal
-                  let originText = 'Origen no disponible';
-                  let destText = 'Destino no disponible';
-                  
-                  if (res?.trip?.isSubTrip) {
-                    // Para sub-viajes usamos segment_origin y segment_destination
-                    originText = res.trip.segmentOrigin?.split(' - ')[0] || 'Origen no disponible';
-                    destText = res.trip.segmentDestination?.split(' - ')[0] || 'Destino no disponible';
-                  } else if (res?.trip?.route) {
-                    // Para viajes normales usamos origin y destination del route
-                    originText = res.trip.route.origin?.split(' - ')[0] || 'Origen no disponible';
-                    destText = res.trip.route.destination?.split(' - ')[0] || 'Destino no disponible';
-                  }
-                  
-                  return (
-                    <Button 
-                      key={res.id}
-                      variant="outline"
-                      className="justify-start flex-col items-start p-4 h-auto text-left" 
-                      onClick={() => {
-                        // Seleccionamos una sola reservación
-                        setSelectedReservation(res);
-                        setShowMatchingTripsModal(true);
-                      }}
-                    >
-                      <span className="font-bold">Transferir #{res.id}</span>
-                      <span className="text-sm text-muted-foreground mt-1">{originText} → {destText}</span>
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
+            <Button 
+              variant="default" 
+              disabled={!reservationsData?.length || isLoading}
+              onClick={() => {
+                // Seleccionamos todas las reservaciones y abrimos el modal para seleccionar viaje
+                if (reservationsData?.length) {
+                  setSelectedReservation(reservationsData);
+                  setShowMatchingTripsModal(true);
+                }
+              }}
+            >
+              Continuar con todas las transferencias
+            </Button>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cerrar
             </Button>
