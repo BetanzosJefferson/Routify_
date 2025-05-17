@@ -5,7 +5,7 @@ import { es } from "date-fns/locale";
 import { PageTitle } from "@/components/ui/page-title";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowRightLeft, Users, Calendar, Check } from "lucide-react";
+import { Loader2, ArrowRightLeft, Users, Calendar, Check, History } from "lucide-react";
 import { ReservationWithDetails, Company } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { useReservations } from "@/hooks/use-reservations";
 import { normalizeToStartOfDay } from "@/lib/utils";
 import { CompanySelectionModal } from "./company-selection-modal";
+import { TransferHistory } from "./transfer-history";
 import {
   Dialog,
   DialogContent,
@@ -128,6 +129,9 @@ export function PassengerTransferPage() {
           </Button>
         </CardContent>
       </Card>
+      
+      {/* Historial de transferencias */}
+      <TransferHistory />
       
       {/* Modal de selección de reservaciones */}
       <ReservationSelectionModal 

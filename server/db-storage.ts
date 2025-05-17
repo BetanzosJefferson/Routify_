@@ -2891,6 +2891,68 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
+  async getNotificationsByType(type: string, companyId: string, direction: 'outgoing' | 'incoming' = 'outgoing'): Promise<Notification[]> {
+    try {
+      let whereConditions;
+      
+      // Consulta diferente basada en dirección:
+      // - outgoing: notificaciones que fueron creadas por usuarios de la compañía (buscar en metaData)
+      // - incoming: notificaciones recibidas por usuarios de la compañía (basado en userId)
+      
+      if (direction === 'outgoing') {
+        // Para outgoing, necesitamos buscar en todos los metaData donde nuestra compañía es la fuente
+        // Esta es una implementación simplificada que podría necesitar optimización en el futuro
+        const allTransferNotifications = await db
+          .select()
+          .from(schema.notifications)
+          .where(eq(schema.notifications.type, type))
+          .orderBy(desc(schema.notifications.createdAt));
+        
+        // Filtrar manualmente aquellas donde nuestra compañía es la fuente
+        return allTransferNotifications.filter(notification => {
+          if (!notification.metaData) return false;
+          
+          try {
+            const metaData = JSON.parse(notification.metaData);
+            return metaData.sourceCompanyId === companyId || metaData.sourceCompany === companyId;
+          } catch (e) {
+            return false;
+          }
+        });
+      } else {
+        // Para incoming, necesitamos encontrar todas las notificaciones enviadas a usuarios de nuestra compañía
+        // Primero, obtenemos todos los usuarios de la compañía
+        const companyUsers = await db
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.companyId, companyId));
+        
+        const userIds = companyUsers.map(user => user.id);
+        
+        if (userIds.length === 0) {
+          return [];
+        }
+        
+        // Luego, buscamos notificaciones para esos usuarios de tipo 'transfer'
+        const notifications = await db
+          .select()
+          .from(schema.notifications)
+          .where(
+            and(
+              eq(schema.notifications.type, type),
+              inArray(schema.notifications.userId, userIds)
+            )
+          )
+          .orderBy(desc(schema.notifications.createdAt));
+        
+        return notifications;
+      }
+    } catch (error) {
+      console.error(`Error al obtener notificaciones de tipo ${type} para compañía ${companyId}:`, error);
+      return [];
+    }
+  }
+  
   async markNotificationAsRead(id: number): Promise<Notification> {
     try {
       const [updatedNotification] = await db
