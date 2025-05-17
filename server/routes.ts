@@ -5046,36 +5046,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Buscar la última transferencia en la base de datos
-      // Incluso si no se encontraron mediante las notificaciones o el estado de las reservaciones
+      // Buscar las transferencias en la memoria global
       if (transfers.length === 0) {
-        // Consultar todas las reservaciones y buscar las que tienen estado 'transferido'
-        // o notas que contienen "Transferido a"
-        console.log(`[GET /transfers/history] No se encontraron transferencias en los métodos anteriores, buscando directamente en la base de datos...`);
+        console.log(`[GET /transfers/history] No se encontraron transferencias en los métodos anteriores, buscando en la memoria global...`);
         
-        const allCompanyReservations = await storage.getReservations(user.company);
-        console.log(`[GET /transfers/history] Buscando en ${allCompanyReservations.length} reservaciones de la empresa ${user.company}`);
-        
-        for (const reservation of allCompanyReservations) {
-          // Verificar si es una reservación transferida por el texto en las notas
-          if (reservation.notes && reservation.notes.includes("Transferido a")) {
-            const targetCompanyName = reservation.notes.split("Transferido a ")[1].split(" el")[0];
-            console.log(`[GET /transfers/history] Encontrada reservación ${reservation.id} transferida a ${targetCompanyName}`);
+        // Usar el almacenamiento en memoria creado para las transferencias
+        if (global.transferRecords && global.transferRecords.length > 0) {
+          const userCompany = user.company;
+          
+          global.transferRecords.forEach(record => {
+            // Determinar la dirección de la transferencia basado en la compañía del usuario
+            const direction = record.sourceCompany === userCompany ? 'outgoing' : 'incoming';
             
-            // Crear un registro de transferencia para esta reservación
-            transfers.push({
-              id: reservation.id + 10000, // Para evitar colisiones de ID
-              createdAt: reservation.updatedAt || new Date().toISOString(),
-              direction: 'outgoing',
-              sourceCompany: user.company,
-              targetCompany: targetCompanyName,
-              sourceUser: {
-                name: `${user.firstName} ${user.lastName}`
-              },
-              reservationIds: [reservation.id],
-              transferDate: reservation.updatedAt || new Date().toISOString(),
-              reservationCount: 1
-            });
+            // Solo incluir si es relevante para esta compañía
+            if ((direction === 'outgoing' && record.sourceCompany === userCompany) || 
+                (direction === 'incoming' && record.targetCompany === userCompany)) {
+              
+              console.log(`[GET /transfers/history] Encontrado registro de transferencia en memoria: ${JSON.stringify(record)}`);
+              
+              transfers.push({
+                id: record.id,
+                createdAt: record.createdAt,
+                direction,
+                sourceCompany: record.sourceCompany,
+                targetCompany: record.targetCompany,
+                sourceUser: record.sourceUser,
+                reservationIds: record.reservationIds,
+                transferDate: record.transferDate,
+                reservationCount: record.reservationCount
+              });
+            }
+          });
+        }
+        
+        // Respaldo: Buscar en las reservaciones si no hay nada en memoria
+        if (transfers.length === 0) {
+          console.log(`[GET /transfers/history] No hay transferencias en memoria, buscando en reservaciones...`);
+          
+          const allCompanyReservations = await storage.getReservations(user.company);
+          console.log(`[GET /transfers/history] Buscando en ${allCompanyReservations.length} reservaciones de la empresa ${user.company}`);
+          
+          for (const reservation of allCompanyReservations) {
+            // Verificar si es una reservación transferida por el texto en las notas
+            if (reservation.notes && reservation.notes.includes("Transferido a")) {
+              const targetCompanyName = reservation.notes.split("Transferido a ")[1].split(" el")[0];
+              console.log(`[GET /transfers/history] Encontrada reservación ${reservation.id} transferida a ${targetCompanyName}`);
+              
+              // Crear un registro de transferencia para esta reservación
+              transfers.push({
+                id: reservation.id + 10000, // Para evitar colisiones de ID
+                createdAt: reservation.updatedAt || new Date().toISOString(),
+                direction: 'outgoing',
+                sourceCompany: user.company,
+                targetCompany: targetCompanyName,
+                sourceUser: {
+                  name: `${user.firstName} ${user.lastName}`
+                },
+                reservationIds: [reservation.id],
+                transferDate: reservation.updatedAt || new Date().toISOString(),
+                reservationCount: 1
+              });
+            }
           }
         }
         
@@ -5193,6 +5224,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Actualizar el estado de las reservaciones a "Transferido"
       console.log(`[Transferencia] Actualizando estado de ${reservationsToTransfer.length} reservaciones a "transferido"`);
+      
+      // Crear un registro de transferencia directo en la base de datos
+      const transferLog = {
+        createdAt: new Date().toISOString(),
+        direction: 'outgoing',
+        sourceCompany: currentUser.company,
+        targetCompany: targetCompanyId,
+        sourceUser: {
+          name: `${currentUser.firstName} ${currentUser.lastName}`
+        },
+        reservationIds: reservationsToTransfer.map(r => r.id),
+        transferDate: new Date().toISOString(),
+        reservationCount: reservationsToTransfer.length
+      };
+      
+      // Almacenar este registro en memoria global para propósitos de demostración
+      // (no requiere cambios en la base de datos)
+      if (!global.transferRecords) {
+        global.transferRecords = [];
+      }
+      global.transferRecords.push({...transferLog, id: Date.now()}); // Usar timestamp como ID único
+      console.log(`[Transferencia] Registro de transferencia creado en memoria: ${JSON.stringify(transferLog)}`);
+      
+      
+      // Actualizar cada reservación individual
       for (const reservation of reservationsToTransfer) {
         try {
           const updated = await storage.updateReservation(reservation.id, {
