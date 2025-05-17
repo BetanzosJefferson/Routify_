@@ -223,8 +223,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             <NavSection title="Operaciones">
               <NavItem 
                 icon={<ArrowRightLeft className="h-5 w-5" />} 
-                active={(location === '/' || location === '/dashboard') && activeTab === "passenger-transfer"}
-                onClick={() => handleTabClick("passenger-transfer")}
+                active={location === "/passenger-transfer"}
+                onClick={() => setLocation("/passenger-transfer")}
               >
                 Transferencia de pasajeros
               </NavItem>
