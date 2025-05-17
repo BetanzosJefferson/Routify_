@@ -25,7 +25,10 @@ import PackageDetailPage from "@/pages/package-detail-page";
 import EditTripPage from "@/pages/edit-trip-page";
 import CashRegisterPageRoute from "@/pages/cash-register-page";
 import PassengerTransferPageRoute from "@/pages/passenger-transfer-page";
-import { UsersPage } from "@/components/users/users-page";
+import BoardingListPageRoute from "@/pages/boarding-list-page";
+import TripLogPageRoute from "@/pages/trip-log-page";
+import UsersPageRoute from "@/pages/users-page";
+import VehiclesPageRoute from "@/pages/vehicles-page";
 
 function Router() {
   return (
