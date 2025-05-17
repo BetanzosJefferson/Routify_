@@ -291,98 +291,36 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         }
       }
       
-      // Preparar los datos para la nueva reservación
-      // Pasajeros ya están definidos arriba, no necesitamos redeclararlos aquí
-      
-      // Calculamos el precio base del nuevo viaje
-      const newBasePrice = tripData.price || 120;
-      
-      // Variables para calcular pagos y descuentos
-      let originalPrice = newBasePrice;
-      let finalPrice = originalPrice;
-      let discountAmount = 0;
-      let couponCode = null;
-      
-      // Verificamos si la reservación original tenía descuento
-      if (currentReservation.discountAmount > 0 && currentReservation.couponCode) {
-        // Calculamos el porcentaje de descuento original
-        const originalTotal = currentReservation.totalAmount + currentReservation.discountAmount;
-        const discountPercentage = (currentReservation.discountAmount / originalTotal) * 100;
-        
-        // Aplicamos el mismo porcentaje al nuevo precio
-        discountAmount = Math.round((discountPercentage / 100) * newBasePrice);
-        finalPrice = newBasePrice - discountAmount;
-        couponCode = currentReservation.couponCode;
-        
-        console.log('Aplicando descuento transferido:', {
-          originalDiscount: currentReservation.discountAmount,
-          discountPercentage,
-          newDiscount: discountAmount,
-          couponCode,
-          originalTotal,
-          newBasePrice,
-          finalPrice
-        });
-      }
-      
-      // Calcular el anticipo y método de pago
-      let advanceAmount = 0;
-      let advancePaymentMethod = 'efectivo';
-      let paymentStatus = 'pendiente';
-      
-      // Si la reservación tenía un anticipo, transferimos el porcentaje
-      if (typeof currentReservation.advanceAmount === 'number' && currentReservation.advanceAmount > 0) {
-        const originalTotal = currentReservation.totalAmount || 0;
-        
-        // Calculamos la proporción del anticipo original
-        const proportion = originalTotal > 0 ? currentReservation.advanceAmount / originalTotal : 0;
-        
-        // Aplicamos esa proporción al nuevo precio final
-        advanceAmount = Math.round(finalPrice * proportion);
-        
-        // Si el anticipo cubre todo el precio, marcamos como pagado
-        if (advanceAmount >= finalPrice) {
-          paymentStatus = 'pagado';
-          advanceAmount = finalPrice; // No puede ser mayor al precio
-        }
-        
-        // Conservamos el método de pago original
-        advancePaymentMethod = currentReservation.advancePaymentMethod || 'efectivo';
-      }
-      
-      // Construir el objeto completo
+      // Construir el objeto de reservación con los campos obligatorios
       const newReservationData = {
-        // Campos obligatorios
+        // Campos requeridos por la validación en el backend
         tripId: tripData.id,
-        totalAmount: finalPrice,
+        totalAmount: finalTotal,
         email: currentReservation.email || 'transferencia@ejemplo.com',
         phone: currentReservation.phone || '0000000000',
-        paymentMethod: 'efectivo', // Siempre usamos efectivo como predeterminado
+        paymentMethod: 'efectivo', // Siempre usamos efectivo como valor predeterminado
         numPassengers: passengers.length,
         passengers: passengers,
-        paymentStatus: paymentStatus,
         
-        // Campos de pago
-        advanceAmount: advanceAmount,
-        advancePaymentMethod: advancePaymentMethod,
+        // Campos opcionales
+        notes: `Reservación transferida desde ID: ${currentReservation.id}`,
+        advanceAmount: advanceAmount || 0,
+        advancePaymentMethod: advancePaymentMethod || 'efectivo',
         
-        // Campos de descuento
+        // Solo agregamos discountAmount, originalAmount y couponCode si hay un descuento
         ...(discountAmount > 0 ? {
           discountAmount,
-          originalAmount: originalPrice,
+          originalAmount,
           couponCode
         } : {}),
         
-        // Sub-viaje
+        // Si el viaje es un sub-viaje, incluimos la información relacionada
         ...(tripData.isSubTrip ? {
           isSubtripReservation: true,
           parentTripId: tripData.parentTripId,
           segmentOrigin: tripData.segmentOrigin,
           segmentDestination: tripData.segmentDestination
-        } : {}),
-        
-        // Metadatos
-        notes: `Reservación transferida desde ID: ${currentReservation.id}`
+        } : {})
       };
       
       console.log('Creando nueva reservación con datos:', newReservationData);
@@ -398,6 +336,7 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Detalles del error de creación:', errorData);
         throw new Error(errorData.message || 'Error al crear la reservación');
       }
       
@@ -430,6 +369,27 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       if (!selectedTripData) {
         throw new Error('No se encontró el viaje seleccionado');
       }
+      
+      // Información detallada para depuración
+      console.log('Datos de reservación original:', {
+        reservationId: primaryReservation?.id || 'Múltiple',
+        tripId: primaryReservation?.tripId || 'Múltiple',
+        isSubTrip: primaryReservation?.trip?.isSubTrip || 'Desconocido',
+        segmentOrigin: primaryReservation?.trip?.segmentOrigin || 'No disponible',
+        segmentDestination: primaryReservation?.trip?.segmentDestination || 'No disponible',
+        routeOrigin: primaryReservation?.trip?.route?.origin || 'No disponible',
+        routeDestination: primaryReservation?.trip?.route?.destination || 'No disponible'
+      });
+      
+      console.log('Datos del viaje seleccionado:', {
+        id: selectedTripData.id,
+        isSubTrip: selectedTripData.isSubTrip || false,
+        origin: selectedTripData.origin || selectedTripData.route?.origin || 'No disponible',
+        destination: selectedTripData.destination || selectedTripData.route?.destination || 'No disponible',
+        segmentOrigin: selectedTripData.segmentOrigin || 'No disponible',
+        segmentDestination: selectedTripData.segmentDestination || 'No disponible',
+        parentTripId: selectedTripData.parentTripId || 'No es sub-viaje'
+      });
       
       // Verificar si el viaje seleccionado tiene sub-viajes que coincidan con el origen/destino
       // Si es así, intentaremos usar el sub-viaje coincidente en lugar del viaje padre
