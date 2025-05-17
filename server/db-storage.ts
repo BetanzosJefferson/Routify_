@@ -2891,6 +2891,21 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
+  async getAllNotifications(): Promise<Notification[]> {
+    try {
+      // Obtener todas las notificaciones ordenadas por fecha (más recientes primero)
+      const notifications = await db
+        .select()
+        .from(schema.notifications)
+        .orderBy(desc(schema.notifications.createdAt));
+      
+      return notifications;
+    } catch (error) {
+      console.error('Error al obtener todas las notificaciones:', error);
+      return [];
+    }
+  }
+  
   async getNotificationsByType(type: string, companyId: string, direction: 'outgoing' | 'incoming' = 'outgoing'): Promise<Notification[]> {
     try {
       let whereConditions;
