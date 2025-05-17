@@ -113,13 +113,13 @@ export function TransferHistory() {
           </TabsList>
           
           <TabsContent value="all" className="pt-4">
-            {renderTransferTable(filteredTransfers, isLoading, error, openDetailsModal)}
+            {renderTransferTable(transfers || [], isLoading, error, openDetailsModal)}
           </TabsContent>
           <TabsContent value="outgoing" className="pt-4">
-            {renderTransferTable(filteredTransfers, isLoading, error, openDetailsModal)}
+            {renderTransferTable(transfers?.filter(t => t.direction === 'outgoing') || [], isLoading, error, openDetailsModal)}
           </TabsContent>
           <TabsContent value="incoming" className="pt-4">
-            {renderTransferTable(filteredTransfers, isLoading, error, openDetailsModal)}
+            {renderTransferTable(transfers?.filter(t => t.direction === 'incoming') || [], isLoading, error, openDetailsModal)}
           </TabsContent>
         </Tabs>
 
