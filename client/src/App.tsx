@@ -45,6 +45,10 @@ function Router() {
       <ProtectedRoute path="/cash-register" component={CashRegisterPageRoute} />
       <ProtectedRoute path="/edit-trip/:id" component={EditTripPage} />
       <ProtectedRoute path="/passenger-transfer" component={PassengerTransferPageRoute} />
+      <ProtectedRoute path="/boarding-list" component={BoardingListPageRoute} />
+      <ProtectedRoute path="/trip-log" component={TripLogPageRoute} />
+      <ProtectedRoute path="/users" component={UsersPageRoute} />
+      <ProtectedRoute path="/vehicles" component={VehiclesPageRoute} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register/:token" component={RegisterPage} />
       <Route path="/reservation-details" component={ReservationDetails} />

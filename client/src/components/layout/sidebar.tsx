@@ -165,8 +165,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("trip-summary") && (
                 <NavItem 
                   icon={<ClipboardListIcon className="h-5 w-5" />} 
-                  active={(location === '/' || location === '/dashboard') && activeTab === "trip-summary"}
-                  onClick={() => handleTabClick("trip-summary")}
+                  active={location === "/trip-log"}
+                  onClick={() => setLocation("/trip-log")}
                 >
                   Bitácora
                 </NavItem>
@@ -183,8 +183,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("boarding-list") && (
                 <NavItem 
                   icon={<UsersIcon className="h-5 w-5" />} 
-                  active={(location === '/' || location === '/dashboard') && activeTab === "boarding-list"}
-                  onClick={() => handleTabClick("boarding-list")}
+                  active={location === "/boarding-list"}
+                  onClick={() => setLocation("/boarding-list")}
                 >
                   Lista de Abordaje
                 </NavItem>
@@ -197,8 +197,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             <NavSection title="Usuarios">
               <NavItem 
                 icon={<UserIcon className="h-5 w-5" />} 
-                active={(location === '/' || location === '/dashboard') && activeTab === "users"}
-                onClick={() => handleTabClick("users")}
+                active={location === "/users"}
+                onClick={() => setLocation("/users")}
               >
                 Usuarios
               </NavItem>
@@ -237,8 +237,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("vehicles") && (
                 <NavItem 
                   icon={<TruckIcon className="h-5 w-5" />} 
-                  active={(location === '/' || location === '/dashboard') && activeTab === "vehicles"}
-                  onClick={() => handleTabClick("vehicles")}
+                  active={location === "/vehicles"}
+                  onClick={() => setLocation("/vehicles")}
                 >
                   Unidades
                 </NavItem>
