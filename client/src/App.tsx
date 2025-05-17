@@ -24,8 +24,8 @@ import PackagesPage from "@/pages/packages-page";
 import PackageDetailPage from "@/pages/package-detail-page";
 import EditTripPage from "@/pages/edit-trip-page";
 import CashRegisterPageRoute from "@/pages/cash-register-page";
+import PassengerTransferPageRoute from "@/pages/passenger-transfer-page";
 import { UsersPage } from "@/components/users/users-page";
-import { PassengerTransferPage } from "@/components/passenger-transfer/passenger-transfer-page";
 
 function Router() {
   return (
@@ -41,7 +41,7 @@ function Router() {
       <ProtectedRoute path="/packages" component={PackagesPage} />
       <ProtectedRoute path="/cash-register" component={CashRegisterPageRoute} />
       <ProtectedRoute path="/edit-trip/:id" component={EditTripPage} />
-      <ProtectedRoute path="/passenger-transfer" component={PassengerTransferPage} />
+      <ProtectedRoute path="/passenger-transfer" component={PassengerTransferPageRoute} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register/:token" component={RegisterPage} />
       <Route path="/reservation-details" component={ReservationDetails} />
