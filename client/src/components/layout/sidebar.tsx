@@ -156,8 +156,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("reservations") && (
                 <NavItem 
                   icon={<UserIcon className="h-5 w-5" />} 
-                  active={(location === '/' || location === '/dashboard') && activeTab === "reservations"}
-                  onClick={() => handleTabClick("reservations")}
+                  active={location === "/reservations"}
+                  onClick={() => setLocation("/reservations")}
                 >
                   Reservaciones
                 </NavItem>

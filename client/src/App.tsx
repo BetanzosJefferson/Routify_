@@ -29,6 +29,7 @@ import BoardingListPageRoute from "@/pages/boarding-list-page";
 import TripLogPageRoute from "@/pages/trip-log-page";
 import UsersPageRoute from "@/pages/users-page";
 import VehiclesPageRoute from "@/pages/vehicles-page";
+import ReservationsPageRoute from "@/pages/reservations-page";
 
 function Router() {
   return (
@@ -49,6 +50,7 @@ function Router() {
       <ProtectedRoute path="/trip-log" component={TripLogPageRoute} />
       <ProtectedRoute path="/users" component={UsersPageRoute} />
       <ProtectedRoute path="/vehicles" component={VehiclesPageRoute} />
+      <ProtectedRoute path="/reservations" component={ReservationsPageRoute} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register/:token" component={RegisterPage} />
       <Route path="/reservation-details" component={ReservationDetails} />
