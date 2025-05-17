@@ -5156,12 +5156,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Por ahora, solo registramos la transferencia y enviamos notificaciones
       
       // Actualizar el estado de las reservaciones a "Transferido"
+      console.log(`[Transferencia] Actualizando estado de ${reservationsToTransfer.length} reservaciones a "transferido"`);
       for (const reservation of reservationsToTransfer) {
-        await storage.updateReservation(reservation.id, {
-          status: 'transferido',
-          notes: `Transferido a ${targetCompany.name} el ${new Date().toLocaleDateString()}`
-        });
-        console.log(`[Transferencia] Reservación ${reservation.id} marcada como "Transferido"`);
+        try {
+          const updated = await storage.updateReservation(reservation.id, {
+            status: 'transferido',
+            notes: `Transferido a ${targetCompany.name} el ${new Date().toLocaleDateString()}`
+          });
+          console.log(`[Transferencia] Reservación ${reservation.id} marcada como "transferido": ${JSON.stringify(updated)}`);
+        } catch (error) {
+          console.error(`[Transferencia] Error al marcar reservación ${reservation.id} como transferida:`, error);
+        }
       }
       
       // 1. Obtener usuarios de la empresa destino con roles específicos
@@ -5183,6 +5188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reservationIds: reservationsToTransfer.map(r => r.id),
         transferDate: new Date().toISOString(),
         sourceCompany: currentUser.company || currentUser.companyId,
+        targetCompany: targetCompanyId,
         sourceUser: {
           id: currentUser.id,
           name: `${currentUser.firstName} ${currentUser.lastName}`
@@ -5190,13 +5196,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         count: reservationsToTransfer.length
       };
       
+      console.log(`[Transferencia] Datos de transferencia: ${JSON.stringify(transferDataForNotification)}`);
+      
       // Serializar los datos como JSON para almacenarlos en la notificación
       const transferDataAsJson = JSON.stringify(transferDataForNotification);
       
-      // 2. Crear notificaciones para cada usuario
+      // 2. Crear notificaciones para cada usuario (incluyendo al remitente)
       const notificationPromises = [];
       const userIdsForRealtime = [];
       
+      // Primero crear una notificación para el usuario que realiza la transferencia
+      const senderNotification = {
+        userId: currentUser.id,
+        type: 'transfer',
+        title: 'Transferencia de reservaciones',
+        message: `Has transferido ${reservationsToTransfer.length} reservación(es) a ${targetCompany.name}.`,
+        read: false,
+        relatedId: reservationsToTransfer.length > 0 ? reservationsToTransfer[0].id : null,
+        metaData: transferDataAsJson,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      console.log(`[Transferencia] Creando notificación para el remitente (ID: ${currentUser.id})`);
+      notificationPromises.push(storage.createNotification(senderNotification));
+      
+      // Luego crear notificaciones para los usuarios de la empresa destino
       for (const user of filteredUsers) {
         // Crear la notificación
         const notification = {
