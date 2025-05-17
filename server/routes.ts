@@ -4962,6 +4962,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[GET /transfers/history] Usuario ${user.firstName} ${user.lastName} solicitando historial de transferencias`);
       
+      // Obtener todas las reservaciones de la empresa actual (especialmente las transferidas)
+      const allReservations = await storage.getReservations(user.company);
+      const transferredReservations = allReservations.filter(r => r.status === 'transferido');
+      console.log(`[GET /transfers/history] Reservaciones con estado transferido: ${transferredReservations.length}`);
+      
       // Obtener notificaciones de tipo transfer
       const userNotifications = await storage.getNotifications(user.id);
       console.log(`[GET /transfers/history] Total de notificaciones del usuario: ${userNotifications.length}`);
@@ -4970,25 +4975,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const transferNotifications = userNotifications.filter(n => n.type === 'transfer');
       console.log(`[GET /transfers/history] Notificaciones de transferencia: ${transferNotifications.length}`);
       
-      // Además, obtener reservaciones con estado "transferido"
-      const allReservations = await storage.getReservations(user.company);
-      const transferredReservations = allReservations.filter(r => r.status === 'transferido');
-      console.log(`[GET /transfers/history] Reservaciones con estado transferido: ${transferredReservations.length}`);
-      
       // Preparar resultados
       const transfers: any[] = [];
+      const processedReservationIds = new Set<number>();
       
-      // Para cada notificación de transferencia, crear un objeto de transferencia
+      // Primero: agregar las reservaciones transferidas (salientes)
+      // Esto asegura que las reservaciones transferidas aparezcan en el historial
+      for (const reservation of transferredReservations) {
+        console.log(`[GET /transfers/history] Procesando reservación transferida ID: ${reservation.id}, estado: ${reservation.status}, notas: ${reservation.notes}`);
+        
+        const transfer = {
+          id: reservation.id + 10000, // Para evitar colisiones de ID
+          createdAt: reservation.updatedAt || new Date().toISOString(),
+          direction: 'outgoing',
+          sourceCompany: user.company,
+          targetCompany: reservation.notes?.includes("Transferido a") 
+            ? reservation.notes.split("Transferido a ")[1].split(" el")[0] 
+            : "Otra empresa",
+          sourceUser: {
+            name: `${user.firstName} ${user.lastName}`
+          },
+          reservationIds: [reservation.id],
+          transferDate: reservation.updatedAt || new Date().toISOString(),
+          reservationCount: 1
+        };
+        
+        transfers.push(transfer);
+        processedReservationIds.add(reservation.id);
+        console.log(`[GET /transfers/history] Agregada reservación transferida a historial: ${JSON.stringify(transfer)}`);
+      }
+      
+      // Luego: procesar notificaciones de transferencia
       for (const notification of transferNotifications) {
         try {
           let transferData = {};
           if (notification.metaData) {
             transferData = JSON.parse(notification.metaData);
+            console.log(`[GET /transfers/history] Metadatos de notificación ${notification.id}: ${notification.metaData}`);
           }
           
           // Determinar si es saliente o entrante basado en los metadatos
           const companyId = user.company;
           const direction = transferData?.sourceCompany === companyId ? 'outgoing' : 'incoming';
+          
+          // Evitar duplicar reservaciones que ya procesamos
+          const reservationIds = transferData?.reservationIds || [];
+          if (direction === 'outgoing') {
+            const alreadyProcessed = reservationIds.every(id => processedReservationIds.has(id));
+            if (alreadyProcessed && reservationIds.length > 0) {
+              console.log(`[GET /transfers/history] Omitiendo notificación ${notification.id} porque las reservaciones ya están procesadas`);
+              continue;
+            }
+          }
           
           transfers.push({
             id: notification.id,
@@ -4997,44 +5035,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sourceCompany: transferData?.sourceCompany || (direction === 'outgoing' ? companyId : 'Empresa desconocida'),
             targetCompany: transferData?.targetCompany || (direction === 'incoming' ? companyId : 'Empresa desconocida'),
             sourceUser: {
-              name: transferData?.userName || `${user.firstName} ${user.lastName}`
+              name: (transferData?.sourceUser?.name) || `${user.firstName} ${user.lastName}`
             },
-            reservationIds: transferData?.reservationIds || [],
+            reservationIds: reservationIds,
             transferDate: notification.createdAt,
-            reservationCount: transferData?.reservationIds?.length || 0
+            reservationCount: reservationIds.length || 0
           });
         } catch (error) {
           console.error('[GET /transfers/history] Error al procesar notificación:', error);
         }
       }
       
-      // Agregar también las reservaciones marcadas como transferidas (salientes)
-      for (const reservation of transferredReservations) {
-        // Solo procesamos si no hay una transferencia ya registrada para esta reservación
-        if (!transfers.some(t => 
-          t.direction === 'outgoing' && 
-          t.reservationIds.includes(reservation.id)
-        )) {
-          transfers.push({
-            id: reservation.id + 10000, // Para evitar colisiones de ID
-            createdAt: reservation.updatedAt || new Date().toISOString(),
-            direction: 'outgoing',
-            sourceCompany: user.company,
-            targetCompany: reservation.notes?.includes("Transferido a") 
-              ? reservation.notes.split("Transferido a ")[1].split(" el")[0] 
-              : "Otra empresa",
-            sourceUser: {
-              name: `${user.firstName} ${user.lastName}`
-            },
-            reservationIds: [reservation.id],
-            transferDate: reservation.updatedAt || new Date().toISOString(),
-            reservationCount: 1
-          });
-        }
-      }
-      
       // Si no se encontraron transferencias, devolver algunos datos de ejemplo
       if (transfers.length === 0) {
+        // Solo mostramos datos de ejemplo si realmente no hay transferencias en la base de datos
         const demoTransfers = [
           {
             id: 1001,
@@ -5046,17 +5060,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             transferDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
             reservationCount: 2,
             createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: 1002,
-            direction: 'incoming',
-            sourceCompany: "Viajes Express",
-            targetCompany: user.company || "Tu Empresa",
-            sourceUser: { name: "Ana Ramírez" },
-            reservationIds: [145],
-            transferDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-            reservationCount: 1,
-            createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
           }
         ];
         
