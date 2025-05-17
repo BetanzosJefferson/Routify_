@@ -36,7 +36,12 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
   // Determinar si estamos procesando múltiples reservaciones
   const isMultipleReservations = Array.isArray(reservation);
   
-  // Si es un array de reservaciones, usamos la primera para la búsqueda de viajes coincidentes
+  // Agrupar reservaciones por origen-destino si son múltiples
+  const [routeGroups, setRouteGroups] = useState<any[]>([]);
+  const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
+  
+  // Si es un array de reservaciones, las agrupamos por origen-destino
+  // Si es una sola reservación, la usamos directamente
   const primaryReservation = isMultipleReservations ? reservation[0] : reservation;
 
   // Extraer origen y destino de la reservación
