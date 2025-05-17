@@ -4962,13 +4962,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[GET /transfers/history] Usuario ${user.firstName} ${user.lastName} solicitando historial de transferencias`);
       
-      // Obtener notificaciones solo para este usuario
+      // Obtener notificaciones de tipo transfer
       const userNotifications = await storage.getNotifications(user.id);
       console.log(`[GET /transfers/history] Total de notificaciones del usuario: ${userNotifications.length}`);
       
       // Filtrar solo las notificaciones de tipo 'transfer'
       const transferNotifications = userNotifications.filter(n => n.type === 'transfer');
       console.log(`[GET /transfers/history] Notificaciones de transferencia: ${transferNotifications.length}`);
+      
+      // Además, obtener reservaciones con estado "transferido"
+      const allReservations = await storage.getReservations(user.company);
+      const transferredReservations = allReservations.filter(r => r.status === 'transferido');
+      console.log(`[GET /transfers/history] Reservaciones con estado transferido: ${transferredReservations.length}`);
       
       // Preparar resultados
       const transfers: any[] = [];
@@ -5000,6 +5005,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         } catch (error) {
           console.error('[GET /transfers/history] Error al procesar notificación:', error);
+        }
+      }
+      
+      // Agregar también las reservaciones marcadas como transferidas (salientes)
+      for (const reservation of transferredReservations) {
+        // Solo procesamos si no hay una transferencia ya registrada para esta reservación
+        if (!transfers.some(t => 
+          t.direction === 'outgoing' && 
+          t.reservationIds.includes(reservation.id)
+        )) {
+          transfers.push({
+            id: reservation.id + 10000, // Para evitar colisiones de ID
+            createdAt: reservation.updatedAt || new Date().toISOString(),
+            direction: 'outgoing',
+            sourceCompany: user.company,
+            targetCompany: reservation.notes?.includes("Transferido a") 
+              ? reservation.notes.split("Transferido a ")[1].split(" el")[0] 
+              : "Otra empresa",
+            sourceUser: {
+              name: `${user.firstName} ${user.lastName}`
+            },
+            reservationIds: [reservation.id],
+            transferDate: reservation.updatedAt || new Date().toISOString(),
+            reservationCount: 1
+          });
         }
       }
       
@@ -5124,6 +5154,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Actualizar las reservaciones para asignarlas a viajes de la nueva empresa
       // Por ahora, solo registramos la transferencia y enviamos notificaciones
+      
+      // Actualizar el estado de las reservaciones a "Transferido"
+      for (const reservation of reservationsToTransfer) {
+        await storage.updateReservation(reservation.id, {
+          status: 'transferido',
+          notes: `Transferido a ${targetCompany.name} el ${new Date().toLocaleDateString()}`
+        });
+        console.log(`[Transferencia] Reservación ${reservation.id} marcada como "Transferido"`);
+      }
       
       // 1. Obtener usuarios de la empresa destino con roles específicos
       const targetCompanyUsers = await storage.getUsersByCompany(targetCompanyId);
