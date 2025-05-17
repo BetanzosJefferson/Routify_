@@ -78,8 +78,11 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
             )}
             {canAccess("reservations") && (
               <NavLink 
-                active={activeTab === "reservations"}
-                onClick={() => handleNavClick("reservations")}
+                active={window.location.pathname === "/reservations"}
+                onClick={() => {
+                  setLocation("/reservations");
+                  setOpen(false);
+                }}
               >
                 Reservaciones
               </NavLink>
