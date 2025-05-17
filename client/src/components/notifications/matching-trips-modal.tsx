@@ -336,6 +336,7 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Detalles del error de creación:', errorData);
         throw new Error(errorData.message || 'Error al crear la reservación');
       }
       
@@ -368,6 +369,27 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       if (!selectedTripData) {
         throw new Error('No se encontró el viaje seleccionado');
       }
+      
+      // Información detallada para depuración
+      console.log('Datos de reservación original:', {
+        reservationId: primaryReservation?.id || 'Múltiple',
+        tripId: primaryReservation?.tripId || 'Múltiple',
+        isSubTrip: primaryReservation?.trip?.isSubTrip || 'Desconocido',
+        segmentOrigin: primaryReservation?.trip?.segmentOrigin || 'No disponible',
+        segmentDestination: primaryReservation?.trip?.segmentDestination || 'No disponible',
+        routeOrigin: primaryReservation?.trip?.route?.origin || 'No disponible',
+        routeDestination: primaryReservation?.trip?.route?.destination || 'No disponible'
+      });
+      
+      console.log('Datos del viaje seleccionado:', {
+        id: selectedTripData.id,
+        isSubTrip: selectedTripData.isSubTrip || false,
+        origin: selectedTripData.origin || selectedTripData.route?.origin || 'No disponible',
+        destination: selectedTripData.destination || selectedTripData.route?.destination || 'No disponible',
+        segmentOrigin: selectedTripData.segmentOrigin || 'No disponible',
+        segmentDestination: selectedTripData.segmentDestination || 'No disponible',
+        parentTripId: selectedTripData.parentTripId || 'No es sub-viaje'
+      });
       
       // Verificar si el viaje seleccionado tiene sub-viajes que coincidan con el origen/destino
       // Si es así, intentaremos usar el sub-viaje coincidente en lugar del viaje padre
