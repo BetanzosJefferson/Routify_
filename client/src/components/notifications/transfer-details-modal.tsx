@@ -231,16 +231,21 @@ const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
               </div>
             ) : reservationsData?.length ? (
               <div>
-                {reservationsData.map((reservation: any) => (
-                  <TransferredReservationCard
-                    key={reservation.id}
-                    reservation={reservation}
-                    onContinue={(reservation) => {
-                      setSelectedReservation(reservation);
-                      setShowMatchingTripsModal(true);
-                    }}
-                  />
-                ))}
+                {reservationsData.map((reservation: any) => {
+                  const isProcessed = processedReservationIds.includes(reservation.id);
+                  
+                  return (
+                    <TransferredReservationCard
+                      key={reservation.id}
+                      reservation={reservation}
+                      processed={isProcessed}
+                      onContinue={isProcessed ? undefined : (reservation) => {
+                        setSelectedReservation(reservation);
+                        setShowMatchingTripsModal(true);
+                      }}
+                    />
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground text-sm">
