@@ -4952,6 +4952,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup routes for packages
   setupPackageRoutes(app);
 
+  // Endpoint para obtener historial de transferencias
+  app.get(apiRouter('/transfers/history'), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      if (!user) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      console.log(`[GET /transfers/history] Usuario ${user.firstName} ${user.lastName} solicitando historial de transferencias`);
+      
+      // Obtener todas las notificaciones de tipo 'transfer' que pertenecen a la compañía actual
+      const companyId = user.companyId || user.company;
+      
+      // Obtener transferencias enviadas (donde somos la empresa de origen)
+      const outgoingTransfers = await storage.getNotificationsByType('transfer', companyId, 'outgoing');
+      console.log(`[GET /transfers/history] Encontradas ${outgoingTransfers.length} transferencias enviadas`);
+      
+      // Si el usuario tiene el rol adecuado, también obtener transferencias recibidas
+      let incomingTransfers: any[] = [];
+      if ([UserRole.ADMIN, UserRole.OWNER, UserRole.SUPER_ADMIN].includes(user.role)) {
+        incomingTransfers = await storage.getNotificationsByType('transfer', companyId, 'incoming');
+        console.log(`[GET /transfers/history] Encontradas ${incomingTransfers.length} transferencias recibidas`);
+      }
+      
+      // Formatear y enriquecer los datos para enviar al cliente
+      const formattedOutgoing = await Promise.all(outgoingTransfers.map(async (notification) => {
+        try {
+          // Extraer datos de transferencia desde metaData
+          let transferData = null;
+          if (notification.metaData) {
+            transferData = JSON.parse(notification.metaData);
+          }
+          
+          return {
+            id: notification.id,
+            createdAt: notification.createdAt,
+            direction: 'outgoing',
+            sourceCompany: transferData?.sourceCompany || companyId,
+            targetCompany: transferData?.targetCompany || '',
+            sourceUser: transferData?.sourceUser || { name: user.firstName + ' ' + user.lastName },
+            reservationIds: transferData?.reservationIds || [],
+            transferDate: transferData?.transferDate || notification.createdAt,
+            reservationCount: transferData?.reservationIds?.length || 0
+          };
+        } catch (error) {
+          console.error('[GET /transfers/history] Error al procesar notificación:', error);
+          return null;
+        }
+      }));
+      
+      // Formatear transferencias recibidas
+      const formattedIncoming = await Promise.all(incomingTransfers.map(async (notification) => {
+        try {
+          // Extraer datos de transferencia desde metaData
+          let transferData = null;
+          if (notification.metaData) {
+            transferData = JSON.parse(notification.metaData);
+          }
+          
+          return {
+            id: notification.id,
+            createdAt: notification.createdAt,
+            direction: 'incoming',
+            sourceCompany: transferData?.sourceCompany || '',
+            targetCompany: transferData?.targetCompany || companyId,
+            sourceUser: transferData?.sourceUser || { name: 'Usuario desconocido' },
+            reservationIds: transferData?.reservationIds || [],
+            transferDate: transferData?.transferDate || notification.createdAt,
+            reservationCount: transferData?.reservationIds?.length || 0
+          };
+        } catch (error) {
+          console.error('[GET /transfers/history] Error al procesar notificación:', error);
+          return null;
+        }
+      }));
+      
+      // Filtrar nulls y combinar los resultados
+      const allTransfers = [
+        ...formattedOutgoing.filter(Boolean), 
+        ...formattedIncoming.filter(Boolean)
+      ].sort((a, b) => {
+        // Ordenar por fecha de transferencia (más reciente primero)
+        return new Date(b.transferDate).getTime() - new Date(a.transferDate).getTime();
+      });
+      
+      // Enviar resultados
+      return res.json(allTransfers);
+    } catch (error) {
+      console.error('[GET /transfers/history] Error:', error);
+      res.status(500).json({ message: 'Error al obtener el historial de transferencias' });
+    }
+  });
+
   // Endpoint para transferencia de pasajeros
   app.post(apiRouter('/reservations/transfer'), isAuthenticated, async (req: Request, res: Response) => {
     try {
