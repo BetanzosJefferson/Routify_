@@ -301,6 +301,8 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
         paymentMethod: 'efectivo', // Siempre usamos efectivo como valor predeterminado
         numPassengers: passengers.length,
         passengers: passengers,
+        // Estado de pago explícito según el anticipo
+        paymentStatus: paymentStatus,
         
         // Campos opcionales
         notes: `Reservación transferida desde ID: ${currentReservation.id}`,
