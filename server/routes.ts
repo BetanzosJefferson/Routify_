@@ -2510,20 +2510,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Asegurarnos de que el método de pago está definido (para usuarios que no tengan una versión actualizada del formulario)
       const formData = {
         ...req.body,
-        paymentMethod: req.body.paymentMethod || "efectivo" // Cambiado de "cash" a "efectivo" para coincidir con el esquema
+        paymentMethod: req.body.paymentMethod || "cash"
       };
       
       const validationResult = createReservationValidationSchema.safeParse(formData);
       
       if (!validationResult.success) {
-        // Agregar información más detallada para depuración
-        console.log("ERROR DE VALIDACIÓN:", JSON.stringify(validationResult.error.format(), null, 2));
-        console.log("DATOS RECIBIDOS:", JSON.stringify(formData, null, 2));
-        
         return res.status(400).json({ 
           error: "Invalid reservation data", 
-          details: validationResult.error.format(),
-          message: validationResult.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+          details: validationResult.error.format() 
         });
       }
       
