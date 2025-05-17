@@ -36,11 +36,31 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
   // Determinar si estamos procesando múltiples reservaciones
   const isMultipleReservations = Array.isArray(reservation);
   
-  // Agrupar reservaciones por origen-destino si son múltiples
+  // Estados para manejar grupos de reservaciones por ruta
   const [routeGroups, setRouteGroups] = useState<any[]>([]);
   const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
+  const [processingGroups, setProcessingGroups] = useState(false);
+  const [groupedReservations, setGroupedReservations] = useState<{[key: string]: any[]}>({});
   
-  // Si es un array de reservaciones, las agrupamos por origen-destino
+  // Función para obtener una clave única basada en origen-destino
+  const getRouteKey = (res: any) => {
+    let originKey = '';
+    let destKey = '';
+    
+    if (res?.trip?.isSubTrip) {
+      // Para sub-viajes, usamos segmentOrigin y segmentDestination
+      originKey = res?.trip?.segmentOrigin ? getLocationInfo(res.trip.segmentOrigin) : '';
+      destKey = res?.trip?.segmentDestination ? getLocationInfo(res.trip.segmentDestination) : '';
+    } else {
+      // Para viajes normales, usamos origin y destination del route
+      originKey = res?.trip?.route?.origin ? getLocationInfo(res.trip.route.origin) : '';
+      destKey = res?.trip?.route?.destination ? getLocationInfo(res.trip.route.destination) : '';
+    }
+    
+    return `${originKey}|${destKey}`;
+  };
+  
+  // Si es un array de reservaciones, usamos la primera para iniciar
   // Si es una sola reservación, la usamos directamente
   const primaryReservation = isMultipleReservations ? reservation[0] : reservation;
 

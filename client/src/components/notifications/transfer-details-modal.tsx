@@ -192,19 +192,27 @@ const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
           </ScrollArea>
           
           <div className="flex justify-between mt-4">
-            <Button 
-              variant="default" 
-              disabled={!reservationsData?.length || isLoading}
-              onClick={() => {
-                // Seleccionamos todas las reservaciones y abrimos el modal para seleccionar viaje
-                if (reservationsData?.length) {
-                  setSelectedReservation(reservationsData);
-                  setShowMatchingTripsModal(true);
-                }
-              }}
-            >
-              Continuar con todas las transferencias
-            </Button>
+            <div className="flex flex-col space-y-2 w-full">
+              <p className="text-sm text-muted-foreground mb-2">
+                Para transferir múltiples reservaciones con diferentes rutas, es mejor procesarlas individualmente:
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {reservationsData?.map((res: any) => (
+                  <Button 
+                    key={res.id}
+                    variant="outline"
+                    className="justify-start" 
+                    onClick={() => {
+                      // Seleccionamos una sola reservación
+                      setSelectedReservation(res);
+                      setShowMatchingTripsModal(true);
+                    }}
+                  >
+                    <span className="truncate">Transferir #{res.id}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cerrar
             </Button>
