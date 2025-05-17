@@ -4965,14 +4965,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Obtener todas las notificaciones de tipo 'transfer' que pertenecen a la compañía actual
       const companyId = user.companyId || user.company;
       
-      // Obtener transferencias enviadas (donde somos la empresa de origen)
-      const outgoingTransfers = await storage.getNotificationsByType('transfer', companyId, 'outgoing');
+      // Obtener todas las notificaciones
+      const allNotifications = await storage.getAllNotifications();
+      console.log(`[GET /transfers/history] Total de notificaciones: ${allNotifications.length}`);
+      
+      // Filtrar manualmente para obtener transferencias salientes
+      const outgoingTransfers = allNotifications.filter(notification => {
+        if (notification.type !== 'transfer') return false;
+        
+        // Verificar si esta notificación es de una transferencia saliente
+        try {
+          if (notification.metaData) {
+            const metaData = JSON.parse(notification.metaData);
+            return metaData.sourceCompanyId === companyId || 
+                   metaData.sourceCompany === companyId;
+          }
+        } catch (e) {
+          console.error('[GET /transfers/history] Error al parsear metaData:', e);
+        }
+        
+        return false;
+      });
+      
       console.log(`[GET /transfers/history] Encontradas ${outgoingTransfers.length} transferencias enviadas`);
       
-      // Si el usuario tiene el rol adecuado, también obtener transferencias recibidas
+      // Filtrar para obtener transferencias recibidas
       let incomingTransfers: any[] = [];
       if ([UserRole.ADMIN, UserRole.OWNER, UserRole.SUPER_ADMIN].includes(user.role)) {
-        incomingTransfers = await storage.getNotificationsByType('transfer', companyId, 'incoming');
+        // Obtener usuarios de la compañía
+        const companyUsers = await storage.getUsersByCompany(companyId);
+        const userIds = companyUsers.map(u => u.id);
+        
+        incomingTransfers = allNotifications.filter(notification => {
+          if (notification.type !== 'transfer') return false;
+          
+          // Verificar si esta notificación es para alguno de nuestros usuarios
+          return userIds.includes(notification.userId);
+        });
+        
         console.log(`[GET /transfers/history] Encontradas ${incomingTransfers.length} transferencias recibidas`);
       }
       
