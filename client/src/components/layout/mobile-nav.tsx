@@ -86,40 +86,55 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
             )}
             {canAccess("trip-summary") && (
               <NavLink 
-                active={activeTab === "trip-summary"}
-                onClick={() => handleNavClick("trip-summary")}
+                active={window.location.pathname === "/trip-log"}
+                onClick={() => {
+                  setLocation("/trip-log");
+                  setOpen(false);
+                }}
               >
-                Resumen de Viajes
+                Bitácora
               </NavLink>
             )}
             {canAccess("boarding-list") && (
               <NavLink 
-                active={activeTab === "boarding-list"}
-                onClick={() => handleNavClick("boarding-list")}
+                active={window.location.pathname === "/boarding-list"}
+                onClick={() => {
+                  setLocation("/boarding-list");
+                  setOpen(false);
+                }}
               >
                 Lista de Abordaje
               </NavLink>
             )}
             {canAccess("users") && (
               <NavLink 
-                active={activeTab === "users"}
-                onClick={() => handleNavClick("users")}
+                active={window.location.pathname === "/users"}
+                onClick={() => {
+                  setLocation("/users");
+                  setOpen(false);
+                }}
               >
                 Usuarios
               </NavLink>
             )}
             {canAccess("passenger-transfer") && (
               <NavLink 
-                active={activeTab === "passenger-transfer"}
-                onClick={() => handleNavClick("passenger-transfer")}
+                active={window.location.pathname === "/passenger-transfer"}
+                onClick={() => {
+                  setLocation("/passenger-transfer");
+                  setOpen(false);
+                }}
               >
                 Transferencia de pasajeros
               </NavLink>
             )}
             {canAccess("vehicles") && (
               <NavLink 
-                active={activeTab === "vehicles"}
-                onClick={() => handleNavClick("vehicles")}
+                active={window.location.pathname === "/vehicles"}
+                onClick={() => {
+                  setLocation("/vehicles");
+                  setOpen(false);
+                }}
               >
                 Unidades
               </NavLink>
