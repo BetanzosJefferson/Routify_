@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -13,9 +13,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import MatchingTripsModal from './matching-trips-modal';
 import TransferredReservationCard from './transferred-reservation-card';
+import { useToast } from '@/hooks/use-toast';
 
 // Definir la interfaz de Notification localmente para evitar dependencias circulares
 interface Notification {
@@ -53,9 +54,12 @@ const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
   onOpenChange,
   notification 
 }) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [transferData, setTransferData] = useState<TransferData | null>(null);
   const [showMatchingTripsModal, setShowMatchingTripsModal] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<any>(null);
+  const [processedReservationIds, setProcessedReservationIds] = useState<number[]>([]);
 
   // Extraer los datos de la transferencia desde metaData
   useEffect(() => {
@@ -63,6 +67,8 @@ const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
       try {
         const parsedData = JSON.parse(notification.metaData);
         setTransferData(parsedData);
+        // Al abrir un nuevo modal, reiniciamos los IDs procesados
+        setProcessedReservationIds([]);
       } catch (error) {
         console.error('Error al parsear metaData:', error);
         setTransferData(null);
@@ -71,6 +77,58 @@ const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
       setTransferData(null);
     }
   }, [notification]);
+  
+  // Manejar el evento de transferencia completa de una reservación individual
+  const handleSingleTransferComplete = useCallback((event: CustomEvent) => {
+    const { success, reservationId, message } = event.detail;
+    
+    if (success) {
+      // Mostrar mensaje de éxito
+      toast({
+        title: "Transferencia exitosa",
+        description: message,
+        variant: "default",
+      });
+      
+      // Agregar el ID de la reservación a la lista de procesados
+      setProcessedReservationIds(prev => [...prev, reservationId]);
+      
+      // Actualizar la lista de reservaciones
+      if (transferData?.reservationIds) {
+        queryClient.invalidateQueries({ queryKey: ['/api/reservations', transferData.reservationIds] });
+      }
+    }
+  }, [toast, queryClient, transferData]);
+  
+  // Manejar el evento de transferencia completa para todas las reservaciones
+  const handleTransferComplete = useCallback((event: CustomEvent) => {
+    const { success, message } = event.detail;
+    
+    if (success) {
+      // Mostrar mensaje de éxito
+      toast({
+        title: "Todas las transferencias completadas",
+        description: message,
+        variant: "default",
+      });
+      
+      // Actualizar la lista de reservaciones
+      if (transferData?.reservationIds) {
+        queryClient.invalidateQueries({ queryKey: ['/api/reservations', transferData.reservationIds] });
+      }
+    }
+  }, [toast, queryClient, transferData]);
+  
+  // Agregar/remover event listeners
+  useEffect(() => {
+    window.addEventListener('singleTransferComplete', handleSingleTransferComplete as EventListener);
+    window.addEventListener('transferComplete', handleTransferComplete as EventListener);
+    
+    return () => {
+      window.removeEventListener('singleTransferComplete', handleSingleTransferComplete as EventListener);
+      window.removeEventListener('transferComplete', handleTransferComplete as EventListener);
+    };
+  }, [handleSingleTransferComplete, handleTransferComplete]);
 
   // Consultar los detalles de las reservaciones transferidas
   const { data: reservationsData, isLoading, error } = useQuery({
@@ -191,20 +249,7 @@ const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
             )}
           </ScrollArea>
           
-          <div className="flex justify-between mt-4">
-            <Button 
-              variant="default" 
-              disabled={!reservationsData?.length || isLoading}
-              onClick={() => {
-                // Seleccionamos todas las reservaciones y abrimos el modal para seleccionar viaje
-                if (reservationsData?.length) {
-                  setSelectedReservation(reservationsData);
-                  setShowMatchingTripsModal(true);
-                }
-              }}
-            >
-              Continuar con todas las transferencias
-            </Button>
+          <div className="flex justify-end mt-4">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cerrar
             </Button>
