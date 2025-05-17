@@ -231,30 +231,53 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       let restPaymentMethod = currentReservation.restPaymentMethod || 'transferencia';
       let paymentStatus = 'pendiente';
       
-      // Si hay información de anticipo, la preservamos proporcionalmente
+      // Si hay información de anticipo, la preservamos exactamente igual
       if (typeof currentReservation.advanceAmount === 'number') {
-        // Calculamos la proporción del anticipo respecto al total original
-        const proportion = originalTotal > 0 ? currentReservation.advanceAmount / originalTotal : 0;
-        // Aplicamos esa misma proporción al nuevo total
-        advanceAmount = Math.round(newTotal * proportion);
-        restAmount = newTotal - advanceAmount;
+        // En lugar de calcular proporciones, mantenemos los valores exactos
+        advanceAmount = currentReservation.advanceAmount;
         
-        // Determinamos el estado de pago
-        if (advanceAmount >= newTotal) {
-          // Si es pago completo, usamos "pagado" que es el valor correcto en el backend
-          paymentStatus = 'pagado';
-          advanceAmount = newTotal;
-          restAmount = 0;
-        } else if (advanceAmount > 0) {
-          // Para pagos parciales usamos "pendiente" por ahora
-          paymentStatus = 'pendiente';
+        // Si tenemos información de descuento, ajustamos los cálculos
+        if (discountAmount > 0 && finalTotal !== newTotal) {
+          // El monto total final (con descuento)
+          const finalTotalAmount = finalTotal;
+          
+          // El resto es la diferencia entre el total final y el anticipo
+          restAmount = finalTotalAmount - advanceAmount;
+          
+          // Si el anticipo es mayor o igual al total después de descuento, está pagado
+          if (advanceAmount >= finalTotalAmount) {
+            paymentStatus = 'pagado';
+            advanceAmount = finalTotalAmount; // Limitamos el anticipo al total
+            restAmount = 0;
+          } else {
+            paymentStatus = 'pendiente';
+          }
         } else {
-          paymentStatus = 'pendiente';
+          // Sin descuento, calculamos normalmente
+          restAmount = newTotal - advanceAmount;
+          
+          // Determinamos el estado de pago
+          if (advanceAmount >= newTotal) {
+            paymentStatus = 'pagado';
+            advanceAmount = newTotal; // Limitamos el anticipo al total
+            restAmount = 0;
+          } else {
+            paymentStatus = 'pendiente';
+          }
         }
         
         // Preservamos los métodos de pago
         advancePaymentMethod = currentReservation.advancePaymentMethod || 'efectivo';
         restPaymentMethod = currentReservation.restPaymentMethod || 'transferencia';
+        
+        console.log('Información de pago transferida:', {
+          originalAdvance: currentReservation.advanceAmount,
+          originalTotal,
+          newAdvance: advanceAmount,
+          newTotal: finalTotal,
+          restAmount,
+          paymentStatus
+        });
       }
       
       // Creamos la estructura básica de la reservación con solo los campos requeridos
