@@ -5073,7 +5073,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 sourceUser: record.sourceUser,
                 reservationIds: record.reservationIds,
                 transferDate: record.transferDate,
-                reservationCount: record.reservationCount
+                reservationCount: record.reservationCount,
+                // Incluir información de pasajeros si está disponible
+                passengerInfo: record.passengerInfo || []
               });
             }
           });
@@ -5225,6 +5227,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Actualizar el estado de las reservaciones a "Transferido"
       console.log(`[Transferencia] Actualizando estado de ${reservationsToTransfer.length} reservaciones a "transferido"`);
       
+      // Obtener información detallada de las reservaciones, incluyendo pasajeros y origen/destino
+      const passengerInfo = [];
+      for (const reservation of reservationsToTransfer) {
+        // Obtener el viaje para determinar origen y destino
+        const trip = await storage.getTrip(reservation.tripId);
+        if (trip) {
+          // Obtener ruta para determinar origen y destino
+          const route = await storage.getRoute(trip.routeId);
+          
+          // Obtener lista de pasajeros
+          const passengers = await storage.getPassengers(reservation.id);
+          
+          if (route && passengers && passengers.length > 0) {
+            for (const passenger of passengers) {
+              passengerInfo.push({
+                name: `${passenger.firstName} ${passenger.lastName}`,
+                origin: route.origin,
+                destination: route.destination,
+                tripDate: trip.departureDate.toISOString()
+              });
+            }
+          }
+        }
+      }
+      
+      console.log(`[Transferencia] Información de pasajeros recopilada: ${JSON.stringify(passengerInfo)}`);
+      
       // Crear un registro de transferencia directo en la base de datos
       const transferLog = {
         createdAt: new Date().toISOString(),
@@ -5236,7 +5265,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         reservationIds: reservationsToTransfer.map(r => r.id),
         transferDate: new Date().toISOString(),
-        reservationCount: reservationsToTransfer.length
+        reservationCount: reservationsToTransfer.length,
+        // Agregar la información de pasajeros
+        passengerInfo: passengerInfo
       };
       
       // Almacenar este registro en memoria global para propósitos de demostración

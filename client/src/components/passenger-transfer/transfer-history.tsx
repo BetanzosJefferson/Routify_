@@ -39,6 +39,13 @@ type Transfer = {
   transferDate: string;
   reservationCount: number;
   createdAt: string;
+  // Información adicional sobre la reservación
+  passengerInfo?: {
+    name: string;
+    origin: string;
+    destination: string;
+    tripDate?: string;
+  }[];
 };
 
 export function TransferHistory() {
@@ -182,51 +189,86 @@ function renderTransferTable(
           <TableHead>Fecha</TableHead>
           <TableHead>Dirección</TableHead>
           <TableHead>Empresa</TableHead>
-          <TableHead>Creado por</TableHead>
           <TableHead>Pasajeros</TableHead>
+          <TableHead>Origen/Destino</TableHead>
           <TableHead className="text-right">Acciones</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {transfers.map((transfer) => (
-          <TableRow key={transfer.id}>
-            <TableCell>
-              {format(new Date(transfer.transferDate), "dd MMM yyyy, HH:mm", { locale: es })}
-            </TableCell>
-            <TableCell>
-              {transfer.direction === 'outgoing' ? (
-                <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                  <ArrowRight className="h-3 w-3 mr-1" /> Enviada
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="bg-green-50 text-green-700">
-                  <ArrowLeftRight className="h-3 w-3 mr-1" /> Recibida
-                </Badge>
-              )}
-            </TableCell>
-            <TableCell>
-              {transfer.direction === 'outgoing' 
-                ? `A: ${transfer.targetCompany}` 
-                : `De: ${transfer.sourceCompany}`}
-            </TableCell>
-            <TableCell>
-              <div className="flex items-center">
-                <User className="h-3 w-3 mr-1 text-gray-500" />
-                {transfer.sourceUser.name}
-              </div>
-            </TableCell>
-            <TableCell>
-              <Badge variant="secondary">
-                {transfer.reservationCount} {transfer.reservationCount === 1 ? 'pasajero' : 'pasajeros'}
-              </Badge>
-            </TableCell>
-            <TableCell className="text-right">
-              <Button variant="ghost" size="sm" onClick={() => openDetailsModal(transfer.id)}>
-                Ver detalles
-              </Button>
-            </TableCell>
-          </TableRow>
-        ))}
+        {transfers.map((transfer) => {
+          // Determinar información de origen/destino para mostrar
+          let originDestInfo = '';
+          
+          if (transfer.passengerInfo && transfer.passengerInfo.length > 0) {
+            const info = transfer.passengerInfo[0]; // Mostrar info del primer pasajero
+            originDestInfo = `${info.origin} → ${info.destination}`;
+          } else {
+            originDestInfo = 'Información no disponible';
+          }
+          
+          return (
+            <TableRow key={transfer.id}>
+              <TableCell>
+                {format(new Date(transfer.transferDate), "dd MMM yyyy, HH:mm", { locale: es })}
+              </TableCell>
+              <TableCell>
+                {transfer.direction === 'outgoing' ? (
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                    <ArrowRight className="h-3 w-3 mr-1" /> Enviada
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-green-50 text-green-700">
+                    <ArrowLeftRight className="h-3 w-3 mr-1" /> Recibida
+                  </Badge>
+                )}
+              </TableCell>
+              <TableCell>
+                <div className="flex flex-col">
+                  <span className="font-medium">
+                    {transfer.direction === 'outgoing' 
+                      ? `A: ${transfer.targetCompany}` 
+                      : `De: ${transfer.sourceCompany}`}
+                  </span>
+                  <span className="text-xs text-muted-foreground flex items-center mt-1">
+                    <User className="h-3 w-3 mr-1" />
+                    {transfer.sourceUser.name}
+                  </span>
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="flex flex-col">
+                  <div className="flex items-center">
+                    <Badge variant="secondary">
+                      {transfer.reservationCount} {transfer.reservationCount === 1 ? 'pasajero' : 'pasajeros'}
+                    </Badge>
+                  </div>
+                  {transfer.passengerInfo && transfer.passengerInfo.length > 0 && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {transfer.passengerInfo.map((passenger, idx) => (
+                        <div key={idx} className="mt-1 truncate">
+                          {passenger.name}
+                        </div>
+                      )).slice(0, 2)}
+                      {transfer.passengerInfo.length > 2 && (
+                        <div className="text-xs italic">Y {transfer.passengerInfo.length - 2} más...</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="max-w-[200px] text-sm">
+                  {originDestInfo}
+                </div>
+              </TableCell>
+              <TableCell className="text-right">
+                <Button variant="ghost" size="sm" onClick={() => openDetailsModal(transfer.id)}>
+                  Ver detalles
+                </Button>
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );
