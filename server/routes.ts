@@ -5046,25 +5046,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Si no se encontraron transferencias, devolver algunos datos de ejemplo
+      // Buscar la última transferencia en la base de datos
+      // Incluso si no se encontraron mediante las notificaciones o el estado de las reservaciones
       if (transfers.length === 0) {
-        // Solo mostramos datos de ejemplo si realmente no hay transferencias en la base de datos
-        const demoTransfers = [
-          {
-            id: 1001,
-            direction: 'outgoing',
-            sourceCompany: user.company || "Tu Empresa",
-            targetCompany: "Transportes del Norte",
-            sourceUser: { name: `${user.firstName} ${user.lastName}` },
-            reservationIds: [143, 144],
-            transferDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-            reservationCount: 2,
-            createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-          }
-        ];
+        // Consultar todas las reservaciones y buscar las que tienen estado 'transferido'
+        // o notas que contienen "Transferido a"
+        console.log(`[GET /transfers/history] No se encontraron transferencias en los métodos anteriores, buscando directamente en la base de datos...`);
         
-        console.log(`[GET /transfers/history] No se encontraron transferencias reales, enviando ${demoTransfers.length} ejemplos`);
-        return res.json(demoTransfers);
+        const allCompanyReservations = await storage.getReservations(user.company);
+        console.log(`[GET /transfers/history] Buscando en ${allCompanyReservations.length} reservaciones de la empresa ${user.company}`);
+        
+        for (const reservation of allCompanyReservations) {
+          // Verificar si es una reservación transferida por el texto en las notas
+          if (reservation.notes && reservation.notes.includes("Transferido a")) {
+            const targetCompanyName = reservation.notes.split("Transferido a ")[1].split(" el")[0];
+            console.log(`[GET /transfers/history] Encontrada reservación ${reservation.id} transferida a ${targetCompanyName}`);
+            
+            // Crear un registro de transferencia para esta reservación
+            transfers.push({
+              id: reservation.id + 10000, // Para evitar colisiones de ID
+              createdAt: reservation.updatedAt || new Date().toISOString(),
+              direction: 'outgoing',
+              sourceCompany: user.company,
+              targetCompany: targetCompanyName,
+              sourceUser: {
+                name: `${user.firstName} ${user.lastName}`
+              },
+              reservationIds: [reservation.id],
+              transferDate: reservation.updatedAt || new Date().toISOString(),
+              reservationCount: 1
+            });
+          }
+        }
+        
+        // Si todavía no hay transferencias, mostrar algunos datos de ejemplo
+        if (transfers.length === 0) {
+          const demoTransfers = [
+            {
+              id: 1001,
+              direction: 'outgoing',
+              sourceCompany: user.company || "Tu Empresa",
+              targetCompany: "Transportes del Norte",
+              sourceUser: { name: `${user.firstName} ${user.lastName}` },
+              reservationIds: [143, 144],
+              transferDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+              reservationCount: 2,
+              createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+            }
+          ];
+          
+          console.log(`[GET /transfers/history] No se encontraron transferencias reales, enviando ${demoTransfers.length} ejemplos`);
+          return res.json(demoTransfers);
+        }
       }
       
       // Ordenar por fecha (más recientes primero)
