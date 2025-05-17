@@ -23,7 +23,8 @@ interface TransferredReservationCardProps {
 
 const TransferredReservationCard: React.FC<TransferredReservationCardProps> = ({
   reservation,
-  onContinue
+  onContinue,
+  processed = false
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -37,11 +38,18 @@ const TransferredReservationCard: React.FC<TransferredReservationCardProps> = ({
   };
 
   return (
-    <Card className="w-full mb-4">
+    <Card className={`w-full mb-4 ${processed ? 'border-green-400 bg-green-50/20' : ''}`}>
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle className="text-base">Reservación #{reservation.id}</CardTitle>
+            <CardTitle className="text-base flex items-center">
+              Reservación #{reservation.id}
+              {processed && (
+                <Badge variant="outline" className="ml-2 text-green-600 border-green-400 bg-green-50">
+                  Transferida ✓
+                </Badge>
+              )}
+            </CardTitle>
             <CardDescription className="text-sm">
               {reservation.trip?.route?.origin} → {reservation.trip?.route?.destination}
             </CardDescription>
@@ -189,12 +197,15 @@ const TransferredReservationCard: React.FC<TransferredReservationCardProps> = ({
           {isExpanded ? 'Menos detalles' : 'Más detalles'} 
           <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
         </Button>
-        <Button 
-          size="sm"
-          onClick={() => onContinue(reservation)}
-        >
-          Continuar
-        </Button>
+        
+        {!processed && onContinue && (
+          <Button 
+            size="sm"
+            onClick={() => onContinue(reservation)}
+          >
+            Continuar
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );
