@@ -292,11 +292,7 @@ const MatchingTripsModal: React.FC<MatchingTripsModalProps> = ({
       }
       
       // Preparar los datos para la nueva reservación
-      // Obtener pasajeros desde la reservación original
-      const passengers = currentReservation.passengers?.map((passenger: any) => ({
-        firstName: passenger.firstName || 'Pasajero',
-        lastName: passenger.lastName || 'Transferido'
-      })) || [{firstName: 'Pasajero', lastName: 'Transferido'}];
+      // Pasajeros ya están definidos arriba, no necesitamos redeclararlos aquí
       
       // Calculamos el precio base del nuevo viaje
       const newBasePrice = tripData.price || 120;
