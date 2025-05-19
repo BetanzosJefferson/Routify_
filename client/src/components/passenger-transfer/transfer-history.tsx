@@ -45,6 +45,8 @@ type Transfer = {
     origin: string;
     destination: string;
     tripDate?: string;
+    isFromCommissioner?: boolean;
+    commissionPercentage?: number;
   }[];
 };
 
@@ -245,8 +247,13 @@ function renderTransferTable(
                   {transfer.passengerInfo && transfer.passengerInfo.length > 0 && (
                     <div className="mt-1 text-xs text-muted-foreground">
                       {transfer.passengerInfo.map((passenger, idx) => (
-                        <div key={idx} className="mt-1 truncate">
+                        <div key={idx} className="mt-1 truncate flex items-center">
                           {passenger.name}
+                          {passenger.isFromCommissioner && (
+                            <Badge variant="outline" className="ml-2 bg-yellow-50 text-yellow-700 text-[10px] h-5">
+                              Comisión {passenger.commissionPercentage}%
+                            </Badge>
+                          )}
                         </div>
                       )).slice(0, 2)}
                       {transfer.passengerInfo.length > 2 && (

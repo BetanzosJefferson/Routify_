@@ -5227,7 +5227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Actualizar el estado de las reservaciones a "Transferido"
       console.log(`[Transferencia] Actualizando estado de ${reservationsToTransfer.length} reservaciones a "transferido"`);
       
-      // Obtener información detallada de las reservaciones, incluyendo pasajeros y origen/destino
+      // Obtener información detallada de las reservaciones, incluyendo pasajeros, origen/destino, y comisión
       const passengerInfo = [];
       for (const reservation of reservationsToTransfer) {
         // Obtener el viaje para determinar origen y destino
@@ -5239,13 +5239,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Obtener lista de pasajeros
           const passengers = await storage.getPassengers(reservation.id);
           
+          // Verificar si la reservación fue creada por un comisionista
+          let commissionInfo = null;
+          if (reservation.createdBy) {
+            try {
+              // Obtener información del usuario que creó la reservación
+              const creator = await storage.getUser(reservation.createdBy);
+              
+              // Verificar si es un comisionista
+              if (creator && creator.role === UserRole.COMMISSIONER) {
+                commissionInfo = {
+                  isFromCommissioner: true,
+                  commissionPercentage: creator.commissionPercentage || 10 // Usar 10% por defecto si no está establecido
+                };
+                console.log(`[Transferencia] Reservación ${reservation.id} creada por comisionista ${creator.firstName} ${creator.lastName} con comisión de ${commissionInfo.commissionPercentage}%`);
+              }
+            } catch (error) {
+              console.error(`[Transferencia] Error al obtener información del creador de la reservación ${reservation.id}:`, error);
+            }
+          }
+          
           if (route && passengers && passengers.length > 0) {
             for (const passenger of passengers) {
               passengerInfo.push({
                 name: `${passenger.firstName} ${passenger.lastName}`,
                 origin: route.origin,
                 destination: route.destination,
-                tripDate: trip.departureDate.toISOString()
+                tripDate: trip.departureDate.toISOString(),
+                // Incluir información de comisión
+                isFromCommissioner: commissionInfo?.isFromCommissioner || false,
+                commissionPercentage: commissionInfo?.commissionPercentage || 0
               });
             }
           }
