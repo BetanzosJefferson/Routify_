@@ -222,8 +222,8 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
           </div>
         </div>
 
-        {/* Estado del pago */}
-        <div className="text-center mb-6">
+        {/* Estado del pago y transferencia */}
+        <div className="text-center mb-6 flex flex-col items-center gap-2">
           <Badge 
             className={`text-lg px-6 py-1.5 rounded-full ${
               reservation.paymentStatus === 'pagado' 
@@ -233,6 +233,16 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
           >
             {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
           </Badge>
+          
+          {/* Indicador de transferencia si corresponde */}
+          {reservation.notes && reservation.notes.includes("Transferido desde") && (
+            <Badge 
+              variant="outline" 
+              className="bg-blue-50 text-blue-700 border-blue-200 px-3"
+            >
+              TRANSFERENCIA RECIBIDA
+            </Badge>
+          )}
         </div>
 
         {/* Información del pasajero */}

@@ -5503,13 +5503,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Obtener la lista de pasajeros de la reservación original
           const passengers = await storage.getPassengers(id);
           
+          // Obtener el nombre de la empresa origen (no solo el ID)
+          let sourceCompanyName = originalTrip.companyId;
+          try {
+            // Intentar obtener información más detallada de la empresa origen
+            const companies = await storage.getCompanies();
+            const sourceCompany = companies.find(c => c.identifier === originalTrip.companyId);
+            if (sourceCompany) {
+              sourceCompanyName = sourceCompany.name;
+            }
+          } catch (error) {
+            console.error(`[AcceptTransfer] Error al obtener nombre de empresa origen: ${originalTrip.companyId}`, error);
+          }
+          
           // Crear una nueva reservación en la compañía destino
           const newReservation = {
             tripId: targetTrip.id,
             totalAmount: originalReservation.totalAmount,
             email: originalReservation.email,
             phone: originalReservation.phone,
-            notes: `Transferido desde ${originalTrip.companyId} el ${new Date().toLocaleDateString()}`,
+            notes: `Transferido desde ${sourceCompanyName} (${originalTrip.companyId}) el ${new Date().toLocaleDateString()}`,
             paymentMethod: originalReservation.paymentMethod || 'efectivo',
             status: 'confirmed', // Marcar como confirmada directamente
             paymentStatus: originalReservation.paymentStatus || 'pendiente',
