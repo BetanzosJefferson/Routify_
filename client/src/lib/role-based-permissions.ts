@@ -24,7 +24,9 @@ export const ALL_SECTIONS: Section[] = [
   { id: "coupons", name: "Cupones", description: "Gestión de cupones de descuento" },
   { id: "packages", name: "Paqueterías", description: "Gestión de envío de paquetes" },
   { id: "cash-register", name: "Caja", description: "Registro de pagos realizados" },
+  /* Temporalmente deshabilitado
   { id: "passenger-transfer", name: "Transferencia de pasajeros", description: "Gestión de transferencias de pasajeros entre viajes" },
+  */
   { id: "settings", name: "Configuración", description: "Ajustes generales del sistema" }
 ];
 
