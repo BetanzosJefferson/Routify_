@@ -48,6 +48,7 @@ const PACKAGE_CREATE_ROLES = [
 ];
 
 import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
+import { setupTransferInvitationRoutes } from "./transfer-invitations"; // Sistema de invitaciones entre empresas
 import { setupAuthentication } from "./auth-session";
 // Utility function to check if two locations are in the same city
 function isSameCity(location1: string, location2: string): boolean {

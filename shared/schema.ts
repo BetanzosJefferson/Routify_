@@ -752,6 +752,68 @@ export const notificationRelations = relations(notifications, ({ one }) => ({
   })
 }));
 
+// COMPANY INVITATIONS AND AUTHORIZATIONS
+export const companyInvitations = pgTable("company_invitations", {
+  id: serial("id").primaryKey(),
+  token: text("token").notNull().unique(),
+  sourceCompanyId: text("source_company_id").notNull(),
+  sourceCompanyName: text("source_company_name").notNull(),
+  createdById: integer("created_by_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  isUsed: boolean("is_used").default(false).notNull(),
+  usedById: integer("used_by_id"),
+  usedAt: timestamp("used_at"),
+  targetCompanyId: text("target_company_id"),
+});
+
+export const companyTransferAuthorizations = pgTable("company_transfer_authorizations", {
+  id: serial("id").primaryKey(),
+  sourceCompanyId: text("source_company_id").notNull(),
+  targetCompanyId: text("target_company_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+});
+
+export const insertCompanyInvitationSchema = createInsertSchema(companyInvitations).omit({ id: true });
+export type InsertCompanyInvitation = z.infer<typeof insertCompanyInvitationSchema>;
+export type CompanyInvitation = typeof companyInvitations.$inferSelect;
+
+export const insertCompanyTransferAuthorizationSchema = createInsertSchema(companyTransferAuthorizations).omit({ id: true });
+export type InsertCompanyTransferAuthorization = z.infer<typeof insertCompanyTransferAuthorizationSchema>;
+export type CompanyTransferAuthorization = typeof companyTransferAuthorizations.$inferSelect;
+
+// COMPANY INVITATION RELATIONS
+export const companyInvitationRelations = relations(companyInvitations, ({ one }) => ({
+  sourceCompany: one(companies, {
+    fields: [companyInvitations.sourceCompanyId],
+    references: [companies.identifier]
+  }),
+  creator: one(users, {
+    fields: [companyInvitations.createdById],
+    references: [users.id]
+  }),
+  user: one(users, {
+    fields: [companyInvitations.usedById],
+    references: [users.id]
+  }),
+  targetCompany: one(companies, {
+    fields: [companyInvitations.targetCompanyId],
+    references: [companies.identifier]
+  })
+}));
+
+export const companyTransferAuthorizationRelations = relations(companyTransferAuthorizations, ({ one }) => ({
+  sourceCompany: one(companies, {
+    fields: [companyTransferAuthorizations.sourceCompanyId],
+    references: [companies.identifier]
+  }),
+  targetCompany: one(companies, {
+    fields: [companyTransferAuthorizations.targetCompanyId],
+    references: [companies.identifier]
+  })
+}));
+
 // COUPON RELATIONS
 export const couponRelations = relations(coupons, ({ one }) => ({
   company: one(companies, {
