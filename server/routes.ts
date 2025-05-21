@@ -4964,6 +4964,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Setup routes for packages
+  // Configurar rutas para presupuestos y gastos
+  setupFinancialRoutes(app, isAuthenticated);
+  
   setupPackageRoutes(app);
 
   // Endpoint para verificar si hay reservaciones creadas por comisionistas

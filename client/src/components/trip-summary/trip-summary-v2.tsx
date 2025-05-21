@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ClipboardListIcon, UserIcon, DollarSignIcon, PackageIcon, ChevronLeftIcon, ChevronRightIcon, CalendarIcon, PlusCircleIcon, MinusCircleIcon, CoinsIcon, PiggyBankIcon, Calculator } from "lucide-react";
+import { ClipboardListIcon, UserIcon, DollarSignIcon, PackageIcon, ChevronLeftIcon, ChevronRightIcon, CalendarIcon, PlusCircleIcon, MinusCircleIcon, CoinsIcon, PiggyBankIcon, Calculator, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,9 @@ import { useTrips } from "@/hooks/use-trips";
 import { useReservations } from "@/hooks/use-reservations";
 import { usePackages, Package } from "@/hooks/use-packages";
 import { formatTripTime, extractDayIndicator } from "@/lib/trip-utils";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type TripSummaryProps = {
   className?: string;
@@ -40,12 +43,16 @@ type ReservationWithPassengers = Reservation & {
   };
 };
 
+// Redefinir tipo de Expense para persistencia
 type Expense = {
-  id: string;
+  id: number | string;  // Usará string localmente y número cuando venga de la BD
   tripId: number;
   amount: number;
-  type: string;
+  category: string;     // Renombrar 'type' a 'category' para ser consistente con la API
   description?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  createdBy?: number | null;
 };
 
 export default function TripSummary({ className }: TripSummaryProps) {
@@ -57,18 +64,27 @@ export default function TripSummary({ className }: TripSummaryProps) {
   const [totalTransferSales, setTotalTransferSales] = useState(0);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   
-  // Estado para el presupuesto del operador
+  // Estados para datos financieros
   const [operatorBudget, setOperatorBudget] = useState<number>(0);
+  const [isLoadingBudget, setIsLoadingBudget] = useState(false);
+  const [isSavingBudget, setIsSavingBudget] = useState(false);
   
   // Estado para gastos
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [isLoadingExpenses, setIsLoadingExpenses] = useState(false);
+  const [isSavingExpense, setIsSavingExpense] = useState(false);
+  const [isRemovingExpense, setIsRemovingExpense] = useState<number | null>(null);
+  
   const [newExpense, setNewExpense] = useState<Expense>({
     id: '',
     tripId: 0,
     amount: 0,
-    type: '',
+    category: '',
     description: ''
   });
+
+  // Notificaciones
+  const { toast } = useToast();
   
   // Total de gastos
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
