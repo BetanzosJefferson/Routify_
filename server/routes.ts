@@ -4963,6 +4963,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup routes for packages
   setupPackageRoutes(app);
 
+  // Endpoint para verificar si hay reservaciones creadas por comisionistas
+  app.post(apiRouter("/reservations/check-commission-agents"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { reservationIds } = req.body;
+      
+      // Validar el formato del cuerpo de la solicitud
+      if (!Array.isArray(reservationIds) || reservationIds.length === 0) {
+        console.log("[/check-commission-agents] Solicitud inválida: reservationIds debe ser un array no vacío");
+        return res.status(400).json({ 
+          error: "Formato inválido", 
+          details: "reservationIds debe ser un array no vacío de IDs" 
+        });
+      }
+      
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
+      if (!user) {
+        console.log("[/check-commission-agents] Error: Usuario no autenticado");
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
+      console.log(`[/check-commission-agents] Verificando ${reservationIds.length} reservaciones para comisionistas`);
+      
+      // Buscar los creadores de las reservaciones para verificar si hay comisionistas
+      let hasCommissionAgents = false;
+      
+      // Verificar cada reservación
+      for (const reservationId of reservationIds) {
+        try {
+          // Obtener los detalles de la reservación
+          const reservationDetails = await storage.getReservationWithDetails(reservationId);
+          
+          if (reservationDetails && reservationDetails.createdByUser) {
+            // Verificar si el creador es un comisionista
+            if (reservationDetails.createdByUser.role === 'comisionista') {
+              console.log(`[/check-commission-agents] Reservación ${reservationId} creada por comisionista: ${reservationDetails.createdByUser.firstName} ${reservationDetails.createdByUser.lastName}`);
+              hasCommissionAgents = true;
+              break; // Encontramos al menos uno, podemos salir del bucle
+            }
+          }
+        } catch (error) {
+          console.error(`[/check-commission-agents] Error al verificar reservación ${reservationId}:`, error);
+          // Continuamos con las demás reservaciones
+        }
+      }
+      
+      // Devolver el resultado
+      console.log(`[/check-commission-agents] Resultado: ${hasCommissionAgents ? 'Encontradas' : 'No encontradas'} reservaciones de comisionistas`);
+      res.json({ hasCommissionAgents });
+    } catch (error) {
+      console.error("[/check-commission-agents] Error general:", error);
+      res.status(500).json({ 
+        error: "Error al verificar comisionistas", 
+        details: error instanceof Error ? error.message : "Error desconocido" 
+      });
+    }
+  });
+
   // Endpoint para obtener historial de transferencias
   app.get(apiRouter('/transfers/history'), isAuthenticated, async (req: Request, res: Response) => {
     try {
