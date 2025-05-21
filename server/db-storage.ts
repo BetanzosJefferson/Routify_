@@ -2765,22 +2765,31 @@ export class DatabaseStorage implements IStorage {
       if (status === "aprobada") {
         console.log(`[updateReservationRequestStatus] Aprobando solicitud ID ${id}. Creando reservación en tabla reservations.`);
         
+        // Obtener información del viaje para almacenar más detalles
+        const trip = await this.getTrip(currentRequest.tripId);
+        if (!trip) {
+          throw new Error(`El viaje con ID ${currentRequest.tripId} no existe.`);
+        }
+        
         // Preparar los datos para la nueva reservación
         const newReservation: InsertReservation = {
           tripId: currentRequest.tripId,
           totalAmount: currentRequest.totalAmount,
           email: currentRequest.email,
           phone: currentRequest.phone,
-          notes: currentRequest.notes || null,
-          paymentMethod: currentRequest.paymentMethod || "efectivo",
-          paymentStatus: currentRequest.paymentStatus || "pendiente",
+          notes: currentRequest.notes ? 
+            `${currentRequest.notes} [Creado automáticamente a partir de solicitud #${id}]` : 
+            `Creado automáticamente a partir de solicitud #${id}`,
+          paymentMethod: currentRequest.paymentMethod || PaymentMethod.CASH,
+          paymentStatus: currentRequest.paymentStatus || PaymentStatus.PENDING,
           advanceAmount: currentRequest.advanceAmount || 0,
-          advancePaymentMethod: currentRequest.advancePaymentMethod || "efectivo",
+          advancePaymentMethod: currentRequest.advancePaymentMethod || PaymentMethod.CASH,
           createdBy: currentRequest.requesterId, // El creador es el comisionista
           companyId: currentRequest.companyId,
-          status: "confirmed", // La reservación se crea ya confirmada (usando el valor correcto del enum)
+          status: ReservationStatus.CONFIRMED, // La reservación se crea ya confirmada (usando el enum)
           commissionPaid: false, // Por defecto, la comisión no está pagada
           createdAt: new Date(), // Fecha de creación actual
+          updatedAt: new Date(), // Fecha de actualización
           // Inicializar los campos de escaneo de tickets
           checkedBy: null,
           checkedAt: null,
