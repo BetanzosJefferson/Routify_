@@ -109,7 +109,7 @@ export function ReservationList() {
     (reservation) => reservation.status === 'canceled'
   ) || [];
   
-  // Luego filtramos las reservaciones activas y archivadas (que no estén canceladas)
+  // Luego filtramos las reservaciones actuales/futuras (que no estén canceladas)
   const upcomingReservations = reservations?.filter(
     (reservation) => {
       // Solo incluir reservaciones confirmadas (no canceladas)
@@ -119,6 +119,12 @@ export function ReservationList() {
       const tripDate = normalizeToStartOfDay(reservation.trip.departureDate);
       // Normalizar la fecha actual también para hacer una comparación correcta
       const today = normalizeToStartOfDay(new Date());
+      
+      console.log(`[Clasificación] Evaluando reservación ${reservation.id} para 'Actuales y Futuras'`);
+      console.log(`[Clasificación] Fecha viaje: ${tripDate}, Fecha actual: ${today}`);
+      console.log(`[Clasificación] ¿Es actual o futura? ${tripDate >= today ? 'SÍ' : 'NO'}`);
+      
+      // Las reservaciones con fecha igual o posterior a hoy se consideran "actuales o futuras"
       return tripDate >= today;
     }
   ) || [];
@@ -132,6 +138,11 @@ export function ReservationList() {
       const tripDate = normalizeToStartOfDay(reservation.trip.departureDate);
       // Normalizar la fecha actual también para hacer una comparación correcta
       const today = normalizeToStartOfDay(new Date());
+      
+      console.log(`[Clasificación] Reservación ${reservation.id}: fecha del viaje ${tripDate}, fecha actual ${today}`);
+      
+      // Cambiamos a 'estrictamente menor que' para que las reservaciones del día actual
+      // NO se consideren archivadas sino actuales
       return tripDate < today;
     }
   ) || [];
