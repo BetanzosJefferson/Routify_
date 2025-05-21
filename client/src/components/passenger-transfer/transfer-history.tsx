@@ -202,15 +202,21 @@ function renderTransferTable(
           let originDestInfo = '';
           let hasCommission = false;
           let commissionPercentage = 0;
+          let commissionCount = 0;
           
           if (transfer.passengerInfo && transfer.passengerInfo.length > 0) {
             const info = transfer.passengerInfo[0]; // Mostrar info del primer pasajero
             originDestInfo = `${info.origin} → ${info.destination}`;
             
+            // Contar cuántos pasajeros tienen comisión
+            commissionCount = transfer.passengerInfo.filter(p => p.isFromCommissioner).length;
+            
             // Verificar si hay información de comisión
-            if (info.isFromCommissioner) {
+            if (commissionCount > 0) {
               hasCommission = true;
-              commissionPercentage = info.commissionPercentage || 10;
+              // Usar el porcentaje de comisión del primer pasajero con comisión
+              const passengerWithCommission = transfer.passengerInfo.find(p => p.isFromCommissioner);
+              commissionPercentage = passengerWithCommission?.commissionPercentage || 10;
             }
           } else {
             originDestInfo = 'Información no disponible';
@@ -247,10 +253,15 @@ function renderTransferTable(
               </TableCell>
               <TableCell>
                 <div className="flex flex-col">
-                  <div className="flex items-center">
+                  <div className="flex items-center space-x-2">
                     <Badge variant="secondary">
                       {transfer.reservationCount} {transfer.reservationCount === 1 ? 'pasajero' : 'pasajeros'}
                     </Badge>
+                    {commissionCount > 0 && (
+                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                        {commissionCount} con comisión {commissionPercentage}%
+                      </Badge>
+                    )}
                   </div>
                   {transfer.passengerInfo && transfer.passengerInfo.length > 0 && (
                     <div className="mt-1 text-xs text-muted-foreground">
