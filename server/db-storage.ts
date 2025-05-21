@@ -1572,40 +1572,13 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`[getReservationWithDetails] Acceso concedido a reserva ${id} con ${passengers.length} pasajeros`);
     
-    // Obtener información del usuario que realizó la transferencia (si es una reservación transferida)
-    let transferredByUser: schema.User | undefined = undefined;
-    if (reservation.isTransferred && reservation.transferredBy) {
-      // Buscar el usuario por ID
-      const [user] = await db
-        .select()
-        .from(schema.users)
-        .where(eq(schema.users.id, reservation.transferredBy));
-      
-      if (user) {
-        transferredByUser = user;
-        console.log(`[getReservationWithDetails] Reserva ${id} transferida por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
-      }
-    }
-    
-    // Revisar si es una reservación transferida y tiene todos los datos necesarios
-    if (reservation.isTransferred) {
-      console.log(`[getReservationWithDetails] Reserva ${id} es una transferencia de la reservación #${reservation.originalReservationId || 'desconocida'}`);
-      console.log(`[getReservationWithDetails] Empresa origen: ${reservation.sourceCompanyName || 'desconocida'}`);
-    }
-    
     return {
       ...reservation,
       trip,
       passengers,
       createdByUser, // Añadimos el usuario creador
       checkedByUser, // Añadimos el usuario que escaneó el ticket
-      paidByUser,    // Añadimos el usuario que marcó como pagado el ticket
-      transferredByUser, // Añadimos el usuario que realizó la transferencia
-      // Aseguramos que la información de transferencia esté disponible
-      isTransferred: reservation.isTransferred || false,
-      originalReservationId: reservation.originalReservationId,
-      sourceCompanyName: reservation.sourceCompanyName,
-      sourceCompanyId: reservation.sourceCompanyId
+      paidByUser     // Añadimos el usuario que marcó como pagado el ticket
     };
   }
   
