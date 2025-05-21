@@ -1218,48 +1218,101 @@ export default function TripSummary({ className }: TripSummaryProps) {
                             <thead>
                               <tr className="bg-gray-50">
                                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Nombre
-                                </th>
-                                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Contacto
+                                  Pasajero
                                 </th>
                                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Ruta
                                 </th>
                                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Estado de Pago
+                                  Fecha
                                 </th>
                                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Pagos
+                                  Asientos
+                                </th>
+                                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Pago
+                                </th>
+                                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Acciones
                                 </th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200 bg-white">
-                              {tripReservations.flatMap(reservation => 
-                                (reservation.passengers || []).map((passenger, idx) => (
-                                  <tr key={`${reservation.id}-${idx}`} className="hover:bg-gray-50">
-                                    <td className="py-3 px-4 text-sm text-gray-900">
-                                      {passenger.firstName} {passenger.lastName}
+                              {tripReservations.map((reservation, idx) => {
+                                // Determinar si está completamente pagado o pendiente
+                                const isPaid = reservation.status === 'pagado' || reservation.status === 'paid';
+                                const hasAdvance = reservation.advanceAmount && reservation.advanceAmount > 0;
+                                const remainingAmount = (reservation.totalAmount || 0) - (reservation.advanceAmount || 0);
+                                
+                                // Formatear pasajeros (nombre del primer pasajero y número total)
+                                const mainPassenger = reservation.passengers?.[0];
+                                const passengerCount = reservation.passengers?.length || 0;
+                                
+                                // Determinar la información detallada de la ruta
+                                const routeName = reservation.trip?.route?.name || 'N/A';
+                                const routeDetails = reservation.trip?.route ? 
+                                  `${reservation.trip.route.origin} → ${reservation.trip.route.destination}` : '';
+                                
+                                // Formatear fecha y hora
+                                const tripDate = reservation.trip?.departureDate ? 
+                                  format(new Date(reservation.trip.departureDate), 'dd/MM/yyyy') : 'N/A';
+                                const tripTime = reservation.trip?.departureTime || 'N/A';
+                                
+                                return (
+                                  <tr key={`reservation-${reservation.id}`} className="hover:bg-gray-50">
+                                    <td className="py-3 px-4 text-sm">
+                                      <div className="font-medium text-gray-900">
+                                        {mainPassenger ? `${mainPassenger.firstName} ${mainPassenger.lastName}` : 'N/A'}
+                                      </div>
+                                      <div className="text-gray-500 text-xs mt-1">
+                                        {reservation.email || 'Sin correo'}
+                                      </div>
                                     </td>
-                                    <td className="py-3 px-4 text-sm text-gray-900">
-                                      {passenger.contactInfo || 'N/A'}
+                                    <td className="py-3 px-4 text-sm">
+                                      <div className="font-medium text-gray-900">{routeName}</div>
+                                      <div className="text-gray-500 text-xs mt-1">{routeDetails}</div>
                                     </td>
-                                    <td className="py-3 px-4 text-sm text-gray-900">
-                                      {reservation.trip?.route?.name || 'N/A'}
+                                    <td className="py-3 px-4 text-sm">
+                                      <div className="font-medium text-gray-900">{tripDate}</div>
+                                      <div className="text-gray-500 text-xs mt-1">{tripTime}</div>
                                     </td>
-                                    <td className="py-3 px-4 text-sm text-gray-900">
-                                      {reservation.isPaid ? (
-                                        <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Pagado</Badge>
+                                    <td className="py-3 px-4 text-sm text-center text-gray-900">
+                                      {passengerCount}
+                                    </td>
+                                    <td className="py-3 px-4 text-sm">
+                                      <div className="font-medium text-gray-900">
+                                        ${reservation.totalAmount?.toFixed(2) || '0.00'}
+                                      </div>
+                                      
+                                      {isPaid ? (
+                                        <Badge className="mt-1 bg-green-100 text-green-800 hover:bg-green-200">PAGADO</Badge>
                                       ) : (
-                                        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pendiente</Badge>
+                                        <Badge className="mt-1 bg-yellow-100 text-yellow-800 hover:bg-yellow-200">PENDIENTE</Badge>
+                                      )}
+                                      
+                                      {hasAdvance && (
+                                        <div className="text-gray-500 text-xs mt-1">
+                                          Anticipo: ${reservation.advanceAmount?.toFixed(2)} ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
+                                          {!isPaid && remainingAmount > 0 && (
+                                            <div>Resta: ${remainingAmount.toFixed(2)} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
+                                          )}
+                                        </div>
                                       )}
                                     </td>
                                     <td className="py-3 px-4 text-sm text-gray-900">
-                                      ${reservation.totalAmount ? reservation.totalAmount.toFixed(2) : '0.00'}
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-8 px-2 text-blue-600 hover:text-blue-800"
+                                        onClick={() => window.open(`/reservation/${reservation.id}`, '_blank')}
+                                      >
+                                        <EyeIcon className="h-4 w-4 mr-1" />
+                                        Ver
+                                      </Button>
                                     </td>
                                   </tr>
-                                ))
-                              )}
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
