@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ClipboardListIcon, UserIcon, DollarSignIcon, PackageIcon, ChevronLeftIcon, ChevronRightIcon, CalendarIcon } from "lucide-react";
+import { ClipboardListIcon, UserIcon, DollarSignIcon, PackageIcon, ChevronLeftIcon, ChevronRightIcon, CalendarIcon, PlusCircleIcon, MinusCircleIcon, CoinsIcon, PiggyBankIcon, Calculator } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +40,13 @@ type ReservationWithPassengers = Reservation & {
   };
 };
 
+type Expense = {
+  id: string;
+  amount: number;
+  type: string;
+  description?: string;
+};
+
 export default function TripSummary({ className }: TripSummaryProps) {
   const [selectedTrip, setSelectedTrip] = useState<number | null>(null);
   const [tripReservations, setTripReservations] = useState<ReservationWithPassengers[]>([]);
@@ -48,6 +55,47 @@ export default function TripSummary({ className }: TripSummaryProps) {
   const [totalCashSales, setTotalCashSales] = useState(0);
   const [totalTransferSales, setTotalTransferSales] = useState(0);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  
+  // Estado para el presupuesto del operador
+  const [operatorBudget, setOperatorBudget] = useState<number>(0);
+  
+  // Estado para gastos
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [newExpense, setNewExpense] = useState<Expense>({
+    id: '',
+    amount: 0,
+    type: '',
+    description: ''
+  });
+  
+  // Total de gastos
+  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  
+  // Función para agregar un nuevo gasto
+  const handleAddExpense = () => {
+    if (newExpense.type.trim() === '' || newExpense.amount <= 0) return;
+    
+    const expenseToAdd = {
+      ...newExpense,
+      id: `expense-${Date.now()}`
+    };
+    
+    setExpenses([...expenses, expenseToAdd]);
+    setNewExpense({
+      id: '',
+      amount: 0,
+      type: '',
+      description: ''
+    });
+  };
+  
+  // Función para eliminar un gasto
+  const handleRemoveExpense = (id: string) => {
+    setExpenses(expenses.filter(expense => expense.id !== id));
+  };
+  
+  // Calculo de ganancias del viaje (ventas totales - gastos totales)
+  const tripProfit = totalSales - totalExpenses;
 
   // Usando nuestros nuevos hooks especializados
   const { 
@@ -537,6 +585,134 @@ export default function TripSummary({ className }: TripSummaryProps) {
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">Transferencia:</span>
                             <span className="font-medium">${totalTransferSales.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Nueva sección de presupuesto y gastos */}
+                    <div className="mt-6">
+                      <div className="bg-gray-50 rounded-lg p-6">
+                        <div className="flex items-center mb-4">
+                          <div className="rounded-full bg-purple-100 p-2 mr-3">
+                            <CoinsIcon className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-800">Presupuesto y Gastos</h3>
+                        </div>
+                        
+                        {/* Presupuesto para el operador */}
+                        <div className="mb-6">
+                          <Label className="text-gray-700 mb-2">Presupuesto para el operador</Label>
+                          <div className="flex items-center">
+                            <Input
+                              type="number"
+                              min="0"
+                              placeholder="Monto en MXN"
+                              value={operatorBudget || ''}
+                              onChange={(e) => setOperatorBudget(parseFloat(e.target.value) || 0)}
+                              className="flex-1"
+                            />
+                            <div className="ml-2">
+                              <Label>MXN</Label>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Sección de gastos */}
+                        <div>
+                          <div className="flex items-center mb-4">
+                            <h4 className="text-md font-semibold text-gray-700">Gastos</h4>
+                            <div className="flex-1 mx-2 h-px bg-gray-200"></div>
+                            <div className="text-sm text-gray-500">Total: ${totalExpenses.toFixed(2)}</div>
+                          </div>
+                          
+                          {/* Lista de gastos actuales */}
+                          {expenses.length > 0 ? (
+                            <div className="space-y-2 mb-4">
+                              {expenses.map(expense => (
+                                <div key={expense.id} className="flex items-center justify-between bg-white p-3 rounded-md border border-gray-200">
+                                  <div className="flex-1">
+                                    <div className="font-medium">${expense.amount.toFixed(2)} ({expense.type})</div>
+                                    {expense.description && (
+                                      <div className="text-sm text-gray-500">{expense.description}</div>
+                                    )}
+                                  </div>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => handleRemoveExpense(expense.id)}
+                                  >
+                                    <MinusCircleIcon className="h-4 w-4 text-red-500" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-4 text-gray-500 mb-4">
+                              No hay gastos registrados
+                            </div>
+                          )}
+                          
+                          {/* Formulario para agregar nuevo gasto */}
+                          <div className="bg-white p-4 rounded-md border border-gray-200 mb-4">
+                            <h5 className="text-sm font-medium mb-3 text-gray-700">Agregar nuevo gasto</h5>
+                            <div className="grid grid-cols-12 gap-2 mb-2">
+                              <div className="col-span-7">
+                                <Input 
+                                  placeholder="Tipo (ej. Gasolina, Casetas, Sueldo)" 
+                                  value={newExpense.type}
+                                  onChange={(e) => setNewExpense({...newExpense, type: e.target.value})}
+                                />
+                              </div>
+                              <div className="col-span-5">
+                                <div className="flex items-center">
+                                  <Input 
+                                    type="number" 
+                                    min="0"
+                                    placeholder="Monto" 
+                                    value={newExpense.amount || ''}
+                                    onChange={(e) => setNewExpense({...newExpense, amount: parseFloat(e.target.value) || 0})}
+                                  />
+                                  <span className="ml-2">MXN</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="mb-3">
+                              <Input 
+                                placeholder="Descripción (opcional)" 
+                                value={newExpense.description || ''}
+                                onChange={(e) => setNewExpense({...newExpense, description: e.target.value})}
+                              />
+                            </div>
+                            <Button 
+                              onClick={handleAddExpense}
+                              disabled={!newExpense.type || newExpense.amount <= 0}
+                              className="w-full"
+                            >
+                              <PlusCircleIcon className="h-4 w-4 mr-2" />
+                              Agregar Gasto
+                            </Button>
+                          </div>
+                          
+                          {/* Resumen financiero */}
+                          <div className="bg-gray-100 p-4 rounded-md">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <div className="text-sm text-gray-600">Ventas Totales</div>
+                                <div className="font-bold text-green-600">${totalSales.toFixed(2)}</div>
+                              </div>
+                              <div>
+                                <div className="text-sm text-gray-600">Gastos Totales</div>
+                                <div className="font-bold text-red-600">${totalExpenses.toFixed(2)}</div>
+                              </div>
+                            </div>
+                            <Separator className="my-3" />
+                            <div className="flex justify-between items-center">
+                              <div className="font-medium">Ganancia del viaje</div>
+                              <div className={`text-xl font-bold ${tripProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                ${tripProfit.toFixed(2)}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
