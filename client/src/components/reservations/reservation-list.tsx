@@ -17,7 +17,8 @@ import {
   FilterIcon,
   QrCode,
   ExternalLink,
-  Building2
+  Building2,
+  ArrowRightLeft
 } from "lucide-react";
 import { useReservations } from "@/hooks/use-reservations";
 import { useAuth } from "@/hooks/use-auth";
@@ -655,17 +656,32 @@ export function ReservationList() {
                     )}
                     {user?.role !== "taquilla" && (
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {reservation.createdByUser ? (
+                        {/* Mostrar información de la empresa de origen si es una transferencia */}
+                        {reservation.notes && reservation.notes.includes("Transferido desde") ? (
                           <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {reservation.createdByUser.firstName} {reservation.createdByUser.lastName}
+                            <div className="flex items-center text-sm font-medium text-blue-700">
+                              <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
+                              {/* Extraer el nombre de la empresa del texto de las notas */}
+                              {reservation.notes.split("Transferido desde ")[1]?.split(" (")[0] || "Empresa externa"}
                             </div>
-                            <div className="text-xs text-gray-500">
-                              {reservation.createdByUser.role}
+                            <div className="text-xs text-blue-600">
+                              Transferencia
                             </div>
                           </div>
                         ) : (
-                          <span className="text-gray-400 text-sm">No disponible</span>
+                          // Mostrar el creador normal si no es transferencia
+                          reservation.createdByUser ? (
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {reservation.createdByUser.firstName} {reservation.createdByUser.lastName}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {reservation.createdByUser.role}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-sm">No disponible</span>
+                          )
                         )}
                       </td>
                     )}
