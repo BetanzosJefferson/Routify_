@@ -24,7 +24,8 @@ import PackagesPage from "@/pages/packages-page";
 import PackageDetailPage from "@/pages/package-detail-page";
 import EditTripPage from "@/pages/edit-trip-page";
 import CashRegisterPageRoute from "@/pages/cash-register-page";
-import PassengerTransferPageRoute from "@/pages/passenger-transfer-page";
+// Temporalmente deshabilitado
+// import PassengerTransferPageRoute from "@/pages/passenger-transfer-page";
 import BoardingListPageRoute from "@/pages/boarding-list-page";
 import TripLogPageRoute from "@/pages/trip-log-page";
 import UsersPageRoute from "@/pages/users-page";
@@ -45,7 +46,8 @@ function Router() {
       <ProtectedRoute path="/packages" component={PackagesPage} />
       <ProtectedRoute path="/cash-register" component={CashRegisterPageRoute} />
       <ProtectedRoute path="/edit-trip/:id" component={EditTripPage} />
-      <ProtectedRoute path="/passenger-transfer" component={PassengerTransferPageRoute} />
+      {/* Temporalmente deshabilitada la ruta de transferencia de pasajeros
+      <ProtectedRoute path="/passenger-transfer" component={PassengerTransferPageRoute} /> */}
       <ProtectedRoute path="/boarding-list" component={BoardingListPageRoute} />
       <ProtectedRoute path="/trip-log" component={TripLogPageRoute} />
       <ProtectedRoute path="/users" component={UsersPageRoute} />
