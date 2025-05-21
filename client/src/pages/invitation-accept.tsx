@@ -1,191 +1,230 @@
-import { useState, useEffect } from "react";
+import React from "react";
 import { useParams, useLocation } from "wouter";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle,
-  CardFooter
-} from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { Building2, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import DashboardLayout from "@/components/dashboard-layout";
+import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { toast } from "@/hooks/use-toast";
+import { DefaultLayout } from "@/components/layout/default-layout";
+import { useAuth } from "@/hooks/use-auth";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle, XCircle } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
-import { useQuery, useMutation } from "@tanstack/react-query";
 
 export default function InvitationAcceptPage() {
-  const { toast } = useToast();
-  const params = useParams();
-  const [, setLocation] = useLocation();
-  const [status, setStatus] = useState<"loading" | "invalid" | "unauthorized" | "success" | "error">("loading");
-  const [inviterCompany, setInviterCompany] = useState<{name: string, identifier: string} | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  
-  // Obtener el token de la URL
-  const token = params.token;
-  
-  // Verificar si el usuario está autenticado y obtener su rol
-  const { data: userData, isLoading: isLoadingUser } = useQuery({
-    queryKey: ['/api/auth/user'],
-    onSuccess: (data) => {
-      if (data) {
-        setUserRole(data.role);
-      }
-    },
+  const { token } = useParams<{ token: string }>();
+  const [, navigate] = useLocation();
+  const { user } = useAuth();
+  const [isAccepting, setIsAccepting] = React.useState(false);
+
+  // Verificar la validez del token de invitación
+  const {
+    data: invitationData,
+    isLoading,
+    error,
+    isError
+  } = useQuery({
+    queryKey: [`/api/transfers/validate-invitation/${token}`],
+    enabled: !!token
   });
-  
-  // Verificar la validez del token
-  const { isLoading: isValidatingToken } = useQuery({
-    queryKey: ['/api/transfers/validate-invitation', token],
-    queryFn: async () => {
-      return await apiRequest(`/api/transfers/validate-invitation/${token}`, {
-        method: 'GET',
-      });
-    },
-    enabled: !!token,
-    onSuccess: (data) => {
-      if (data && data.valid) {
-        setInviterCompany(data.company);
-        setStatus(userRole === 'dueño' ? 'success' : 'unauthorized');
-      } else {
-        setStatus('invalid');
-      }
-    },
-    onError: () => {
-      setStatus('invalid');
-    },
-  });
-  
-  // Mutación para aceptar la invitación
-  const { mutate: acceptInvitation, isPending: isAccepting } = useMutation({
-    mutationFn: async () => {
-      return await apiRequest(`/api/transfers/accept-invitation/${token}`, {
+
+  // Manejar la aceptación de la invitación
+  const handleAcceptInvitation = async () => {
+    if (!token) return;
+    
+    try {
+      setIsAccepting(true);
+      
+      const response = await fetch(`/api/transfers/accept-invitation/${token}`, {
         method: 'POST',
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Invitación aceptada",
-        description: "La empresa ha sido agregada a la lista de empresas autorizadas.",
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
       
-      // Redirigir a la página de transferencias después de 2 segundos
-      setTimeout(() => {
-        setLocation("/passenger-transfer");
-      }, 2000);
-    },
-    onError: (error: any) => {
-      setStatus('error');
+      if (response.ok) {
+        toast({
+          title: "Invitación aceptada",
+          description: "La empresa ha sido autorizada para transferir reservaciones",
+          variant: "default"
+        });
+        
+        // Redirigir a la página de transferencias
+        setTimeout(() => {
+          navigate("/passenger-transfer");
+        }, 2000);
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Error al aceptar invitación",
+          description: errorData.error || "No se pudo aceptar la invitación",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error al aceptar invitación:", error);
       toast({
-        title: "Error al aceptar invitación",
-        description: error.message || "Ocurrió un error al procesar la invitación.",
-        variant: "destructive",
+        title: "Error de conexión",
+        description: "Hubo un problema al conectar con el servidor",
+        variant: "destructive"
       });
-    },
-  });
+    } finally {
+      setIsAccepting(false);
+    }
+  };
   
-  // Determinar si el usuario puede aceptar la invitación
-  const canAccept = status === 'success' && userRole === 'dueño';
+  // Verificar si el usuario es dueño de empresa
+  const isOwner = user?.role === 'dueño';
   
   return (
-    <DashboardLayout>
-      <div className="container mx-auto py-8">
-        <h1 className="text-2xl font-bold mb-6">Invitación a Transferencias de Pasajeros</h1>
+    <DefaultLayout>
+      <div className="container max-w-3xl py-8">
+        <div className="mb-6 flex items-center">
+          <Button variant="ghost" onClick={() => navigate("/passenger-transfer")} className="mr-4">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Volver
+          </Button>
+          <h1 className="text-2xl font-bold">Invitación para transferencias</h1>
+        </div>
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Solicitud de Autorización</CardTitle>
-            <CardDescription>
-              Una empresa desea poder transferir reservaciones a tu empresa.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {(isLoadingUser || isValidatingToken) && (
-              <div className="text-center py-6">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="mt-2 text-muted-foreground">Verificando invitación...</p>
+        <Separator className="my-4" />
+        
+        {isLoading ? (
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-1/3 mb-2" />
+              <Skeleton className="h-4 w-2/3" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-24 w-full" />
               </div>
-            )}
-            
-            {status === 'invalid' && (
-              <Alert variant="destructive">
-                <XCircle className="h-4 w-4" />
-                <AlertTitle>Invitación no válida</AlertTitle>
-                <AlertDescription>
-                  El enlace de invitación no es válido o ya ha sido utilizado.
-                  Por favor, solicita un nuevo enlace a la empresa que te invitó.
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            {status === 'unauthorized' && (
+            </CardContent>
+            <CardFooter>
+              <Skeleton className="h-10 w-1/4" />
+            </CardFooter>
+          </Card>
+        ) : isError ? (
+          <Card className="border-destructive">
+            <CardHeader>
+              <CardTitle className="flex items-center text-destructive">
+                <AlertCircle className="h-5 w-5 mr-2" />
+                Error en la invitación
+              </CardTitle>
+              <CardDescription>
+                No se pudo verificar el enlace de invitación
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Acceso no autorizado</AlertTitle>
+                <AlertTitle>Enlace inválido</AlertTitle>
                 <AlertDescription>
-                  Solo los usuarios con rol de dueño pueden aceptar invitaciones para transferencias.
-                  Por favor, contacta al dueño de tu empresa para que acepte esta invitación.
+                  {error instanceof Error 
+                    ? error.message 
+                    : "El enlace de invitación no es válido, ha expirado o ya ha sido utilizado."}
                 </AlertDescription>
               </Alert>
-            )}
-            
-            {status === 'success' && inviterCompany && (
+            </CardContent>
+            <CardFooter>
+              <Button variant="outline" onClick={() => navigate("/passenger-transfer")}>
+                Volver a transferencias
+              </Button>
+            </CardFooter>
+          </Card>
+        ) : invitationData?.valid ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Building2 className="h-5 w-5 mr-2" />
+                Invitación de empresa
+              </CardTitle>
+              <CardDescription>
+                Has recibido una invitación para autorizar transferencias de reservaciones
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-4">
-                <Alert>
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertTitle>Invitación válida</AlertTitle>
-                  <AlertDescription>
-                    Has recibido una invitación para autorizar transferencias de reservaciones desde la empresa <strong>{inviterCompany.name}</strong>.
-                  </AlertDescription>
-                </Alert>
+                <div className="bg-muted p-4 rounded-md">
+                  <p className="font-medium">Empresa solicitante:</p>
+                  <p className="text-lg">{invitationData.company.name}</p>
+                </div>
                 
-                <div className="p-4 border rounded-md">
-                  <h3 className="font-medium mb-2">Detalles de la solicitud:</h3>
-                  <ul className="space-y-2">
-                    <li><span className="font-medium">Empresa solicitante:</span> {inviterCompany.name}</li>
-                    <li><span className="font-medium">Identificador:</span> {inviterCompany.identifier}</li>
-                    <li>
-                      <span className="font-medium">¿Qué implica aceptar?</span>
-                      <ul className="list-disc ml-6 mt-1 text-sm text-muted-foreground">
-                        <li>La empresa podrá transferir reservaciones a tu empresa</li>
-                        <li>Podrás ver y gestionar las reservaciones transferidas</li>
-                        <li>Tu empresa aparecerá en la lista de empresas autorizadas de la empresa solicitante</li>
-                      </ul>
-                    </li>
+                <div className="bg-blue-50 p-4 rounded-md text-blue-700 border border-blue-200">
+                  <p className="font-medium mb-2">Información importante:</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Al aceptar, autoriza a esta empresa a transferir reservaciones a su empresa.</li>
+                    <li>Las comisiones por reservaciones de agentes serán heredadas.</li>
+                    <li>La autorización puede ser revocada en cualquier momento desde la configuración.</li>
                   </ul>
                 </div>
+                
+                {!isOwner && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Permiso denegado</AlertTitle>
+                    <AlertDescription>
+                      Solo los dueños de empresa pueden aceptar invitaciones de transferencia.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
-            )}
-            
-            {status === 'error' && (
+            </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button variant="outline" onClick={() => navigate("/passenger-transfer")}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleAcceptInvitation} 
+                disabled={isAccepting || !isOwner}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isAccepting ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Aceptar invitación
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        ) : (
+          <Card className="border-destructive">
+            <CardHeader>
+              <CardTitle className="flex items-center text-destructive">
+                <AlertCircle className="h-5 w-5 mr-2" />
+                Invitación no válida
+              </CardTitle>
+              <CardDescription>
+                El enlace de invitación no es válido o ha expirado
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
               <Alert variant="destructive">
-                <XCircle className="h-4 w-4" />
-                <AlertTitle>Error al procesar</AlertTitle>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
                 <AlertDescription>
-                  Ocurrió un error al procesar la invitación. Por favor, intenta nuevamente más tarde.
+                  {invitationData?.error || "El enlace de invitación ha expirado o ya ha sido utilizado."}
                 </AlertDescription>
               </Alert>
-            )}
-          </CardContent>
-          <CardFooter className="flex justify-end space-x-4">
-            <Button variant="outline" onClick={() => setLocation("/passenger-transfer")}>
-              Cancelar
-            </Button>
-            
-            {canAccept && (
-              <Button 
-                onClick={() => acceptInvitation()} 
-                disabled={isAccepting}
-              >
-                {isAccepting ? "Procesando..." : "Aceptar Invitación"}
+            </CardContent>
+            <CardFooter>
+              <Button variant="outline" onClick={() => navigate("/passenger-transfer")}>
+                Volver a transferencias
               </Button>
-            )}
-          </CardFooter>
-        </Card>
+            </CardFooter>
+          </Card>
+        )}
       </div>
-    </DashboardLayout>
+    </DefaultLayout>
   );
 }
