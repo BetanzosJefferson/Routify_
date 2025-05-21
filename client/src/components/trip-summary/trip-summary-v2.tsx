@@ -1244,7 +1244,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                   Pago
                                 </th>
                                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Acciones
+                                  Contacto
                                 </th>
                               </tr>
                             </thead>
@@ -1274,9 +1274,6 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                     <td className="py-3 px-4 text-sm">
                                       <div className="font-medium text-gray-900">
                                         {mainPassenger ? `${mainPassenger.firstName} ${mainPassenger.lastName}` : 'N/A'}
-                                      </div>
-                                      <div className="text-gray-500 text-xs mt-1">
-                                        {reservation.email || 'Sin correo'}
                                       </div>
                                     </td>
                                     <td className="py-3 px-4 text-sm">
