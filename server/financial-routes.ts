@@ -350,63 +350,40 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
     }
   });
   
-  // POST /api/trips/expenses/:id/delete - Eliminar un gasto (usando POST para evitar problemas con DELETE)
+  // POST /api/trips/expenses/remove - Eliminar un gasto (ruta simplificada)
   // Nota: Ruta especial sin middleware de autenticación para solucionar problemas de sesión
-  app.post(apiRouter('/trips/expenses/:id/delete'), async (req: Request, res: Response) => {
+  app.post(apiRouter('/trips/expenses/remove'), async (req: Request, res: Response) => {
     try {
-      const expenseId = parseInt(req.params.id);
-      if (isNaN(expenseId)) {
-        return res.status(400).json({ message: "ID de gasto inválido" });
+      // Obtener ID del gasto directamente del cuerpo de la solicitud
+      const { expenseId } = req.body;
+      if (!expenseId || isNaN(Number(expenseId))) {
+        return res.status(400).json({ message: "ID de gasto inválido o no proporcionado" });
       }
       
-      console.log(`[POST /trips/expenses/${expenseId}/delete] Eliminando gasto`);
+      const expenseIdNumber = Number(expenseId);
+      console.log(`[POST /trips/expenses/remove] Eliminando gasto ID: ${expenseIdNumber}`);
+      console.log(`[POST /trips/expenses/remove] Datos recibidos:`, req.body);
       
-      // Obtener el tripId del cuerpo de la solicitud (enviado desde el frontend)
-      const { tripId } = req.body;
-      console.log(`[POST /trips/expenses/${expenseId}/delete] Datos recibidos:`, req.body);
-      
-      // Verificar que existe el gasto y que pertenece al viaje indicado
-      const tripExpenses = await storage.getTripExpenses(tripId || -1);
-      const existingExpense = tripExpenses.find(expense => expense.id === expenseId);
-      
-      if (!existingExpense) {
-        console.log(`[POST /trips/expenses/${expenseId}/delete] Gasto no encontrado o no pertenece al viaje ${tripId}`);
-        
-        // Intento alternativo: buscar en todos los gastos
-        const allExpenses = await storage.getTripExpenses(-1);
-        const foundExpense = allExpenses.find(expense => expense.id === expenseId);
-        
-        if (!foundExpense) {
-          return res.status(404).json({ message: "Gasto no encontrado" });
-        }
-        
-        console.log(`[POST /trips/expenses/${expenseId}/delete] Gasto encontrado en otra búsqueda, pertenece al viaje ${foundExpense.tripId}`);
-        
-        // Eliminar el gasto directamente
-        const result = await storage.deleteTripExpense(expenseId);
-        
-        if (result) {
-          console.log(`[POST /trips/expenses/${expenseId}/delete] Gasto eliminado correctamente (método alternativo)`);
-          return res.json({ success: true, message: "Gasto eliminado correctamente" });
-        } else {
-          console.log(`[POST /trips/expenses/${expenseId}/delete] No se pudo eliminar el gasto (método alternativo)`);
-          return res.status(500).json({ message: "No se pudo eliminar el gasto" });
-        }
-      }
-      
-      // Eliminar el gasto directamente
-      const result = await storage.deleteTripExpense(expenseId);
+      // Eliminar el gasto directamente sin más verificaciones
+      const result = await storage.deleteTripExpense(expenseIdNumber);
       
       if (result) {
-        console.log(`[POST /trips/expenses/${expenseId}/delete] Gasto eliminado correctamente`);
-        res.json({ success: true, message: "Gasto eliminado correctamente" });
+        console.log(`[POST /trips/expenses/remove] Gasto ID ${expenseIdNumber} eliminado correctamente`);
+        return res.json({ 
+          success: true, 
+          message: "Gasto eliminado correctamente",
+          expenseId: expenseIdNumber
+        });
       } else {
-        console.log(`[POST /trips/expenses/${expenseId}/delete] No se pudo eliminar el gasto`);
-        res.status(500).json({ message: "No se pudo eliminar el gasto" });
+        console.log(`[POST /trips/expenses/remove] No se pudo eliminar el gasto ID ${expenseIdNumber}`);
+        return res.status(500).json({ 
+          message: "No se pudo eliminar el gasto", 
+          expenseId: expenseIdNumber 
+        });
       }
     } catch (error) {
-      console.error(`[POST /trips/expenses/${req.params.id}/delete] Error:`, error);
-      res.status(500).json({ 
+      console.error(`[POST /trips/expenses/remove] Error:`, error);
+      return res.status(500).json({ 
         message: "Error al eliminar el gasto",
         details: error instanceof Error ? error.message : "Error desconocido"
       });
