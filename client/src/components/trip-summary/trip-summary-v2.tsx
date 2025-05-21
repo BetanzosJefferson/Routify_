@@ -559,11 +559,21 @@ export default function TripSummary({ className }: TripSummaryProps) {
           // Si está pagado, sumar el monto total
           totalSalesAmount += res.totalAmount || 0;
           
-          // Distribuir en métodos de pago
-          if (res.paymentMethod === 'efectivo') {
-            cashSales += res.totalAmount || 0;
-          } else if (res.paymentMethod === 'transferencia') {
-            transferSales += res.totalAmount || 0;
+          // Si la reservación incluye anticipo, usamos el método de pago del anticipo
+          // ya que esto refleja cómo se pagó realmente (especialmente para reservaciones pagadas)
+          if (hasAdvance) {
+            if (res.advancePaymentMethod === 'efectivo') {
+              cashSales += res.totalAmount || 0;
+            } else if (res.advancePaymentMethod === 'transferencia') {
+              transferSales += res.totalAmount || 0;
+            }
+          } else {
+            // Sin anticipo, usamos el método principal
+            if (res.paymentMethod === 'efectivo') {
+              cashSales += res.totalAmount || 0;
+            } else if (res.paymentMethod === 'transferencia') {
+              transferSales += res.totalAmount || 0;
+            }
           }
         } 
         else if (hasAdvance && !hasPendingStatus) {
