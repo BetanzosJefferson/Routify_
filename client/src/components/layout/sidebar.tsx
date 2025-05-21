@@ -218,7 +218,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             </NavSection>
           )}
           
-          {/* Sección de Transferencia de Pasajeros */}
+          {/* Sección de Transferencia de Pasajeros - Temporalmente deshabilitada
           {canAccess("passenger-transfer") && (
             <NavSection title="Operaciones">
               <NavItem 
@@ -229,7 +229,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                 Transferencia de pasajeros
               </NavItem>
             </NavSection>
-          )}
+          )} */}
           
           {/* Sección de Flota y Finanzas */}
           {(canAccess("vehicles") || canAccess("commissions") || canAccess("my-commissions") || canAccess("coupons") || canAccess("packages")) && (
