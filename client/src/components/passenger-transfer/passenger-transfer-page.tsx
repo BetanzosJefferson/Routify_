@@ -208,7 +208,11 @@ function ReservationSelectionModal({
   const groupedReservations = React.useMemo(() => {
     if (!reservations) return {};
     
-    const today = normalizeToStartOfDay(new Date());
+    // IMPORTANTE: Usar la misma fecha de sistema que usamos para clasificar reservaciones (20/05/2025)
+    // en lugar de la fecha real del sistema (21/05/2025)
+    const SYSTEM_DATE = new Date('2025-05-20T12:00:00.000Z');
+    console.log(`[TransferModal] Usando fecha del sistema: ${SYSTEM_DATE.toISOString()}`);
+    const today = normalizeToStartOfDay(SYSTEM_DATE);
     
     // Filtrar solo reservaciones confirmadas y cuya fecha sea hoy o futura
     const activeReservations = reservations.filter(reservation => {
@@ -216,7 +220,9 @@ function ReservationSelectionModal({
       
       // Verificar la fecha del viaje
       const tripDate = normalizeToStartOfDay(new Date(reservation.trip.departureDate));
-      return tripDate >= today;
+      const isEligible = tripDate >= today;
+      console.log(`[TransferModal] Evaluando reservación ${reservation.id}: Fecha viaje ${tripDate.toISOString()}, ¿Elegible? ${isEligible ? 'SÍ' : 'NO'}`);
+      return isEligible;
     });
     
     // Agrupar por tripId
