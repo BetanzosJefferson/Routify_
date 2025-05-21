@@ -551,8 +551,8 @@ export default function TripSummary({ className }: TripSummaryProps) {
       
       // Recorrer cada reserva para calcular correctamente las ventas
       allReservations.forEach(res => {
-        const isPaid = res.status === 'pagado' || res.status === 'paid';
-        const hasPendingStatus = res.status === 'pendiente' || res.status === 'pending';
+        const isPaid = res.paymentStatus === 'pagado' || res.paymentStatus === 'paid';
+        const hasPendingStatus = res.paymentStatus === 'pendiente' || res.paymentStatus === 'pending';
         const hasAdvance = res.advanceAmount && res.advanceAmount > 0;
         
         if (isPaid) {
@@ -1240,7 +1240,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                             <tbody className="divide-y divide-gray-200 bg-white">
                               {tripReservations.map((reservation, idx) => {
                                 // Determinar si está completamente pagado o pendiente
-                                const isPaid = reservation.status === 'pagado' || reservation.status === 'paid';
+                                const isPaid = reservation.paymentStatus === 'pagado' || reservation.paymentStatus === 'paid';
                                 const hasAdvance = reservation.advanceAmount && reservation.advanceAmount > 0;
                                 const remainingAmount = (reservation.totalAmount || 0) - (reservation.advanceAmount || 0);
                                 
