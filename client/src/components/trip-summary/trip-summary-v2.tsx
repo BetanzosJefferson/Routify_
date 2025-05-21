@@ -1011,17 +1011,18 @@ export default function TripSummary({ className }: TripSummaryProps) {
                           </div>
                           <h3 className="text-lg font-semibold text-gray-800">Ventas</h3>
                         </div>
-                        <div className="text-4xl font-bold text-green-600 text-center">
-                          ${totalSales.toFixed(2)}
-                        </div>
-                        <div className="mt-2 space-y-1">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Efectivo:</span>
+                        <div className="mt-2 space-y-2">
+                          <div className="flex justify-between text-sm text-green-700">
+                            <span>Total ventas Efectivo:</span>
                             <span className="font-medium">${totalCashSales.toFixed(2)}</span>
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Transferencia:</span>
+                          <div className="flex justify-between text-sm text-green-700">
+                            <span>Total ventas Transferencia:</span>
                             <span className="font-medium">${totalTransferSales.toFixed(2)}</span>
+                          </div>
+                          <div className="pt-2 mt-2 border-t border-green-200 flex justify-between items-center">
+                            <span className="text-sm font-medium text-green-700">Total de ventas:</span>
+                            <span className="text-xl font-bold text-green-700">${totalSales.toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
