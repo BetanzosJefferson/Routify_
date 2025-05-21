@@ -429,7 +429,11 @@ export default function TripSummary({ className }: TripSummaryProps) {
                           <tr 
                             key={trip.id}
                             className={`cursor-pointer hover:bg-gray-50 transition-colors ${selectedTrip === trip.id ? 'bg-blue-50' : ''}`}
-                            onClick={() => setSelectedTrip(trip.id)}
+                            onClick={() => {
+                              setSelectedTrip(trip.id);
+                              // Actualizar el ID del viaje en el formulario de gastos
+                              setNewExpense(prev => ({...prev, tripId: trip.id}));
+                            }}
                           >
                             <td className="py-3 px-4 text-sm text-gray-900">
                               {format(new Date(trip.departureDate), 'dd/MM/yyyy')}
