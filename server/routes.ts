@@ -5434,6 +5434,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para aceptar reservaciones transferidas
+  app.post(apiRouter('/reservations/accept-transfer'), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // Obtener usuario actual desde req
+      const currentUser = req.user as any;
+      if (!currentUser) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      const { reservationIds } = req.body;
+      
+      if (!Array.isArray(reservationIds) || reservationIds.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Se requiere un array de IDs de reservaciones' 
+        });
+      }
+      
+      console.log(`[AcceptTransfer] Usuario ${currentUser.firstName} ${currentUser.lastName} aceptando ${reservationIds.length} reservaciones`);
+      
+      // Obtener la compañía del usuario actual
+      const userCompanyId = currentUser.companyId || currentUser.company;
+      if (!userCompanyId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Usuario sin compañía asignada' 
+        });
+      }
+      
+      // Procesar cada reservación
+      const results = [];
+      const newReservationIds = [];
+      
+      for (const id of reservationIds) {
+        try {
+          // Obtener la reservación original
+          const originalReservation = await storage.getReservation(id);
+          if (!originalReservation) {
+            results.push({ id, success: false, message: 'Reservación no encontrada' });
+            continue;
+          }
+          
+          // Obtener el viaje original
+          const originalTrip = await storage.getTrip(originalReservation.tripId);
+          if (!originalTrip) {
+            results.push({ id, success: false, message: 'Viaje original no encontrado' });
+            continue;
+          }
+          
+          // Buscar un viaje similar en la compañía destino
+          const similarTrips = await storage.findSimilarTrips({
+            companyId: userCompanyId,
+            departureDate: originalTrip.departureDate,
+            routeId: originalTrip.routeId
+          });
+          
+          if (!similarTrips || similarTrips.length === 0) {
+            results.push({ id, success: false, message: 'No se encontraron viajes similares en la compañía destino' });
+            continue;
+          }
+          
+          // Usar el primer viaje similar encontrado
+          const targetTrip = similarTrips[0];
+          
+          console.log(`[AcceptTransfer] Transferiendo reservación ${id} al viaje ${targetTrip.id} de la compañía ${userCompanyId}`);
+          
+          // Obtener la lista de pasajeros de la reservación original
+          const passengers = await storage.getPassengers(id);
+          
+          // Crear una nueva reservación en la compañía destino
+          const newReservation = {
+            tripId: targetTrip.id,
+            totalAmount: originalReservation.totalAmount,
+            email: originalReservation.email,
+            phone: originalReservation.phone,
+            notes: `Transferido desde ${originalTrip.companyId} el ${new Date().toLocaleDateString()}`,
+            paymentMethod: originalReservation.paymentMethod || 'efectivo',
+            status: 'confirmed', // Marcar como confirmada directamente
+            paymentStatus: originalReservation.paymentStatus || 'pendiente',
+            advanceAmount: originalReservation.advanceAmount || 0,
+            advancePaymentMethod: originalReservation.advancePaymentMethod || 'efectivo',
+            createdBy: currentUser.id,
+            companyId: userCompanyId
+          };
+          
+          const createdReservation = await storage.createReservation(newReservation);
+          
+          // Transferir los pasajeros a la nueva reservación
+          if (passengers && passengers.length > 0) {
+            for (const passenger of passengers) {
+              await storage.createPassenger({
+                firstName: passenger.firstName,
+                lastName: passenger.lastName,
+                reservationId: createdReservation.id
+              });
+            }
+          }
+          
+          // Guardar el ID de la nueva reservación
+          newReservationIds.push(createdReservation.id);
+          
+          // Añadir a los resultados
+          results.push({ 
+            id, 
+            success: true, 
+            message: 'Reservación transferida correctamente',
+            newReservationId: createdReservation.id
+          });
+          
+          console.log(`[AcceptTransfer] Reservación ${id} transferida exitosamente como ${createdReservation.id}`);
+        } catch (error) {
+          console.error(`[AcceptTransfer] Error al procesar reservación ${id}:`, error);
+          results.push({ 
+            id, 
+            success: false, 
+            message: 'Error al procesar la transferencia' 
+          });
+        }
+      }
+      
+      // Retornar los resultados
+      return res.json({
+        success: results.some(r => r.success),
+        message: `Se procesaron ${results.length} reservaciones con ${results.filter(r => r.success).length} transferencias exitosas`,
+        results,
+        newReservationIds
+      });
+    } catch (error) {
+      console.error('[AcceptTransfer] Error general:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error al procesar las transferencias' 
+      });
+    }
+  });
+
   return httpServer;
 }
 
