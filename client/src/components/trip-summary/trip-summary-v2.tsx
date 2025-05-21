@@ -188,7 +188,13 @@ export default function TripSummary({ className }: TripSummaryProps) {
       const data = await response.json();
       
       if (Array.isArray(data)) {
-        setExpenses(data);
+        // Adaptar datos del backend (con 'type') al formato del frontend (con 'category')
+        const adaptedExpenses = data.map(expense => ({
+          ...expense,
+          // Añadir category como alias de type para mantener compatible el componente
+          category: expense.type
+        }));
+        setExpenses(adaptedExpenses);
       } else {
         setExpenses([]);
       }
@@ -212,8 +218,9 @@ export default function TripSummary({ className }: TripSummaryProps) {
     setIsSavingExpense(true);
     try {
       // Preparar el objeto de gasto para la API
+      // Mapear 'category' del frontend a 'type' del backend
       const expenseData = {
-        category: newExpense.category,
+        type: newExpense.category, // Importante: El backend espera 'type', no 'category'
         description: newExpense.description || '',
         amount: newExpense.amount,
         tripId: selectedTrip
@@ -237,8 +244,12 @@ export default function TripSummary({ className }: TripSummaryProps) {
       const data = await response.json();
       
       if (data && data.id) {
-        // Añadir el nuevo gasto a la lista local
-        setExpenses(prevExpenses => [...prevExpenses, data]);
+        // Añadir el nuevo gasto a la lista local, adaptando type a category
+        const adaptedExpense = {
+          ...data,
+          category: data.type // Añadir category como alias de type
+        };
+        setExpenses(prevExpenses => [...prevExpenses, adaptedExpense]);
         
         // Resetear el formulario
         setNewExpense({

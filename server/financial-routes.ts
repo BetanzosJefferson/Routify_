@@ -319,9 +319,14 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
       
       // Verificar permisos por compañía (excepto superadmin)
       if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
-        const userCompany = req.user.company;
-        if (trip.companyId !== userCompany) {
-          console.log(`[DELETE /trips/expenses/${expenseId}] Acceso denegado: Usuario de ${userCompany} intentando eliminar gasto de viaje de ${trip.companyId}`);
+        // Normalizar IDs de compañía para comparación
+        const userCompanyId = String(req.user.company).toLowerCase().trim();
+        const tripCompanyId = String(trip.companyId).toLowerCase().trim();
+        
+        console.log(`[DELETE /trips/expenses/${expenseId}] Verificación de permisos: Usuario de compañía "${userCompanyId}" accediendo a viaje de compañía "${tripCompanyId}"`);
+        
+        if (tripCompanyId !== userCompanyId) {
+          console.log(`[DELETE /trips/expenses/${expenseId}] Acceso denegado: Usuario de ${userCompanyId} intentando eliminar gasto de viaje de ${tripCompanyId}`);
           return res.status(403).json({ message: "No tiene permisos para eliminar este gasto" });
         }
       }
