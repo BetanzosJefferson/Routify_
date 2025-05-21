@@ -175,14 +175,28 @@ export function CompanySelectionModal({
             </div>
           )}
           
-          {companies && companies.length === 0 && (
+          <div className="mb-6">
+            <Button 
+              variant="outline" 
+              className="w-full py-6 border-dashed border-2 hover:border-primary"
+              onClick={() => window.open("/passenger-transfer/invite", "_blank")}
+            >
+              <Building2 className="mr-2 h-5 w-5" />
+              Agregar nueva empresa
+            </Button>
+            <p className="text-sm text-muted-foreground mt-2 text-center">
+              Genere un enlace único para invitar a otra empresa a recibir transferencias
+            </p>
+          </div>
+
+          {companies && companies.length === 0 ? (
             <div className="py-4 px-6 bg-yellow-100 text-yellow-800 rounded-md">
-              No se encontraron empresas disponibles para transferencia.
+              No se encontraron empresas con autorización para transferencia.
+              Agregue una nueva empresa usando el botón de arriba.
             </div>
-          )}
-          
-          {companies && companies.length > 0 && (
+          ) : (
             <div className="space-y-4">
+              <h3 className="font-medium">Empresas autorizadas</h3>
               <RadioGroup value={selectedCompanyId || ""} onValueChange={setSelectedCompanyId}>
                 {companies.map(company => (
                   <Card 
@@ -209,51 +223,51 @@ export function CompanySelectionModal({
                   </Card>
                 ))}
               </RadioGroup>
-              
-              <Separator />
-              
-              <div className="py-4">
-                <h3 className="font-medium mb-2">Resumen de la transferencia</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Detalle</TableHead>
-                      <TableHead>Valor</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell>Reservaciones seleccionadas</TableCell>
-                      <TableCell>{selectedReservationIds.length}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>Destino</TableCell>
-                      <TableCell>
-                        {selectedCompanyId ? (
-                          companies.find(c => c.identifier === selectedCompanyId)?.name || 'N/A'
-                        ) : (
-                          <span className="text-muted-foreground italic">No seleccionado</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-              
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button variant="outline" onClick={onClose}>
-                  Cancelar
-                </Button>
-                <Button 
-                  disabled={!selectedCompanyId} 
-                  onClick={handleSelectCompany}
-                >
-                  <Check className="mr-2 h-4 w-4" />
-                  Transferir
-                </Button>
-              </div>
             </div>
           )}
+              
+          <Separator className="my-4" />
+          
+          <div className="py-4">
+            <h3 className="font-medium mb-2">Resumen de la transferencia</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Detalle</TableHead>
+                  <TableHead>Valor</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell>Reservaciones seleccionadas</TableCell>
+                  <TableCell>{selectedReservationIds.length}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Destino</TableCell>
+                  <TableCell>
+                    {selectedCompanyId ? (
+                      companies?.find(c => c.identifier === selectedCompanyId)?.name || 'N/A'
+                    ) : (
+                      <span className="text-muted-foreground italic">No seleccionado</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+          
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button 
+              disabled={!selectedCompanyId} 
+              onClick={handleSelectCompany}
+            >
+              <Check className="mr-2 h-4 w-4" />
+              Transferir
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>
