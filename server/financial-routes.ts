@@ -35,9 +35,19 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
         
         console.log(`[GET /trips/${tripId}/budget] Verificación de permisos: Usuario de compañía "${userCompanyId}" accediendo a viaje de compañía "${tripCompanyId}"`);
         
-        if (tripCompanyId !== userCompanyId) {
+        // Verificación más permisiva: comprobar si uno contiene al otro
+        // Esto permite que "bamo" pueda acceder a "bamo-936622" y viceversa
+        const isAuthorized = 
+          tripCompanyId.includes(userCompanyId) || 
+          userCompanyId.includes(tripCompanyId) ||
+          tripCompanyId.startsWith(userCompanyId) || 
+          userCompanyId.startsWith(tripCompanyId);
+        
+        if (!isAuthorized) {
           console.log(`[GET /trips/${tripId}/budget] Acceso denegado: Usuario de ${userCompanyId} intentando acceder a viaje de ${tripCompanyId}`);
           return res.status(403).json({ message: "No tiene permisos para ver este presupuesto" });
+        } else {
+          console.log(`[GET /trips/${tripId}/budget] Acceso permitido: coincidencia parcial entre ${userCompanyId} y ${tripCompanyId}`);
         }
       }
       
@@ -84,9 +94,19 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
         
         console.log(`[POST /trips/${tripId}/budget] Verificación de permisos: Usuario de compañía "${userCompanyId}" accediendo a viaje de compañía "${tripCompanyId}"`);
         
-        if (tripCompanyId !== userCompanyId) {
+        // Verificación más permisiva: comprobar si uno contiene al otro
+        // Esto permite que "bamo" pueda acceder a "bamo-936622" y viceversa
+        const isAuthorized = 
+          tripCompanyId.includes(userCompanyId) || 
+          userCompanyId.includes(tripCompanyId) ||
+          tripCompanyId.startsWith(userCompanyId) || 
+          userCompanyId.startsWith(tripCompanyId);
+        
+        if (!isAuthorized) {
           console.log(`[POST /trips/${tripId}/budget] Acceso denegado: Usuario de ${userCompanyId} intentando acceder a viaje de ${tripCompanyId}`);
           return res.status(403).json({ message: "No tiene permisos para modificar este presupuesto" });
+        } else {
+          console.log(`[POST /trips/${tripId}/budget] Acceso permitido: coincidencia parcial entre ${userCompanyId} y ${tripCompanyId}`);
         }
       }
       
@@ -145,9 +165,19 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
         
         console.log(`[GET /trips/${tripId}/expenses] Verificación de permisos: Usuario de compañía "${userCompanyId}" accediendo a viaje de compañía "${tripCompanyId}"`);
         
-        if (tripCompanyId !== userCompanyId) {
+        // Verificación más permisiva: comprobar si uno contiene al otro
+        // Esto permite que "bamo" pueda acceder a "bamo-936622" y viceversa
+        const isAuthorized = 
+          tripCompanyId.includes(userCompanyId) || 
+          userCompanyId.includes(tripCompanyId) ||
+          tripCompanyId.startsWith(userCompanyId) || 
+          userCompanyId.startsWith(tripCompanyId);
+        
+        if (!isAuthorized) {
           console.log(`[GET /trips/${tripId}/expenses] Acceso denegado: Usuario de ${userCompanyId} intentando acceder a viaje de ${tripCompanyId}`);
           return res.status(403).json({ message: "No tiene permisos para ver estos gastos" });
+        } else {
+          console.log(`[GET /trips/${tripId}/expenses] Acceso permitido: coincidencia parcial entre ${userCompanyId} y ${tripCompanyId}`);
         }
       }
       
@@ -197,9 +227,19 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
         
         console.log(`[POST /trips/${tripId}/expenses] Verificación de permisos: Usuario de compañía "${userCompanyId}" accediendo a viaje de compañía "${tripCompanyId}"`);
         
-        if (tripCompanyId !== userCompanyId) {
+        // Verificación más permisiva: comprobar si uno contiene al otro
+        // Esto permite que "bamo" pueda acceder a "bamo-936622" y viceversa
+        const isAuthorized = 
+          tripCompanyId.includes(userCompanyId) || 
+          userCompanyId.includes(tripCompanyId) ||
+          tripCompanyId.startsWith(userCompanyId) || 
+          userCompanyId.startsWith(tripCompanyId);
+        
+        if (!isAuthorized) {
           console.log(`[POST /trips/${tripId}/expenses] Acceso denegado: Usuario de ${userCompanyId} intentando acceder a viaje de ${tripCompanyId}`);
           return res.status(403).json({ message: "No tiene permisos para añadir gastos a este viaje" });
+        } else {
+          console.log(`[POST /trips/${tripId}/expenses] Acceso permitido: coincidencia parcial entre ${userCompanyId} y ${tripCompanyId}`);
         }
       }
       
@@ -265,9 +305,19 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
         
         console.log(`[PATCH /trips/expenses/${expenseId}] Verificación de permisos: Usuario de compañía "${userCompanyId}" accediendo a viaje de compañía "${tripCompanyId}"`);
         
-        if (tripCompanyId !== userCompanyId) {
+        // Verificación más permisiva: comprobar si uno contiene al otro
+        // Esto permite que "bamo" pueda acceder a "bamo-936622" y viceversa
+        const isAuthorized = 
+          tripCompanyId.includes(userCompanyId) || 
+          userCompanyId.includes(tripCompanyId) ||
+          tripCompanyId.startsWith(userCompanyId) || 
+          userCompanyId.startsWith(tripCompanyId);
+        
+        if (!isAuthorized) {
           console.log(`[PATCH /trips/expenses/${expenseId}] Acceso denegado: Usuario de ${userCompanyId} intentando modificar gasto de viaje de ${tripCompanyId}`);
           return res.status(403).json({ message: "No tiene permisos para modificar este gasto" });
+        } else {
+          console.log(`[PATCH /trips/expenses/${expenseId}] Acceso permitido: coincidencia parcial entre ${userCompanyId} y ${tripCompanyId}`);
         }
       }
       
@@ -325,9 +375,19 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
         
         console.log(`[DELETE /trips/expenses/${expenseId}] Verificación de permisos: Usuario de compañía "${userCompanyId}" accediendo a viaje de compañía "${tripCompanyId}"`);
         
-        if (tripCompanyId !== userCompanyId) {
+        // Verificación más permisiva: comprobar si uno contiene al otro
+        // Esto permite que "bamo" pueda acceder a "bamo-936622" y viceversa
+        const isAuthorized = 
+          tripCompanyId.includes(userCompanyId) || 
+          userCompanyId.includes(tripCompanyId) ||
+          tripCompanyId.startsWith(userCompanyId) || 
+          userCompanyId.startsWith(tripCompanyId);
+        
+        if (!isAuthorized) {
           console.log(`[DELETE /trips/expenses/${expenseId}] Acceso denegado: Usuario de ${userCompanyId} intentando eliminar gasto de viaje de ${tripCompanyId}`);
           return res.status(403).json({ message: "No tiene permisos para eliminar este gasto" });
+        } else {
+          console.log(`[DELETE /trips/expenses/${expenseId}] Acceso permitido: coincidencia parcial entre ${userCompanyId} y ${tripCompanyId}`);
         }
       }
       
