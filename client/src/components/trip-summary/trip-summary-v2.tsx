@@ -826,11 +826,31 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               value={operatorBudget || ''}
                               onChange={(e) => setOperatorBudget(parseFloat(e.target.value) || 0)}
                               className="flex-1"
+                              disabled={isLoadingBudget || isSavingBudget}
                             />
-                            <div className="ml-2">
+                            <div className="ml-2 mr-2">
                               <Label>MXN</Label>
                             </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => selectedTrip && saveTripBudget(selectedTrip, operatorBudget)}
+                              disabled={isLoadingBudget || isSavingBudget || !selectedTrip}
+                            >
+                              {isSavingBudget ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <PiggyBankIcon className="h-4 w-4" />
+                              )}
+                              <span className="ml-2">{isSavingBudget ? "Guardando..." : "Guardar"}</span>
+                            </Button>
                           </div>
+                          {isLoadingBudget && (
+                            <div className="text-sm text-gray-500 mt-1 flex items-center">
+                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              Cargando presupuesto...
+                            </div>
+                          )}
                         </div>
                         
                         {/* Sección de gastos */}
@@ -842,12 +862,17 @@ export default function TripSummary({ className }: TripSummaryProps) {
                           </div>
                           
                           {/* Lista de gastos actuales */}
-                          {expenses.length > 0 ? (
+                          {isLoadingExpenses ? (
+                            <div className="py-4 flex justify-center items-center space-x-2">
+                              <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                              <span className="text-gray-600">Cargando gastos...</span>
+                            </div>
+                          ) : expenses.length > 0 ? (
                             <div className="space-y-2 mb-4">
                               {expenses.map(expense => (
                                 <div key={expense.id} className="flex items-center justify-between bg-white p-3 rounded-md border border-gray-200">
                                   <div className="flex-1">
-                                    <div className="font-medium">${expense.amount.toFixed(2)} ({expense.type})</div>
+                                    <div className="font-medium">${expense.amount.toFixed(2)} ({expense.category})</div>
                                     {expense.description && (
                                       <div className="text-sm text-gray-500">{expense.description}</div>
                                     )}
@@ -856,8 +881,13 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                     variant="ghost" 
                                     size="sm"
                                     onClick={() => handleRemoveExpense(expense.id)}
+                                    disabled={isRemovingExpense === expense.id}
                                   >
-                                    <MinusCircleIcon className="h-4 w-4 text-red-500" />
+                                    {isRemovingExpense === expense.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin text-red-500" />
+                                    ) : (
+                                      <MinusCircleIcon className="h-4 w-4 text-red-500" />
+                                    )}
                                   </Button>
                                 </div>
                               ))}
@@ -873,11 +903,22 @@ export default function TripSummary({ className }: TripSummaryProps) {
                             <h5 className="text-sm font-medium mb-3 text-gray-700">Agregar nuevo gasto</h5>
                             <div className="grid grid-cols-12 gap-2 mb-2">
                               <div className="col-span-7">
-                                <Input 
-                                  placeholder="Tipo (ej. Gasolina, Casetas, Sueldo)" 
-                                  value={newExpense.type}
-                                  onChange={(e) => setNewExpense({...newExpense, type: e.target.value})}
-                                />
+                                <Select
+                                  value={newExpense.category}
+                                  onValueChange={(value) => setNewExpense({...newExpense, category: value})}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Seleccionar categoría" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="combustible">Combustible</SelectItem>
+                                    <SelectItem value="casetas">Casetas</SelectItem>
+                                    <SelectItem value="sueldo">Sueldo del operador</SelectItem>
+                                    <SelectItem value="mantenimiento">Mantenimiento</SelectItem>
+                                    <SelectItem value="comida">Comida</SelectItem>
+                                    <SelectItem value="otro">Otro gasto</SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </div>
                               <div className="col-span-5">
                                 <div className="flex items-center">
@@ -901,11 +942,20 @@ export default function TripSummary({ className }: TripSummaryProps) {
                             </div>
                             <Button 
                               onClick={handleAddExpense}
-                              disabled={!newExpense.type || newExpense.amount <= 0 || !selectedTrip}
+                              disabled={!newExpense.category || newExpense.amount <= 0 || !selectedTrip || isSavingExpense}
                               className="w-full"
                             >
-                              <PlusCircleIcon className="h-4 w-4 mr-2" />
-                              Agregar Gasto
+                              {isSavingExpense ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Guardando...
+                                </>
+                              ) : (
+                                <>
+                                  <PlusCircleIcon className="h-4 w-4 mr-2" />
+                                  Agregar Gasto
+                                </>
+                              )}
                             </Button>
                           </div>
                           
