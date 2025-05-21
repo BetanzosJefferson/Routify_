@@ -46,8 +46,6 @@ function Router() {
       <ProtectedRoute path="/cash-register" component={CashRegisterPageRoute} />
       <ProtectedRoute path="/edit-trip/:id" component={EditTripPage} />
       <ProtectedRoute path="/passenger-transfer" component={PassengerTransferPageRoute} />
-      <ProtectedRoute path="/passenger-transfer/invite" component={() => import("@/pages/company-invitation").then(mod => <mod.default />)} />
-      <ProtectedRoute path="/passenger-transfer/accept/:token" component={() => import("@/pages/invitation-accept").then(mod => <mod.default />)} />
       <ProtectedRoute path="/boarding-list" component={BoardingListPageRoute} />
       <ProtectedRoute path="/trip-log" component={TripLogPageRoute} />
       <ProtectedRoute path="/users" component={UsersPageRoute} />
