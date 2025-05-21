@@ -658,21 +658,21 @@ export function ReservationList() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         {reservation.createdByUser ? (
                           <div>
-                            {/* Verificar si es reservación transferida (revisar en las notas) */}
-                            {reservation.notes && reservation.notes.includes("Transferido") ? (
+                            {/* Verificar si es reservación transferida usando el nuevo campo estructurado */}
+                            {reservation.isTransferred ? (
                               <>
                                 <div className="text-sm font-medium text-gray-900 flex items-center">
                                   <Building2 className="h-3 w-3 mr-1" />
-                                  {/* Extraer nombre de empresa de las notas */}
-                                  {reservation.notes.includes("Transferido de") 
-                                    ? reservation.notes.split("Transferido de ")[1].split(" el")[0]
-                                    : (reservation.notes.includes("Transferido a") 
-                                        ? reservation.notes.split("Transferido a ")[1].split(" el")[0]
-                                        : "Empresa transferida")}
+                                  {/* Usar el campo sourceCompanyName */}
+                                  {reservation.sourceCompanyName || "Empresa origen"}
                                 </div>
                                 <div className="text-xs text-gray-500 flex items-center">
                                   <UserCheck className="h-3 w-3 mr-1" />
-                                  Recibido por: {reservation.createdByUser.firstName} {reservation.createdByUser.lastName}
+                                  {reservation.transferredByUser ? (
+                                    <>Transferido por: {reservation.transferredByUser.firstName} {reservation.transferredByUser.lastName}</>
+                                  ) : (
+                                    <>Recibido por: {reservation.createdByUser.firstName} {reservation.createdByUser.lastName}</>
+                                  )}
                                 </div>
                                 {/* Verificar si es una reservación de comisionista */}
                                 {reservation.createdByUser.role === "comisionista" && (
