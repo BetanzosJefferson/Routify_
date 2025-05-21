@@ -4973,10 +4973,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[GET /transfers/history] Usuario ${user.firstName} ${user.lastName} solicitando historial de transferencias`);
       
-      // Obtener todas las reservaciones de la empresa actual (especialmente las transferidas)
+      // Obtener todas las reservaciones de la empresa actual
       const allReservations = await storage.getReservations(user.company);
-      const transferredReservations = allReservations.filter(r => r.status === 'transferido');
-      console.log(`[GET /transfers/history] Reservaciones con estado transferido: ${transferredReservations.length}`);
+      
+      // TRANSFERENCIAS SALIENTES: Reservaciones que nuestra empresa ha transferido a otras
+      const transferredOutReservations = allReservations.filter(r => r.status === 'transferido');
+      console.log(`[GET /transfers/history] Reservaciones transferidas a otras empresas: ${transferredOutReservations.length}`);
+      
+      // TRANSFERENCIAS ENTRANTES: Reservaciones que otras empresas nos han transferido a nosotros
+      const transferredInReservations = allReservations.filter(r => r.isTransferred === true);
+      console.log(`[GET /transfers/history] Reservaciones recibidas de otras empresas: ${transferredInReservations.length}`);
       
       // Obtener notificaciones de tipo transfer
       const userNotifications = await storage.getNotifications(user.id);
@@ -4990,10 +4996,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const transfers: any[] = [];
       const processedReservationIds = new Set<number>();
       
-      // Primero: agregar las reservaciones transferidas (salientes)
-      // Esto asegura que las reservaciones transferidas aparezcan en el historial
-      for (const reservation of transferredReservations) {
-        console.log(`[GET /transfers/history] Procesando reservación transferida ID: ${reservation.id}, estado: ${reservation.status}, notas: ${reservation.notes}`);
+      // SALIENTES: agregar las reservaciones que hemos transferido a otras empresas
+      for (const reservation of transferredOutReservations) {
+        console.log(`[GET /transfers/history] Procesando reservación transferida (saliente) ID: ${reservation.id}, estado: ${reservation.status}, notas: ${reservation.notes}`);
+        
+        // Obtener información de pasajeros para mostrar detalles completos
+        const passengerInfo = [];
+        if (reservation.passengers && reservation.passengers.length > 0 && reservation.trip) {
+          for (const passenger of reservation.passengers) {
+            passengerInfo.push({
+              name: `${passenger.firstName} ${passenger.lastName}`,
+              origin: reservation.trip.route.origin || "Origen desconocido",
+              destination: reservation.trip.route.destination || "Destino desconocido",
+              tripDate: reservation.trip.departureDate ? new Date(reservation.trip.departureDate).toISOString() : undefined
+            });
+          }
+        }
         
         const transfer = {
           id: reservation.id + 10000, // Para evitar colisiones de ID
@@ -5008,12 +5026,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           reservationIds: [reservation.id],
           transferDate: reservation.updatedAt || new Date().toISOString(),
-          reservationCount: 1
+          reservationCount: 1,
+          passengerInfo
         };
         
         transfers.push(transfer);
         processedReservationIds.add(reservation.id);
-        console.log(`[GET /transfers/history] Agregada reservación transferida a historial: ${JSON.stringify(transfer)}`);
+        console.log(`[GET /transfers/history] Agregada reservación transferida saliente a historial: ${JSON.stringify(transfer)}`);
+      }
+      
+      // ENTRANTES: agregar las reservaciones que otras empresas nos han transferido
+      for (const reservation of transferredInReservations) {
+        console.log(`[GET /transfers/history] Procesando reservación recibida (entrante) ID: ${reservation.id}, isTransferred: ${reservation.isTransferred}`);
+        
+        // Obtener información de pasajeros para mostrar detalles completos
+        const passengerInfo = [];
+        if (reservation.passengers && reservation.passengers.length > 0 && reservation.trip) {
+          for (const passenger of reservation.passengers) {
+            passengerInfo.push({
+              name: `${passenger.firstName} ${passenger.lastName}`,
+              origin: reservation.trip.route.origin || "Origen desconocido",
+              destination: reservation.trip.route.destination || "Destino desconocido",
+              tripDate: reservation.trip.departureDate ? new Date(reservation.trip.departureDate).toISOString() : undefined,
+              // Verificar si el creador es comisionista
+              isFromCommissioner: reservation.createdByUser?.role === "comisionista",
+              commissionPercentage: reservation.createdByUser?.commissionPercentage || 10
+            });
+          }
+        }
+        
+        const transfer = {
+          id: reservation.id + 20000, // Para evitar colisiones de ID con las salientes
+          createdAt: reservation.createdAt || new Date().toISOString(),
+          direction: 'incoming',
+          sourceCompany: reservation.sourceCompanyName || "Empresa desconocida",
+          targetCompany: user.company,
+          sourceUser: {
+            name: reservation.transferredByUser 
+              ? `${reservation.transferredByUser.firstName} ${reservation.transferredByUser.lastName}`
+              : "Usuario desconocido"
+          },
+          reservationIds: [reservation.originalReservationId || 0, reservation.id],
+          transferDate: reservation.transferredAt || reservation.createdAt || new Date().toISOString(),
+          reservationCount: 1,
+          passengerInfo
+        };
+        
+        transfers.push(transfer);
+        processedReservationIds.add(reservation.id);
+        console.log(`[GET /transfers/history] Agregada reservación transferida entrante a historial: ${JSON.stringify(transfer)}`);
       }
       
       // Luego: procesar notificaciones de transferencia
