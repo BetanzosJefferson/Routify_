@@ -109,6 +109,10 @@ export function ReservationList() {
     (reservation) => reservation.status === 'canceled'
   ) || [];
   
+  // Definir la fecha actual del sistema (20/05/2025) - Fecha fija para el sistema
+  const SYSTEM_DATE = new Date('2025-05-20T12:00:00.000Z');
+  console.log(`[SISTEMA] Fecha actual del sistema fijada en: ${SYSTEM_DATE.toISOString()}`);
+  
   // Luego filtramos las reservaciones actuales/futuras (que no estén canceladas)
   const upcomingReservations = reservations?.filter(
     (reservation) => {
@@ -117,11 +121,11 @@ export function ReservationList() {
       
       // Usar normalizeToStartOfDay para obtener la fecha normalizada del viaje
       const tripDate = normalizeToStartOfDay(reservation.trip.departureDate);
-      // Normalizar la fecha actual también para hacer una comparación correcta
-      const today = normalizeToStartOfDay(new Date());
+      // Normalizar la fecha actual del sistema para una comparación correcta
+      const today = normalizeToStartOfDay(SYSTEM_DATE);
       
       console.log(`[Clasificación] Evaluando reservación ${reservation.id} para 'Actuales y Futuras'`);
-      console.log(`[Clasificación] Fecha viaje: ${tripDate}, Fecha actual: ${today}`);
+      console.log(`[Clasificación] Fecha viaje: ${tripDate.toISOString()}, Fecha sistema: ${today.toISOString()}`);
       console.log(`[Clasificación] ¿Es actual o futura? ${tripDate >= today ? 'SÍ' : 'NO'}`);
       
       // Las reservaciones con fecha igual o posterior a hoy se consideran "actuales o futuras"
@@ -136,10 +140,12 @@ export function ReservationList() {
       
       // Usar normalizeToStartOfDay para obtener la fecha normalizada del viaje
       const tripDate = normalizeToStartOfDay(reservation.trip.departureDate);
-      // Normalizar la fecha actual también para hacer una comparación correcta
-      const today = normalizeToStartOfDay(new Date());
+      // Usar la misma fecha del sistema declarada arriba
+      const today = normalizeToStartOfDay(SYSTEM_DATE);
       
-      console.log(`[Clasificación] Reservación ${reservation.id}: fecha del viaje ${tripDate}, fecha actual ${today}`);
+      console.log(`[Clasificación] Evaluando reservación ${reservation.id} para 'Archivadas'`);
+      console.log(`[Clasificación] Fecha viaje: ${tripDate.toISOString()}, Fecha sistema: ${today.toISOString()}`);
+      console.log(`[Clasificación] ¿Es archivada? ${tripDate < today ? 'SÍ' : 'NO'}`);
       
       // Cambiamos a 'estrictamente menor que' para que las reservaciones del día actual
       // NO se consideren archivadas sino actuales
