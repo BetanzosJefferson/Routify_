@@ -3814,6 +3814,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Actualizar el estado de la solicitud
+      // Este método también crea automáticamente una reservación en la tabla "reservations" si se aprueba
       const updatedRequest = await storage.updateReservationRequestStatus(
         requestId, 
         status, 
@@ -3821,8 +3822,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reviewNotes
       );
       
+      // Mensaje personalizado según si fue aprobada o rechazada
+      let message = "";
+      if (status === "aprobada") {
+        message = "Solicitud de reservación aprobada. Se ha creado una reservación en el sistema.";
+        console.log(`[reservation-requests/${requestId}/update-status] Solicitud aprobada y convertida a reservación`);
+      } else {
+        message = `Solicitud de reservación ${status}`;
+        console.log(`[reservation-requests/${requestId}/update-status] Solicitud rechazada`);
+      }
+      
       res.json({
-        message: `Solicitud de reservación ${status}`,
+        message: message,
         request: updatedRequest
       });
     } catch (error) {
