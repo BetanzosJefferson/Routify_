@@ -301,12 +301,21 @@ export default function TripSummary({ className }: TripSummaryProps) {
     // Si es un ID numérico, eliminar de la base de datos
     setIsRemovingExpense(id as number);
     try {
+      // Intentar con la ruta principal para eliminar gastos
       const url = `/api/trips/expenses/${id}/delete`;
+      
+      // Datos básicos para la solicitud
+      const expenseData = { 
+        tripId: selectedTrip ? Number(selectedTrip.id) : 0,
+        expenseId: Number(id)
+      };
+      
       const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify(expenseData),
         credentials: "include"
       });
       
