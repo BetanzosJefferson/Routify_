@@ -301,9 +301,9 @@ export default function TripSummary({ className }: TripSummaryProps) {
     // Si es un ID numérico, eliminar de la base de datos
     setIsRemovingExpense(id as number);
     try {
-      const url = `/api/trips/expenses/${id}`;
+      const url = `/api/trips/expenses/${id}/delete`;
       const response = await fetch(url, {
-        method: "DELETE",
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
