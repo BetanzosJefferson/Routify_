@@ -5182,24 +5182,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        // Si todavía no hay transferencias, mostrar algunos datos de ejemplo
+        // Si no hay transferencias, devolver un arreglo vacío
         if (transfers.length === 0) {
-          const demoTransfers = [
-            {
-              id: 1001,
-              direction: 'outgoing',
-              sourceCompany: user.company || "Tu Empresa",
-              targetCompany: "Transportes del Norte",
-              sourceUser: { name: `${user.firstName} ${user.lastName}` },
-              reservationIds: [143, 144],
-              transferDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-              reservationCount: 2,
-              createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-            }
-          ];
-          
-          console.log(`[GET /transfers/history] No se encontraron transferencias reales, enviando ${demoTransfers.length} ejemplos`);
-          return res.json(demoTransfers);
+          console.log(`[GET /transfers/history] No se encontraron transferencias reales, enviando arreglo vacío`);
+          return res.json([]);
         }
       }
       
