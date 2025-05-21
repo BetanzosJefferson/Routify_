@@ -173,6 +173,13 @@ export const reservations = pgTable("reservations", {
   couponCode: text("coupon_code"), // Código del cupón aplicado
   discountAmount: doublePrecision("discount_amount").default(0), // Monto del descuento aplicado
   originalAmount: doublePrecision("original_amount"), // Monto original antes del descuento
+  // Campos para transferencias de pasajeros
+  isTransferred: boolean("is_transferred").default(false), // Indica si la reservación fue resultado de una transferencia
+  originalReservationId: integer("original_reservation_id"), // ID de la reservación original si es una transferencia
+  sourceCompanyId: text("source_company_id"), // ID de la empresa de origen de la transferencia
+  sourceCompanyName: text("source_company_name"), // Nombre de la empresa de origen
+  transferredAt: timestamp("transferred_at"), // Fecha y hora de la transferencia
+  transferredBy: integer("transferred_by"), // ID del usuario que realizó la transferencia
 });
 
 export const insertReservationSchema = createInsertSchema(reservations);
@@ -217,6 +224,12 @@ export type ReservationWithDetails = Reservation & {
     id: string | null;
     name: string;
   };
+  // Información adicional para reservaciones transferidas
+  isTransferred?: boolean;
+  originalReservationId?: number;
+  sourceCompanyName?: string;
+  sourceCompanyId?: string;
+  transferredByUser?: User; // Usuario que realizó la transferencia
 };
 
 export type SegmentPrice = {
