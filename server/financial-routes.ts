@@ -204,10 +204,17 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
       }
       
       // Validar datos del gasto
-      const { category, description, amount } = req.body;
-      if (!category || !description || isNaN(parseFloat(amount))) {
+      // Compatibilidad: aceptar tanto "type" (backend) como "category" (frontend)
+      const { type, category, description, amount } = req.body;
+      
+      // Usar type o category, lo que esté disponible
+      const expenseType = type || category;
+      
+      console.log(`[POST /trips/${tripId}/expenses] Validando datos recibidos:`, req.body);
+      
+      if (!expenseType || !amount || isNaN(parseFloat(amount))) {
         return res.status(400).json({ 
-          message: "Datos inválidos. Se requieren categoría, descripción y monto válido." 
+          message: "Datos inválidos. Se requieren tipo/categoría y monto válido." 
         });
       }
       
@@ -246,8 +253,8 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
       // Crear el nuevo gasto (adaptando category a type según el esquema de BD)
       const newExpense = {
         tripId,
-        type: category, // Usar category como type para mantener compatibilidad
-        description,
+        type: expenseType, // Usar el tipo determinado anteriormente (category o type)
+        description: description || '', // Hacer descripción opcional
         amount: parseFloat(amount),
         companyId: trip.companyId, // Asegurar que el gasto tenga la misma compañía que el viaje
         createdAt: new Date(),
