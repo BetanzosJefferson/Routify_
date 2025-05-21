@@ -2763,20 +2763,24 @@ export class DatabaseStorage implements IStorage {
       
       // Si fue aprobada, crear una reservación real
       if (status === "aprobada") {
+        console.log(`[updateReservationRequestStatus] Aprobando solicitud ID ${id}. Creando reservación en tabla reservations.`);
+        
+        // Preparar los datos para la nueva reservación
         const newReservation: InsertReservation = {
           tripId: currentRequest.tripId,
           totalAmount: currentRequest.totalAmount,
           email: currentRequest.email,
           phone: currentRequest.phone,
           notes: currentRequest.notes || null,
-          paymentMethod: currentRequest.paymentMethod,
-          paymentStatus: currentRequest.paymentStatus,
+          paymentMethod: currentRequest.paymentMethod || "efectivo",
+          paymentStatus: currentRequest.paymentStatus || "pendiente",
           advanceAmount: currentRequest.advanceAmount || 0,
           advancePaymentMethod: currentRequest.advancePaymentMethod || "efectivo",
           createdBy: currentRequest.requesterId, // El creador es el comisionista
           companyId: currentRequest.companyId,
-          status: "confirmada", // La reservación se crea ya confirmada
+          status: "confirmed", // La reservación se crea ya confirmada (usando el valor correcto del enum)
           commissionPaid: false, // Por defecto, la comisión no está pagada
+          createdAt: new Date(), // Fecha de creación actual
           // Inicializar los campos de escaneo de tickets
           checkedBy: null,
           checkedAt: null,
