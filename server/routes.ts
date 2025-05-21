@@ -5313,16 +5313,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Transferencia] Registro de transferencia creado en memoria: ${JSON.stringify(transferLog)}`);
       
       
-      // Actualizar cada reservación individual
+      // Actualizar cada reservación individual y crear copias en la empresa destino
+      const createdReservations = [];
+      const currentDate = new Date();
+      
       for (const reservation of reservationsToTransfer) {
         try {
+          // 1. Marcar la reservación original como transferida
+          const originalCompanyName = currentUser.company || "Empresa origen";
           const updated = await storage.updateReservation(reservation.id, {
             status: 'transferido',
-            notes: `Transferido a ${targetCompany.name} el ${new Date().toLocaleDateString()}`
+            notes: `Transferido a ${targetCompany.name} el ${currentDate.toLocaleDateString()}`
           });
           console.log(`[Transferencia] Reservación ${reservation.id} marcada como "transferido": ${JSON.stringify(updated)}`);
+          
+          // 2. Obtener pasajeros y detalles de la reservación para clonarla
+          const passengers = await storage.getPassengers(reservation.id);
+          const trip = await storage.getTrip(reservation.tripId);
+          
+          if (trip && passengers && passengers.length > 0) {
+            // 3. Crear una nueva reservación en la empresa destino
+            const newReservation = {
+              tripId: reservation.tripId, // Mismo viaje por ahora
+              totalAmount: reservation.totalAmount,
+              email: reservation.email,
+              phone: reservation.phone,
+              status: 'confirmed', // La nueva reservación estará confirmada
+              paymentStatus: reservation.paymentStatus,
+              paymentMethod: reservation.paymentMethod,
+              advanceAmount: reservation.advanceAmount,
+              advancePaymentMethod: reservation.advancePaymentMethod,
+              createdBy: currentUser.id, // El usuario que acepta la transferencia
+              companyId: targetCompanyId, // Empresa destino
+              // Campos específicos de transferencia
+              isTransferred: true,
+              originalReservationId: reservation.id,
+              sourceCompanyId: currentUser.companyId || currentUser.company,
+              sourceCompanyName: originalCompanyName,
+              transferredAt: currentDate,
+              transferredBy: currentUser.id,
+              notes: `Transferido desde ${originalCompanyName} el ${currentDate.toLocaleDateString()}`
+            };
+            
+            // 4. Guardar la nueva reservación
+            const createdReservation = await storage.createReservation(newReservation);
+            console.log(`[Transferencia] Nueva reservación creada en empresa destino: ${createdReservation.id}`);
+            
+            // 5. Copiar los pasajeros a la nueva reservación
+            for (const passenger of passengers) {
+              await storage.createPassenger({
+                firstName: passenger.firstName,
+                lastName: passenger.lastName,
+                reservationId: createdReservation.id
+              });
+            }
+            
+            createdReservations.push(createdReservation);
+          } else {
+            console.error(`[Transferencia] No se pudo completar la transferencia para reservación ${reservation.id}: Falta información de viaje o pasajeros`);
+          }
         } catch (error) {
-          console.error(`[Transferencia] Error al marcar reservación ${reservation.id} como transferida:`, error);
+          console.error(`[Transferencia] Error al procesar transferencia de reservación ${reservation.id}:`, error);
         }
       }
       
