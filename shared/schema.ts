@@ -394,6 +394,38 @@ export const coupons = pgTable("coupons", {
   companyId: text("company_id"),
 });
 
+// SCHEMA DE PRESUPUESTOS DE OPERADORES
+export const tripBudgets = pgTable("trip_budgets", {
+  id: serial("id").primaryKey(),
+  tripId: integer("trip_id").notNull().references(() => trips.id),
+  amount: doublePrecision("amount").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  // Campo para aislamiento de datos por compañía
+  companyId: text("company_id"),
+});
+
+export const insertTripBudgetSchema = createInsertSchema(tripBudgets);
+export type InsertTripBudget = z.infer<typeof insertTripBudgetSchema>;
+export type TripBudget = typeof tripBudgets.$inferSelect;
+
+// SCHEMA DE GASTOS DE VIAJE
+export const tripExpenses = pgTable("trip_expenses", {
+  id: serial("id").primaryKey(),
+  tripId: integer("trip_id").notNull().references(() => trips.id),
+  type: text("type").notNull(), // Tipo de gasto: gasolina, casetas, comida, etc.
+  amount: doublePrecision("amount").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  // Campo para aislamiento de datos por compañía
+  companyId: text("company_id"),
+});
+
+export const insertTripExpenseSchema = createInsertSchema(tripExpenses);
+export type InsertTripExpense = z.infer<typeof insertTripExpenseSchema>;
+export type TripExpense = typeof tripExpenses.$inferSelect;
+
 export const insertCouponSchema = createInsertSchema(coupons);
 export type InsertCoupon = z.infer<typeof insertCouponSchema>;
 export type Coupon = typeof coupons.$inferSelect;

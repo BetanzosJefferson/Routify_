@@ -21,7 +21,11 @@ import {
   InsertCoupon,
   InsertNotification,
   Notification,
-  ReservationRequest
+  ReservationRequest,
+  TripBudget,
+  InsertTripBudget,
+  TripExpense,
+  InsertTripExpense
 } from "@shared/schema";
 
 export interface IStorage {
@@ -32,6 +36,17 @@ export interface IStorage {
   updateRoute(id: number, route: Partial<Route>): Promise<Route | undefined>;
   deleteRoute(id: number): Promise<boolean>;
   getRouteWithSegments(id: number): Promise<RouteWithSegments | undefined>;
+
+  // Presupuestos de operadores
+  getTripBudget(tripId: number): Promise<TripBudget | undefined>;
+  createTripBudget(budget: InsertTripBudget): Promise<TripBudget>;
+  updateTripBudget(tripId: number, amount: number): Promise<TripBudget | undefined>;
+  
+  // Gastos de viaje
+  getTripExpenses(tripId: number): Promise<TripExpense[]>;
+  createTripExpense(expense: InsertTripExpense): Promise<TripExpense>;
+  updateTripExpense(id: number, expense: Partial<TripExpense>): Promise<TripExpense | undefined>;
+  deleteTripExpense(id: number): Promise<boolean>;
   
   // Trip methods
   getTrips(companyId?: string): Promise<TripWithRouteInfo[]>;

@@ -22,7 +22,9 @@ import {
   PaymentStatus,
   PaymentMethod,
   userCompanies,
-  companies
+  companies,
+  insertTripBudgetSchema,
+  insertTripExpenseSchema
 } from "@shared/schema";
 
 // Constantes para roles y permisos de paqueterías
