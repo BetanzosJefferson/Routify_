@@ -22,13 +22,118 @@ import {
   InsertNotification,
   UserRole,
   Coupon,
-  InsertCoupon
+  InsertCoupon,
+  TripBudget,
+  InsertTripBudget,
+  TripExpense,
+  InsertTripExpense
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db } from "./db";
 import { eq, and, gte, lt, like, or, sql, desc, isNull, not, inArray } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
+  // Implementación de métodos para presupuestos de viajes (operadores)
+  async getTripBudget(tripId: number): Promise<TripBudget | undefined> {
+    try {
+      console.log(`DB Storage: Consultando presupuesto para viaje ID: ${tripId}`);
+      const [budget] = await db
+        .select()
+        .from(schema.tripBudgets)
+        .where(eq(schema.tripBudgets.tripId, tripId));
+      return budget;
+    } catch (error) {
+      console.error(`DB Storage ERROR - getTripBudget: ${error}`);
+      return undefined;
+    }
+  }
+
+  async createTripBudget(budget: InsertTripBudget): Promise<TripBudget> {
+    try {
+      console.log(`DB Storage: Creando presupuesto para viaje ID: ${budget.tripId} con monto: ${budget.amount}`);
+      const [newBudget] = await db
+        .insert(schema.tripBudgets)
+        .values(budget)
+        .returning();
+      return newBudget;
+    } catch (error) {
+      console.error(`DB Storage ERROR - createTripBudget: ${error}`);
+      throw error;
+    }
+  }
+
+  async updateTripBudget(tripId: number, amount: number): Promise<TripBudget | undefined> {
+    try {
+      console.log(`DB Storage: Actualizando presupuesto para viaje ID: ${tripId} con nuevo monto: ${amount}`);
+      const [updatedBudget] = await db
+        .update(schema.tripBudgets)
+        .set({ amount, updatedAt: new Date() })
+        .where(eq(schema.tripBudgets.tripId, tripId))
+        .returning();
+      return updatedBudget;
+    } catch (error) {
+      console.error(`DB Storage ERROR - updateTripBudget: ${error}`);
+      return undefined;
+    }
+  }
+
+  // Implementación de métodos para gastos de viajes
+  async getTripExpenses(tripId: number): Promise<TripExpense[]> {
+    try {
+      console.log(`DB Storage: Consultando gastos para viaje ID: ${tripId}`);
+      const expenses = await db
+        .select()
+        .from(schema.tripExpenses)
+        .where(eq(schema.tripExpenses.tripId, tripId));
+      return expenses;
+    } catch (error) {
+      console.error(`DB Storage ERROR - getTripExpenses: ${error}`);
+      return [];
+    }
+  }
+
+  async createTripExpense(expense: InsertTripExpense): Promise<TripExpense> {
+    try {
+      console.log(`DB Storage: Creando gasto para viaje ID: ${expense.tripId} con descripción: ${expense.description} y monto: ${expense.amount}`);
+      const [newExpense] = await db
+        .insert(schema.tripExpenses)
+        .values(expense)
+        .returning();
+      return newExpense;
+    } catch (error) {
+      console.error(`DB Storage ERROR - createTripExpense: ${error}`);
+      throw error;
+    }
+  }
+
+  async updateTripExpense(id: number, expense: Partial<TripExpense>): Promise<TripExpense | undefined> {
+    try {
+      console.log(`DB Storage: Actualizando gasto ID: ${id}`);
+      const [updatedExpense] = await db
+        .update(schema.tripExpenses)
+        .set({ ...expense, updatedAt: new Date() })
+        .where(eq(schema.tripExpenses.id, id))
+        .returning();
+      return updatedExpense;
+    } catch (error) {
+      console.error(`DB Storage ERROR - updateTripExpense: ${error}`);
+      return undefined;
+    }
+  }
+
+  async deleteTripExpense(id: number): Promise<boolean> {
+    try {
+      console.log(`DB Storage: Eliminando gasto ID: ${id}`);
+      const result = await db
+        .delete(schema.tripExpenses)
+        .where(eq(schema.tripExpenses.id, id))
+        .returning({ id: schema.tripExpenses.id });
+      return result.length > 0;
+    } catch (error) {
+      console.error(`DB Storage ERROR - deleteTripExpense: ${error}`);
+      return false;
+    }
+  }
   async getRoutes(companyId?: string): Promise<Route[]> {
     try {
       if (companyId) {
