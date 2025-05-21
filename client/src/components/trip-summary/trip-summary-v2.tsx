@@ -1308,15 +1308,12 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                       )}
                                     </td>
                                     <td className="py-3 px-4 text-sm text-gray-900">
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="h-8 px-2 text-blue-600 hover:text-blue-800"
-                                        onClick={() => window.open(`/reservation/${reservation.id}`, '_blank')}
-                                      >
-                                        <EyeIcon className="h-4 w-4 mr-1" />
-                                        Ver
-                                      </Button>
+                                      <div className="font-medium text-gray-900">
+                                        {reservation.phone || 'Sin teléfono'}
+                                      </div>
+                                      <div className="text-gray-500 text-xs mt-1">
+                                        {reservation.email || 'Sin correo'}
+                                      </div>
                                     </td>
                                   </tr>
                                 );
