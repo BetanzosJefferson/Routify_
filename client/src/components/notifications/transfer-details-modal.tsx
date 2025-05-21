@@ -254,7 +254,73 @@ const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
             )}
           </ScrollArea>
           
-          <div className="flex justify-end mt-4">
+          <div className="flex justify-between mt-4">
+            <Button 
+              onClick={async () => {
+                try {
+                  // Solo permitir aceptar si hay reservaciones sin procesar
+                  const pendingReservations = reservationsData?.filter((res: any) => 
+                    !processedReservationIds.includes(res.id)
+                  );
+                  
+                  if (!pendingReservations?.length) {
+                    toast({
+                      title: "Sin reservaciones pendientes",
+                      description: "Todas las reservaciones ya han sido procesadas.",
+                      variant: "default",
+                    });
+                    return;
+                  }
+                  
+                  // Realizar solicitud para aceptar todas las transferencias
+                  const reservationIds = pendingReservations.map((res: any) => res.id);
+                  
+                  toast({
+                    title: "Procesando transferencias",
+                    description: `Aceptando ${reservationIds.length} reservación(es)...`,
+                    variant: "default",
+                  });
+                  
+                  const response = await fetch('/api/reservations/accept-transfer', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ reservationIds }),
+                  });
+                  
+                  if (!response.ok) {
+                    throw new Error('Error al aceptar transferencias');
+                  }
+                  
+                  const result = await response.json();
+                  
+                  // Actualizar la lista de reservaciones
+                  queryClient.invalidateQueries({ queryKey: ['/api/reservations'] });
+                  
+                  // Marcar todas las reservaciones como procesadas
+                  setProcessedReservationIds(prev => [...prev, ...reservationIds]);
+                  
+                  toast({
+                    title: "Transferencias aceptadas",
+                    description: result.message || "Las reservaciones han sido aceptadas exitosamente.",
+                    variant: "default",
+                  });
+                } catch (error) {
+                  console.error('Error al aceptar transferencias:', error);
+                  toast({
+                    title: "Error",
+                    description: "No se pudieron aceptar las transferencias. Intente nuevamente.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              variant="default"
+              disabled={isLoading || !reservationsData?.length || reservationsData?.every((res: any) => processedReservationIds.includes(res.id))}
+            >
+              Aceptar todas las transferencias
+            </Button>
+            
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cerrar
             </Button>
