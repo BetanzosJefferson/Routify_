@@ -17,7 +17,8 @@ import {
   FilterIcon,
   QrCode,
   ExternalLink,
-  Building2
+  Building2,
+  UserCheck
 } from "lucide-react";
 import { useReservations } from "@/hooks/use-reservations";
 import { useAuth } from "@/hooks/use-auth";
@@ -657,12 +658,45 @@ export function ReservationList() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         {reservation.createdByUser ? (
                           <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {reservation.createdByUser.firstName} {reservation.createdByUser.lastName}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {reservation.createdByUser.role}
-                            </div>
+                            {/* Verificar si es reservación transferida (revisar en las notas) */}
+                            {reservation.notes && reservation.notes.includes("Transferido") ? (
+                              <>
+                                <div className="text-sm font-medium text-gray-900 flex items-center">
+                                  <Building2 className="h-3 w-3 mr-1" />
+                                  {/* Extraer nombre de empresa de las notas */}
+                                  {reservation.notes.includes("Transferido de") 
+                                    ? reservation.notes.split("Transferido de ")[1].split(" el")[0]
+                                    : (reservation.notes.includes("Transferido a") 
+                                        ? reservation.notes.split("Transferido a ")[1].split(" el")[0]
+                                        : "Empresa transferida")}
+                                </div>
+                                <div className="text-xs text-gray-500 flex items-center">
+                                  <UserCheck className="h-3 w-3 mr-1" />
+                                  Recibido por: {reservation.createdByUser.firstName} {reservation.createdByUser.lastName}
+                                </div>
+                                {/* Verificar si es una reservación de comisionista */}
+                                {reservation.createdByUser.role === "comisionista" && (
+                                  <Badge variant="outline" className="mt-1 bg-yellow-100 text-yellow-800 border-yellow-200 text-[10px]">
+                                    COMISIÓN {reservation.createdByUser.commissionPercentage || 10}%
+                                  </Badge>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {reservation.createdByUser.firstName} {reservation.createdByUser.lastName}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {reservation.createdByUser.role}
+                                </div>
+                                {/* Verificar si es una reservación de comisionista */}
+                                {reservation.createdByUser.role === "comisionista" && (
+                                  <Badge variant="outline" className="mt-1 bg-yellow-100 text-yellow-800 border-yellow-200 text-[10px]">
+                                    COMISIÓN {reservation.createdByUser.commissionPercentage || 10}%
+                                  </Badge>
+                                )}
+                              </>
+                            )}
                           </div>
                         ) : (
                           <span className="text-gray-400 text-sm">No disponible</span>
