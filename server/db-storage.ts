@@ -2786,7 +2786,7 @@ export class DatabaseStorage implements IStorage {
           advancePaymentMethod: currentRequest.advancePaymentMethod || PaymentMethod.CASH,
           createdBy: currentRequest.requesterId, // El creador es el comisionista
           companyId: currentRequest.companyId,
-          status: ReservationStatus.CONFIRMED, // La reservación se crea ya confirmada (usando el enum)
+          status: "confirmed", // La reservación se crea ya confirmada
           commissionPaid: false, // Por defecto, la comisión no está pagada
           createdAt: new Date(), // Fecha de creación actual
           updatedAt: new Date(), // Fecha de actualización
