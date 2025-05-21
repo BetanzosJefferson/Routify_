@@ -350,8 +350,8 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
     }
   });
   
-  // DELETE /api/trips/expenses/:id - Eliminar un gasto
-  app.delete(apiRouter('/trips/expenses/:id'), isAuthenticated, async (req: Request, res: Response) => {
+  // POST /api/trips/expenses/:id/delete - Eliminar un gasto (usando POST para evitar problemas con DELETE)
+  app.post(apiRouter('/trips/expenses/:id/delete'), isAuthenticated, async (req: Request, res: Response) => {
     try {
       const expenseId = parseInt(req.params.id);
       if (isNaN(expenseId)) {
