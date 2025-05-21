@@ -42,6 +42,7 @@ type ReservationWithPassengers = Reservation & {
 
 type Expense = {
   id: string;
+  tripId: number;
   amount: number;
   type: string;
   description?: string;
@@ -63,6 +64,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [newExpense, setNewExpense] = useState<Expense>({
     id: '',
+    tripId: 0,
     amount: 0,
     type: '',
     description: ''
@@ -73,16 +75,18 @@ export default function TripSummary({ className }: TripSummaryProps) {
   
   // Función para agregar un nuevo gasto
   const handleAddExpense = () => {
-    if (newExpense.type.trim() === '' || newExpense.amount <= 0) return;
+    if (newExpense.type.trim() === '' || newExpense.amount <= 0 || !selectedTrip) return;
     
     const expenseToAdd = {
       ...newExpense,
-      id: `expense-${Date.now()}`
+      id: `expense-${Date.now()}`,
+      tripId: selectedTrip
     };
     
     setExpenses([...expenses, expenseToAdd]);
     setNewExpense({
       id: '',
+      tripId: selectedTrip,
       amount: 0,
       type: '',
       description: ''
@@ -409,6 +413,12 @@ export default function TripSummary({ className }: TripSummaryProps) {
                         <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Total Ventas
                         </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Egresos
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Ganancia
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
@@ -445,6 +455,23 @@ export default function TripSummary({ className }: TripSummaryProps) {
                             </td>
                             <td className="py-3 px-4 text-sm text-gray-900 font-medium">
                               ${sales.toFixed(2)}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-900 font-medium">
+                              ${expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
+                            </td>
+                            <td className={`py-3 px-4 text-sm font-bold ${
+                              (() => {
+                                const tripExpenses = expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0);
+                                const profit = sales - tripExpenses;
+                                if (profit > 0) return "bg-green-50 text-green-600";
+                                if (profit < 0) return "bg-red-50 text-red-600";
+                                return "text-gray-600";
+                              })()
+                            }`}>
+                              ${(() => {
+                                const tripExpenses = expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0);
+                                return (sales - tripExpenses).toFixed(2);
+                              })()}
                             </td>
                           </tr>
                         );
@@ -686,7 +713,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                             </div>
                             <Button 
                               onClick={handleAddExpense}
-                              disabled={!newExpense.type || newExpense.amount <= 0}
+                              disabled={!newExpense.type || newExpense.amount <= 0 || !selectedTrip}
                               className="w-full"
                             >
                               <PlusCircleIcon className="h-4 w-4 mr-2" />
