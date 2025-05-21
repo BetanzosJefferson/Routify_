@@ -1,7 +1,6 @@
 import React from "react";
+import { useCompanies } from "@/hooks/use-companies";
 import { Company } from "@shared/schema";
-import { useQuery } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, Check, Copy } from "lucide-react";
+import { Building2, Check } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { 
@@ -46,6 +45,9 @@ export function CompanySelectionModal({
   selectedReservationIds,
   onCompanySelected 
 }: CompanySelectionModalProps) {
+  // Hook para obtener listado de empresas
+  const { data: companies, isLoading, error } = useCompanies(true);
+  
   // Estado para la empresa seleccionada
   const [selectedCompanyId, setSelectedCompanyId] = React.useState<string | null>(null);
   
@@ -53,31 +55,16 @@ export function CompanySelectionModal({
   const [hasCommissionAgents, setHasCommissionAgents] = React.useState<boolean>(false);
   const [showCommissionWarning, setShowCommissionWarning] = React.useState<boolean>(false);
   
-  // Estado para invitaciones
-  const [generatingInvitation, setGeneratingInvitation] = React.useState<boolean>(false);
-  const [invitationToken, setInvitationToken] = React.useState<string | null>(null);
-  const [invitationUrl, setInvitationUrl] = React.useState<string | null>(null);
-  
-  // Cargar empresas autorizadas para transferencia
-  const {
-    data: authorizedCompanies = [],
-    isLoading: loadingCompanies,
-    error: companiesError,
-    refetch: refetchCompanies
-  } = useQuery({
-    queryKey: ["/api/transfers/authorized-companies"],
-    enabled: isOpen,
-  });
-
-  // Verificar comisionistas en las reservaciones seleccionadas
+  // Verificar si hay comisionistas entre las reservaciones seleccionadas
   React.useEffect(() => {
-    if (!selectedReservationIds || selectedReservationIds.length === 0) return;
-    
-    const checkCommissionAgents = async () => {
+    // Verificamos si alguna reservación fue creada por comisionista
+    const checkForCommissionAgents = async () => {
       try {
-        const response = await fetch("/api/reservations/check-commission-agents", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const response = await fetch(`/api/reservations/check-commission-agents`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
           body: JSON.stringify({ reservationIds: selectedReservationIds }),
         });
         
@@ -86,102 +73,38 @@ export function CompanySelectionModal({
           setHasCommissionAgents(data.hasCommissionAgents || false);
         }
       } catch (error) {
-        console.error("Error verificando comisionistas:", error);
-        setHasCommissionAgents(true); // Por seguridad asumimos que sí hay comisionistas
+        console.error("Error al verificar comisionistas:", error);
+        // Por defecto, para mayor seguridad, activar la advertencia
+        setHasCommissionAgents(true);
       }
     };
     
-    checkCommissionAgents();
+    checkForCommissionAgents();
   }, [selectedReservationIds]);
-
-  // Generar enlace de invitación
-  const handleGenerateInvitation = async () => {
-    try {
-      setGeneratingInvitation(true);
-      
-      const response = await fetch("/api/transfers/generate-invitation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setInvitationToken(data.token);
-        
-        // Crear URL completa
-        const baseUrl = window.location.origin;
-        const inviteUrl = `${baseUrl}/transfers/invitation/${data.token}`;
-        setInvitationUrl(inviteUrl);
-        
-        toast({
-          title: "Enlace generado",
-          description: "Se ha creado un enlace de invitación para compartir",
-        });
-      } else {
-        const errorData = await response.json();
-        toast({
-          title: "Error al generar invitación",
-          description: errorData.details || "No se pudo crear el enlace",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error("Error al generar invitación:", error);
-      toast({
-        title: "Error de conexión",
-        description: "No se pudo conectar con el servidor",
-        variant: "destructive"
-      });
-    } finally {
-      setGeneratingInvitation(false);
-    }
-  };
-
-  // Copiar enlace al portapapeles
-  const copyInvitationLink = () => {
-    if (!invitationUrl) return;
-    
-    navigator.clipboard.writeText(invitationUrl)
-      .then(() => {
-        toast({
-          title: "Enlace copiado",
-          description: "El enlace ha sido copiado al portapapeles",
-        });
-      })
-      .catch((error) => {
-        console.error("Error al copiar:", error);
-        toast({
-          title: "Error al copiar",
-          description: "No se pudo copiar el enlace automáticamente",
-          variant: "destructive"
-        });
-      });
-  };
-
-  // Seleccionar empresa y transferir
+  
+  // Manejar selección de empresa
   const handleSelectCompany = () => {
-    if (!selectedCompanyId || authorizedCompanies.length === 0) return;
+    if (!selectedCompanyId || !companies) return;
     
-    // Si hay comisionistas, mostrar advertencia primero
+    // Si hay comisionistas implicados, mostrar advertencia primero
     if (hasCommissionAgents && !showCommissionWarning) {
       setShowCommissionWarning(true);
       return;
     }
     
-    // Buscar la empresa seleccionada
-    const selectedCompany = authorizedCompanies.find(c => c.id === selectedCompanyId);
-    
-    if (selectedCompany) {
-      onCompanySelected(selectedCompany as Company);
+    // Si ya se mostró la advertencia o no hay comisionistas, proceder con la transferencia
+    const company = companies.find(c => c.identifier === selectedCompanyId);
+    if (company) {
+      onCompanySelected(company);
     }
     
-    // Limpiar estado
+    // Resetear estado de advertencia
     setShowCommissionWarning(false);
   };
   
   return (
     <>
-      {/* Alerta de comisiones */}
+      {/* Alerta sobre comisiones de agentes */}
       <AlertDialog 
         open={showCommissionWarning} 
         onOpenChange={(open) => {
@@ -226,7 +149,7 @@ export function CompanySelectionModal({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Modal de selección de empresas */}
+      {/* Diálogo de selección de empresa */}
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
@@ -235,171 +158,102 @@ export function CompanySelectionModal({
               Seleccione la empresa a la que desea transferir {selectedReservationIds.length} reservación(es)
             </DialogDescription>
           </DialogHeader>
-          
-          {/* Sección para generar/mostrar invitación */}
-          <div className="mb-6 space-y-4">
-            {invitationUrl ? (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between p-3 border rounded-md bg-secondary/20">
-                  <div className="flex-1 mr-2 overflow-hidden">
-                    <p className="font-mono text-sm truncate">{invitationUrl}</p>
-                  </div>
-                  <Button size="sm" onClick={copyInvitationLink}>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copiar
-                  </Button>
-                </div>
-                <div className="bg-amber-50 p-3 rounded-md border border-amber-200">
-                  <p className="text-sm text-amber-800">
-                    Comparta este enlace con el dueño de la otra empresa. Solo será válido por 7 días y podrá usarse una sola vez.
-                  </p>
-                </div>
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => {
-                    setInvitationToken(null);
-                    setInvitationUrl(null);
-                    refetchCompanies();
-                  }}
-                >
-                  Crear nuevo enlace
-                </Button>
-              </div>
-            ) : (
-              <>
-                <Button 
-                  variant="outline" 
-                  className="w-full py-6 border-dashed border-2 hover:border-primary"
-                  onClick={handleGenerateInvitation}
-                  disabled={generatingInvitation}
-                >
-                  {generatingInvitation ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Generando enlace...
-                    </>
-                  ) : (
-                    <>
-                      <Building2 className="mr-2 h-5 w-5" />
-                      Agregar nueva empresa
-                    </>
-                  )}
-                </Button>
-                <p className="text-sm text-muted-foreground text-center">
-                  Genere un enlace único para invitar a otra empresa a recibir transferencias
-                </p>
-              </>
-            )}
-          </div>
-          
-          {/* Mostrar estado de carga */}
-          {loadingCompanies && (
+        
+          {isLoading && (
             <div className="flex justify-center items-center py-8">
               <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <span>Cargando empresas autorizadas...</span>
+              <span>Cargando empresas...</span>
             </div>
           )}
           
-          {/* Mostrar error si ocurre */}
-          {companiesError && (
+          {error && (
             <div className="py-4 px-6 bg-destructive/10 text-destructive rounded-md">
               Error al cargar las empresas. Por favor intente nuevamente.
             </div>
           )}
           
-          {/* Lista de empresas */}
-          {!loadingCompanies && !companiesError && (
-            <>
-              {authorizedCompanies.length === 0 ? (
-                <div className="py-4 px-6 bg-yellow-100 text-yellow-800 rounded-md">
-                  No se encontraron empresas con autorización para transferencia.
-                  Agregue una nueva empresa usando el botón de arriba.
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <h3 className="font-medium">Empresas autorizadas</h3>
-                  <RadioGroup value={selectedCompanyId || ""} onValueChange={setSelectedCompanyId}>
-                    {authorizedCompanies.map((company) => (
-                      <Card 
-                        key={company.id}
-                        className={`cursor-pointer transition-all ${selectedCompanyId === company.id ? 'border-primary ring-2 ring-primary/20' : 'hover:border-primary/30'}`}
-                        onClick={() => setSelectedCompanyId(company.id)}
-                      >
-                        <CardContent className="p-4 flex justify-between items-center">
-                          <div className="flex items-center space-x-4">
-                            <div className="bg-muted p-2 rounded-md">
-                              <Building2 className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <h3 className="font-medium">{company.name}</h3>
-                              <p className="text-sm text-muted-foreground">{company.identifier || company.id}</p>
-                            </div>
-                          </div>
-                          <RadioGroupItem 
-                            value={company.id} 
-                            id={`company-${company.id}`}
-                            className="h-5 w-5"
-                          />
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </RadioGroup>
-                </div>
-              )}
-            </>
+          {companies && companies.length === 0 && (
+            <div className="py-4 px-6 bg-yellow-100 text-yellow-800 rounded-md">
+              No se encontraron empresas disponibles para transferencia.
+            </div>
           )}
           
-          <Separator className="my-4" />
-          
-          {/* Resumen de transferencia */}
-          <div className="py-4">
-            <h3 className="font-medium mb-2">Resumen de la transferencia</h3>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Detalle</TableHead>
-                  <TableHead>Valor</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell>Reservaciones seleccionadas</TableCell>
-                  <TableCell>{selectedReservationIds.length}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Destino</TableCell>
-                  <TableCell>
-                    {selectedCompanyId ? (
-                      authorizedCompanies.find(c => c.id === selectedCompanyId)?.name || 'N/A'
-                    ) : (
-                      <span className="text-muted-foreground italic">No seleccionado</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-          
-          {/* Botones de acción */}
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button 
-              disabled={!selectedCompanyId} 
-              onClick={handleSelectCompany}
-            >
-              <Check className="mr-2 h-4 w-4" />
-              Transferir
-            </Button>
-          </div>
+          {companies && companies.length > 0 && (
+            <div className="space-y-4">
+              <RadioGroup value={selectedCompanyId || ""} onValueChange={setSelectedCompanyId}>
+                {companies.map(company => (
+                  <Card 
+                    key={company.identifier}
+                    className={`cursor-pointer transition-all ${selectedCompanyId === company.identifier ? 'border-primary ring-2 ring-primary/20' : 'hover:border-primary/30'}`}
+                    onClick={() => setSelectedCompanyId(company.identifier)}
+                  >
+                    <CardContent className="p-4 flex justify-between items-center">
+                      <div className="flex items-center space-x-4">
+                        <div className="bg-muted p-2 rounded-md">
+                          <Building2 className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium">{company.name}</h3>
+                          <p className="text-sm text-muted-foreground">{company.identifier}</p>
+                        </div>
+                      </div>
+                      <RadioGroupItem 
+                        value={company.identifier} 
+                        id={`company-${company.identifier}`}
+                        className="h-5 w-5"
+                      />
+                    </CardContent>
+                  </Card>
+                ))}
+              </RadioGroup>
+              
+              <Separator />
+              
+              <div className="py-4">
+                <h3 className="font-medium mb-2">Resumen de la transferencia</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Detalle</TableHead>
+                      <TableHead>Valor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>Reservaciones seleccionadas</TableCell>
+                      <TableCell>{selectedReservationIds.length}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>Destino</TableCell>
+                      <TableCell>
+                        {selectedCompanyId ? (
+                          companies.find(c => c.identifier === selectedCompanyId)?.name || 'N/A'
+                        ) : (
+                          <span className="text-muted-foreground italic">No seleccionado</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+              
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button variant="outline" onClick={onClose}>
+                  Cancelar
+                </Button>
+                <Button 
+                  disabled={!selectedCompanyId} 
+                  onClick={handleSelectCompany}
+                >
+                  <Check className="mr-2 h-4 w-4" />
+                  Transferir
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
