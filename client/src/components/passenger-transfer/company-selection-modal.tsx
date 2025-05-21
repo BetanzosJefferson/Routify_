@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, Check } from "lucide-react";
+import { Building2, Check, Copy } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { 
@@ -46,17 +46,6 @@ export function CompanySelectionModal({
   selectedReservationIds,
   onCompanySelected 
 }: CompanySelectionModalProps) {
-  // Hook para obtener listado de empresas autorizadas
-  const { 
-    data: companies = [], 
-    isLoading, 
-    error,
-    refetch: refetchCompanies
-  } = useQuery({
-    queryKey: ['/api/transfers/authorized-companies'],
-    enabled: isOpen
-  });
-  
   // Estado para la empresa seleccionada
   const [selectedCompanyId, setSelectedCompanyId] = React.useState<string | null>(null);
   
@@ -64,16 +53,31 @@ export function CompanySelectionModal({
   const [hasCommissionAgents, setHasCommissionAgents] = React.useState<boolean>(false);
   const [showCommissionWarning, setShowCommissionWarning] = React.useState<boolean>(false);
   
-  // Verificar si hay comisionistas entre las reservaciones seleccionadas
+  // Estado para invitaciones
+  const [generatingInvitation, setGeneratingInvitation] = React.useState<boolean>(false);
+  const [invitationToken, setInvitationToken] = React.useState<string | null>(null);
+  const [invitationUrl, setInvitationUrl] = React.useState<string | null>(null);
+  
+  // Cargar empresas autorizadas para transferencia
+  const {
+    data: authorizedCompanies = [],
+    isLoading: loadingCompanies,
+    error: companiesError,
+    refetch: refetchCompanies
+  } = useQuery({
+    queryKey: ["/api/transfers/authorized-companies"],
+    enabled: isOpen,
+  });
+
+  // Verificar comisionistas en las reservaciones seleccionadas
   React.useEffect(() => {
-    // Verificamos si alguna reservación fue creada por comisionista
-    const checkForCommissionAgents = async () => {
+    if (!selectedReservationIds || selectedReservationIds.length === 0) return;
+    
+    const checkCommissionAgents = async () => {
       try {
-        const response = await fetch(`/api/reservations/check-commission-agents`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+        const response = await fetch("/api/reservations/check-commission-agents", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ reservationIds: selectedReservationIds }),
         });
         
@@ -82,51 +86,42 @@ export function CompanySelectionModal({
           setHasCommissionAgents(data.hasCommissionAgents || false);
         }
       } catch (error) {
-        console.error("Error al verificar comisionistas:", error);
-        // Por defecto, para mayor seguridad, activar la advertencia
-        setHasCommissionAgents(true);
+        console.error("Error verificando comisionistas:", error);
+        setHasCommissionAgents(true); // Por seguridad asumimos que sí hay comisionistas
       }
     };
     
-    checkForCommissionAgents();
+    checkCommissionAgents();
   }, [selectedReservationIds]);
-  
-  // Estado para manejar la generación de invitaciones
-  const [isGeneratingInvitation, setIsGeneratingInvitation] = React.useState(false);
-  const [invitationToken, setInvitationToken] = React.useState<string | null>(null);
-  const [invitationUrl, setInvitationUrl] = React.useState<string | null>(null);
-  
-  // Función para generar enlace de invitación
-  const generateInvitation = async () => {
+
+  // Generar enlace de invitación
+  const handleGenerateInvitation = async () => {
     try {
-      setIsGeneratingInvitation(true);
+      setGeneratingInvitation(true);
       
-      const response = await fetch('/api/transfers/generate-invitation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      const response = await fetch("/api/transfers/generate-invitation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
       });
       
       if (response.ok) {
         const data = await response.json();
         setInvitationToken(data.token);
         
-        // Crear URL completa para la invitación
+        // Crear URL completa
         const baseUrl = window.location.origin;
         const inviteUrl = `${baseUrl}/transfers/invitation/${data.token}`;
         setInvitationUrl(inviteUrl);
         
         toast({
           title: "Enlace generado",
-          description: "Se ha creado un enlace único para invitar a otra empresa",
-          variant: "default"
+          description: "Se ha creado un enlace de invitación para compartir",
         });
       } else {
         const errorData = await response.json();
         toast({
-          title: "Error al generar enlace",
-          description: errorData.details || "No se pudo generar el enlace de invitación",
+          title: "Error al generar invitación",
+          description: errorData.details || "No se pudo crear el enlace",
           variant: "destructive"
         });
       }
@@ -134,59 +129,59 @@ export function CompanySelectionModal({
       console.error("Error al generar invitación:", error);
       toast({
         title: "Error de conexión",
-        description: "No se pudo conectar al servidor para generar la invitación",
+        description: "No se pudo conectar con el servidor",
         variant: "destructive"
       });
     } finally {
-      setIsGeneratingInvitation(false);
+      setGeneratingInvitation(false);
     }
   };
-  
-  // Función para copiar enlace al portapapeles
+
+  // Copiar enlace al portapapeles
   const copyInvitationLink = () => {
-    if (invitationUrl) {
-      navigator.clipboard.writeText(invitationUrl)
-        .then(() => {
-          toast({
-            title: "Enlace copiado",
-            description: "El enlace de invitación se ha copiado al portapapeles",
-            variant: "default"
-          });
-        })
-        .catch(err => {
-          console.error("Error al copiar enlace:", err);
-          toast({
-            title: "Error al copiar",
-            description: "No se pudo copiar el enlace. Intente seleccionar y copiar manualmente.",
-            variant: "destructive"
-          });
-        });
-    }
-  };
-  
-  // Manejar selección de empresa
-  const handleSelectCompany = () => {
-    if (!selectedCompanyId || !companies) return;
+    if (!invitationUrl) return;
     
-    // Si hay comisionistas implicados, mostrar advertencia primero
+    navigator.clipboard.writeText(invitationUrl)
+      .then(() => {
+        toast({
+          title: "Enlace copiado",
+          description: "El enlace ha sido copiado al portapapeles",
+        });
+      })
+      .catch((error) => {
+        console.error("Error al copiar:", error);
+        toast({
+          title: "Error al copiar",
+          description: "No se pudo copiar el enlace automáticamente",
+          variant: "destructive"
+        });
+      });
+  };
+
+  // Seleccionar empresa y transferir
+  const handleSelectCompany = () => {
+    if (!selectedCompanyId || authorizedCompanies.length === 0) return;
+    
+    // Si hay comisionistas, mostrar advertencia primero
     if (hasCommissionAgents && !showCommissionWarning) {
       setShowCommissionWarning(true);
       return;
     }
     
-    // Si ya se mostró la advertencia o no hay comisionistas, proceder con la transferencia
-    const company = companies.find(c => c.id === selectedCompanyId);
-    if (company) {
-      onCompanySelected(company);
+    // Buscar la empresa seleccionada
+    const selectedCompany = authorizedCompanies.find(c => c.id === selectedCompanyId);
+    
+    if (selectedCompany) {
+      onCompanySelected(selectedCompany as Company);
     }
     
-    // Resetear estado de advertencia
+    // Limpiar estado
     setShowCommissionWarning(false);
   };
   
   return (
     <>
-      {/* Alerta sobre comisiones de agentes */}
+      {/* Alerta de comisiones */}
       <AlertDialog 
         open={showCommissionWarning} 
         onOpenChange={(open) => {
@@ -231,7 +226,7 @@ export function CompanySelectionModal({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Diálogo de selección de empresa */}
+      {/* Modal de selección de empresas */}
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
@@ -240,23 +235,8 @@ export function CompanySelectionModal({
               Seleccione la empresa a la que desea transferir {selectedReservationIds.length} reservación(es)
             </DialogDescription>
           </DialogHeader>
-        
-          {isLoading && (
-            <div className="flex justify-center items-center py-8">
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span>Cargando empresas...</span>
-            </div>
-          )}
           
-          {error && (
-            <div className="py-4 px-6 bg-destructive/10 text-destructive rounded-md">
-              Error al cargar las empresas. Por favor intente nuevamente.
-            </div>
-          )}
-          
+          {/* Sección para generar/mostrar invitación */}
           <div className="mb-6 space-y-4">
             {invitationUrl ? (
               <div className="space-y-2">
@@ -265,7 +245,8 @@ export function CompanySelectionModal({
                     <p className="font-mono text-sm truncate">{invitationUrl}</p>
                   </div>
                   <Button size="sm" onClick={copyInvitationLink}>
-                    Copiar enlace
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copiar
                   </Button>
                 </div>
                 <div className="bg-amber-50 p-3 rounded-md border border-amber-200">
@@ -290,10 +271,10 @@ export function CompanySelectionModal({
                 <Button 
                   variant="outline" 
                   className="w-full py-6 border-dashed border-2 hover:border-primary"
-                  onClick={generateInvitation}
-                  disabled={isGeneratingInvitation}
+                  onClick={handleGenerateInvitation}
+                  disabled={generatingInvitation}
                 >
-                  {isGeneratingInvitation ? (
+                  {generatingInvitation ? (
                     <>
                       <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -314,46 +295,70 @@ export function CompanySelectionModal({
               </>
             )}
           </div>
-
-          {companies && companies.length === 0 ? (
-            <div className="py-4 px-6 bg-yellow-100 text-yellow-800 rounded-md">
-              No se encontraron empresas con autorización para transferencia.
-              Agregue una nueva empresa usando el botón de arriba.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <h3 className="font-medium">Empresas autorizadas</h3>
-              <RadioGroup value={selectedCompanyId || ""} onValueChange={setSelectedCompanyId}>
-                {companies.map(company => (
-                  <Card 
-                    key={company.id}
-                    className={`cursor-pointer transition-all ${selectedCompanyId === company.id ? 'border-primary ring-2 ring-primary/20' : 'hover:border-primary/30'}`}
-                    onClick={() => setSelectedCompanyId(company.id)}
-                  >
-                    <CardContent className="p-4 flex justify-between items-center">
-                      <div className="flex items-center space-x-4">
-                        <div className="bg-muted p-2 rounded-md">
-                          <Building2 className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <h3 className="font-medium">{company.name}</h3>
-                          <p className="text-sm text-muted-foreground">{company.identifier || company.id}</p>
-                        </div>
-                      </div>
-                      <RadioGroupItem 
-                        value={company.id} 
-                        id={`company-${company.id}`}
-                        className="h-5 w-5"
-                      />
-                    </CardContent>
-                  </Card>
-                ))}
-              </RadioGroup>
+          
+          {/* Mostrar estado de carga */}
+          {loadingCompanies && (
+            <div className="flex justify-center items-center py-8">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Cargando empresas autorizadas...</span>
             </div>
           )}
-              
+          
+          {/* Mostrar error si ocurre */}
+          {companiesError && (
+            <div className="py-4 px-6 bg-destructive/10 text-destructive rounded-md">
+              Error al cargar las empresas. Por favor intente nuevamente.
+            </div>
+          )}
+          
+          {/* Lista de empresas */}
+          {!loadingCompanies && !companiesError && (
+            <>
+              {authorizedCompanies.length === 0 ? (
+                <div className="py-4 px-6 bg-yellow-100 text-yellow-800 rounded-md">
+                  No se encontraron empresas con autorización para transferencia.
+                  Agregue una nueva empresa usando el botón de arriba.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <h3 className="font-medium">Empresas autorizadas</h3>
+                  <RadioGroup value={selectedCompanyId || ""} onValueChange={setSelectedCompanyId}>
+                    {authorizedCompanies.map((company) => (
+                      <Card 
+                        key={company.id}
+                        className={`cursor-pointer transition-all ${selectedCompanyId === company.id ? 'border-primary ring-2 ring-primary/20' : 'hover:border-primary/30'}`}
+                        onClick={() => setSelectedCompanyId(company.id)}
+                      >
+                        <CardContent className="p-4 flex justify-between items-center">
+                          <div className="flex items-center space-x-4">
+                            <div className="bg-muted p-2 rounded-md">
+                              <Building2 className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <h3 className="font-medium">{company.name}</h3>
+                              <p className="text-sm text-muted-foreground">{company.identifier || company.id}</p>
+                            </div>
+                          </div>
+                          <RadioGroupItem 
+                            value={company.id} 
+                            id={`company-${company.id}`}
+                            className="h-5 w-5"
+                          />
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </RadioGroup>
+                </div>
+              )}
+            </>
+          )}
+          
           <Separator className="my-4" />
           
+          {/* Resumen de transferencia */}
           <div className="py-4">
             <h3 className="font-medium mb-2">Resumen de la transferencia</h3>
             <Table>
@@ -372,7 +377,7 @@ export function CompanySelectionModal({
                   <TableCell>Destino</TableCell>
                   <TableCell>
                     {selectedCompanyId ? (
-                      companies?.find(c => c.identifier === selectedCompanyId)?.name || 'N/A'
+                      authorizedCompanies.find(c => c.id === selectedCompanyId)?.name || 'N/A'
                     ) : (
                       <span className="text-muted-foreground italic">No seleccionado</span>
                     )}
@@ -382,6 +387,7 @@ export function CompanySelectionModal({
             </Table>
           </div>
           
+          {/* Botones de acción */}
           <div className="flex justify-end space-x-2 pt-4">
             <Button variant="outline" onClick={onClose}>
               Cancelar
