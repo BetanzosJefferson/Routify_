@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ClipboardListIcon, UserIcon, DollarSignIcon, PackageIcon, ChevronLeftIcon, ChevronRightIcon, CalendarIcon, PlusCircleIcon, MinusCircleIcon, CoinsIcon, PiggyBankIcon, Calculator, Loader2 } from "lucide-react";
+import { ClipboardListIcon, UserIcon, DollarSignIcon, PackageIcon, ChevronLeftIcon, ChevronRightIcon, CalendarIcon, PlusCircleIcon, MinusCircleIcon, CoinsIcon, PiggyBankIcon, Calculator, Loader2, EyeIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
