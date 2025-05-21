@@ -89,29 +89,182 @@ export default function TripSummary({ className }: TripSummaryProps) {
   // Total de gastos
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   
+  // Cargar el presupuesto del viaje
+  const loadTripBudget = async (tripId: number) => {
+    if (!tripId) return;
+    
+    setIsLoadingBudget(true);
+    try {
+      const response = await apiRequest<{amount: number}>({
+        url: `/api/trips/${tripId}/budget`,
+        method: "GET"
+      });
+      
+      if (response && typeof response.amount === 'number') {
+        setOperatorBudget(response.amount);
+      } else {
+        setOperatorBudget(0);
+      }
+    } catch (error) {
+      console.error("Error al cargar el presupuesto:", error);
+      toast({
+        title: "Error al cargar presupuesto",
+        description: "No se pudo obtener el presupuesto del operador.",
+        variant: "destructive"
+      });
+      setOperatorBudget(0);
+    } finally {
+      setIsLoadingBudget(false);
+    }
+  };
+  
+  // Guardar el presupuesto del viaje
+  const saveTripBudget = async (tripId: number, amount: number) => {
+    if (!tripId) return;
+    
+    setIsSavingBudget(true);
+    try {
+      const response = await apiRequest<{amount: number}>({
+        url: `/api/trips/${tripId}/budget`,
+        method: "POST",
+        data: { amount }
+      });
+      
+      if (response) {
+        setOperatorBudget(amount);
+        toast({
+          title: "Presupuesto guardado",
+          description: "El presupuesto del operador ha sido actualizado.",
+          variant: "default"
+        });
+      }
+    } catch (error) {
+      console.error("Error al guardar el presupuesto:", error);
+      toast({
+        title: "Error al guardar",
+        description: "No se pudo actualizar el presupuesto del operador.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingBudget(false);
+    }
+  };
+  
+  // Cargar los gastos del viaje
+  const loadTripExpenses = async (tripId: number) => {
+    if (!tripId) return;
+    
+    setIsLoadingExpenses(true);
+    try {
+      const response = await apiRequest<Expense[]>({
+        url: `/api/trips/${tripId}/expenses`,
+        method: "GET"
+      });
+      
+      if (Array.isArray(response)) {
+        setExpenses(response);
+      } else {
+        setExpenses([]);
+      }
+    } catch (error) {
+      console.error("Error al cargar los gastos:", error);
+      toast({
+        title: "Error al cargar gastos",
+        description: "No se pudieron obtener los gastos del viaje.",
+        variant: "destructive"
+      });
+      setExpenses([]);
+    } finally {
+      setIsLoadingExpenses(false);
+    }
+  };
+  
   // Función para agregar un nuevo gasto
-  const handleAddExpense = () => {
-    if (newExpense.type.trim() === '' || newExpense.amount <= 0 || !selectedTrip) return;
+  const handleAddExpense = async () => {
+    if (newExpense.category.trim() === '' || newExpense.amount <= 0 || !selectedTrip) return;
     
-    const expenseToAdd = {
-      ...newExpense,
-      id: `expense-${Date.now()}`,
-      tripId: selectedTrip
-    };
-    
-    setExpenses([...expenses, expenseToAdd]);
-    setNewExpense({
-      id: '',
-      tripId: selectedTrip,
-      amount: 0,
-      type: '',
-      description: ''
-    });
+    setIsSavingExpense(true);
+    try {
+      // Preparar el objeto de gasto para la API
+      const expenseData = {
+        category: newExpense.category,
+        description: newExpense.description || '',
+        amount: newExpense.amount,
+        tripId: selectedTrip
+      };
+      
+      // Enviar a la API
+      const response = await apiRequest<Expense>({
+        url: `/api/trips/${selectedTrip}/expenses`,
+        method: "POST",
+        data: expenseData
+      });
+      
+      if (response && response.id) {
+        // Añadir el nuevo gasto a la lista local
+        setExpenses(prevExpenses => [...prevExpenses, response]);
+        
+        // Resetear el formulario
+        setNewExpense({
+          id: '',
+          tripId: selectedTrip,
+          amount: 0,
+          category: '',
+          description: ''
+        });
+        
+        toast({
+          title: "Gasto registrado",
+          description: "El gasto ha sido añadido correctamente.",
+          variant: "default"
+        });
+      }
+    } catch (error) {
+      console.error("Error al añadir gasto:", error);
+      toast({
+        title: "Error al crear gasto",
+        description: "No se pudo guardar el gasto. Inténtelo de nuevo.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingExpense(false);
+    }
   };
   
   // Función para eliminar un gasto
-  const handleRemoveExpense = (id: string) => {
-    setExpenses(expenses.filter(expense => expense.id !== id));
+  const handleRemoveExpense = async (id: number | string) => {
+    // Si el ID es un string (gasto local no guardado), simplemente eliminar del estado
+    if (typeof id === 'string') {
+      setExpenses(expenses.filter(expense => expense.id !== id));
+      return;
+    }
+    
+    // Si es un ID numérico, eliminar de la base de datos
+    setIsRemovingExpense(id as number);
+    try {
+      await apiRequest({
+        url: `/api/trips/expenses/${id}`,
+        method: "DELETE"
+      });
+      
+      // Actualizar lista local
+      setExpenses(prevExpenses => prevExpenses.filter(expense => expense.id !== id));
+      
+      toast({
+        title: "Gasto eliminado",
+        description: "El gasto ha sido eliminado correctamente.",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error(`Error al eliminar gasto ${id}:`, error);
+      toast({
+        title: "Error al eliminar",
+        description: "No se pudo eliminar el gasto. Inténtelo de nuevo.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRemovingExpense(null);
+    }
   };
   
   // Calculo de ganancias del viaje (ventas totales - gastos totales)
@@ -183,6 +336,21 @@ export default function TripSummary({ className }: TripSummaryProps) {
     setSelectedTrip(null); // Resetear selección al cambiar de fecha
   };
 
+  // Cargar datos financieros cuando se selecciona un viaje
+  useEffect(() => {
+    if (selectedTrip) {
+      // Cargar presupuesto
+      loadTripBudget(selectedTrip);
+      
+      // Cargar gastos
+      loadTripExpenses(selectedTrip);
+    } else {
+      // Resetear datos si no hay viaje seleccionado
+      setOperatorBudget(0);
+      setExpenses([]);
+    }
+  }, [selectedTrip]);
+  
   // Filter reservations by selected trip
   useEffect(() => {
     if (selectedTrip && reservations) {
