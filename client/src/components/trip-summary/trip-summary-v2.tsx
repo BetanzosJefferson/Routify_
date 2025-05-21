@@ -541,41 +541,48 @@ export default function TripSummary({ className }: TripSummaryProps) {
       // Combinar reservas directas y relacionadas
       const allReservations = [...directReservations, ...relatedReservations];
       
-      // Calcular totales
+      // Calcular total de pasajeros
       const passengers = allReservations.reduce((acc, res) => acc + (res.passengers?.length || 0), 0);
-      const sales = allReservations.reduce((acc, res) => acc + (res.totalAmount || 0), 0);
       
-      // Calcular ventas por método de pago considerando tanto anticipos como pagos finales
+      // Variables para el cálculo de ventas según nuevos criterios
+      let totalSalesAmount = 0;
       let cashSales = 0;
       let transferSales = 0;
       
       // Recorrer cada reserva para calcular correctamente las ventas
       allReservations.forEach(res => {
-        // Agregar anticipos según su método de pago
-        if (res.advanceAmount && res.advanceAmount > 0) {
-          if (res.advancePaymentMethod === 'efectivo') {
-            cashSales += res.advanceAmount;
-          } else if (res.advancePaymentMethod === 'transferencia') {
-            transferSales += res.advanceAmount;
-          }
-        }
+        const isPaid = res.status === 'pagado' || res.status === 'paid';
+        const hasPendingStatus = res.status === 'pendiente' || res.status === 'pending';
+        const hasAdvance = res.advanceAmount && res.advanceAmount > 0;
         
-        // Calcular el monto restante
-        const remainingAmount = res.totalAmount - (res.advanceAmount || 0);
-        
-        // Agregar pagos restantes según su método de pago
-        if (remainingAmount > 0) {
+        if (isPaid) {
+          // Si está pagado, sumar el monto total
+          totalSalesAmount += res.totalAmount || 0;
+          
+          // Distribuir en métodos de pago
           if (res.paymentMethod === 'efectivo') {
-            cashSales += remainingAmount;
+            cashSales += res.totalAmount || 0;
           } else if (res.paymentMethod === 'transferencia') {
-            transferSales += remainingAmount;
+            transferSales += res.totalAmount || 0;
+          }
+        } 
+        else if (hasAdvance && !hasPendingStatus) {
+          // Si tiene anticipo y no está pendiente, sumar solo el anticipo
+          totalSalesAmount += res.advanceAmount || 0;
+          
+          // Distribuir en métodos de pago según método del anticipo
+          if (res.advancePaymentMethod === 'efectivo') {
+            cashSales += res.advanceAmount || 0;
+          } else if (res.advancePaymentMethod === 'transferencia') {
+            transferSales += res.advanceAmount || 0;
           }
         }
+        // Si no está pagado, no tiene anticipo o está pendiente, no se suma nada
       });
       
       setTripReservations(allReservations);
       setTotalPassengers(passengers);
-      setTotalSales(sales);
+      setTotalSales(totalSalesAmount);
       setTotalCashSales(cashSales);
       setTotalTransferSales(transferSales);
     } else {
@@ -661,9 +668,25 @@ export default function TripSummary({ className }: TripSummaryProps) {
     
     const tripReservations = reservations.filter(r => r.tripId === tripId);
     const passengers = tripReservations.reduce((acc, res) => acc + (res.passengers?.length || 0), 0);
-    const sales = tripReservations.reduce((acc, res) => acc + (res.totalAmount || 0), 0);
     
-    return { passengers, sales };
+    // Calcular ventas aplicando los mismos criterios de cálculo
+    let totalSales = 0;
+    tripReservations.forEach(res => {
+      const isPaid = res.status === 'pagado' || res.status === 'paid';
+      const hasPendingStatus = res.status === 'pendiente' || res.status === 'pending';
+      const hasAdvance = res.advanceAmount && res.advanceAmount > 0;
+      
+      if (isPaid) {
+        // Si está pagado, sumar el monto total
+        totalSales += res.totalAmount || 0;
+      } else if (hasAdvance && !hasPendingStatus) {
+        // Si tiene anticipo y no está pendiente, sumar solo el anticipo
+        totalSales += res.advanceAmount || 0;
+      }
+      // Si no está pagado, no tiene anticipo o está pendiente, no se suma nada
+    });
+    
+    return { passengers, sales: totalSales };
   };
 
   return (
