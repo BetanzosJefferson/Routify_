@@ -95,10 +95,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
     
     setIsLoadingBudget(true);
     try {
-      const response = await apiRequest<{amount: number}>({
-        url: `/api/trips/${tripId}/budget`,
-        method: "GET"
-      });
+      const response = await apiRequest(`/api/trips/${tripId}/budget`);
       
       if (response && typeof response.amount === 'number') {
         setOperatorBudget(response.amount);
@@ -124,8 +121,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
     
     setIsSavingBudget(true);
     try {
-      const response = await apiRequest<{amount: number}>({
-        url: `/api/trips/${tripId}/budget`,
+      const response = await apiRequest(`/api/trips/${tripId}/budget`, {
         method: "POST",
         data: { amount }
       });
@@ -156,10 +152,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
     
     setIsLoadingExpenses(true);
     try {
-      const response = await apiRequest<Expense[]>({
-        url: `/api/trips/${tripId}/expenses`,
-        method: "GET"
-      });
+      const response = await apiRequest(`/api/trips/${tripId}/expenses`);
       
       if (Array.isArray(response)) {
         setExpenses(response);
@@ -194,8 +187,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
       };
       
       // Enviar a la API
-      const response = await apiRequest<Expense>({
-        url: `/api/trips/${selectedTrip}/expenses`,
+      const response = await apiRequest(`/api/trips/${selectedTrip}/expenses`, {
         method: "POST",
         data: expenseData
       });
@@ -242,8 +234,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
     // Si es un ID numérico, eliminar de la base de datos
     setIsRemovingExpense(id as number);
     try {
-      await apiRequest({
-        url: `/api/trips/expenses/${id}`,
+      await apiRequest(`/api/trips/expenses/${id}`, {
         method: "DELETE"
       });
       
