@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, User, Mail, Phone, MapPin, Calendar, Clock, CheckCircle, X } from "lucide-react";
+import { Loader2, User, Mail, Phone, MapPin, Calendar, Clock, CheckCircle, X, ArrowRightLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";

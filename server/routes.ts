@@ -5529,7 +5529,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             advanceAmount: originalReservation.advanceAmount || 0,
             advancePaymentMethod: originalReservation.advancePaymentMethod || 'efectivo',
             createdBy: currentUser.id,
-            companyId: userCompanyId
+            companyId: userCompanyId,
+            // Campo adicional para indicar que es una transferencia
+            isTransferred: true,
+            // Guardar la empresa de origen para mostrarla como "Creada por"
+            transferredFromCompany: sourceCompanyName,
+            // Guardar el ID de la empresa de origen
+            transferredFromCompanyId: originalTrip.companyId,
+            // Guardar el usuario que acepta la transferencia
+            acceptedBy: currentUser.id
           };
           
           const createdReservation = await storage.createReservation(newReservation);
