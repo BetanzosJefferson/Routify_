@@ -95,10 +95,23 @@ export default function TripSummary({ className }: TripSummaryProps) {
     
     setIsLoadingBudget(true);
     try {
-      const response = await apiRequest(`/api/trips/${tripId}/budget`);
+      const url = `/api/trips/${tripId}/budget`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include"
+      });
       
-      if (response && typeof response.amount === 'number') {
-        setOperatorBudget(response.amount);
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data && typeof data.amount === 'number') {
+        setOperatorBudget(data.amount);
       } else {
         setOperatorBudget(0);
       }
@@ -121,19 +134,26 @@ export default function TripSummary({ className }: TripSummaryProps) {
     
     setIsSavingBudget(true);
     try {
-      const response = await apiRequest(`/api/trips/${tripId}/budget`, {
+      const url = `/api/trips/${tripId}/budget`;
+      const response = await fetch(url, {
         method: "POST",
-        data: { amount }
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ amount }),
+        credentials: "include"
       });
       
-      if (response) {
-        setOperatorBudget(amount);
-        toast({
-          title: "Presupuesto guardado",
-          description: "El presupuesto del operador ha sido actualizado.",
-          variant: "default"
-        });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
+      
+      setOperatorBudget(amount);
+      toast({
+        title: "Presupuesto guardado",
+        description: "El presupuesto del operador ha sido actualizado.",
+        variant: "default"
+      });
     } catch (error) {
       console.error("Error al guardar el presupuesto:", error);
       toast({
@@ -152,10 +172,23 @@ export default function TripSummary({ className }: TripSummaryProps) {
     
     setIsLoadingExpenses(true);
     try {
-      const response = await apiRequest(`/api/trips/${tripId}/expenses`);
+      const url = `/api/trips/${tripId}/expenses`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include"
+      });
       
-      if (Array.isArray(response)) {
-        setExpenses(response);
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (Array.isArray(data)) {
+        setExpenses(data);
       } else {
         setExpenses([]);
       }
@@ -187,14 +220,25 @@ export default function TripSummary({ className }: TripSummaryProps) {
       };
       
       // Enviar a la API
-      const response = await apiRequest(`/api/trips/${selectedTrip}/expenses`, {
+      const url = `/api/trips/${selectedTrip}/expenses`;
+      const response = await fetch(url, {
         method: "POST",
-        data: expenseData
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(expenseData),
+        credentials: "include"
       });
       
-      if (response && response.id) {
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data && data.id) {
         // Añadir el nuevo gasto a la lista local
-        setExpenses(prevExpenses => [...prevExpenses, response]);
+        setExpenses(prevExpenses => [...prevExpenses, data]);
         
         // Resetear el formulario
         setNewExpense({
@@ -234,9 +278,18 @@ export default function TripSummary({ className }: TripSummaryProps) {
     // Si es un ID numérico, eliminar de la base de datos
     setIsRemovingExpense(id as number);
     try {
-      await apiRequest(`/api/trips/expenses/${id}`, {
-        method: "DELETE"
+      const url = `/api/trips/expenses/${id}`;
+      const response = await fetch(url, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include"
       });
+      
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
       
       // Actualizar lista local
       setExpenses(prevExpenses => prevExpenses.filter(expense => expense.id !== id));
