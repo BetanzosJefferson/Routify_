@@ -1,6 +1,7 @@
 import React from "react";
 import { Company } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -45,8 +46,16 @@ export function CompanySelectionModal({
   selectedReservationIds,
   onCompanySelected 
 }: CompanySelectionModalProps) {
-  // Hook para obtener listado de empresas
-  const { data: companies, isLoading, error } = useCompanies(true);
+  // Hook para obtener listado de empresas autorizadas
+  const { 
+    data: companies = [], 
+    isLoading, 
+    error,
+    refetch: refetchCompanies
+  } = useQuery({
+    queryKey: ['/api/transfers/authorized-companies'],
+    enabled: isOpen
+  });
   
   // Estado para la empresa seleccionada
   const [selectedCompanyId, setSelectedCompanyId] = React.useState<string | null>(null);
@@ -82,6 +91,79 @@ export function CompanySelectionModal({
     checkForCommissionAgents();
   }, [selectedReservationIds]);
   
+  // Estado para manejar la generación de invitaciones
+  const [isGeneratingInvitation, setIsGeneratingInvitation] = React.useState(false);
+  const [invitationToken, setInvitationToken] = React.useState<string | null>(null);
+  const [invitationUrl, setInvitationUrl] = React.useState<string | null>(null);
+  
+  // Función para generar enlace de invitación
+  const generateInvitation = async () => {
+    try {
+      setIsGeneratingInvitation(true);
+      
+      const response = await fetch('/api/transfers/generate-invitation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setInvitationToken(data.token);
+        
+        // Crear URL completa para la invitación
+        const baseUrl = window.location.origin;
+        const inviteUrl = `${baseUrl}/transfers/invitation/${data.token}`;
+        setInvitationUrl(inviteUrl);
+        
+        toast({
+          title: "Enlace generado",
+          description: "Se ha creado un enlace único para invitar a otra empresa",
+          variant: "default"
+        });
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Error al generar enlace",
+          description: errorData.details || "No se pudo generar el enlace de invitación",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error al generar invitación:", error);
+      toast({
+        title: "Error de conexión",
+        description: "No se pudo conectar al servidor para generar la invitación",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingInvitation(false);
+    }
+  };
+  
+  // Función para copiar enlace al portapapeles
+  const copyInvitationLink = () => {
+    if (invitationUrl) {
+      navigator.clipboard.writeText(invitationUrl)
+        .then(() => {
+          toast({
+            title: "Enlace copiado",
+            description: "El enlace de invitación se ha copiado al portapapeles",
+            variant: "default"
+          });
+        })
+        .catch(err => {
+          console.error("Error al copiar enlace:", err);
+          toast({
+            title: "Error al copiar",
+            description: "No se pudo copiar el enlace. Intente seleccionar y copiar manualmente.",
+            variant: "destructive"
+          });
+        });
+    }
+  };
+  
   // Manejar selección de empresa
   const handleSelectCompany = () => {
     if (!selectedCompanyId || !companies) return;
@@ -93,7 +175,7 @@ export function CompanySelectionModal({
     }
     
     // Si ya se mostró la advertencia o no hay comisionistas, proceder con la transferencia
-    const company = companies.find(c => c.identifier === selectedCompanyId);
+    const company = companies.find(c => c.id === selectedCompanyId);
     if (company) {
       onCompanySelected(company);
     }
@@ -175,18 +257,62 @@ export function CompanySelectionModal({
             </div>
           )}
           
-          <div className="mb-6">
-            <Button 
-              variant="outline" 
-              className="w-full py-6 border-dashed border-2 hover:border-primary"
-              onClick={() => window.open("/passenger-transfer/invite", "_blank")}
-            >
-              <Building2 className="mr-2 h-5 w-5" />
-              Agregar nueva empresa
-            </Button>
-            <p className="text-sm text-muted-foreground mt-2 text-center">
-              Genere un enlace único para invitar a otra empresa a recibir transferencias
-            </p>
+          <div className="mb-6 space-y-4">
+            {invitationUrl ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-3 border rounded-md bg-secondary/20">
+                  <div className="flex-1 mr-2 overflow-hidden">
+                    <p className="font-mono text-sm truncate">{invitationUrl}</p>
+                  </div>
+                  <Button size="sm" onClick={copyInvitationLink}>
+                    Copiar enlace
+                  </Button>
+                </div>
+                <div className="bg-amber-50 p-3 rounded-md border border-amber-200">
+                  <p className="text-sm text-amber-800">
+                    Comparta este enlace con el dueño de la otra empresa. Solo será válido por 7 días y podrá usarse una sola vez.
+                  </p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => {
+                    setInvitationToken(null);
+                    setInvitationUrl(null);
+                    refetchCompanies();
+                  }}
+                >
+                  Crear nuevo enlace
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Button 
+                  variant="outline" 
+                  className="w-full py-6 border-dashed border-2 hover:border-primary"
+                  onClick={generateInvitation}
+                  disabled={isGeneratingInvitation}
+                >
+                  {isGeneratingInvitation ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Generando enlace...
+                    </>
+                  ) : (
+                    <>
+                      <Building2 className="mr-2 h-5 w-5" />
+                      Agregar nueva empresa
+                    </>
+                  )}
+                </Button>
+                <p className="text-sm text-muted-foreground text-center">
+                  Genere un enlace único para invitar a otra empresa a recibir transferencias
+                </p>
+              </>
+            )}
           </div>
 
           {companies && companies.length === 0 ? (
@@ -200,9 +326,9 @@ export function CompanySelectionModal({
               <RadioGroup value={selectedCompanyId || ""} onValueChange={setSelectedCompanyId}>
                 {companies.map(company => (
                   <Card 
-                    key={company.identifier}
-                    className={`cursor-pointer transition-all ${selectedCompanyId === company.identifier ? 'border-primary ring-2 ring-primary/20' : 'hover:border-primary/30'}`}
-                    onClick={() => setSelectedCompanyId(company.identifier)}
+                    key={company.id}
+                    className={`cursor-pointer transition-all ${selectedCompanyId === company.id ? 'border-primary ring-2 ring-primary/20' : 'hover:border-primary/30'}`}
+                    onClick={() => setSelectedCompanyId(company.id)}
                   >
                     <CardContent className="p-4 flex justify-between items-center">
                       <div className="flex items-center space-x-4">
@@ -211,12 +337,12 @@ export function CompanySelectionModal({
                         </div>
                         <div>
                           <h3 className="font-medium">{company.name}</h3>
-                          <p className="text-sm text-muted-foreground">{company.identifier}</p>
+                          <p className="text-sm text-muted-foreground">{company.identifier || company.id}</p>
                         </div>
                       </div>
                       <RadioGroupItem 
-                        value={company.identifier} 
-                        id={`company-${company.identifier}`}
+                        value={company.id} 
+                        id={`company-${company.id}`}
                         className="h-5 w-5"
                       />
                     </CardContent>
