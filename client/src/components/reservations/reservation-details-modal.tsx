@@ -242,6 +242,19 @@ export default function ReservationDetailsModal({
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-3 sm:mt-4">
                 <div className="space-y-3 sm:space-y-4">
+                  {/* Indicador de transferencia si aplica */}
+                  {reservation.notes && reservation.notes.includes("Transferido desde") && (
+                    <div className="bg-blue-50 p-3 sm:p-4 rounded-md border border-blue-100">
+                      <div className="flex items-center gap-2">
+                        <ArrowRightLeft className="h-4 w-4 text-blue-700" />
+                        <h3 className="font-medium text-sm sm:text-base text-blue-700">Transferencia recibida</h3>
+                      </div>
+                      <p className="text-sm text-blue-700 mt-2">
+                        {reservation.notes}
+                      </p>
+                    </div>
+                  )}
+                  
                   <div className="bg-gray-50 p-3 sm:p-4 rounded-md">
                     <h3 className="font-medium text-sm sm:text-base border-b pb-2 mb-3 sm:mb-4">Información del pasajero</h3>
                     <div className="space-y-3 sm:space-y-4">
