@@ -251,6 +251,18 @@ export default function TripSummary({ className }: TripSummaryProps) {
         };
         setExpenses(prevExpenses => [...prevExpenses, adaptedExpense]);
         
+        // Actualizar también tripsFinancialData para mantener datos en sincronía
+        setTripsFinancialData(prev => {
+          const tripData = prev[selectedTrip] || { budget: 0, expenses: [] };
+          return {
+            ...prev,
+            [selectedTrip]: {
+              ...tripData,
+              expenses: [...tripData.expenses, adaptedExpense]
+            }
+          };
+        });
+        
         // Resetear el formulario
         setNewExpense({
           id: '',
@@ -304,6 +316,27 @@ export default function TripSummary({ className }: TripSummaryProps) {
       
       // Actualizar lista local
       setExpenses(prevExpenses => prevExpenses.filter(expense => expense.id !== id));
+      
+      // Actualizar también tripsFinancialData
+      setTripsFinancialData(prev => {
+        // Buscar a qué viaje pertenece este gasto
+        const expense = expenses.find(e => e.id === id);
+        if (!expense) return prev;
+        
+        const tripId = expense.tripId;
+        const tripData = prev[tripId];
+        
+        // Si no hay datos para este viaje, no hay nada que actualizar
+        if (!tripData) return prev;
+        
+        return {
+          ...prev,
+          [tripId]: {
+            ...tripData,
+            expenses: tripData.expenses.filter(e => e.id !== id)
+          }
+        };
+      });
       
       toast({
         title: "Gasto eliminado",
@@ -774,11 +807,30 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               ${sales.toFixed(2)}
                             </td>
                             <td className="py-3 px-4 text-sm text-gray-900 font-medium">
-                              ${expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
+                              ${(() => {
+                                // Usar datos precargados si existen, o usar el estado local como respaldo
+                                const tripFinancialData = tripsFinancialData[trip.id];
+                                if (tripFinancialData) {
+                                  return tripFinancialData.expenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2);
+                                } else {
+                                  // Usar datos del estado solo cuando se ha seleccionado el viaje
+                                  return expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0).toFixed(2);
+                                }
+                              })()}
                             </td>
                             <td className={`py-3 px-4 text-sm font-bold ${
                               (() => {
-                                const tripExpenses = expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0);
+                                // Usar datos precargados si existen, o usar el estado local como respaldo
+                                const tripFinancialData = tripsFinancialData[trip.id];
+                                let tripExpenses = 0;
+                                
+                                if (tripFinancialData) {
+                                  tripExpenses = tripFinancialData.expenses.reduce((sum, e) => sum + e.amount, 0);
+                                } else {
+                                  // Usar datos del estado solo cuando se ha seleccionado el viaje
+                                  tripExpenses = expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0);
+                                }
+                                
                                 const profit = sales - tripExpenses;
                                 if (profit > 0) return "bg-green-50 text-green-600";
                                 if (profit < 0) return "bg-red-50 text-red-600";
@@ -786,7 +838,17 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               })()
                             }`}>
                               ${(() => {
-                                const tripExpenses = expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0);
+                                // Usar datos precargados si existen, o usar el estado local como respaldo
+                                const tripFinancialData = tripsFinancialData[trip.id];
+                                let tripExpenses = 0;
+                                
+                                if (tripFinancialData) {
+                                  tripExpenses = tripFinancialData.expenses.reduce((sum, e) => sum + e.amount, 0);
+                                } else {
+                                  // Usar datos del estado solo cuando se ha seleccionado el viaje
+                                  tripExpenses = expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0);
+                                }
+                                
                                 return (sales - tripExpenses).toFixed(2);
                               })()}
                             </td>
