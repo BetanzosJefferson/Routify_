@@ -200,10 +200,18 @@ function renderTransferTable(
         {transfers.map((transfer) => {
           // Determinar información de origen/destino para mostrar
           let originDestInfo = '';
+          let hasCommission = false;
+          let commissionPercentage = 0;
           
           if (transfer.passengerInfo && transfer.passengerInfo.length > 0) {
             const info = transfer.passengerInfo[0]; // Mostrar info del primer pasajero
             originDestInfo = `${info.origin} → ${info.destination}`;
+            
+            // Verificar si hay información de comisión
+            if (info.isFromCommissioner) {
+              hasCommission = true;
+              commissionPercentage = info.commissionPercentage || 10;
+            }
           } else {
             originDestInfo = 'Información no disponible';
           }
