@@ -120,7 +120,7 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
   }
-
+  
   async deleteTripExpense(id: number): Promise<boolean> {
     try {
       console.log(`DB Storage: Eliminando gasto ID: ${id}`);
