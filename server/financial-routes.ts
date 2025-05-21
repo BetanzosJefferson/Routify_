@@ -29,9 +29,14 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
       
       // Verificar permisos por compañía (excepto superadmin)
       if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
-        const userCompany = req.user.company;
-        if (trip.companyId !== userCompany) {
-          console.log(`[GET /trips/${tripId}/budget] Acceso denegado: Usuario de ${userCompany} intentando acceder a viaje de ${trip.companyId}`);
+        // Normalizar IDs de compañía para comparación
+        const userCompanyId = String(req.user.company).toLowerCase().trim();
+        const tripCompanyId = String(trip.companyId).toLowerCase().trim();
+        
+        console.log(`[GET /trips/${tripId}/budget] Verificación de permisos: Usuario de compañía "${userCompanyId}" accediendo a viaje de compañía "${tripCompanyId}"`);
+        
+        if (tripCompanyId !== userCompanyId) {
+          console.log(`[GET /trips/${tripId}/budget] Acceso denegado: Usuario de ${userCompanyId} intentando acceder a viaje de ${tripCompanyId}`);
           return res.status(403).json({ message: "No tiene permisos para ver este presupuesto" });
         }
       }
@@ -73,9 +78,14 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
       
       // Verificar permisos por compañía (excepto superadmin)
       if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
-        const userCompany = req.user.company;
-        if (trip.companyId !== userCompany) {
-          console.log(`[POST /trips/${tripId}/budget] Acceso denegado: Usuario de ${userCompany} intentando acceder a viaje de ${trip.companyId}`);
+        // Normalizar IDs de compañía para comparación
+        const userCompanyId = String(req.user.company).toLowerCase().trim();
+        const tripCompanyId = String(trip.companyId).toLowerCase().trim();
+        
+        console.log(`[POST /trips/${tripId}/budget] Verificación de permisos: Usuario de compañía "${userCompanyId}" accediendo a viaje de compañía "${tripCompanyId}"`);
+        
+        if (tripCompanyId !== userCompanyId) {
+          console.log(`[POST /trips/${tripId}/budget] Acceso denegado: Usuario de ${userCompanyId} intentando acceder a viaje de ${tripCompanyId}`);
           return res.status(403).json({ message: "No tiene permisos para modificar este presupuesto" });
         }
       }
@@ -129,9 +139,14 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
       
       // Verificar permisos por compañía (excepto superadmin)
       if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
-        const userCompany = req.user.company;
-        if (trip.companyId !== userCompany) {
-          console.log(`[GET /trips/${tripId}/expenses] Acceso denegado: Usuario de ${userCompany} intentando acceder a viaje de ${trip.companyId}`);
+        // Normalizar IDs de compañía para comparación
+        const userCompanyId = String(req.user.company).toLowerCase().trim();
+        const tripCompanyId = String(trip.companyId).toLowerCase().trim();
+        
+        console.log(`[GET /trips/${tripId}/expenses] Verificación de permisos: Usuario de compañía "${userCompanyId}" accediendo a viaje de compañía "${tripCompanyId}"`);
+        
+        if (tripCompanyId !== userCompanyId) {
+          console.log(`[GET /trips/${tripId}/expenses] Acceso denegado: Usuario de ${userCompanyId} intentando acceder a viaje de ${tripCompanyId}`);
           return res.status(403).json({ message: "No tiene permisos para ver estos gastos" });
         }
       }
@@ -176,20 +191,25 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
       
       // Verificar permisos por compañía (excepto superadmin)
       if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
-        const userCompany = req.user.company;
-        if (trip.companyId !== userCompany) {
-          console.log(`[POST /trips/${tripId}/expenses] Acceso denegado: Usuario de ${userCompany} intentando acceder a viaje de ${trip.companyId}`);
+        // Normalizar IDs de compañía para comparación
+        const userCompanyId = String(req.user.company).toLowerCase().trim();
+        const tripCompanyId = String(trip.companyId).toLowerCase().trim();
+        
+        console.log(`[POST /trips/${tripId}/expenses] Verificación de permisos: Usuario de compañía "${userCompanyId}" accediendo a viaje de compañía "${tripCompanyId}"`);
+        
+        if (tripCompanyId !== userCompanyId) {
+          console.log(`[POST /trips/${tripId}/expenses] Acceso denegado: Usuario de ${userCompanyId} intentando acceder a viaje de ${tripCompanyId}`);
           return res.status(403).json({ message: "No tiene permisos para añadir gastos a este viaje" });
         }
       }
       
-      // Crear el nuevo gasto
+      // Crear el nuevo gasto (adaptando category a type según el esquema de BD)
       const newExpense = {
         tripId,
-        category,
+        type: category, // Usar category como type para mantener compatibilidad
         description,
         amount: parseFloat(amount),
-        createdBy: req.user?.id || null,
+        companyId: trip.companyId, // Asegurar que el gasto tenga la misma compañía que el viaje
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -239,9 +259,14 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
       
       // Verificar permisos por compañía (excepto superadmin)
       if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
-        const userCompany = req.user.company;
-        if (trip.companyId !== userCompany) {
-          console.log(`[PATCH /trips/expenses/${expenseId}] Acceso denegado: Usuario de ${userCompany} intentando modificar gasto de viaje de ${trip.companyId}`);
+        // Normalizar IDs de compañía para comparación
+        const userCompanyId = String(req.user.company).toLowerCase().trim();
+        const tripCompanyId = String(trip.companyId).toLowerCase().trim();
+        
+        console.log(`[PATCH /trips/expenses/${expenseId}] Verificación de permisos: Usuario de compañía "${userCompanyId}" accediendo a viaje de compañía "${tripCompanyId}"`);
+        
+        if (tripCompanyId !== userCompanyId) {
+          console.log(`[PATCH /trips/expenses/${expenseId}] Acceso denegado: Usuario de ${userCompanyId} intentando modificar gasto de viaje de ${tripCompanyId}`);
           return res.status(403).json({ message: "No tiene permisos para modificar este gasto" });
         }
       }
