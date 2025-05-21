@@ -391,6 +391,12 @@ export default function TripSummary({ className }: TripSummaryProps) {
     setSelectedTrip(null); // Resetear selección al cambiar de fecha
   };
 
+  // Estado para almacenar datos financieros de todos los viajes
+  const [tripsFinancialData, setTripsFinancialData] = useState<{[tripId: number]: {
+    budget: number,
+    expenses: Expense[]
+  }}>({});
+  
   // Cargar datos financieros cuando se selecciona un viaje
   useEffect(() => {
     if (selectedTrip) {
@@ -405,6 +411,74 @@ export default function TripSummary({ className }: TripSummaryProps) {
       setExpenses([]);
     }
   }, [selectedTrip]);
+  
+  // Cargar datos financieros para todos los viajes mostrados en la tabla
+  useEffect(() => {
+    // Solo ejecutar si hay viajes filtrados
+    if (filteredTrips.length === 0) return;
+    
+    // Para cada viaje, cargar sus datos financieros
+    const loadAllTripsFinancialData = async () => {
+      // Crear un objeto para almacenar los datos financieros
+      const financialData: {[tripId: number]: {budget: number, expenses: Expense[]}} = {};
+      
+      // Cargar datos para cada viaje
+      for (const trip of filteredTrips) {
+        const tripId = trip.id;
+        try {
+          // Cargar presupuesto
+          const budgetUrl = `/api/trips/${tripId}/budget`;
+          const budgetResponse = await fetch(budgetUrl, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include"
+          });
+          
+          let budget = 0;
+          if (budgetResponse.ok) {
+            const budgetData = await budgetResponse.json();
+            budget = budgetData && typeof budgetData.amount === 'number' ? budgetData.amount : 0;
+          }
+          
+          // Cargar gastos
+          const expensesUrl = `/api/trips/${tripId}/expenses`;
+          const expensesResponse = await fetch(expensesUrl, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include"
+          });
+          
+          let expenses: Expense[] = [];
+          if (expensesResponse.ok) {
+            const expensesData = await expensesResponse.json();
+            if (Array.isArray(expensesData)) {
+              // Adaptar datos del backend (con 'type') al formato del frontend (con 'category')
+              expenses = expensesData.map(expense => ({
+                ...expense,
+                category: expense.type // Añadir category como alias de type
+              }));
+            }
+          }
+          
+          // Guardar datos financieros del viaje
+          financialData[tripId] = { budget, expenses };
+        } catch (error) {
+          console.error(`Error al cargar datos financieros para viaje ${tripId}:`, error);
+          // En caso de error, establecer valores predeterminados
+          financialData[tripId] = { budget: 0, expenses: [] };
+        }
+      }
+      
+      // Actualizar el estado con todos los datos financieros
+      setTripsFinancialData(financialData);
+    };
+    
+    loadAllTripsFinancialData();
+  }, [filteredTrips]);
   
   // Filter reservations by selected trip
   useEffect(() => {
