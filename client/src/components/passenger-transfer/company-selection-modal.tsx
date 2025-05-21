@@ -1,6 +1,6 @@
 import React from "react";
-import { useCompanies } from "@/hooks/use-companies";
 import { Company } from "@shared/schema";
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
