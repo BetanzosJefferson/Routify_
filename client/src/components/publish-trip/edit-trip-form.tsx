@@ -680,14 +680,11 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="0">Sin asignar</SelectItem>
-                      {/* Solo mostrar Gerardo Jesus (ID 15) que tiene rol chofer */}
-                      <SelectItem value="15">Gerardo Jesus</SelectItem>
-                      {/* Usar lo siguiente cuando el filtering por rol funcione correctamente
                       {driversQuery.data?.map((driver: { id: number, firstName: string, lastName: string }) => (
                         <SelectItem key={driver.id} value={String(driver.id)}>
                           {driver.firstName} {driver.lastName}
                         </SelectItem>
-                      ))} */}
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
