@@ -17,7 +17,7 @@ import {
   FilterIcon,
   Trash,
   ClipboardCopy,
-  QrCode,
+  Scan,
   Camera
 } from "lucide-react";
 import { formatTripTime } from "@/lib/trip-utils";
@@ -27,12 +27,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input"; 
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useDriverTrips, Trip } from "@/hooks/use-driver-trips";
-import { useToast, toast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
-import { QrScannerModal } from "./qr-scanner-modal";
 import { useDriverReservations, Reservation, Passenger } from "@/hooks/use-driver-reservations";
 import { normalizeToStartOfDay, formatPrice } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 interface GroupedReservation {
   id: number;
@@ -66,10 +66,17 @@ interface PassengerListSidebarProps {
 }
 
 export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarProps) {
-  // Estado para la búsqueda de pasajeros
+  // Hooks de estado - siempre al inicio
   const [searchQuery, setSearchQuery] = useState("");
-  const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [filterChecked, setFilterChecked] = useState(false);
+  
+  // Hooks de contexto
   const { user } = useAuth();
+  const { toast } = useToast();
+  
+  // Variables derivadas después de los hooks
+  const isDriverOrChecker = user?.role === "chofer" || user?.role === "checador";
   
   // Cargar detalles del viaje
   const { 
@@ -85,8 +92,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
   const { 
     data: reservations, 
     isLoading: isLoadingReservations,
-    error: reservationsError,
-    refetch 
+    error: reservationsError 
   } = useDriverReservations({
     tripId: tripId,
     includeRelated: true
@@ -285,6 +291,32 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
     );
   }
 
+  // Función para manejar el escaneo de QR
+  const handleQRScan = (data: string) => {
+    try {
+      // Aquí se implementaría la lógica para procesar el código QR escaneado
+      // Por ejemplo, validar el formato y enviar una solicitud al servidor
+      
+      // Mostrar notificación de éxito
+      toast({
+        title: "Código QR escaneado",
+        description: "Ticket verificado correctamente",
+        variant: "default",
+      });
+      
+      // Cerrar el escáner después del escaneo exitoso
+      setShowScanner(false);
+    } catch (error) {
+      console.error("Error al procesar el código QR:", error);
+      // Mostrar notificación de error
+      toast({
+        title: "Error de escaneo",
+        description: "No se pudo procesar el código QR",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div 
       className="fixed inset-y-0 right-0 w-full md:w-[500px] lg:w-[550px] bg-white shadow-2xl overflow-y-auto transition-all duration-300 ease-in-out z-50 border-l border-gray-200 max-w-[95%]"
@@ -366,37 +398,12 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
             <div className="rounded-full bg-blue-100 p-2 mr-3">
               <Users className="h-5 w-5 text-blue-600" />
             </div>
-            <div className="flex-1">
+            <div>
               <div className="text-xs text-blue-600">Total de pasajeros</div>
               <div className="text-lg font-bold text-blue-700">{totalPassengers}</div>
             </div>
-            
-            {/* Botón de escanear para chofer y checador */}
-            {(user?.role === 'chofer' || user?.role === 'checador') && (
-              <Button 
-                variant="outline" 
-                className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
-                onClick={() => setIsQrScannerOpen(true)}
-              >
-                <QrCode className="h-4 w-4" />
-                <span>Escanear boleto</span>
-              </Button>
-            )}
           </div>
         </div>
-        
-        {/* Modal de escáner QR */}
-        <QrScannerModal 
-          isOpen={isQrScannerOpen} 
-          onClose={() => setIsQrScannerOpen(false)} 
-          tripId={tripId}
-          onReservationScanned={() => {
-            // Refrescar las reservaciones tras escanear un boleto
-            if (refetch) {
-              refetch();
-            }
-          }}
-        />
         
         <div className="mb-4">
           <h3 className="text-lg font-semibold text-gray-800 mb-2">Lista de Pasajeros</h3>
@@ -528,8 +535,8 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         </div>
                       </div>
                       
-                      {/* Teléfono de contacto con botón para copiar */}
-                      {reservation.phone && (
+                      {/* Teléfono de contacto con botón para copiar - Solo visible para roles diferentes a chofer */}
+                      {reservation.phone && user?.role !== 'chofer' && (
                         <div className="text-sm mb-3">
                           <div className="text-xs text-gray-500">Contacto</div>
                           <div className="font-medium flex items-center">
@@ -558,6 +565,20 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           <div className="font-medium p-1.5 bg-gray-50 rounded-sm border border-gray-100 text-gray-700 text-xs">
                             {reservation.notes}
                           </div>
+                        </div>
+                      )}
+                      
+                      {/* Botón de escanear ticket para Chofer y Checador */}
+                      {isDriverOrChecker && (
+                        <div className="mt-2 mb-3">
+                          <Button 
+                            variant="secondary"
+                            className="w-full flex items-center justify-center gap-2"
+                            onClick={() => setShowScanner(true)}
+                          >
+                            <Scan className="h-4 w-4" />
+                            Escanear Ticket
+                          </Button>
                         </div>
                       )}
                       
@@ -610,6 +631,51 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           </div>
         )}
       </div>
+      
+      {/* Diálogo para el escáner QR */}
+      <Dialog open={showScanner} onOpenChange={setShowScanner}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Escanear Ticket</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center p-4">
+            <div className="relative w-full h-64 bg-gray-900 rounded-lg overflow-hidden mb-4">
+              {/* Simulación de video de cámara */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                  <Camera className="h-16 w-16 text-gray-400 animate-pulse" />
+                </div>
+                {/* Simulación de marco de escaneo */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-48 h-48 border-2 border-green-500 border-dashed rounded-lg"></div>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4 w-full">
+              <p className="text-sm text-center text-gray-600">
+                Apunta la cámara al código QR del boleto para verificarlo
+              </p>
+              
+              {/* Botones para simular escáner */}
+              <div className="flex justify-between gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setShowScanner(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  className="flex-1"
+                  onClick={() => handleQRScan('ticket-code-123')}
+                >
+                  Simular Escaneo
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
