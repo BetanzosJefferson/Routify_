@@ -70,7 +70,6 @@ function isSameCity(location1: string, location2: string): boolean {
 }
 import { populateLocationData } from "./populate-locations";
 import { db } from "./db";
-import { setupFinancialRoutes } from "./financial-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // prefix all routes with /api
@@ -4981,10 +4980,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Setup routes for packages
-  // Configurar rutas para presupuestos y gastos
-  setupFinancialRoutes(app, isAuthenticated);
-  
   setupPackageRoutes(app);
+  
+  // Endpoint para obtener datos financieros de todos los viajes
+  app.get(apiRouter("/trips/financials"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      // Verificar permisos: solo dueños y administradores pueden ver esta información
+      if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== "dueño") {
+        console.log(`[GET /trips/financials] Acceso denegado para rol: ${user.role}`);
+        return res.status(403).json({ message: "No autorizado" });
+      }
+      
+      console.log(`[GET /trips/financials] Usuario: ${user.firstName} ${user.lastName}`);
+      console.log(`[GET /trips/financials] Rol: ${user.role}, CompanyId: ${user.company || 'No definido'}`);
+      
+      // Obtener companyId del usuario
+      const companyId = user.company;
+      
+      if (!companyId && user.role === "dueño") {
+        console.log(`[GET /trips/financials] ADVERTENCIA: Usuario dueño sin compañía asignada`);
+        return res.status(400).json({ message: "Datos incompletos: usuario sin compañía asignada" });
+      }
+      
+      // Filtrar por compañía si el usuario es dueño
+      const filterByCompany = user.role === "dueño" ? companyId : undefined;
+      
+      // Obtener todos los viajes (ya filtrados por compañía si es necesario)
+      console.log(`[GET /trips/financials] Obteniendo viajes para ${filterByCompany ? `compañía ${filterByCompany}` : 'todas las compañías'}`);
+      const trips = await storage.getTrips(filterByCompany);
+      
+      // Datos financieros a retornar
+      const financialData = await Promise.all(trips.map(async (trip) => {
+        const tripId = trip.id;
+        
+        // Obtener la ruta asociada al viaje
+        const route = await storage.getRoute(trip.routeId);
+        
+        // Obtener vehículo y conductor
+        let vehicle = null;
+        let driver = null;
+        
+        if (trip.vehicleId) {
+          vehicle = await storage.getVehicle(trip.vehicleId);
+        }
+        
+        if (trip.driverId) {
+          try {
+            driver = await storage.getDriver(trip.driverId);
+          } catch (error) {
+            console.log(`No se pudo cargar el conductor para el viaje ${tripId}`);
+          }
+        }
+        
+        // Obtener todas las reservaciones del viaje
+        const reservations = await storage.getReservations(filterByCompany);
+        
+        // Filtrar solo reservaciones del viaje actual
+        const tripReservations = reservations.filter(r => r.tripId === tripId);
+        
+        // Filtrar solo reservaciones pagadas para el cálculo de ventas
+        const paidReservations = tripReservations.filter(reservation => 
+          reservation.paymentStatus === 'paid'
+        );
+        
+        // Calcular venta de boletos (solo de reservaciones pagadas)
+        const ticketSales = paidReservations.reduce((total, reservation) => {
+          return total + (reservation.totalAmount || 0);
+        }, 0);
+        
+        // Obtener paqueterías del viaje
+        try {
+          const packages = await storage.getPackages(filterByCompany);
+          const tripPackages = packages.filter(p => p.tripId === tripId);
+          
+          // Calcular venta de paqueterías
+          const packageSales = tripPackages.reduce((total, pkg) => {
+            return total + (pkg.price || 0);
+          }, 0);
+          
+          // Calcular total de ventas
+          const totalSales = ticketSales + packageSales;
+          
+          // Obtener gastos del viaje
+          const expenses = await storage.getTripExpenses(tripId);
+          
+          // Calcular total de gastos
+          const totalExpenses = expenses.reduce((total, expense) => {
+            return total + (expense.amount || 0);
+          }, 0);
+          
+          // Calcular ganancia
+          const profit = totalSales - totalExpenses;
+          
+          // Construir objeto con datos financieros
+          return {
+            ...trip,
+            route: route || { name: 'Ruta desconocida', origin: '', destination: '' },
+            vehicle,
+            driver,
+            passengerCount: tripReservations.length,
+            ticketSales,
+            packageCount: tripPackages.length,
+            packageSales,
+            totalSales,
+            expenses: totalExpenses,
+            profit
+          };
+        } catch (error) {
+          console.error(`Error procesando paqueterías para el viaje ${tripId}:`, error);
+          
+          return {
+            ...trip,
+            route: route || { name: 'Ruta desconocida', origin: '', destination: '' },
+            vehicle,
+            driver,
+            passengerCount: tripReservations.length,
+            ticketSales,
+            packageCount: 0,
+            packageSales: 0,
+            totalSales: ticketSales,
+            expenses: 0,
+            profit: ticketSales
+          };
+        }
+      }));
+      
+      console.log(`[GET /trips/financials] Encontrados ${financialData.length} viajes con datos financieros`);
+      res.json(financialData);
+      
+    } catch (error) {
+      console.error("[GET /trips/financials] Error:", error);
+      res.status(500).json({ message: "Error al obtener datos financieros" });
+    }
+  });
 
   // Endpoint para verificar si hay reservaciones creadas por comisionistas
   app.post(apiRouter("/reservations/check-commission-agents"), isAuthenticated, async (req: Request, res: Response) => {
