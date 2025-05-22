@@ -900,7 +900,21 @@ export default function TripSummary({ className }: TripSummaryProps) {
                             }}
                           >
                             <td className="py-3 px-4 text-sm text-gray-900">
-                              {format(new Date(trip.departureDate), 'dd/MM/yyyy')}
+                              {(() => {
+                                // Crear la fecha con ajuste para evitar problemas de zona horaria
+                                let dateStr = trip.departureDate;
+                                let date;
+                                
+                                if (typeof dateStr === 'string' && dateStr.includes('T')) {
+                                  const datePart = dateStr.split('T')[0];
+                                  const [year, month, day] = datePart.split('-').map(Number);
+                                  date = new Date(year, month - 1, day, 12, 0, 0);
+                                } else {
+                                  date = new Date(dateStr);
+                                }
+                                
+                                return format(date, 'dd/MM/yyyy');
+                              })()}
                             </td>
                             <td className="py-3 px-4 text-sm text-gray-900 font-medium">
                               {trip.route.name}
