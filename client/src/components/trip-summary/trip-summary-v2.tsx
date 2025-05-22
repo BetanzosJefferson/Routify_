@@ -62,7 +62,8 @@ export default function TripSummary({ className }: TripSummaryProps) {
   const [totalSales, setTotalSales] = useState(0);
   const [totalCashSales, setTotalCashSales] = useState(0);
   const [totalTransferSales, setTotalTransferSales] = useState(0);
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  // Inicializar con el 21 de mayo de 2025
+  const [currentDate, setCurrentDate] = useState<Date>(new Date(2025, 4, 21));
   
   // Estado de carga para los datos financieros - desactivado para evitar problemas de carga infinita
   const [isLoadingFinancialData, setIsLoadingFinancialData] = useState(false);
@@ -1046,10 +1047,19 @@ export default function TripSummary({ className }: TripSummaryProps) {
                             if (trip?.assignedVehicle) {
                               return `${trip.assignedVehicle.brand} ${trip.assignedVehicle.model} - ${trip.assignedVehicle.plates}`;
                             } else {
-                              // Intentar obtener de vehículos pre-cargados
-                              const vehicleInfo = trips.find(t => t.id === selectedTrip)?.vehicle;
-                              if (vehicleInfo) {
-                                return `${vehicleInfo.brand} ${vehicleInfo.model} - ${vehicleInfo.plates}`;
+                              // Obtener vehículo a partir del vehicleId
+                              const selectedTripData = trips.find(t => t.id === selectedTrip);
+                              if (selectedTripData?.vehicleId) {
+                                // Buscar vehículo - si no lo encontramos, mostramos el ID como referencia
+                                const vehicles = trips
+                                  .map(t => t.assignedVehicle)
+                                  .filter(Boolean);
+                                
+                                const vehicle = vehicles.find(v => v && v.id === selectedTripData.vehicleId);
+                                if (vehicle) {
+                                  return `${vehicle.brand} ${vehicle.model} - ${vehicle.plates}`;
+                                }
+                                return `Vehículo ID: ${selectedTripData.vehicleId}`;
                               }
                               return 'Sin unidad asignada';
                             }
@@ -1064,10 +1074,19 @@ export default function TripSummary({ className }: TripSummaryProps) {
                             if (trip?.assignedDriver) {
                               return `${trip.assignedDriver.firstName} ${trip.assignedDriver.lastName}`;
                             } else {
-                              // Intentar obtener de conductores pre-cargados
-                              const driverInfo = trips.find(t => t.id === selectedTrip)?.driver;
-                              if (driverInfo) {
-                                return `${driverInfo.firstName} ${driverInfo.lastName}`;
+                              // Obtener conductor a partir del driverId
+                              const selectedTripData = trips.find(t => t.id === selectedTrip);
+                              if (selectedTripData?.driverId) {
+                                // Buscar conductor - si no lo encontramos, mostramos el ID como referencia
+                                const drivers = trips
+                                  .map(t => t.assignedDriver)
+                                  .filter(Boolean);
+                                
+                                const driver = drivers.find(d => d && d.id === selectedTripData.driverId);
+                                if (driver) {
+                                  return `${driver.firstName} ${driver.lastName}`;
+                                }
+                                return `Conductor ID: ${selectedTripData.driverId}`;
                               }
                               return 'No asignado';
                             }
