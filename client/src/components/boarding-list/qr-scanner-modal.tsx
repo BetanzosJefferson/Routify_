@@ -46,12 +46,9 @@ export function QrScannerModal({ isOpen, onClose, tripId, onReservationScanned }
             console.log(`Reservation code extracted: ${reservationCode}`);
 
             // Call the API to mark the reservation as checked
-            const response = await apiRequest(`/api/reservations/check-ticket`, {
-              method: 'POST',
-              body: JSON.stringify({
-                reservationCode,
-                tripId
-              })
+            const response = await apiRequest('POST', `/api/reservations/check-ticket`, {
+              reservationCode,
+              tripId
             });
 
             if (response && response.success) {
