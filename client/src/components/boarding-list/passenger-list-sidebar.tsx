@@ -16,7 +16,9 @@ import {
   Phone,
   FilterIcon,
   Trash,
-  ClipboardCopy
+  ClipboardCopy,
+  Scan,
+  Camera
 } from "lucide-react";
 import { formatTripTime } from "@/lib/trip-utils";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { useDriverTrips, Trip } from "@/hooks/use-driver-trips";
 import { useDriverReservations, Reservation, Passenger } from "@/hooks/use-driver-reservations";
 import { normalizeToStartOfDay, formatPrice } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
 interface GroupedReservation {
   id: number;
@@ -63,6 +66,12 @@ interface PassengerListSidebarProps {
 export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarProps) {
   // Estado para la búsqueda de pasajeros
   const [searchQuery, setSearchQuery] = useState("");
+  // Estado para el escáner de QR
+  const [showScanner, setShowScanner] = useState(false);
+  
+  // Obtener información del usuario autenticado
+  const { user } = useAuth();
+  const isDriverOrChecker = user?.role === 'chofer' || user?.role === 'checador';
   
   // Cargar detalles del viaje
   const { 
