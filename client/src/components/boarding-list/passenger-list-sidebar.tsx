@@ -386,7 +386,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                     key={`reservation-${reservation.id}`} 
                     className="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow"
                   >
-                    <div className="border-b border-gray-100 bg-gray-50 px-4 py-2.5">
+                    <div className={`border-b border-gray-100 ${isReservationChecked(reservation) ? 'bg-green-50' : 'bg-gray-50'} px-4 py-2.5`}>
                       <div className="flex justify-between items-center mb-1.5">
                         <div className="flex items-center">
                           <div className="bg-primary/10 text-primary font-medium px-3 py-1 rounded-md mr-3">
