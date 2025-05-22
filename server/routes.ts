@@ -3010,6 +3010,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(vehicle);
     } catch (error) {
       console.error(`[POST /vehicles] Error: ${error}`);
+      
+      // Comprobar si es un error de placas duplicadas
+      if (error.toString().includes("vehicles_plates_unique")) {
+        return res.status(400).json({ 
+          error: "Error al crear el vehículo", 
+          details: "Ya existe un vehículo con esas placas. Las placas deben ser únicas."
+        });
+      }
+      
+      // Comprobar si es un error de número económico duplicado
+      if (error.toString().includes("vehicles_economicnumber_unique")) {
+        return res.status(400).json({ 
+          error: "Error al crear el vehículo", 
+          details: "Ya existe un vehículo con ese número económico. El número económico debe ser único."
+        });
+      }
+      
       res.status(500).json({ error: "Error al crear el vehículo" });
     }
   });
