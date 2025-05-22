@@ -530,29 +530,37 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           <div className="text-xs text-gray-500">Origen</div>
                           <div className="font-medium">
                             {(() => {
-                              // Casos especiales para reservaciones en subviajes conocidos
-                              if (reservation.id === 164 || reservation.id === 166) {
-                                console.log(`[OriginDisplay] Usando origen fijo para reserva especial ${reservation.id}`);
-                                return "Chilpancingo de los Bravo, Guerrero - Terminal Chilpancingo";
-                              }
-                              
-                              // Obtener el viaje correspondiente a esta reserva
-                              const reservationTrip = trips?.find(t => t.id === reservation.tripId);
-                              
-                              if (!reservationTrip) return 'Origen no disponible';
-                              
-                              // Determinar origen basado en si es subviaje o no
-                              if (reservationTrip.isSubTrip && reservationTrip.segmentOrigin) {
-                                console.log(`[OriginDisplay] Reserva ${reservation.id}, Viaje ${reservationTrip.id} es SUBVIAJE con origen: ${reservationTrip.segmentOrigin}`);
-                                return reservationTrip.segmentOrigin;
-                              } else if (reservationTrip.route?.origin) {
-                                console.log(`[OriginDisplay] Reserva ${reservation.id}, Viaje ${reservationTrip.id} usando origen de ruta principal: ${reservationTrip.route.origin}`);
-                                return reservationTrip.route.origin;
-                              } else if (tripDetails?.route?.origin) {
-                                // Fallback al viaje principal si está disponible
-                                console.log(`[OriginDisplay] Usando origen del viaje principal: ${tripDetails.route.origin}`);
-                                return tripDetails.route.origin;
-                              } else {
+                              try {
+                                // 1. Obtener el trip_id de la reservación
+                                const tripId = reservation.tripId;
+                                
+                                // 2. Buscar el viaje con ese ID
+                                const reservationTrip = trips?.find(t => t.id === tripId);
+                                if (!reservationTrip) {
+                                  console.log(`[OriginResolver] No encontrado viaje ${tripId} para reservación ${reservation.id}`);
+                                  return 'Origen no disponible';
+                                }
+                                
+                                // 3. Verificar si es subviaje (is_sub_trip = TRUE)
+                                if (reservationTrip.isSubTrip === true) {
+                                  // Si es subviaje, usar segment_origin de ese viaje
+                                  if (reservationTrip.segmentOrigin) {
+                                    console.log(`[OriginResolver] Reserva ${reservation.id}: Usando segment_origin del subviaje ${tripId}: ${reservationTrip.segmentOrigin}`);
+                                    return reservationTrip.segmentOrigin;
+                                  } else {
+                                    console.log(`[OriginResolver] Subviaje ${tripId} no tiene segment_origin definido`);
+                                  }
+                                } else {
+                                  // Si no es subviaje, usar el origen de la ruta principal
+                                  if (reservationTrip.route?.origin) {
+                                    console.log(`[OriginResolver] Reserva ${reservation.id}: Usando origin de viaje principal ${tripId}: ${reservationTrip.route.origin}`);
+                                    return reservationTrip.route.origin;
+                                  }
+                                }
+                                
+                                return 'Origen no disponible';
+                              } catch (error) {
+                                console.error('[OriginResolver] Error al determinar origen:', error);
                                 return 'Origen no disponible';
                               }
                             })()}
@@ -562,22 +570,40 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           <div className="text-xs text-gray-500">Destino</div>
                           <div className="font-medium">
                             {(() => {
-                              // Casos especiales para reservaciones en subviajes conocidos
-                              if (reservation.id === 164 || reservation.id === 166) {
-                                console.log(`[DestinationDisplay] Usando destino fijo para reserva especial ${reservation.id}`);
-                                return "Coyoacán, Ciudad de México - Taxqueña";
+                              try {
+                                // 1. Obtener el trip_id de la reservación
+                                const tripId = reservation.tripId;
+                                
+                                // 2. Buscar el viaje con ese ID
+                                const reservationTrip = trips?.find(t => t.id === tripId);
+                                if (!reservationTrip) {
+                                  console.log(`[DestinationResolver] No encontrado viaje ${tripId} para reservación ${reservation.id}`);
+                                  return 'Destino no disponible';
+                                }
+                                
+                                // 3. Verificar si es subviaje (is_sub_trip = TRUE)
+                                if (reservationTrip.isSubTrip === true) {
+                                  // Si es subviaje, usar segment_destination de ese viaje
+                                  if (reservationTrip.segmentDestination) {
+                                    console.log(`[DestinationResolver] Reserva ${reservation.id}: Usando segment_destination del subviaje ${tripId}: ${reservationTrip.segmentDestination}`);
+                                    return reservationTrip.segmentDestination;
+                                  } else {
+                                    console.log(`[DestinationResolver] Subviaje ${tripId} no tiene segment_destination definido`);
+                                  }
+                                } else {
+                                  // Si no es subviaje, usar el destino de la ruta principal
+                                  if (reservationTrip.route?.destination) {
+                                    console.log(`[DestinationResolver] Reserva ${reservation.id}: Usando destination de viaje principal ${tripId}: ${reservationTrip.route.destination}`);
+                                    return reservationTrip.route.destination;
+                                  }
+                                }
+                                
+                                return 'Destino no disponible';
+                              } catch (error) {
+                                console.error('[DestinationResolver] Error al determinar destino:', error);
+                                return 'Destino no disponible';
                               }
-                              
-                              // Obtener el viaje correspondiente a esta reserva
-                              const reservationTrip = trips?.find(t => t.id === reservation.tripId);
-                              
-                              if (!reservationTrip) return 'Destino no disponible';
-                              
-                              // Determinar destino basado en si es subviaje o no
-                              if (reservationTrip.isSubTrip && reservationTrip.segmentDestination) {
-                                console.log(`[DestinationDisplay] Reserva ${reservation.id}, Viaje ${reservationTrip.id} es SUBVIAJE con destino: ${reservationTrip.segmentDestination}`);
-                                return reservationTrip.segmentDestination;
-                              } else if (reservationTrip.route?.destination) {
+                            })()}
                                 console.log(`[DestinationDisplay] Reserva ${reservation.id}, Viaje ${reservationTrip.id} usando destino de ruta principal: ${reservationTrip.route.destination}`);
                                 return reservationTrip.route.destination;
                               } else if (tripDetails?.route?.destination) {
