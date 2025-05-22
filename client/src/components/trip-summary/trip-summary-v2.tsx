@@ -1425,17 +1425,24 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                         )}
                                       </div>
                                       
-                                      {/* Información de anticipo */}
+                                      {/* Información de anticipo y resto */}
                                       {hasAdvance && (
                                         <div className="text-xs mt-1">
                                           <div>
                                             Anticipo: ${reservation.advanceAmount?.toFixed(2)} ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
                                           </div>
                                           
-                                          {/* Si está pendiente, mostrar el monto restante */}
+                                          {/* Solo mostrar "Resta" si está pendiente de pago */}
                                           {!isPaid && remainingAmount > 0 && (
                                             <div>
                                               Resta: ${remainingAmount.toFixed(2)} {reservation.paymentMethod ? `(${reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})` : ''}
+                                            </div>
+                                          )}
+                                          
+                                          {/* Si ya está pagado pero tiene advanceAmount diferente del total, mostrar "Pagó" en lugar de "Resta" */}
+                                          {isPaid && reservation.advanceAmount < reservation.totalAmount && (
+                                            <div>
+                                              Pagó: ${remainingAmount.toFixed(2)} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
                                             </div>
                                           )}
                                         </div>
