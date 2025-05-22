@@ -87,20 +87,19 @@ export function useDriverTrips() {
         // Obtener viajes principales
         const mainTrips = await response.json();
         
-        // Ahora necesitamos cargar también los subviajes relacionados
-        let allTrips = [...mainTrips];
-        
-        // Para cada viaje principal, intentar cargar sus subviajes
+        // Para cada viaje principal, intentar cargar sus subviajes pero no incluirlos en la vista principal
+        // Solo los usaremos para obtener datos de origen/destino
         for (const trip of mainTrips) {
           if (!trip.isSubTrip) { // Solo para viajes principales
             try {
-              // Cargar subviajes relacionados
+              // Cargar subviajes relacionados solo para tener su información disponible
               const subTripsResponse = await fetch(`/api/trips?parentTripId=${trip.id}`);
               if (subTripsResponse.ok) {
                 const subTrips = await subTripsResponse.json();
                 if (subTrips && subTrips.length > 0) {
                   console.log(`[useDriverTrips] Cargados ${subTrips.length} subviajes para viaje principal ${trip.id}`);
-                  allTrips = [...allTrips, ...subTrips];
+                  // Almacenamos los subviajes como propiedad del viaje principal para tener acceso a ellos
+                  trip.subTrips = subTrips;
                 }
               }
             } catch (subError) {
@@ -108,6 +107,9 @@ export function useDriverTrips() {
             }
           }
         }
+        
+        // Devolvemos solo los viajes principales, que ahora contienen referencia a sus subviajes
+        const allTrips = [...mainTrips];
         
         if (isDriver && user?.id) {
           console.log(`[useDriverTrips] Obtenidos ${allTrips.length} viajes para el conductor ${user.id}`);
