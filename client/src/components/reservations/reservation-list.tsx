@@ -339,15 +339,24 @@ export function ReservationList() {
   const handleSaveEdit = () => {
     if (!editingReservation) return;
     
+    // Preparamos las actualizaciones básicas que siempre se envían
+    const updates: Partial<Reservation> = {
+      paymentMethod,
+      notes,
+      email,
+      phone,
+      status
+    };
+    
+    // Si hay anticipo, también actualizamos el método de pago del anticipo
+    if (editingReservation.advanceAmount && editingReservation.advanceAmount > 0) {
+      updates.advancePaymentMethod = advancePaymentMethod;
+    }
+    
+    // Enviamos todas las actualizaciones
     editReservationMutation.mutate({
       id: editingReservation.id,
-      updates: {
-        paymentMethod,
-        notes,
-        email,
-        phone,
-        status
-      }
+      updates
     });
   };
   
@@ -1162,21 +1171,72 @@ export function ReservationList() {
               <div className="space-y-2 sm:space-y-3 mt-1 sm:mt-2">
                 <h3 className="text-xs sm:text-sm font-medium border-b pb-1">Información de pago</h3>
                 
-                <div className="grid grid-cols-1 gap-2">
-                  <Label htmlFor="payment-method" className="text-gray-500 text-xs">MÉTODO DE PAGO</Label>
-                  <Select
-                    value={paymentMethod}
-                    onValueChange={setPaymentMethod}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar método de pago" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="efectivo">Efectivo</SelectItem>
-                      <SelectItem value="transferencia">Transferencia bancaria</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Mostrar la información diferente según si hay anticipo o no */}
+                {editingReservation.advanceAmount && editingReservation.advanceAmount > 0 ? (
+                  // Caso 1: Tiene anticipo (pago en 2 exhibiciones)
+                  <>
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="advance-payment-method" className="text-gray-500 text-xs">
+                          ANTICIPÓ: {formatPrice(editingReservation.advanceAmount)}
+                        </Label>
+                      </div>
+                      <Select
+                        value={advancePaymentMethod}
+                        onValueChange={setAdvancePaymentMethod}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Método de pago del anticipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="efectivo">Efectivo</SelectItem>
+                          <SelectItem value="transferencia">Transferencia bancaria</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="payment-method" className="text-gray-500 text-xs">
+                          RESTA: {formatPrice(editingReservation.totalAmount - editingReservation.advanceAmount)}
+                        </Label>
+                      </div>
+                      <Select
+                        value={paymentMethod}
+                        onValueChange={setPaymentMethod}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Método de pago del resto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="efectivo">Efectivo</SelectItem>
+                          <SelectItem value="transferencia">Transferencia bancaria</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                ) : (
+                  // Caso 2: No tiene anticipo (pago en una sola exhibición)
+                  <div className="grid grid-cols-1 gap-2">
+                    <div className="flex justify-between items-center">
+                      <Label htmlFor="payment-method" className="text-gray-500 text-xs">
+                        {formatPrice(editingReservation.totalAmount)}
+                      </Label>
+                    </div>
+                    <Select
+                      value={paymentMethod}
+                      onValueChange={setPaymentMethod}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar método de pago" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="efectivo">Efectivo</SelectItem>
+                        <SelectItem value="transferencia">Transferencia bancaria</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 
                 <div className="grid grid-cols-1 gap-2">
                   <Label htmlFor="status" className="text-gray-500 text-xs">ESTADO</Label>
