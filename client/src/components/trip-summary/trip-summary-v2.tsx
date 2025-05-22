@@ -458,60 +458,82 @@ export default function TripSummary({ className }: TripSummaryProps) {
     // Solo ejecutar si hay viajes filtrados
     if (filteredTrips.length === 0) return;
     
-    // Para cada viaje, cargar sus datos financieros
+    // Para cada viaje, cargar sus datos financieros en paralelo
     const loadAllTripsFinancialData = async () => {
       // Crear un objeto para almacenar los datos financieros
       const financialData: {[tripId: number]: {budget: number, expenses: Expense[]}} = {};
       
-      // Cargar datos para cada viaje
-      for (const trip of filteredTrips) {
+      // Inicializar el objeto con valores por defecto para todos los viajes
+      filteredTrips.forEach(trip => {
+        financialData[trip.id] = { budget: 0, expenses: [] };
+      });
+      
+      // Crear un array para almacenar todas las promesas
+      const promises: Promise<{tripId: number, type: string, data: any}>[] = [];
+      
+      // Preparar todas las promesas para presupuestos y gastos de todos los viajes
+      filteredTrips.forEach(trip => {
         const tripId = trip.id;
-        try {
-          // Cargar presupuesto
-          const budgetUrl = `/api/trips/${tripId}/budget`;
-          const budgetResponse = await fetch(budgetUrl, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            credentials: "include"
-          });
+        
+        // Promesa para cargar presupuesto
+        const budgetPromise = fetch(`/api/trips/${tripId}/budget`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include"
+        })
+        .then(response => response.ok ? response.json() : { amount: 0 })
+        .then(data => ({
+          tripId,
+          type: 'budget',
+          data: data && typeof data.amount === 'number' ? data.amount : 0
+        }))
+        .catch(error => {
+          console.error(`Error al cargar presupuesto para viaje ${tripId}:`, error);
+          return { tripId, type: 'budget', data: 0 };
+        });
+        
+        // Promesa para cargar gastos
+        const expensesPromise = fetch(`/api/trips/${tripId}/expenses`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include"
+        })
+        .then(response => response.ok ? response.json() : [])
+        .then(data => {
+          // Adaptar datos del backend (con 'type') al formato del frontend (con 'category')
+          const expenses = Array.isArray(data) ? data.map(expense => ({
+            ...expense,
+            category: expense.type // Añadir category como alias de type
+          })) : [];
           
-          let budget = 0;
-          if (budgetResponse.ok) {
-            const budgetData = await budgetResponse.json();
-            budget = budgetData && typeof budgetData.amount === 'number' ? budgetData.amount : 0;
+          return { tripId, type: 'expenses', data: expenses };
+        })
+        .catch(error => {
+          console.error(`Error al cargar gastos para viaje ${tripId}:`, error);
+          return { tripId, type: 'expenses', data: [] };
+        });
+        
+        // Agregar ambas promesas al array
+        promises.push(budgetPromise);
+        promises.push(expensesPromise);
+      });
+      
+      try {
+        // Esperar a que todas las promesas se resuelvan en paralelo
+        const results = await Promise.all(promises);
+        
+        // Procesar resultados y actualizar el objeto financialData
+        results.forEach(result => {
+          const { tripId, type, data } = result;
+          
+          if (type === 'budget') {
+            financialData[tripId].budget = data;
+          } else if (type === 'expenses') {
+            financialData[tripId].expenses = data;
           }
-          
-          // Cargar gastos
-          const expensesUrl = `/api/trips/${tripId}/expenses`;
-          const expensesResponse = await fetch(expensesUrl, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            credentials: "include"
-          });
-          
-          let expenses: Expense[] = [];
-          if (expensesResponse.ok) {
-            const expensesData = await expensesResponse.json();
-            if (Array.isArray(expensesData)) {
-              // Adaptar datos del backend (con 'type') al formato del frontend (con 'category')
-              expenses = expensesData.map(expense => ({
-                ...expense,
-                category: expense.type // Añadir category como alias de type
-              }));
-            }
-          }
-          
-          // Guardar datos financieros del viaje
-          financialData[tripId] = { budget, expenses };
-        } catch (error) {
-          console.error(`Error al cargar datos financieros para viaje ${tripId}:`, error);
-          // En caso de error, establecer valores predeterminados
-          financialData[tripId] = { budget: 0, expenses: [] };
-        }
+        });
+      } catch (error) {
+        console.error("Error al cargar datos financieros:", error);
       }
       
       // Actualizar el estado con todos los datos financieros
