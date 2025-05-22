@@ -64,6 +64,9 @@ export default function TripSummary({ className }: TripSummaryProps) {
   const [totalTransferSales, setTotalTransferSales] = useState(0);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   
+  // Estado de carga para los datos financieros
+  const [isLoadingFinancialData, setIsLoadingFinancialData] = useState(false);
+  
   // Estados para datos financieros
   const [operatorBudget, setOperatorBudget] = useState<number>(0);
   const [isLoadingBudget, setIsLoadingBudget] = useState(false);
@@ -453,10 +456,55 @@ export default function TripSummary({ className }: TripSummaryProps) {
     }
   }, [selectedTrip]);
   
+  // Definición de estilos para el indicador de carga
+  const loadingStyles = `
+    .financial-loader {
+      width: 120px;
+      height: 20px;
+      background: 
+        linear-gradient(90deg, rgba(0,0,0,0.06) 33%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.06) 66%)
+        #f2f2f2;
+      background-size: 300% 100%;
+      animation: loadingAnimation 1s infinite linear;
+      border-radius: 4px;
+    }
+    
+    .profit-loader {
+      display: inline-block;
+      width: 100%;
+      height: 20px;
+      background: 
+        linear-gradient(90deg, rgba(0,0,0,0.06) 33%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.06) 66%)
+        #f2f2f2;
+      background-size: 300% 100%;
+      animation: loadingAnimation 1s infinite linear;
+      border-radius: 4px;
+    }
+    
+    @keyframes loadingAnimation {
+      0% { background-position: right }
+    }
+  `;
+
+  // Insertar los estilos en el DOM
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = loadingStyles;
+    document.head.appendChild(styleElement);
+    
+    // Limpieza al desmontar
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
+  
   // Cargar datos financieros para todos los viajes mostrados en la tabla
   useEffect(() => {
     // Solo ejecutar si hay viajes filtrados
     if (filteredTrips.length === 0) return;
+    
+    // Activar indicador de carga
+    setIsLoadingFinancialData(true);
     
     // Para cada viaje, cargar sus datos financieros en paralelo
     const loadAllTripsFinancialData = async () => {
@@ -538,6 +586,9 @@ export default function TripSummary({ className }: TripSummaryProps) {
       
       // Actualizar el estado con todos los datos financieros
       setTripsFinancialData(financialData);
+      
+      // Desactivar indicador de carga después de completar la carga
+      setIsLoadingFinancialData(false);
     };
     
     loadAllTripsFinancialData();
@@ -870,16 +921,20 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               ${sales.toFixed(2)}
                             </td>
                             <td className="py-3 px-4 text-sm text-gray-900 font-medium">
-                              ${(() => {
-                                // Usar datos precargados si existen, o usar el estado local como respaldo
-                                const tripFinancialData = tripsFinancialData[trip.id];
-                                if (tripFinancialData) {
-                                  return tripFinancialData.expenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2);
-                                } else {
-                                  // Usar datos del estado solo cuando se ha seleccionado el viaje
-                                  return expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0).toFixed(2);
-                                }
-                              })()}
+                              {isLoadingFinancialData ? (
+                                <div className="financial-loader"></div>
+                              ) : (
+                                `$${(() => {
+                                  // Usar datos precargados si existen, o usar el estado local como respaldo
+                                  const tripFinancialData = tripsFinancialData[trip.id];
+                                  if (tripFinancialData) {
+                                    return tripFinancialData.expenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2);
+                                  } else {
+                                    // Usar datos del estado solo cuando se ha seleccionado el viaje
+                                    return expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0).toFixed(2);
+                                  }
+                                })()}`
+                              )}
                             </td>
                             <td className={`py-3 px-4 text-sm font-bold ${
                               (() => {
