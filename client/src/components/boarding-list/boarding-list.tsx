@@ -24,8 +24,8 @@ import { useAllDriverReservations, Reservation, Passenger } from "@/hooks/use-dr
 import { PassengerListSidebar } from "./passenger-list-sidebar";
 
 export function BoardingList() {
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [showAllTrips, setShowAllTrips] = useState<boolean>(true);
+  // Usamos la fecha actual por defecto sin posibilidad de cambiarla
+  const currentDate = new Date();
   const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -44,7 +44,7 @@ export function BoardingList() {
     error: reservationsError
   } = useAllDriverReservations();
 
-  // Filtrar viajes según el rol del usuario y la fecha seleccionada
+  // Filtrar viajes del día actual solamente
   const filteredTrips = useMemo(() => {
     if (!trips) {
       console.log("No hay datos de viajes disponibles");
@@ -65,37 +65,25 @@ export function BoardingList() {
       })));
     }
     
-    let filteredList = trips;
-    
     // Ya no necesitamos filtrar por conductor aquí porque se hace en el servidor
-    // Ahora solo registramos el conteo para depuración
     if (user && user.role === 'chofer' && user.id) {
       console.log(`Total de viajes asignados al conductor: ${trips.length}`);
     }
     
     // Filtrar viajes excluyendo sub-viajes primero
-    const noSubTripsFiltered = filteredList.filter(trip => !trip.isSubTrip);
+    const noSubTripsFiltered = trips.filter(trip => !trip.isSubTrip);
     
-    // Determinar si filtrar por fecha
-    let dateFilteredTrips;
+    // Siempre filtrar por la fecha actual
+    const dateFilteredTrips = noSubTripsFiltered.filter(trip => {
+      // Utilizar la función isSameLocalDay para comparar las fechas correctamente
+      return isSameLocalDay(trip.departureDate, currentDate);
+    });
     
-    if (showAllTrips && user?.role === 'chofer') {
-      // Si showAllTrips es true y el usuario es chofer, mostrar todos los viajes asignados
-      dateFilteredTrips = noSubTripsFiltered;
-      console.log(`Mostrando todos los viajes asignados al chofer (${noSubTripsFiltered.length}) sin filtro de fecha`);
-    } else {
-      // Filtrar por fecha seleccionada usando nuestra nueva función de utilidad
-      dateFilteredTrips = noSubTripsFiltered.filter(trip => {
-        // Utilizar la función isSameLocalDay para comparar las fechas correctamente
-        return isSameLocalDay(trip.departureDate, currentDate);
-      });
-      
-      console.log(`Filtrando viajes por fecha: ${format(currentDate, 'yyyy-MM-dd')}`);
-    }
+    console.log(`Filtrando viajes por fecha: ${format(currentDate, 'yyyy-MM-dd')}`);
+    console.log(`Viajes filtrados por fecha (${format(currentDate, 'yyyy-MM-dd')}): ${dateFilteredTrips.length}`);
     
-    console.log(`Viajes filtrados${showAllTrips ? " (mostrando todos)" : ` por fecha (${format(currentDate, 'yyyy-MM-dd')}`}: ${dateFilteredTrips.length}`);
     return dateFilteredTrips;
-  }, [trips, user, currentDate, showAllTrips]);
+  }, [trips, user, currentDate]);
 
   // La lógica de procesamiento de pasajeros ya no es necesaria aquí
   // ya que ahora se maneja en la página dedicada de PassengerListPage
@@ -107,10 +95,7 @@ export function BoardingList() {
     return format(normalizedDate, "d 'de' MMMM, yyyy", { locale: es });
   };
 
-  // Función para formatear fecha para input date
-  const formatDateForInput = (date: Date) => {
-    return format(date, "yyyy-MM-dd");
-  };
+  // Ya no necesitamos esta función, pero mantenemos formatDisplayDate para mostrar la fecha actual
 
   // Función para obtener conteo de pasajeros por viaje, incluyendo subviajes si aplica
   const getPassengerCount = (tripId: number) => {
@@ -160,53 +145,19 @@ export function BoardingList() {
         </div>
         <div>
           <h2 className="text-xl font-semibold text-gray-800">Lista de Abordaje</h2>
-          {user?.role === 'chofer' && (
-            <div>
-              <p className="text-sm text-gray-500 mb-1">
-                {showAllTrips 
-                  ? "Mostrando todos tus viajes asignados. Usa el calendario para filtrar por fecha." 
-                  : `Mostrando sólo viajes para el ${formatDisplayDate(currentDate)}.`}
-              </p>
-              <button 
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowAllTrips(!showAllTrips);
-                }}
-                className="text-xs text-primary hover:text-primary-dark underline"
-              >
-                {showAllTrips 
-                  ? "Ver solo viajes de la fecha seleccionada" 
-                  : "Ver todos mis viajes asignados"}
-              </button>
-            </div>
-          )}
+          <p className="text-sm text-gray-500">
+            Mostrando viajes para el {formatDisplayDate(currentDate)}
+          </p>
         </div>
       </div>
 
-      {/* Selector de fecha */}
-      <div className="flex justify-center items-center mb-6">
-        <div className="w-full max-w-md">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <CalendarIcon className="h-5 w-5 text-gray-400" />
-            </div>
-            <Input
-              type="date"
-              className="pl-10 pr-4 py-2 w-full"
-              value={formatDateForInput(currentDate)}
-              onChange={(e) => {
-                if (e.target.value) {
-                  // Al crear la fecha con formato yyyy-MM-dd, usar el constructor con año, mes, día para evitar problemas de zona horaria
-                  const [year, month, day] = e.target.value.split('-').map(Number);
-                  // Meses en JavaScript son 0-indexados (0-11), pero en el input date son 1-indexados (1-12)
-                  const newDate = new Date(year, month - 1, day, 12, 0, 0);
-                  setCurrentDate(newDate);
-                } else {
-                  setCurrentDate(new Date());
-                }
-              }}
-            />
-          </div>
+      {/* Espacio para información */}
+      <div className="mb-6 mx-auto text-center max-w-md border border-blue-100 rounded-md p-4 bg-blue-50">
+        <div className="flex items-center justify-center">
+          <CalendarIcon className="h-5 w-5 text-primary mr-2" />
+          <p className="text-sm text-gray-600">
+            Mostrando sólo viajes para el día de hoy
+          </p>
         </div>
       </div>
 
