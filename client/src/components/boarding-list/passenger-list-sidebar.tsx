@@ -66,15 +66,16 @@ interface PassengerListSidebarProps {
 }
 
 export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarProps) {
-  // Estado para la búsqueda de pasajeros
+  // Hooks de estado - siempre al inicio
   const [searchQuery, setSearchQuery] = useState("");
-  // Estado para el escáner de QR
   const [showScanner, setShowScanner] = useState(false);
+  const [filterChecked, setFilterChecked] = useState(false);
   
-  // Obtener información del usuario autenticado
+  // Hooks de contexto
   const { user } = useAuth();
+  const { toast } = useToast();
   
-  // Verificar si el usuario es chofer o checador
+  // Variables derivadas después de los hooks
   const isDriverOrChecker = user?.role === "chofer" || user?.role === "checador";
   
   // Cargar detalles del viaje
@@ -290,15 +291,13 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
     );
   }
 
-  // Toast para notificaciones
-  const { toast } = useToast();
-  
   // Función para manejar el escaneo de QR
   const handleQRScan = (data: string) => {
     try {
       // Aquí se implementaría la lógica para procesar el código QR escaneado
       // Por ejemplo, validar el formato y enviar una solicitud al servidor
       
+      // Mostrar notificación de éxito
       toast({
         title: "Código QR escaneado",
         description: "Ticket verificado correctamente",
@@ -309,6 +308,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
       setShowScanner(false);
     } catch (error) {
       console.error("Error al procesar el código QR:", error);
+      // Mostrar notificación de error
       toast({
         title: "Error de escaneo",
         description: "No se pudo procesar el código QR",
