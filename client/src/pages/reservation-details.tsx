@@ -60,7 +60,7 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
     mutationFn: async () => {
       if (!reservationId || !user) return null;
       
-      // Primero verificamos si la reservación está cancelada
+      // Primero verificamos si la reservación está cancelada o ya ha sido escaneada
       const reservationResponse = await fetch(`/api/public/reservations/${reservationId}`);
       if (!reservationResponse.ok) return null;
       const reservationData = await reservationResponse.json();
@@ -69,8 +69,30 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
         return { isCanceled: true, reservation: reservationData };
       }
       
+      // Verificar si el ticket ya ha sido escaneado
+      if (reservationData.checkedBy !== null && reservationData.checkedBy !== undefined) {
+        return { 
+          isAlreadyChecked: true, 
+          reservation: reservationData,
+          success: false,
+          message: 'Este ticket ya ha sido verificado y no puede verificarse nuevamente'
+        };
+      }
+      
       const response = await apiRequest("POST", `/api/reservations/${reservationId}/check`);
-      if (!response.ok) return null;
+      if (!response.ok) {
+        const errorData = await response.json();
+        // Si el error es porque el ticket ya fue verificado, manejamos de forma especial
+        if (errorData.isAlreadyChecked) {
+          return { 
+            isAlreadyChecked: true, 
+            reservation: errorData.reservation,
+            success: false,
+            message: errorData.message
+          };
+        }
+        return null;
+      }
       return response.json();
     },
     onSuccess: (data) => {
@@ -82,21 +104,36 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
         return;
       }
       
+      // Si el ticket ya está verificado, no mostramos el modal de éxito
+      if (data.isAlreadyChecked) {
+        toast({
+          title: "Ticket Ya Verificado",
+          description: "Este ticket ya ha sido verificado anteriormente y no puede escanearse nuevamente.",
+          variant: "default",
+        });
+        return;
+      }
+      
       setTicketCheckResult({
         isFirstScan: data.isFirstScan,
         reservation: data.reservation
       });
       
-      if (data.isFirstScan) {
-        setIsTicketModalOpen(true);
-        toast({
-          title: "Ticket Verificado",
-          description: "El ticket ha sido marcado como verificado correctamente.",
-          variant: "default",
-        });
-      }
+      setIsTicketModalOpen(true);
+      toast({
+        title: "Ticket Verificado",
+        description: "El ticket ha sido marcado como verificado correctamente.",
+        variant: "default",
+      });
       
       refetch();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error al verificar ticket",
+        description: error instanceof Error ? error.message : "No se pudo verificar el ticket",
+        variant: "destructive",
+      });
     }
   });
 
