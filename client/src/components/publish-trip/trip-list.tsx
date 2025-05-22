@@ -96,7 +96,8 @@ interface Trip {
   segmentOrigin?: string;
   segmentDestination?: string;
   vehicleId?: number | null; 
-  driverId?: number | null; 
+  driverId?: number | null;
+  // El estado del viaje (tripStatus) ya no se utiliza
   route?: {
     id: number;
     name: string;
