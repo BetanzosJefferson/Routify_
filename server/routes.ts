@@ -17,7 +17,6 @@ import {
   SegmentPrice,
   locationData,
   TripVisibility,
-  TripStatus,
   UserRole,
   PaymentStatus,
   PaymentMethod,
