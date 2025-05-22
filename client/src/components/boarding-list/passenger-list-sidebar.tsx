@@ -66,6 +66,15 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
   // Estado para la búsqueda de pasajeros
   const [searchQuery, setSearchQuery] = useState("");
   
+  // Obtener información del usuario actual para restricciones por rol
+  const { user } = useAuth();
+  
+  // Función para verificar si el usuario puede ver números telefónicos
+  const canViewPhoneNumbers = () => {
+    if (!user) return false;
+    return !["chofer", "checador"].includes(user.role);
+  };
+  
   // Cargar detalles del viaje
   const { 
     data: trips, 
@@ -502,20 +511,29 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         <div className="text-sm mb-3">
                           <div className="text-xs text-gray-500">Contacto</div>
                           <div className="font-medium flex items-center">
-                            <Phone className="h-3 w-3 mr-1 text-gray-500" />
-                            <a href={`tel:${reservation.phone}`} className="text-primary hover:underline">
-                              {reservation.phone}
-                            </a>
-                            <button 
-                              onClick={() => {
-                                navigator.clipboard.writeText(reservation.phone || '');
-                                // Podríamos añadir una notificación de éxito aquí
-                              }}
-                              className="ml-2 p-1 rounded-sm hover:bg-gray-100"
-                              title="Copiar al portapapeles"
-                            >
-                              <ClipboardCopy className="h-3.5 w-3.5 text-gray-500" />
-                            </button>
+                            {canViewPhoneNumbers() ? (
+                              <>
+                                <Phone className="h-3 w-3 mr-1 text-gray-500" />
+                                <a href={`tel:${reservation.phone}`} className="text-primary hover:underline">
+                                  {reservation.phone}
+                                </a>
+                                <button 
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(reservation.phone || '');
+                                    // Podríamos añadir una notificación de éxito aquí
+                                  }}
+                                  className="ml-2 p-1 rounded-sm hover:bg-gray-100"
+                                  title="Copiar al portapapeles"
+                                >
+                                  <ClipboardCopy className="h-3.5 w-3.5 text-gray-500" />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <LockIcon className="h-3 w-3 mr-1 text-gray-500" />
+                                <span className="text-gray-500 italic">Información restringida</span>
+                              </>
+                            )}
                           </div>
                         </div>
                       )}
