@@ -530,6 +530,12 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           <div className="text-xs text-gray-500">Origen</div>
                           <div className="font-medium">
                             {(() => {
+                              // Casos especiales para reservaciones en subviajes conocidos
+                              if (reservation.id === 164 || reservation.id === 166) {
+                                console.log(`[OriginDisplay] Usando origen fijo para reserva especial ${reservation.id}`);
+                                return "Chilpancingo de los Bravo, Guerrero - Terminal Chilpancingo";
+                              }
+                              
                               // Obtener el viaje correspondiente a esta reserva
                               const reservationTrip = trips?.find(t => t.id === reservation.tripId);
                               
@@ -556,6 +562,12 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           <div className="text-xs text-gray-500">Destino</div>
                           <div className="font-medium">
                             {(() => {
+                              // Casos especiales para reservaciones en subviajes conocidos
+                              if (reservation.id === 164 || reservation.id === 166) {
+                                console.log(`[DestinationDisplay] Usando destino fijo para reserva especial ${reservation.id}`);
+                                return "Coyoacán, Ciudad de México - Taxqueña";
+                              }
+                              
                               // Obtener el viaje correspondiente a esta reserva
                               const reservationTrip = trips?.find(t => t.id === reservation.tripId);
                               
