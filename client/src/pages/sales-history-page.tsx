@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { DefaultLayout } from "@/components/layout/default-layout";
 
 // Componentes UI
 import { Button } from "@/components/ui/button";
@@ -111,7 +112,9 @@ interface Expense {
   createdAt?: Date;
 }
 
-export default function SalesHistoryPage() {
+// Componente de contenido para el historial de ventas
+function SalesHistoryContent() {
+  document.title = "Historial de ventas | BAMO";
   const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
   const [trips, setTrips] = useState<TripWithFinancials[]>([]);
   const [passengers, setPassengers] = useState<Passenger[]>([]);
@@ -320,6 +323,8 @@ export default function SalesHistoryPage() {
 
   // Calcular el total de gastos actuales
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+
+  console.log("Datos de viajes recibidos:", tripsData);
 
   return (
     <div className="container mx-auto py-6">
