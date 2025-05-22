@@ -56,9 +56,8 @@ type FormValues = {
   // Nuevos campos para vehículo y conductor
   vehicleId?: number | null;
   driverId?: number | null;
-  // Campos para visibilidad y estado
+  // Campo para visibilidad
   visibility?: string;
-  tripStatus?: string;
 };
 
 interface EditTripFormProps {

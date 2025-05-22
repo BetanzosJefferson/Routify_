@@ -613,7 +613,7 @@ export class DatabaseStorage implements IStorage {
     return {
       ...trip,
       route,
-      tripStatus: calculatedTripStatus, // Incluir el estado calculado del viaje
+      // El estado del viaje ya no se utiliza
       numStops: route.stops.length,
       companyName,
       companyLogo,
@@ -1014,7 +1014,7 @@ export class DatabaseStorage implements IStorage {
           tripsWithRouteInfo.push({
             ...trip,
             route,
-            tripStatus: calculatedTripStatus, // Estado calculado dinámicamente
+            // El estado del viaje ya no se utiliza
             numStops: route.stops.length,
             companyName: companyData.companyName,
             companyLogo: companyData.companyLogo,
