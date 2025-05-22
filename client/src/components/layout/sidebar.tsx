@@ -20,7 +20,9 @@ import {
   FileTextIcon,
   TagIcon,
   Users,
-  ArrowRightLeft
+  ArrowRightLeft,
+  BarChart3Icon, // Icono para Historial de ventas
+  HistoryIcon
 } from "lucide-react";
 
 interface SidebarProps {
@@ -232,8 +234,17 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           )} */}
           
           {/* Sección de Flota y Finanzas */}
-          {(canAccess("vehicles") || canAccess("commissions") || canAccess("my-commissions") || canAccess("coupons") || canAccess("packages")) && (
+          {(canAccess("vehicles") || canAccess("commissions") || canAccess("my-commissions") || canAccess("coupons") || canAccess("packages") || (user?.role === "dueño" || user?.role === "admin")) && (
             <NavSection title="Flota y Finanzas">
+              {(user?.role === "dueño" || user?.role === "admin") && (
+                <NavItem 
+                  icon={<BarChart3Icon className="h-5 w-5" />} 
+                  active={location === "/sales-history"}
+                  onClick={() => setLocation("/sales-history")}
+                >
+                  Historial de ventas
+                </NavItem>
+              )}
               {canAccess("vehicles") && (
                 <NavItem 
                   icon={<TruckIcon className="h-5 w-5" />} 
