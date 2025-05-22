@@ -74,7 +74,7 @@ export function useDriverTrips() {
       
       // Si el usuario es conductor, añadimos el parámetro driverId
       if (isDriver && user?.id) {
-        url += `?driverId=${user.id}&includeSubTrips=true`;
+        url += `?driverId=${user.id}`;
         console.log(`[useDriverTrips] Solicitando viajes para conductor ID: ${user.id}`);
       }
       
@@ -84,40 +84,15 @@ export function useDriverTrips() {
           throw new Error(`Error al cargar viajes: ${response.statusText}`);
         }
         
-        // Obtener viajes principales
-        const mainTrips = await response.json();
-        
-        // Para cada viaje principal, intentar cargar sus subviajes pero no incluirlos en la vista principal
-        // Solo los usaremos para obtener datos de origen/destino
-        for (const trip of mainTrips) {
-          if (!trip.isSubTrip) { // Solo para viajes principales
-            try {
-              // Cargar subviajes relacionados solo para tener su información disponible
-              const subTripsResponse = await fetch(`/api/trips?parentTripId=${trip.id}`);
-              if (subTripsResponse.ok) {
-                const subTrips = await subTripsResponse.json();
-                if (subTrips && subTrips.length > 0) {
-                  console.log(`[useDriverTrips] Cargados ${subTrips.length} subviajes para viaje principal ${trip.id}`);
-                  // Almacenamos los subviajes como propiedad del viaje principal para tener acceso a ellos
-                  trip.subTrips = subTrips;
-                }
-              }
-            } catch (subError) {
-              console.error(`[useDriverTrips] Error cargando subviajes para viaje ${trip.id}:`, subError);
-            }
-          }
-        }
-        
-        // Devolvemos solo los viajes principales, que ahora contienen referencia a sus subviajes
-        const allTrips = [...mainTrips];
+        const trips = await response.json();
         
         if (isDriver && user?.id) {
-          console.log(`[useDriverTrips] Obtenidos ${allTrips.length} viajes para el conductor ${user.id}`);
+          console.log(`[useDriverTrips] Obtenidos ${trips.length} viajes para el conductor ${user.id}`);
         } else {
-          console.log(`[useDriverTrips] Obtenidos ${allTrips.length} viajes totales`);
+          console.log(`[useDriverTrips] Obtenidos ${trips.length} viajes totales`);
         }
         
-        return allTrips;
+        return trips;
       } catch (error) {
         console.error("[useDriverTrips] Error al cargar viajes:", error);
         // Devolver array vacío en lugar de lanzar error para evitar fallos en cascada
