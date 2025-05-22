@@ -51,11 +51,10 @@ export function QrScannerModal({ isOpen, onClose, tripId, onReservationScanned }
               tripId
             });
 
-            if (response && response.success) {
+            if (response) {
               toast({
                 title: "Boleto verificado",
-                description: `Se ha registrado correctamente la verificación del boleto.`,
-                variant: "success"
+                description: `Se ha registrado correctamente la verificación del boleto.`
               });
               
               // Call the callback function to refresh reservations
@@ -69,8 +68,7 @@ export function QrScannerModal({ isOpen, onClose, tripId, onReservationScanned }
             } else {
               toast({
                 title: "Error al verificar boleto",
-                description: response.message || "No se pudo verificar el boleto. Intente nuevamente.",
-                variant: "destructive"
+                description: "No se pudo verificar el boleto. Intente nuevamente."
               });
               setIsProcessing(false);
             }
@@ -78,8 +76,7 @@ export function QrScannerModal({ isOpen, onClose, tripId, onReservationScanned }
             console.error("Error al procesar el código QR:", error);
             toast({
               title: "Error",
-              description: "Hubo un problema al procesar el código QR. Intente nuevamente.",
-              variant: "destructive"
+              description: "Hubo un problema al procesar el código QR. Intente nuevamente."
             });
             setIsProcessing(false);
           }
