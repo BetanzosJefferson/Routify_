@@ -155,7 +155,16 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
     }
   })();
 
-  // Filtrar reservaciones basadas en el término de búsqueda
+  // Determinar si una reservación ha sido verificada (tiene check)
+  const isReservationChecked = (reservation: any) => {
+    // Verificamos si la reservación tiene datos de verificación
+    return reservation.checkedBy !== null && 
+           reservation.checkedBy !== undefined && 
+           reservation.checkCount && 
+           reservation.checkCount > 0;
+  };
+  
+  // Filtrar y ordenar reservaciones basadas en el término de búsqueda
   const filteredReservations = searchQuery.trim() 
     ? groupedReservations.filter(reservation => {
         const query = searchQuery.toLowerCase();
@@ -185,6 +194,16 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
         return matchesPassenger || matchesCode || matchesEmail || matchesPhone || matchesOriginDestination;
       })
     : groupedReservations;
+    
+  // Ordenar las reservaciones: primero las no verificadas, después las verificadas
+  const sortedReservations = [...filteredReservations].sort((a, b) => {
+    const aIsChecked = isReservationChecked(a);
+    const bIsChecked = isReservationChecked(b);
+    
+    if (aIsChecked && !bIsChecked) return 1; // a es verificada, b no, entonces a va después
+    if (!aIsChecked && bIsChecked) return -1; // a no es verificada, b sí, entonces a va primero
+    return 0; // Mantener el orden original si ambas están en el mismo estado
+  });
   
   // Total de pasajeros (solo muestra total de todos los pasajeros, no de los filtrados)
   const totalPassengers = groupedReservations.reduce((total, res) => total + res.passengers.length, 0);
@@ -360,9 +379,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
         {/* Lista de pasajeros */}
         {groupedReservations.length > 0 ? (
           <>
-            {filteredReservations.length > 0 ? (
+            {sortedReservations.length > 0 ? (
               <div className="space-y-4">
-                {filteredReservations.map((reservation, index) => (
+                {sortedReservations.map((reservation, index) => (
                   <div 
                     key={`reservation-${reservation.id}`} 
                     className="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow"
