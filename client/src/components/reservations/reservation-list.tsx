@@ -543,8 +543,24 @@ export function ReservationList() {
                       setIsDetailsModalOpen(true);
                     }}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      #{generateReservationId(reservation.id)}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="text-gray-500">
+                        #{generateReservationId(reservation.id)}
+                      </div>
+                      {/* Indicador de Check */}
+                      <div className="mt-1">
+                        {reservation.checked_by && reservation.checked_at ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                            <CheckIcon className="h-3 w-3 mr-1" />
+                            Check
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                            <XIcon className="h-3 w-3 mr-1" />
+                            No check
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
