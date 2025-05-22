@@ -509,17 +509,37 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         <div>
                           <div className="text-xs text-gray-500">Origen</div>
                           <div className="font-medium">
-                            {reservation.origin && !reservation.origin.includes('no especificado') 
-                              ? reservation.origin
-                              : tripDetails?.route?.origin || 'Origen'}
+                            {(() => {
+                              // Obtener el viaje correspondiente a esta reserva
+                              const reservationTrip = trips?.find(t => t.id === reservation.tripId);
+                              
+                              if (!reservationTrip) return 'Origen no disponible';
+                              
+                              // Determinar origen basado en si es subviaje o no
+                              if (reservationTrip.isSubTrip) {
+                                return reservationTrip.segmentOrigin || 'Origen del segmento';
+                              } else {
+                                return reservationTrip.route?.origin || 'Origen de la ruta';
+                              }
+                            })()}
                           </div>
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">Destino</div>
                           <div className="font-medium">
-                            {reservation.destination && !reservation.destination.includes('no especificado') 
-                              ? reservation.destination
-                              : tripDetails?.route?.destination || 'Destino'}
+                            {(() => {
+                              // Obtener el viaje correspondiente a esta reserva
+                              const reservationTrip = trips?.find(t => t.id === reservation.tripId);
+                              
+                              if (!reservationTrip) return 'Destino no disponible';
+                              
+                              // Determinar destino basado en si es subviaje o no
+                              if (reservationTrip.isSubTrip) {
+                                return reservationTrip.segmentDestination || 'Destino del segmento';
+                              } else {
+                                return reservationTrip.route?.destination || 'Destino de la ruta';
+                              }
+                            })()}
                           </div>
                         </div>
                       </div>
