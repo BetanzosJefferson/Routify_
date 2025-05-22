@@ -602,6 +602,13 @@ export default function TripSummary({ className }: TripSummaryProps) {
     }
   }, [selectedTrip]);
   
+  // Cargar métricas diarias cuando cambian los viajes o la fecha
+  useEffect(() => {
+    if (trips && trips.length > 0) {
+      loadDailyMetrics();
+    }
+  }, [trips, currentDate]);
+  
   // Definición de estilos para el indicador de carga
   const loadingStyles = `
     .financial-loader {
