@@ -39,6 +39,9 @@ interface GroupedReservation {
   tripSegment: string;
   origin?: string;
   destination?: string;
+  checkCount?: number;
+  checkedBy?: number | null;
+  checkedAt?: string | null;
   passengers: {
     id: number;
     firstName: string;
@@ -128,6 +131,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           tripSegment: 'Viaje completo',
           origin: trip?.segmentOrigin || trip?.route?.origin || "Origen no especificado",
           destination: trip?.segmentDestination || trip?.route?.destination || "Destino no especificado",
+          checkCount: reservation.checkCount || 0,
+          checkedBy: reservation.checkedBy || null,
+          checkedAt: reservation.checkedAt || null,
           passengers: []
         };
         
@@ -402,9 +408,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                                 : `${reservation.passengers[0]?.firstName || 'nombre'} ${reservation.passengers[0]?.lastName || 'del pasajero'}`}
                             </div>
                             <div className="text-xs text-gray-500">{reservation.code}</div>
-                            {/* Indicador de Check */}
+                            {/* Indicador de Check basado en checkCount */}
                             <div className="mt-1">
-                              {(reservation.checkedBy || reservation.checkedAt || reservation.checkCount > 0) ? (
+                              {reservation.checkCount && reservation.checkCount > 0 ? (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                                   <CheckIcon className="h-3 w-3 mr-1" />
                                   Check
