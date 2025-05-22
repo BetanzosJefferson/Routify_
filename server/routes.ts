@@ -1732,6 +1732,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (tripData.capacity === undefined || tripData.capacity === null) {
         tripData.capacity = currentTrip.capacity;
+      } else if (tripData.capacity !== currentTrip.capacity) {
+        // Si la capacidad cambió, ajustar los asientos disponibles proporcionalmente
+        const asientosOcupados = currentTrip.capacity - currentTrip.availableSeats;
+        const nuevosAsientosDisponibles = tripData.capacity - asientosOcupados;
+        
+        console.log(`[PUT /trips/${id}] Ajustando asientos disponibles automáticamente:`);
+        console.log(`  - Capacidad antigua: ${currentTrip.capacity}, Asientos disponibles: ${currentTrip.availableSeats}`);
+        console.log(`  - Capacidad nueva: ${tripData.capacity}, Asientos ocupados: ${asientosOcupados}`);
+        console.log(`  - Nuevos asientos disponibles: ${nuevosAsientosDisponibles}`);
+        
+        // Asegurar que siempre haya al menos 0 asientos disponibles (no negativos)
+        tripData.availableSeats = Math.max(0, nuevosAsientosDisponibles);
       }
       
       // Manejar campos de visibilidad y estado
@@ -1909,6 +1921,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
               visibility: tripData.visibility || updatedTrip.visibility,
               tripStatus: tripData.tripStatus || updatedTrip.tripStatus,
             };
+            
+            // Si cambió la capacidad, ajustar también los asientos disponibles en sub-viajes
+            if (tripData.capacity && tripData.capacity !== subTrip.capacity) {
+              const asientosOcupados = subTrip.capacity - subTrip.availableSeats;
+              const nuevosAsientosDisponibles = tripData.capacity - asientosOcupados;
+              
+              console.log(`[PUT /trips/${id}] Ajustando asientos disponibles para sub-viaje ${subTrip.id}:`);
+              console.log(`  - Capacidad antigua: ${subTrip.capacity}, Asientos disponibles: ${subTrip.availableSeats}`);
+              console.log(`  - Capacidad nueva: ${tripData.capacity}, Asientos ocupados: ${asientosOcupados}`);
+              console.log(`  - Nuevos asientos disponibles: ${nuevosAsientosDisponibles}`);
+              
+              // Asegurar que siempre haya al menos 0 asientos disponibles (no negativos)
+              subTripUpdate.availableSeats = Math.max(0, nuevosAsientosDisponibles);
+            }
             
             // Si hay precios de segmentos actualizados, buscamos el que corresponde a este sub-viaje
             if (tripData.segmentPrices && Array.isArray(tripData.segmentPrices) && tripData.segmentPrices.length > 0) {
