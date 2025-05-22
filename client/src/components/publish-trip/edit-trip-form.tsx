@@ -157,8 +157,13 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       if (!response.ok) {
         throw new Error("Error al cargar conductores");
       }
-      console.log("Conductores cargados:", await response.clone().json());
-      return await response.json();
+      
+      const allUsers = await response.json();
+      // Filtrar explícitamente en el frontend para asegurar que solo se muestren choferes
+      const drivers = allUsers.filter((user: any) => user.role === "chofer");
+      console.log("Conductores filtrados (solo rol chofer):", drivers);
+      
+      return drivers;
     },
     enabled: true, // Siempre habilitada para edición
   });
