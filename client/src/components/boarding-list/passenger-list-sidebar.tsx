@@ -158,10 +158,13 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
   // Determinar si una reservación ha sido verificada (tiene check)
   const isReservationChecked = (reservation: any) => {
     // Verificamos si la reservación tiene datos de verificación
-    return reservation.checkedBy !== null && 
-           reservation.checkedBy !== undefined && 
-           reservation.checkCount && 
-           reservation.checkCount > 0;
+    console.log(`Verificando reserva ${reservation.id}:`, {
+      checkedBy: reservation.checkedBy,
+      checkCount: reservation.checkCount,
+      checkStatus: !!reservation.checkedBy || (reservation.checkCount && reservation.checkCount > 0)
+    });
+    
+    return !!reservation.checkedBy || (reservation.checkCount && reservation.checkCount > 0);
   };
   
   // Filtrar y ordenar reservaciones basadas en el término de búsqueda
