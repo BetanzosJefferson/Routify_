@@ -85,6 +85,20 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
   // Buscar el viaje específico en la lista de viajes
   const tripDetails = trips?.find(trip => trip.id === tripId);
   
+  // Log para debugging - mostrar información de todos los viajes cargados
+  useEffect(() => {
+    if (trips) {
+      console.log(`[PassengerListSidebar] Cargados ${trips.length} viajes`);
+      trips.forEach(trip => {
+        if (trip.isSubTrip) {
+          console.log(`[PassengerListSidebar] Viaje ${trip.id} es SUBVIAJE - Origen: ${trip.segmentOrigin || 'NULL'}, Destino: ${trip.segmentDestination || 'NULL'}`);
+        } else {
+          console.log(`[PassengerListSidebar] Viaje ${trip.id} es PRINCIPAL - Origen: ${trip.route?.origin || 'NULL'}, Destino: ${trip.route?.destination || 'NULL'}`);
+        }
+      });
+    }
+  }, [trips]);
+  
   // Cargar reservaciones del viaje
   const { 
     data: reservations, 
@@ -517,9 +531,12 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                               
                               // Determinar origen basado en si es subviaje o no
                               if (reservationTrip.isSubTrip) {
-                                return reservationTrip.segmentOrigin || 'Origen del segmento';
+                                // Para subviajes, usar segmentOrigin y registrar para depuración
+                                console.log(`[OriginDisplay] Reserva ${reservation.id}, Viaje ${reservationTrip.id} es SUBVIAJE con origen: ${reservationTrip.segmentOrigin || 'NO DEFINIDO'}`);
+                                return reservationTrip.segmentOrigin || 'Origen no definido';
                               } else {
-                                return reservationTrip.route?.origin || 'Origen de la ruta';
+                                console.log(`[OriginDisplay] Reserva ${reservation.id}, Viaje ${reservationTrip.id} es VIAJE PRINCIPAL con origen: ${reservationTrip.route?.origin || 'NO DEFINIDO'}`);
+                                return reservationTrip.route?.origin || 'Origen no definido';
                               }
                             })()}
                           </div>
@@ -535,9 +552,12 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                               
                               // Determinar destino basado en si es subviaje o no
                               if (reservationTrip.isSubTrip) {
-                                return reservationTrip.segmentDestination || 'Destino del segmento';
+                                // Para subviajes, usar segmentDestination y registrar para depuración
+                                console.log(`[DestinationDisplay] Reserva ${reservation.id}, Viaje ${reservationTrip.id} es SUBVIAJE con destino: ${reservationTrip.segmentDestination || 'NO DEFINIDO'}`);
+                                return reservationTrip.segmentDestination || 'Destino no definido';
                               } else {
-                                return reservationTrip.route?.destination || 'Destino de la ruta';
+                                console.log(`[DestinationDisplay] Reserva ${reservation.id}, Viaje ${reservationTrip.id} es VIAJE PRINCIPAL con destino: ${reservationTrip.route?.destination || 'NO DEFINIDO'}`);
+                                return reservationTrip.route?.destination || 'Destino no definido';
                               }
                             })()}
                           </div>
