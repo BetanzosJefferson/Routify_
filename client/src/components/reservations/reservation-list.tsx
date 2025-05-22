@@ -279,7 +279,6 @@ export function ReservationList() {
   // Estados adicionales para el formulario de edición
   const [email, setEmail] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
-  const [status, setStatus] = useState<string>("confirmed");
   const [advancePaymentMethod, setAdvancePaymentMethod] = useState<string>("efectivo");
 
   // Edit reservation mutation
@@ -327,7 +326,6 @@ export function ReservationList() {
     setNotes(reservation.notes || "");
     setEmail(reservation.email || "");
     setPhone(reservation.phone || "");
-    setStatus(reservation.status || "confirmed");
     setIsEditModalOpen(true);
   };
   
@@ -344,8 +342,7 @@ export function ReservationList() {
       paymentMethod,
       notes,
       email,
-      phone,
-      status
+      phone
     };
     
     // Si hay anticipo, también actualizamos el método de pago del anticipo
@@ -1175,85 +1172,68 @@ export function ReservationList() {
                 {editingReservation.advanceAmount && editingReservation.advanceAmount > 0 ? (
                   // Caso 1: Tiene anticipo (pago en 2 exhibiciones)
                   <>
-                    <div className="grid grid-cols-1 gap-2">
-                      <div className="flex justify-between items-center">
-                        <Label htmlFor="advance-payment-method" className="text-gray-500 text-xs">
-                          ANTICIPÓ: {formatPrice(editingReservation.advanceAmount)}
-                        </Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="advance-payment-method" className="text-gray-500 text-xs font-medium">
+                        ANTICIPÓ: {formatPrice(editingReservation.advanceAmount)}
+                      </Label>
+                      <div className="w-1/2">
+                        <Select
+                          value={advancePaymentMethod}
+                          onValueChange={setAdvancePaymentMethod}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Seleccionar" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="efectivo">Efectivo</SelectItem>
+                            <SelectItem value="transferencia">Transferencia bancaria</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <Select
-                        value={advancePaymentMethod}
-                        onValueChange={setAdvancePaymentMethod}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Método de pago del anticipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="efectivo">Efectivo</SelectItem>
-                          <SelectItem value="transferencia">Transferencia bancaria</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
                     
-                    <div className="grid grid-cols-1 gap-2">
-                      <div className="flex justify-between items-center">
-                        <Label htmlFor="payment-method" className="text-gray-500 text-xs">
-                          RESTA: {formatPrice(editingReservation.totalAmount - editingReservation.advanceAmount)}
-                        </Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="payment-method" className="text-gray-500 text-xs font-medium">
+                        RESTA: {formatPrice(editingReservation.totalAmount - editingReservation.advanceAmount)}
+                      </Label>
+                      <div className="w-1/2">
+                        <Select
+                          value={paymentMethod}
+                          onValueChange={setPaymentMethod}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Seleccionar" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="efectivo">Efectivo</SelectItem>
+                            <SelectItem value="transferencia">Transferencia bancaria</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <Select
-                        value={paymentMethod}
-                        onValueChange={setPaymentMethod}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Método de pago del resto" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="efectivo">Efectivo</SelectItem>
-                          <SelectItem value="transferencia">Transferencia bancaria</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
                   </>
                 ) : (
                   // Caso 2: No tiene anticipo (pago en una sola exhibición)
-                  <div className="grid grid-cols-1 gap-2">
-                    <div className="flex justify-between items-center">
-                      <Label htmlFor="payment-method" className="text-gray-500 text-xs">
-                        {formatPrice(editingReservation.totalAmount)}
-                      </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="payment-method" className="text-gray-500 text-xs font-medium">
+                      {formatPrice(editingReservation.totalAmount)}
+                    </Label>
+                    <div className="w-1/2">
+                      <Select
+                        value={paymentMethod}
+                        onValueChange={setPaymentMethod}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Seleccionar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="efectivo">Efectivo</SelectItem>
+                          <SelectItem value="transferencia">Transferencia bancaria</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <Select
-                      value={paymentMethod}
-                      onValueChange={setPaymentMethod}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar método de pago" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="efectivo">Efectivo</SelectItem>
-                        <SelectItem value="transferencia">Transferencia bancaria</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                 )}
-                
-                <div className="grid grid-cols-1 gap-2">
-                  <Label htmlFor="status" className="text-gray-500 text-xs">ESTADO</Label>
-                  <Select
-                    value={status}
-                    onValueChange={setStatus}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="confirmed">Confirmado</SelectItem>
-                      <SelectItem value="pending">Pendiente</SelectItem>
-                      <SelectItem value="cancelled">Cancelado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
               
               {/* Notas adicionales */}
