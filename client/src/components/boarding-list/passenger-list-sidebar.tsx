@@ -12,7 +12,10 @@ import {
   X,
   UserIcon,
   Search,
-  Check as CheckIcon
+  Check as CheckIcon,
+  Phone,
+  FilterIcon,
+  Trash
 } from "lucide-react";
 import { formatTripTime } from "@/lib/trip-utils";
 import { Badge } from "@/components/ui/badge";
@@ -469,25 +472,38 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         </div>
                       </div>
                       
-                      {/* Origen y destino simplificados */}
+                      {/* Origen y destino completos (incluyendo punto de abordaje) */}
                       <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                         <div>
                           <div className="text-xs text-gray-500">Origen</div>
                           <div className="font-medium">
                             {reservation.origin && !reservation.origin.includes('no especificado') 
-                              ? reservation.origin.split(' - ')[0] 
-                              : tripDetails?.route?.origin?.split(' - ')[0] || 'Origen'}
+                              ? reservation.origin
+                              : tripDetails?.route?.origin || 'Origen'}
                           </div>
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">Destino</div>
                           <div className="font-medium">
                             {reservation.destination && !reservation.destination.includes('no especificado') 
-                              ? reservation.destination.split(' - ')[0] 
-                              : tripDetails?.route?.destination?.split(' - ')[0] || 'Destino'}
+                              ? reservation.destination
+                              : tripDetails?.route?.destination || 'Destino'}
                           </div>
                         </div>
                       </div>
+                      
+                      {/* Teléfono de contacto */}
+                      {reservation.phone && (
+                        <div className="text-sm mb-3">
+                          <div className="text-xs text-gray-500">Contacto</div>
+                          <div className="font-medium flex items-center">
+                            <Phone className="h-3 w-3 mr-1 text-gray-500" />
+                            <a href={`tel:${reservation.phone}`} className="text-primary hover:underline">
+                              {reservation.phone}
+                            </a>
+                          </div>
+                        </div>
+                      )}
                       
                       {/* Información de pago simplificada */}
                       <div className="mt-3">
