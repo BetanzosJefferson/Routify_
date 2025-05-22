@@ -64,7 +64,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
   const [totalTransferSales, setTotalTransferSales] = useState(0);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   
-  // Estado de carga para los datos financieros
+  // Estado de carga para los datos financieros - desactivado para evitar problemas de carga infinita
   const [isLoadingFinancialData, setIsLoadingFinancialData] = useState(false);
   
   // Estados para datos financieros
@@ -592,7 +592,10 @@ export default function TripSummary({ className }: TripSummaryProps) {
     };
     
     loadAllTripsFinancialData();
-  }, [filteredTrips]);
+    
+    // Usar ids como dependencia en lugar de todo el array de objetos
+    // Esto evita recargos infinitos cuando cambian propiedades internas
+  }, [JSON.stringify(filteredTrips.map(trip => trip.id))]);
   
   // Filter reservations by selected trip
   useEffect(() => {
@@ -921,23 +924,19 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               ${sales.toFixed(2)}
                             </td>
                             <td className="py-3 px-4 text-sm text-gray-900 font-medium">
-                              {isLoadingFinancialData ? (
-                                <div className="financial-loader"></div>
-                              ) : (
-                                `$${(() => {
-                                  // Usar datos precargados si existen, o usar el estado local como respaldo
-                                  const tripFinancialData = tripsFinancialData[trip.id];
-                                  if (tripFinancialData) {
-                                    return tripFinancialData.expenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2);
-                                  } else {
-                                    // Usar datos del estado solo cuando se ha seleccionado el viaje
-                                    return expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0).toFixed(2);
-                                  }
-                                })()}`
-                              )}
+                              $${(() => {
+                                // Usar datos precargados si existen, o usar el estado local como respaldo
+                                const tripFinancialData = tripsFinancialData[trip.id];
+                                if (tripFinancialData) {
+                                  return tripFinancialData.expenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2);
+                                } else {
+                                  // Usar datos del estado solo cuando se ha seleccionado el viaje
+                                  return expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0).toFixed(2);
+                                }
+                              })()}
                             </td>
                             <td className={`py-3 px-4 text-sm font-bold ${
-                              !isLoadingFinancialData ? (() => {
+                              (() => {
                                 // Usar datos precargados si existen, o usar el estado local como respaldo
                                 const tripFinancialData = tripsFinancialData[trip.id];
                                 let tripExpenses = 0;
@@ -953,26 +952,22 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                 if (profit > 0) return "bg-green-50 text-green-600";
                                 if (profit < 0) return "bg-red-50 text-red-600";
                                 return "text-gray-600";
-                              })() : ""
+                              })()
                             }`}>
-                              {isLoadingFinancialData ? (
-                                <div className="financial-loader"></div>
-                              ) : (
-                                `$${(() => {
-                                  // Usar datos precargados si existen, o usar el estado local como respaldo
-                                  const tripFinancialData = tripsFinancialData[trip.id];
-                                  let tripExpenses = 0;
-                                  
-                                  if (tripFinancialData) {
-                                    tripExpenses = tripFinancialData.expenses.reduce((sum, e) => sum + e.amount, 0);
-                                  } else {
-                                    // Usar datos del estado solo cuando se ha seleccionado el viaje
-                                    tripExpenses = expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0);
-                                  }
-                                  
-                                  return (sales - tripExpenses).toFixed(2);
-                                })()}`
-                              )}
+                              $${(() => {
+                                // Usar datos precargados si existen, o usar el estado local como respaldo
+                                const tripFinancialData = tripsFinancialData[trip.id];
+                                let tripExpenses = 0;
+                                
+                                if (tripFinancialData) {
+                                  tripExpenses = tripFinancialData.expenses.reduce((sum, e) => sum + e.amount, 0);
+                                } else {
+                                  // Usar datos del estado solo cuando se ha seleccionado el viaje
+                                  tripExpenses = expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0);
+                                }
+                                
+                                return (sales - tripExpenses).toFixed(2);
+                              })()}
                             </td>
                           </tr>
                         );
