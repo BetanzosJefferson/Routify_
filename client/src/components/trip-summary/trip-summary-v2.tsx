@@ -381,6 +381,137 @@ export default function TripSummary({ className }: TripSummaryProps) {
     }
   };
   
+  // Cargar métricas de ganancias diarias
+  const loadDailyMetrics = async () => {
+    setIsLoadingDailyMetrics(true);
+    try {
+      // Obtener fecha actual (para la comparación)
+      const today = new Date(currentDate);
+      
+      // Calcular fecha de ayer
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      // Calcular ganancias de hoy basado en los viajes filtrados
+      let todayTotalProfit = 0;
+      
+      // Para los viajes de hoy, usamos los datos ya cargados en filteredTrips
+      if (filteredTrips && filteredTrips.length > 0) {
+        for (const trip of filteredTrips) {
+          // Obtener estadísticas del viaje
+          const { sales } = getTripStats(trip.id);
+          
+          // Obtener gastos del viaje (si existen)
+          let tripExpensesTotal = 0;
+          
+          try {
+            const expensesResponse = await fetch(`/api/trips/${trip.id}/expenses`, {
+              credentials: 'include'
+            });
+            
+            if (expensesResponse.ok) {
+              const expensesData = await expensesResponse.json();
+              if (Array.isArray(expensesData)) {
+                tripExpensesTotal = expensesData.reduce((sum, expense) => sum + expense.amount, 0);
+              }
+            }
+          } catch (error) {
+            console.error(`Error al cargar gastos del viaje ${trip.id}:`, error);
+          }
+          
+          // Ganancia = ventas - gastos
+          todayTotalProfit += (sales - tripExpensesTotal);
+        }
+      }
+      
+      // Para los viajes de ayer, necesitamos hacer una consulta adicional
+      let yesterdayTotalProfit = 0;
+      try {
+        // Formato YYYY-MM-DD para ayer
+        const yesterdayStr = formatDateForInput(yesterday);
+        
+        // Obtener viajes de ayer
+        const yesterdayTripsResponse = await fetch(`/api/trips?date=${yesterdayStr}`, {
+          credentials: 'include'
+        });
+        
+        if (yesterdayTripsResponse.ok) {
+          const yesterdayTrips = await yesterdayTripsResponse.json();
+          
+          // Para cada viaje de ayer, calcular ventas y gastos
+          for (const trip of yesterdayTrips) {
+            // Obtener reservaciones para calcular ventas
+            const reservationsResponse = await fetch(`/api/reservations?tripId=${trip.id}`, {
+              credentials: 'include'
+            });
+            
+            let tripSales = 0;
+            if (reservationsResponse.ok) {
+              const reservationsData = await reservationsResponse.json();
+              
+              // Aplicar los mismos criterios de cálculo de ventas
+              for (const res of reservationsData) {
+                const isPaid = res.paymentStatus === 'PAID' || res.paymentStatus === 'pagado' || res.paymentStatus === 'paid';
+                const hasPendingStatus = res.paymentStatus === 'pendiente' || res.paymentStatus === 'pending';
+                const hasAdvance = res.advanceAmount && res.advanceAmount > 0;
+                
+                if (isPaid) {
+                  // Si está pagado, sumar el monto total
+                  tripSales += res.totalAmount || 0;
+                } else if (hasAdvance && !hasPendingStatus) {
+                  // Si tiene anticipo y no está pendiente, sumar solo el anticipo
+                  tripSales += res.advanceAmount || 0;
+                }
+              }
+            }
+            
+            // Obtener gastos
+            let tripExpensesTotal = 0;
+            try {
+              const expensesResponse = await fetch(`/api/trips/${trip.id}/expenses`, {
+                credentials: 'include'
+              });
+              
+              if (expensesResponse.ok) {
+                const expensesData = await expensesResponse.json();
+                if (Array.isArray(expensesData)) {
+                  tripExpensesTotal = expensesData.reduce((sum, expense) => sum + expense.amount, 0);
+                }
+              }
+            } catch (error) {
+              console.error(`Error al cargar gastos del viaje ${trip.id}:`, error);
+            }
+            
+            // Ganancia = ventas - gastos
+            yesterdayTotalProfit += (tripSales - tripExpensesTotal);
+          }
+        }
+      } catch (error) {
+        console.error("Error al cargar datos de ayer:", error);
+      }
+      
+      // Actualizar estados
+      setTodayIncome(todayTotalProfit);
+      setYesterdayIncome(yesterdayTotalProfit);
+      
+      // Calcular cambio porcentual
+      if (yesterdayTotalProfit > 0) {
+        const percentChange = ((todayTotalProfit - yesterdayTotalProfit) / yesterdayTotalProfit) * 100;
+        setIncomePercentChange(percentChange);
+      } else if (yesterdayTotalProfit === 0 && todayTotalProfit > 0) {
+        // Si ayer fue 0 y hoy hay ganancia, mostrar 100% de incremento
+        setIncomePercentChange(100);
+      } else {
+        setIncomePercentChange(0);
+      }
+      
+    } catch (error) {
+      console.error("Error al cargar métricas diarias:", error);
+    } finally {
+      setIsLoadingDailyMetrics(false);
+    }
+  };
+
   // Calculo de ganancias del viaje (ventas totales - gastos totales)
   const tripProfit = totalSales - totalExpenses;
 
@@ -797,6 +928,32 @@ export default function TripSummary({ className }: TripSummaryProps) {
           <ClipboardListIcon className="h-6 w-6 text-primary" />
         </div>
         <h2 className="text-xl font-semibold text-gray-800">Bitácora</h2>
+      </div>
+      
+      {/* Métricas de ganancias diarias */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center">
+            <div className="rounded-full bg-blue-100 p-2 mr-3">
+              <DollarSignIcon className="h-5 w-5 text-blue-500" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Ganancia del día</p>
+              {isLoadingDailyMetrics ? (
+                <div className="financial-loader mt-1"></div>
+              ) : (
+                <div className="flex items-end">
+                  <span className="text-2xl font-bold">${todayIncome.toFixed(2)}</span>
+                  {incomePercentChange !== 0 && (
+                    <div className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold flex items-center ${incomePercentChange >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {incomePercentChange >= 0 ? '+' : ''}{incomePercentChange.toFixed(0)}% vs día anterior
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Selector de fecha */}
