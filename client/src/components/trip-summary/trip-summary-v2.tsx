@@ -924,7 +924,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               ${sales.toFixed(2)}
                             </td>
                             <td className="py-3 px-4 text-sm text-gray-900 font-medium">
-                              $${(() => {
+                              ${(() => {
                                 // Usar datos precargados si existen, o usar el estado local como respaldo
                                 const tripFinancialData = tripsFinancialData[trip.id];
                                 if (tripFinancialData) {
@@ -954,7 +954,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                 return "text-gray-600";
                               })()
                             }`}>
-                              $${(() => {
+                              ${(() => {
                                 // Usar datos precargados si existen, o usar el estado local como respaldo
                                 const tripFinancialData = tripsFinancialData[trip.id];
                                 let tripExpenses = 0;
