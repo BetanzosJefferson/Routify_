@@ -15,7 +15,8 @@ import {
   Check as CheckIcon,
   Phone,
   FilterIcon,
-  Trash
+  Trash,
+  ClipboardCopy
 } from "lucide-react";
 import { formatTripTime } from "@/lib/trip-utils";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,7 @@ interface GroupedReservation {
   tripSegment: string;
   origin?: string;
   destination?: string;
+  notes?: string;
   checkCount?: number;
   checkedBy?: number | null;
   checkedAt?: string | null;
@@ -134,6 +136,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           tripSegment: 'Viaje completo',
           origin: trip?.segmentOrigin || trip?.route?.origin || "Origen no especificado",
           destination: trip?.segmentDestination || trip?.route?.destination || "Destino no especificado",
+          notes: reservation.notes || '',
           checkCount: reservation.checkCount || 0,
           checkedBy: reservation.checkedBy || null,
           checkedAt: reservation.checkedAt || null,
@@ -492,7 +495,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         </div>
                       </div>
                       
-                      {/* Teléfono de contacto */}
+                      {/* Teléfono de contacto con botón para copiar */}
                       {reservation.phone && (
                         <div className="text-sm mb-3">
                           <div className="text-xs text-gray-500">Contacto</div>
@@ -501,6 +504,26 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                             <a href={`tel:${reservation.phone}`} className="text-primary hover:underline">
                               {reservation.phone}
                             </a>
+                            <button 
+                              onClick={() => {
+                                navigator.clipboard.writeText(reservation.phone || '');
+                                // Podríamos añadir una notificación de éxito aquí
+                              }}
+                              className="ml-2 p-1 rounded-sm hover:bg-gray-100"
+                              title="Copiar al portapapeles"
+                            >
+                              <ClipboardCopy className="h-3.5 w-3.5 text-gray-500" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Notas de la reservación */}
+                      {reservation.notes && (
+                        <div className="text-sm mb-3">
+                          <div className="text-xs text-gray-500">Notas</div>
+                          <div className="font-medium p-1.5 bg-gray-50 rounded-sm border border-gray-100 text-gray-700 text-xs">
+                            {reservation.notes}
                           </div>
                         </div>
                       )}
