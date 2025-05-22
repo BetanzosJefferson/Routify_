@@ -137,9 +137,12 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       case 1: // Passenger info
         return passengers.every(p => p.firstName.trim() && p.lastName.trim());
       case 2: // Contact info
+        // Email es opcional, si está vacío se considera válido
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        // Teléfono flexible - eliminar espacios, guiones y paréntesis antes de validar
+        const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
         const phoneRegex = /^[0-9]{10}$/;
-        return emailRegex.test(email) && phoneRegex.test(phone);
+        return (email === '' || emailRegex.test(email)) && phoneRegex.test(normalizedPhone);
       default:
         return true;
     }
@@ -152,9 +155,17 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
         return "Por favor, complete el nombre y apellido de todos los pasajeros";
       case 2:
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        // Normalizar teléfono eliminando espacios, guiones y paréntesis
+        const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
         const phoneRegex = /^[0-9]{10}$/;
-        if (!emailRegex.test(email)) return "Por favor, ingrese un correo electrónico válido";
-        if (!phoneRegex.test(phone)) return "Por favor, ingrese un número de teléfono válido (10 dígitos)";
+        
+        // Solo validar email si no está vacío
+        if (email !== '' && !emailRegex.test(email)) 
+          return "Por favor, ingrese un correo electrónico válido o déjelo en blanco";
+        
+        if (!phoneRegex.test(normalizedPhone)) 
+          return "Por favor, ingrese un número de teléfono válido de 10 dígitos (se aceptan espacios, guiones o paréntesis)";
+        
         return "";
       default:
         return "";
@@ -284,12 +295,25 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       return;
     }
     
-    // Validate email and phone
+    // Validar email solo si no está vacío
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (email !== '' && !emailRegex.test(email)) {
       toast({
         title: "Email inválido",
-        description: "Por favor ingrese un correo electrónico válido",
+        description: "Por favor ingrese un correo electrónico válido o déjelo en blanco",
+        variant: "destructive",
+      });
+      setCurrentStep(2); // Go back to contact step
+      return;
+    }
+    
+    // Validar teléfono normalizado
+    const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(normalizedPhone)) {
+      toast({
+        title: "Teléfono inválido",
+        description: "Por favor ingrese un número de teléfono válido de 10 dígitos",
         variant: "destructive",
       });
       setCurrentStep(2); // Go back to contact step
@@ -317,6 +341,9 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
     // Obtener el ID del usuario autenticado actual usando el hook useAuth
     // Este ID se usará para registrar quién creó la reservación (para comisiones y temas administrativos)
     
+    // Normalizar el número de teléfono antes de guardarlo (quitar espacios, guiones, paréntesis)
+    const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
+    
     // Calcular el precio total aplicando el descuento del cupón si corresponde
     const finalTotalPrice = couponVerified && couponDiscount > 0 
       ? totalPrice - couponDiscount 
@@ -326,8 +353,8 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       tripId: trip.id,
       numPassengers,
       passengers,
-      email,
-      phone,
+      email: email.trim() || null, // Guardar null si está vacío para consistencia
+      phone: normalizedPhone, // Usar el teléfono ya normalizado
       totalAmount: finalTotalPrice,
       paymentMethod,
       paymentStatus: currentPaymentStatus,
