@@ -381,10 +381,16 @@ export default function TripSummary({ className }: TripSummaryProps) {
     }
   };
   
-  // Cargar métricas de ganancias diarias
+  // Cargar métricas de ganancias diarias con espera sincronizada
   const loadDailyMetrics = async () => {
+    // Evitar calculos múltiples simultáneos
+    if (isLoadingDailyMetrics) return;
+
     setIsLoadingDailyMetrics(true);
+    
     try {
+      console.log("[Métricas] Iniciando cálculo de métricas diarias...");
+      
       // Obtener fecha actual (para la comparación)
       const today = new Date(currentDate);
       
@@ -392,18 +398,56 @@ export default function TripSummary({ className }: TripSummaryProps) {
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
       
-      // Calcular ganancias de hoy basado en los viajes filtrados
+      // ======= CÁLCULO DE GANANCIAS DE HOY =======
       let todayTotalProfit = 0;
       
-      // Para los viajes de hoy, usamos los datos ya cargados en filteredTrips
-      if (filteredTrips && filteredTrips.length > 0) {
-        for (const trip of filteredTrips) {
-          // Obtener estadísticas del viaje
-          const { sales } = getTripStats(trip.id);
+      // Para asegurar que tengamos los viajes más actualizados, hacemos una solicitud directa
+      const todayStr = formatDateForInput(today);
+      console.log(`[Métricas] Consultando viajes para: ${todayStr}`);
+      
+      const todayTripsResponse = await fetch(`/api/trips?date=${todayStr}`, {
+        credentials: 'include'
+      });
+      
+      let todayTrips = [];
+      if (todayTripsResponse.ok) {
+        todayTrips = await todayTripsResponse.json();
+        console.log(`[Métricas] Obtenidos ${todayTrips.length} viajes para hoy`);
+      }
+      
+      // Procesamiento por viaje (secuencial para evitar problemas de race condition)
+      if (todayTrips.length > 0) {
+        for (const trip of todayTrips) {
+          console.log(`[Métricas] Procesando viaje ${trip.id}`);
           
-          // Obtener gastos del viaje (si existen)
+          // 1. Obtener reservaciones para calcular ventas
+          const reservationsResponse = await fetch(`/api/reservations?tripId=${trip.id}`, {
+            credentials: 'include'
+          });
+          
+          let tripSales = 0;
+          if (reservationsResponse.ok) {
+            const reservationsData = await reservationsResponse.json();
+            console.log(`[Métricas] Viaje ${trip.id}: ${reservationsData.length} reservaciones`);
+            
+            // Aplicar los criterios de cálculo de ventas
+            for (const res of reservationsData) {
+              const isPaid = res.paymentStatus === 'PAID' || res.paymentStatus === 'pagado' || res.paymentStatus === 'paid';
+              const hasPendingStatus = res.paymentStatus === 'pendiente' || res.paymentStatus === 'pending';
+              const hasAdvance = res.advanceAmount && res.advanceAmount > 0;
+              
+              if (isPaid) {
+                // Si está pagado, sumar el monto total
+                tripSales += res.totalAmount || 0;
+              } else if (hasAdvance && !hasPendingStatus) {
+                // Si tiene anticipo y no está pendiente, sumar solo el anticipo
+                tripSales += res.advanceAmount || 0;
+              }
+            }
+          }
+          
+          // 2. Obtener gastos del viaje
           let tripExpensesTotal = 0;
-          
           try {
             const expensesResponse = await fetch(`/api/trips/${trip.id}/expenses`, {
               credentials: 'include'
@@ -416,97 +460,123 @@ export default function TripSummary({ className }: TripSummaryProps) {
               }
             }
           } catch (error) {
-            console.error(`Error al cargar gastos del viaje ${trip.id}:`, error);
+            console.error(`[Métricas] Error al cargar gastos del viaje ${trip.id}:`, error);
           }
           
-          // Ganancia = ventas - gastos
-          todayTotalProfit += (sales - tripExpensesTotal);
+          // 3. Ganancia = ventas - gastos
+          const tripProfit = tripSales - tripExpensesTotal;
+          todayTotalProfit += tripProfit;
+          
+          console.log(`[Métricas] Viaje ${trip.id}: Ventas=${tripSales}, Gastos=${tripExpensesTotal}, Ganancia=${tripProfit}`);
         }
       }
       
-      // Para los viajes de ayer, necesitamos hacer una consulta adicional
+      // ======= CÁLCULO DE GANANCIAS DE AYER =======
       let yesterdayTotalProfit = 0;
-      try {
-        // Formato YYYY-MM-DD para ayer
-        const yesterdayStr = formatDateForInput(yesterday);
+      
+      // Formato YYYY-MM-DD para ayer
+      const yesterdayStr = formatDateForInput(yesterday);
+      console.log(`[Métricas] Consultando viajes para ayer: ${yesterdayStr}`);
+      
+      const yesterdayTripsResponse = await fetch(`/api/trips?date=${yesterdayStr}`, {
+        credentials: 'include'
+      });
+      
+      if (yesterdayTripsResponse.ok) {
+        const yesterdayTrips = await yesterdayTripsResponse.json();
+        console.log(`[Métricas] Obtenidos ${yesterdayTrips.length} viajes para ayer`);
         
-        // Obtener viajes de ayer
-        const yesterdayTripsResponse = await fetch(`/api/trips?date=${yesterdayStr}`, {
-          credentials: 'include'
-        });
-        
-        if (yesterdayTripsResponse.ok) {
-          const yesterdayTrips = await yesterdayTripsResponse.json();
+        // Procesamiento por viaje (secuencial para evitar problemas de race condition)
+        for (const trip of yesterdayTrips) {
+          console.log(`[Métricas] Procesando viaje de ayer ${trip.id}`);
           
-          // Para cada viaje de ayer, calcular ventas y gastos
-          for (const trip of yesterdayTrips) {
-            // Obtener reservaciones para calcular ventas
-            const reservationsResponse = await fetch(`/api/reservations?tripId=${trip.id}`, {
+          // 1. Obtener reservaciones para calcular ventas
+          const reservationsResponse = await fetch(`/api/reservations?tripId=${trip.id}`, {
+            credentials: 'include'
+          });
+          
+          let tripSales = 0;
+          if (reservationsResponse.ok) {
+            const reservationsData = await reservationsResponse.json();
+            
+            // Aplicar los criterios de cálculo de ventas
+            for (const res of reservationsData) {
+              const isPaid = res.paymentStatus === 'PAID' || res.paymentStatus === 'pagado' || res.paymentStatus === 'paid';
+              const hasPendingStatus = res.paymentStatus === 'pendiente' || res.paymentStatus === 'pending';
+              const hasAdvance = res.advanceAmount && res.advanceAmount > 0;
+              
+              if (isPaid) {
+                // Si está pagado, sumar el monto total
+                tripSales += res.totalAmount || 0;
+              } else if (hasAdvance && !hasPendingStatus) {
+                // Si tiene anticipo y no está pendiente, sumar solo el anticipo
+                tripSales += res.advanceAmount || 0;
+              }
+            }
+          }
+          
+          // 2. Obtener gastos del viaje
+          let tripExpensesTotal = 0;
+          try {
+            const expensesResponse = await fetch(`/api/trips/${trip.id}/expenses`, {
               credentials: 'include'
             });
             
-            let tripSales = 0;
-            if (reservationsResponse.ok) {
-              const reservationsData = await reservationsResponse.json();
-              
-              // Aplicar los mismos criterios de cálculo de ventas
-              for (const res of reservationsData) {
-                const isPaid = res.paymentStatus === 'PAID' || res.paymentStatus === 'pagado' || res.paymentStatus === 'paid';
-                const hasPendingStatus = res.paymentStatus === 'pendiente' || res.paymentStatus === 'pending';
-                const hasAdvance = res.advanceAmount && res.advanceAmount > 0;
-                
-                if (isPaid) {
-                  // Si está pagado, sumar el monto total
-                  tripSales += res.totalAmount || 0;
-                } else if (hasAdvance && !hasPendingStatus) {
-                  // Si tiene anticipo y no está pendiente, sumar solo el anticipo
-                  tripSales += res.advanceAmount || 0;
-                }
+            if (expensesResponse.ok) {
+              const expensesData = await expensesResponse.json();
+              if (Array.isArray(expensesData)) {
+                tripExpensesTotal = expensesData.reduce((sum, expense) => sum + expense.amount, 0);
               }
             }
-            
-            // Obtener gastos
-            let tripExpensesTotal = 0;
-            try {
-              const expensesResponse = await fetch(`/api/trips/${trip.id}/expenses`, {
-                credentials: 'include'
-              });
-              
-              if (expensesResponse.ok) {
-                const expensesData = await expensesResponse.json();
-                if (Array.isArray(expensesData)) {
-                  tripExpensesTotal = expensesData.reduce((sum, expense) => sum + expense.amount, 0);
-                }
-              }
-            } catch (error) {
-              console.error(`Error al cargar gastos del viaje ${trip.id}:`, error);
-            }
-            
-            // Ganancia = ventas - gastos
-            yesterdayTotalProfit += (tripSales - tripExpensesTotal);
+          } catch (error) {
+            console.error(`[Métricas] Error al cargar gastos del viaje de ayer ${trip.id}:`, error);
           }
+          
+          // 3. Ganancia = ventas - gastos
+          const tripProfit = tripSales - tripExpensesTotal;
+          yesterdayTotalProfit += tripProfit;
+          
+          console.log(`[Métricas] Viaje de ayer ${trip.id}: Ventas=${tripSales}, Gastos=${tripExpensesTotal}, Ganancia=${tripProfit}`);
         }
-      } catch (error) {
-        console.error("Error al cargar datos de ayer:", error);
       }
       
-      // Actualizar estados
-      setTodayIncome(todayTotalProfit);
-      setYesterdayIncome(yesterdayTotalProfit);
+      // ======= ACTUALIZACIÓN DE ESTADOS Y CÁLCULO FINAL =======
+      console.log(`[Métricas] Ganancias finales - Hoy: ${todayTotalProfit}, Ayer: ${yesterdayTotalProfit}`);
+      
+      // Actualizar estados asegurando que sean valores positivos (o cero)
+      setTodayIncome(Math.max(0, todayTotalProfit));
+      setYesterdayIncome(Math.max(0, yesterdayTotalProfit));
       
       // Calcular cambio porcentual
+      let percentChange = 0;
+      
       if (yesterdayTotalProfit > 0) {
-        const percentChange = ((todayTotalProfit - yesterdayTotalProfit) / yesterdayTotalProfit) * 100;
-        setIncomePercentChange(percentChange);
+        percentChange = ((todayTotalProfit - yesterdayTotalProfit) / yesterdayTotalProfit) * 100;
       } else if (yesterdayTotalProfit === 0 && todayTotalProfit > 0) {
         // Si ayer fue 0 y hoy hay ganancia, mostrar 100% de incremento
-        setIncomePercentChange(100);
-      } else {
-        setIncomePercentChange(0);
+        percentChange = 100;
+      } else if (yesterdayTotalProfit === 0 && todayTotalProfit === 0) {
+        // Si ambos son 0, no hay cambio
+        percentChange = 0;
+      } else if (yesterdayTotalProfit < 0 && todayTotalProfit >= 0) {
+        // Si ayer fue negativo y hoy es positivo o cero, es una mejora del 100%
+        percentChange = 100;
+      } else if (yesterdayTotalProfit < 0 && todayTotalProfit < 0) {
+        // Si ambos son negativos, calculamos la mejora relativa
+        if (todayTotalProfit > yesterdayTotalProfit) {
+          // Hoy perdimos menos que ayer (mejora)
+          percentChange = ((yesterdayTotalProfit - todayTotalProfit) / Math.abs(yesterdayTotalProfit)) * 100;
+        } else {
+          // Hoy perdimos más que ayer (empeoramiento)
+          percentChange = ((todayTotalProfit - yesterdayTotalProfit) / Math.abs(yesterdayTotalProfit)) * 100;
+        }
       }
       
+      console.log(`[Métricas] Cambio porcentual: ${percentChange}%`);
+      setIncomePercentChange(percentChange);
+      
     } catch (error) {
-      console.error("Error al cargar métricas diarias:", error);
+      console.error("[Métricas] Error al cargar métricas diarias:", error);
     } finally {
       setIsLoadingDailyMetrics(false);
     }
