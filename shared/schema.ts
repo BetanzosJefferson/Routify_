@@ -56,9 +56,8 @@ export const trips = pgTable("trips", {
   driverId: integer("driver_id"),
   // Nuevo campo para aislamiento de datos por compañía
   companyId: text("company_id"),
-  // Campos de visibilidad y estado
-  visibility: text("visibility").default("publicado"), // publicado, oculto, cancelado
-  tripStatus: text("trip_status").default("aun_no_inicia"), // aun_no_inicia, en_progreso, finalizado
+  // Campo de visibilidad
+  visibility: text("visibility").default("publicado") // publicado, oculto, cancelado
 });
 
 export const insertTripSchema = createInsertSchema(trips);
@@ -84,7 +83,6 @@ export interface TripWithTimes {
   driverId?: number | null;
   companyId?: string | null;
   visibility?: string;
-  tripStatus?: string;
 }
 export type Trip = typeof trips.$inferSelect;
 
@@ -134,14 +132,7 @@ export const TripVisibility = {
 
 export type TripVisibilityType = typeof TripVisibility[keyof typeof TripVisibility];
 
-// TRIP STATUS ENUM
-export const TripStatus = {
-  NOT_STARTED: "aun_no_inicia",
-  IN_PROGRESS: "en_progreso",
-  COMPLETED: "finalizado",
-} as const;
-
-export type TripStatusType = typeof TripStatus[keyof typeof TripStatus];
+// Eliminamos el TRIP STATUS ENUM ya que no se utilizará más
 
 // RESERVATION SCHEMA
 export const reservations = pgTable("reservations", {
@@ -198,8 +189,6 @@ export type TripWithRouteInfo = Trip & {
   // Información del vehículo y conductor asignados
   assignedVehicle?: Vehicle;
   assignedDriver?: User;
-  // Estado calculado del viaje (puede sobreescribir el valor de la BD)
-  tripStatus?: string;
   // Campos para terminales
   originTerminal?: string;
   destinationTerminal?: string;

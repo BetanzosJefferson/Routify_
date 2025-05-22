@@ -28,7 +28,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TimeInput } from "@/components/ui/time-input";
-import { publishTripValidationSchema, type Route, type RouteWithSegments, type SegmentPrice, TripVisibility, TripStatus } from "@shared/schema";
+import { publishTripValidationSchema, type Route, type RouteWithSegments, type SegmentPrice, TripVisibility } from "@shared/schema";
 import { generateSegmentsFromRoute, isSameCity, getCityName, groupSegmentsByCity } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -181,7 +181,6 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       vehicleId: null,
       driverId: null,
       visibility: TripVisibility.PUBLISHED,
-      tripStatus: TripStatus.NOT_STARTED,
     },
     mode: "onChange",
   });
@@ -266,13 +265,6 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
       } else {
         // Valor por defecto: publicado
         form.setValue("visibility", TripVisibility.PUBLISHED);
-      }
-      
-      if (tripData.tripStatus) {
-        form.setValue("tripStatus", tripData.tripStatus);
-      } else {
-        // Valor por defecto: aún no inicia
-        form.setValue("tripStatus", TripStatus.NOT_STARTED);
       }
     }
   }, [tripQuery.data, form]);
@@ -727,36 +719,7 @@ export function EditTripForm({ tripId }: EditTripFormProps) {
               )}
             />
 
-            {/* Estado del viaje (solo lectura - se actualiza automáticamente) */}
-            <FormField
-              control={form.control}
-              name="tripStatus"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Estado del viaje</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value || TripStatus.NOT_STARTED}
-                    disabled={true}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Estado" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value={TripStatus.NOT_STARTED}>Aún no inicia</SelectItem>
-                      <SelectItem value={TripStatus.IN_PROGRESS}>En progreso</SelectItem>
-                      <SelectItem value={TripStatus.COMPLETED}>Finalizado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    Estado actual del viaje (se actualiza automáticamente según la fecha).
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+
           </div>
           
           {/* Detalles de precios y tiempos */}
