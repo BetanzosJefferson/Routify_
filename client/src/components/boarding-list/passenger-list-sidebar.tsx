@@ -132,6 +132,24 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
         // Obtener información del viaje asociado
         const trip = trips?.find(trip => trip.id === reservation.tripId);
         
+        // Determinar el origen y destino correctos basados en si es un subviaje o no
+        let originToShow = "Origen no especificado";
+        let destinationToShow = "Destino no especificado";
+        
+        if (trip) {
+          if (trip.isSubTrip) {
+            // Si es un subviaje, usamos los segmentos específicos del subviaje
+            originToShow = trip.segmentOrigin || "Origen no especificado";
+            destinationToShow = trip.segmentDestination || "Destino no especificado";
+            console.log(`[PassengerList] Reserva ${reservation.id} usa origen/destino de SUBVIAJE ${trip.id}: ${originToShow} -> ${destinationToShow}`);
+          } else {
+            // Si es un viaje principal, usamos el origen/destino de la ruta
+            originToShow = trip.route?.origin || "Origen no especificado";
+            destinationToShow = trip.route?.destination || "Destino no especificado";
+            console.log(`[PassengerList] Reserva ${reservation.id} usa origen/destino de VIAJE PRINCIPAL ${trip.id}: ${originToShow} -> ${destinationToShow}`);
+          }
+        }
+        
         // Crear el objeto de reservación agrupada
         const groupedReservation: GroupedReservation = {
           id: reservation.id,
@@ -144,9 +162,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           amount: reservation.totalAmount || 0,
           advanceAmount: (reservation as any).advanceAmount || 0,
           advancePaymentMethod: (reservation as any).advancePaymentMethod || 'efectivo',
-          tripSegment: 'Viaje completo',
-          origin: trip?.segmentOrigin || trip?.route?.origin || "Origen no especificado",
-          destination: trip?.segmentDestination || trip?.route?.destination || "Destino no especificado",
+          tripSegment: trip?.isSubTrip ? 'Subviaje' : 'Viaje completo',
+          origin: originToShow,
+          destination: destinationToShow,
           notes: reservation.notes || '',
           checkCount: reservation.checkCount || 0,
           checkedBy: reservation.checkedBy || null,
