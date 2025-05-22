@@ -28,11 +28,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input"; 
 import { useDriverTrips, Trip } from "@/hooks/use-driver-trips";
+import { useToast, toast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { QrScannerModal } from "./qr-scanner-modal";
 import { useDriverReservations, Reservation, Passenger } from "@/hooks/use-driver-reservations";
 import { normalizeToStartOfDay, formatPrice } from "@/lib/utils";
-import { QrScannerModal } from "./qr-scanner-modal";
-import { useAuth } from "@/hooks/use-auth";
-import { toast } from "@/hooks/use-toast";
 
 interface GroupedReservation {
   id: number;
@@ -85,7 +85,8 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
   const { 
     data: reservations, 
     isLoading: isLoadingReservations,
-    error: reservationsError 
+    error: reservationsError,
+    refetch 
   } = useDriverReservations({
     tripId: tripId,
     includeRelated: true
@@ -365,12 +366,37 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
             <div className="rounded-full bg-blue-100 p-2 mr-3">
               <Users className="h-5 w-5 text-blue-600" />
             </div>
-            <div>
+            <div className="flex-1">
               <div className="text-xs text-blue-600">Total de pasajeros</div>
               <div className="text-lg font-bold text-blue-700">{totalPassengers}</div>
             </div>
+            
+            {/* Botón de escanear para chofer y checador */}
+            {(user?.role === 'chofer' || user?.role === 'checador') && (
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
+                onClick={() => setIsQrScannerOpen(true)}
+              >
+                <QrCode className="h-4 w-4" />
+                <span>Escanear boleto</span>
+              </Button>
+            )}
           </div>
         </div>
+        
+        {/* Modal de escáner QR */}
+        <QrScannerModal 
+          isOpen={isQrScannerOpen} 
+          onClose={() => setIsQrScannerOpen(false)} 
+          tripId={tripId}
+          onReservationScanned={() => {
+            // Refrescar las reservaciones tras escanear un boleto
+            if (refetch) {
+              refetch();
+            }
+          }}
+        />
         
         <div className="mb-4">
           <h3 className="text-lg font-semibold text-gray-800 mb-2">Lista de Pasajeros</h3>
