@@ -58,7 +58,7 @@ interface ReservationFormData {
   tripId: number;
   numPassengers: number;
   passengers: Passenger[];
-  email: string;
+  email: string | null; // Ahora puede ser null para hacerlo opcional
   phone: string;
   totalAmount: number;
   paymentMethod: typeof PaymentMethod.CASH | typeof PaymentMethod.TRANSFER;
@@ -341,8 +341,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
     // Obtener el ID del usuario autenticado actual usando el hook useAuth
     // Este ID se usará para registrar quién creó la reservación (para comisiones y temas administrativos)
     
-    // Normalizar el número de teléfono antes de guardarlo (quitar espacios, guiones, paréntesis)
-    const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
+    // Usamos el teléfono ya normalizado de la validación anterior
     
     // Calcular el precio total aplicando el descuento del cupón si corresponde
     const finalTotalPrice = couponVerified && couponDiscount > 0 
