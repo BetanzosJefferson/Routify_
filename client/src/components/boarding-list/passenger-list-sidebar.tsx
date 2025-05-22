@@ -85,26 +85,6 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
   // Buscar el viaje específico en la lista de viajes
   const tripDetails = trips?.find(trip => trip.id === tripId);
   
-  // Log para debugging - mostrar información de todos los viajes
-  useEffect(() => {
-    if (trips) {
-      console.log(`[PassengerListSidebar] Cargados ${trips.length} viajes`);
-      const allTrips = [...trips];
-      
-      allTrips.forEach(trip => {
-        // Verificar si es viaje principal o subviaje
-        const tripType = trip.isSubTrip ? "SUBVIAJE" : "VIAJE PRINCIPAL";
-        
-        // Para subviajes, mostrar segment_origin y segment_destination
-        if (trip.isSubTrip) {
-          console.log(`[PassengerListSidebar] Viaje ${trip.id} es ${tripType} - Origen: ${trip.segmentOrigin || 'NULL'}, Destino: ${trip.segmentDestination || 'NULL'}`);
-        } else {
-          console.log(`[PassengerListSidebar] Viaje ${trip.id} es ${tripType} - Origen: ${trip.route?.origin || 'NULL'}, Destino: ${trip.route?.destination || 'NULL'}`);
-        }
-      });
-    }
-  }, [trips]);
-  
   // Cargar reservaciones del viaje
   const { 
     data: reservations, 
@@ -152,24 +132,6 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
         // Obtener información del viaje asociado
         const trip = trips?.find(trip => trip.id === reservation.tripId);
         
-        // Determinar el origen y destino correctos basados en si es un subviaje o no
-        let originToShow = "Origen no especificado";
-        let destinationToShow = "Destino no especificado";
-        
-        if (trip) {
-          if (trip.isSubTrip) {
-            // Si es un subviaje, usamos los segmentos específicos del subviaje
-            originToShow = trip.segmentOrigin || "Origen no especificado";
-            destinationToShow = trip.segmentDestination || "Destino no especificado";
-            console.log(`[PassengerList] Reserva ${reservation.id} usa origen/destino de SUBVIAJE ${trip.id}: ${originToShow} -> ${destinationToShow}`);
-          } else {
-            // Si es un viaje principal, usamos el origen/destino de la ruta
-            originToShow = trip.route?.origin || "Origen no especificado";
-            destinationToShow = trip.route?.destination || "Destino no especificado";
-            console.log(`[PassengerList] Reserva ${reservation.id} usa origen/destino de VIAJE PRINCIPAL ${trip.id}: ${originToShow} -> ${destinationToShow}`);
-          }
-        }
-        
         // Crear el objeto de reservación agrupada
         const groupedReservation: GroupedReservation = {
           id: reservation.id,
@@ -182,9 +144,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           amount: reservation.totalAmount || 0,
           advanceAmount: (reservation as any).advanceAmount || 0,
           advancePaymentMethod: (reservation as any).advancePaymentMethod || 'efectivo',
-          tripSegment: trip?.isSubTrip ? 'Subviaje' : 'Viaje completo',
-          origin: originToShow,
-          destination: destinationToShow,
+          tripSegment: 'Viaje completo',
+          origin: trip?.segmentOrigin || trip?.route?.origin || "Origen no especificado",
+          destination: trip?.segmentDestination || trip?.route?.destination || "Destino no especificado",
           notes: reservation.notes || '',
           checkCount: reservation.checkCount || 0,
           checkedBy: reservation.checkedBy || null,
@@ -529,91 +491,17 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         <div>
                           <div className="text-xs text-gray-500">Origen</div>
                           <div className="font-medium">
-                            {(() => {
-                              try {
-                                // 1. Obtener el trip_id de la reservación
-                                const tripId = reservation.tripId;
-                                
-                                // 2. Buscar el viaje con ese ID
-                                const reservationTrip = trips?.find(t => t.id === tripId);
-                                if (!reservationTrip) {
-                                  console.log(`[OriginResolver] No encontrado viaje ${tripId} para reservación ${reservation.id}`);
-                                  return 'Origen no disponible';
-                                }
-                                
-                                // 3. Verificar si es subviaje (is_sub_trip = TRUE)
-                                if (reservationTrip.isSubTrip === true) {
-                                  // Si es subviaje, usar segment_origin de ese viaje
-                                  if (reservationTrip.segmentOrigin) {
-                                    console.log(`[OriginResolver] Reserva ${reservation.id}: Usando segment_origin del subviaje ${tripId}: ${reservationTrip.segmentOrigin}`);
-                                    return reservationTrip.segmentOrigin;
-                                  } else {
-                                    console.log(`[OriginResolver] Subviaje ${tripId} no tiene segment_origin definido`);
-                                  }
-                                } else {
-                                  // Si no es subviaje, usar el origen de la ruta principal
-                                  if (reservationTrip.route?.origin) {
-                                    console.log(`[OriginResolver] Reserva ${reservation.id}: Usando origin de viaje principal ${tripId}: ${reservationTrip.route.origin}`);
-                                    return reservationTrip.route.origin;
-                                  }
-                                }
-                                
-                                return 'Origen no disponible';
-                              } catch (error) {
-                                console.error('[OriginResolver] Error al determinar origen:', error);
-                                return 'Origen no disponible';
-                              }
-                            })()}
+                            {reservation.origin && !reservation.origin.includes('no especificado') 
+                              ? reservation.origin
+                              : tripDetails?.route?.origin || 'Origen'}
                           </div>
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">Destino</div>
                           <div className="font-medium">
-                            {(() => {
-                              try {
-                                // 1. Obtener el trip_id de la reservación
-                                const tripId = reservation.tripId;
-                                
-                                // 2. Buscar el viaje con ese ID
-                                const reservationTrip = trips?.find(t => t.id === tripId);
-                                if (!reservationTrip) {
-                                  console.log(`[DestinationResolver] No encontrado viaje ${tripId} para reservación ${reservation.id}`);
-                                  return 'Destino no disponible';
-                                }
-                                
-                                // 3. Verificar si es subviaje (is_sub_trip = TRUE)
-                                if (reservationTrip.isSubTrip === true) {
-                                  // Si es subviaje, usar segment_destination de ese viaje
-                                  if (reservationTrip.segmentDestination) {
-                                    console.log(`[DestinationResolver] Reserva ${reservation.id}: Usando segment_destination del subviaje ${tripId}: ${reservationTrip.segmentDestination}`);
-                                    return reservationTrip.segmentDestination;
-                                  } else {
-                                    console.log(`[DestinationResolver] Subviaje ${tripId} no tiene segment_destination definido`);
-                                  }
-                                } else {
-                                  // Si no es subviaje, usar el destino de la ruta principal
-                                  if (reservationTrip.route?.destination) {
-                                    console.log(`[DestinationResolver] Reserva ${reservation.id}: Usando destination de viaje principal ${tripId}: ${reservationTrip.route.destination}`);
-                                    return reservationTrip.route.destination;
-                                  }
-                                }
-                                
-                                return 'Destino no disponible';
-                              } catch (error) {
-                                console.error('[DestinationResolver] Error al determinar destino:', error);
-                                return 'Destino no disponible';
-                              }
-                            })()}
-                                console.log(`[DestinationDisplay] Reserva ${reservation.id}, Viaje ${reservationTrip.id} usando destino de ruta principal: ${reservationTrip.route.destination}`);
-                                return reservationTrip.route.destination;
-                              } else if (tripDetails?.route?.destination) {
-                                // Fallback al viaje principal si está disponible
-                                console.log(`[DestinationDisplay] Usando destino del viaje principal: ${tripDetails.route.destination}`);
-                                return tripDetails.route.destination;
-                              } else {
-                                return 'Destino no disponible';
-                              }
-                            })()}
+                            {reservation.destination && !reservation.destination.includes('no especificado') 
+                              ? reservation.destination
+                              : tripDetails?.route?.destination || 'Destino'}
                           </div>
                         </div>
                       </div>
