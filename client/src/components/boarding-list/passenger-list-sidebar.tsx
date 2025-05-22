@@ -73,7 +73,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
   
   // Obtener información del usuario autenticado
   const { user } = useAuth();
-  const isDriverOrChecker = user?.role === 'chofer' || user?.role === 'checador';
+  
+  // Verificar si el usuario es chofer o checador
+  const isDriverOrChecker = user?.role === "chofer" || user?.role === "checador";
   
   // Cargar detalles del viaje
   const { 
