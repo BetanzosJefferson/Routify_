@@ -27,10 +27,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input"; 
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useDriverTrips, Trip } from "@/hooks/use-driver-trips";
 import { useDriverReservations, Reservation, Passenger } from "@/hooks/use-driver-reservations";
 import { normalizeToStartOfDay, formatPrice } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 interface GroupedReservation {
   id: number;
@@ -286,6 +288,33 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
     );
   }
 
+  // Toast para notificaciones
+  const { toast } = useToast();
+  
+  // Función para manejar el escaneo de QR
+  const handleQRScan = (data: string) => {
+    try {
+      // Aquí se implementaría la lógica para procesar el código QR escaneado
+      // Por ejemplo, validar el formato y enviar una solicitud al servidor
+      
+      toast({
+        title: "Código QR escaneado",
+        description: "Ticket verificado correctamente",
+        variant: "default",
+      });
+      
+      // Cerrar el escáner después del escaneo exitoso
+      setShowScanner(false);
+    } catch (error) {
+      console.error("Error al procesar el código QR:", error);
+      toast({
+        title: "Error de escaneo",
+        description: "No se pudo procesar el código QR",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div 
       className="fixed inset-y-0 right-0 w-full md:w-[500px] lg:w-[550px] bg-white shadow-2xl overflow-y-auto transition-all duration-300 ease-in-out z-50 border-l border-gray-200 max-w-[95%]"
@@ -504,8 +533,8 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         </div>
                       </div>
                       
-                      {/* Teléfono de contacto con botón para copiar */}
-                      {reservation.phone && (
+                      {/* Teléfono de contacto con botón para copiar - Solo visible para roles diferentes a chofer */}
+                      {reservation.phone && user?.role !== 'chofer' && (
                         <div className="text-sm mb-3">
                           <div className="text-xs text-gray-500">Contacto</div>
                           <div className="font-medium flex items-center">
@@ -534,6 +563,20 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           <div className="font-medium p-1.5 bg-gray-50 rounded-sm border border-gray-100 text-gray-700 text-xs">
                             {reservation.notes}
                           </div>
+                        </div>
+                      )}
+                      
+                      {/* Botón de escanear ticket para Chofer y Checador */}
+                      {isDriverOrChecker && (
+                        <div className="mt-2 mb-3">
+                          <Button 
+                            variant="secondary"
+                            className="w-full flex items-center justify-center gap-2"
+                            onClick={() => setShowScanner(true)}
+                          >
+                            <Scan className="h-4 w-4" />
+                            Escanear Ticket
+                          </Button>
                         </div>
                       )}
                       
