@@ -704,8 +704,8 @@ export default function TripSummary({ className }: TripSummaryProps) {
     // Calcular ventas aplicando los mismos criterios de cálculo
     let totalSales = 0;
     tripReservations.forEach(res => {
-      const isPaid = res.status === 'pagado' || res.status === 'paid';
-      const hasPendingStatus = res.status === 'pendiente' || res.status === 'pending';
+      const isPaid = res.paymentStatus === 'pagado' || res.paymentStatus === 'paid';
+      const hasPendingStatus = res.paymentStatus === 'pendiente' || res.paymentStatus === 'pending';
       const hasAdvance = res.advanceAmount && res.advanceAmount > 0;
       
       if (isPaid) {
