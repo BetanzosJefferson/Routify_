@@ -937,7 +937,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               )}
                             </td>
                             <td className={`py-3 px-4 text-sm font-bold ${
-                              (() => {
+                              !isLoadingFinancialData ? (() => {
                                 // Usar datos precargados si existen, o usar el estado local como respaldo
                                 const tripFinancialData = tripsFinancialData[trip.id];
                                 let tripExpenses = 0;
@@ -953,22 +953,26 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                 if (profit > 0) return "bg-green-50 text-green-600";
                                 if (profit < 0) return "bg-red-50 text-red-600";
                                 return "text-gray-600";
-                              })()
+                              })() : ""
                             }`}>
-                              ${(() => {
-                                // Usar datos precargados si existen, o usar el estado local como respaldo
-                                const tripFinancialData = tripsFinancialData[trip.id];
-                                let tripExpenses = 0;
-                                
-                                if (tripFinancialData) {
-                                  tripExpenses = tripFinancialData.expenses.reduce((sum, e) => sum + e.amount, 0);
-                                } else {
-                                  // Usar datos del estado solo cuando se ha seleccionado el viaje
-                                  tripExpenses = expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0);
-                                }
-                                
-                                return (sales - tripExpenses).toFixed(2);
-                              })()}
+                              {isLoadingFinancialData ? (
+                                <div className="financial-loader"></div>
+                              ) : (
+                                `$${(() => {
+                                  // Usar datos precargados si existen, o usar el estado local como respaldo
+                                  const tripFinancialData = tripsFinancialData[trip.id];
+                                  let tripExpenses = 0;
+                                  
+                                  if (tripFinancialData) {
+                                    tripExpenses = tripFinancialData.expenses.reduce((sum, e) => sum + e.amount, 0);
+                                  } else {
+                                    // Usar datos del estado solo cuando se ha seleccionado el viaje
+                                    tripExpenses = expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0);
+                                  }
+                                  
+                                  return (sales - tripExpenses).toFixed(2);
+                                })()}`
+                              )}
                             </td>
                           </tr>
                         );
@@ -1274,19 +1278,31 @@ export default function TripSummary({ className }: TripSummaryProps) {
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <div className="text-sm text-gray-600">Ventas Totales</div>
-                                <div className="font-bold text-green-600">${totalSales.toFixed(2)}</div>
+                                {isLoadingFinancialData ? (
+                                  <div className="profit-loader mt-1"></div>
+                                ) : (
+                                  <div className="font-bold text-green-600">${totalSales.toFixed(2)}</div>
+                                )}
                               </div>
                               <div>
                                 <div className="text-sm text-gray-600">Gastos Totales</div>
-                                <div className="font-bold text-red-600">${totalExpenses.toFixed(2)}</div>
+                                {isLoadingFinancialData || isLoadingExpenses ? (
+                                  <div className="profit-loader mt-1"></div>
+                                ) : (
+                                  <div className="font-bold text-red-600">${totalExpenses.toFixed(2)}</div>
+                                )}
                               </div>
                             </div>
                             <Separator className="my-3" />
                             <div className="flex justify-between items-center">
                               <div className="font-medium">Ganancia del viaje</div>
-                              <div className={`text-xl font-bold ${tripProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                ${tripProfit.toFixed(2)}
-                              </div>
+                              {isLoadingExpenses || isLoadingFinancialData ? (
+                                <div className="profit-loader" style={{width: '120px', height: '30px'}}></div>
+                              ) : (
+                                <div className={`text-xl font-bold ${tripProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  ${tripProfit.toFixed(2)}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
