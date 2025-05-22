@@ -539,11 +539,11 @@ export class DatabaseStorage implements IStorage {
       
       // Determinar el estado del viaje usando las constantes del esquema
       if (now < fullDepartureDate) {
-        return schema.TripStatus.NOT_STARTED;
+        return "aun_no_inicia";
       } else if (now >= fullDepartureDate && now < fullArrivalDate) {
-        return schema.TripStatus.IN_PROGRESS;
+        return "en_progreso";
       } else {
-        return schema.TripStatus.COMPLETED;
+        return "finalizado";
       }
     };
     
@@ -966,11 +966,11 @@ export class DatabaseStorage implements IStorage {
       
       // Determinar el estado del viaje usando las constantes del esquema
       if (now < fullDepartureDate) {
-        return schema.TripStatus.NOT_STARTED;
+        return "aun_no_inicia";
       } else if (now >= fullDepartureDate && now < fullArrivalDate) {
-        return schema.TripStatus.IN_PROGRESS;
+        return "en_progreso";
       } else {
-        return schema.TripStatus.COMPLETED;
+        return "finalizado";
       }
     };
     

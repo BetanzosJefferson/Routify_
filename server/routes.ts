@@ -982,7 +982,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           companyId: companyId, // Asignar la compañía del usuario al viaje
           // Campos nuevos para visibilidad y estado
           visibility: tripData.visibility || TripVisibility.PUBLISHED, // Por defecto publicado
-          tripStatus: TripStatus.NOT_STARTED // Por defecto aún no inicia
+          tripStatus: "aun_no_inicia" // Por defecto aún no inicia
         };
         
         const mainTrip = await storage.createTrip(mainTripToCreate);
@@ -1112,7 +1112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             companyId: companyId, // Asignar la misma compañía del usuario a todos los sub-viajes
             // Heredar los mismos valores de visibilidad y estado del viaje principal
             visibility: mainTrip.visibility || TripVisibility.PUBLISHED,
-            tripStatus: TripStatus.NOT_STARTED
+            tripStatus: "aun_no_inicia"
           };
           
           const subTrip = await storage.createTrip(subTripToCreate);
@@ -1751,7 +1751,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (tripData.tripStatus === undefined || tripData.tripStatus === null) {
-        tripData.tripStatus = currentTrip.tripStatus || TripStatus.NOT_STARTED;
+        tripData.tripStatus = currentTrip.tripStatus || "aun_no_inicia";
       }
       
       // Actualizar automáticamente el estado del viaje en función de su fecha
@@ -1769,7 +1769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (todayDate > compareDate) {
           tripData.tripStatus = TripStatus.FINISHED;
         } else if (todayDate === compareDate) {
-          tripData.tripStatus = TripStatus.IN_PROGRESS;
+          tripData.tripStatus = "en_progreso";
         }
       }
       
