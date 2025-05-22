@@ -148,7 +148,7 @@ export const reservations = pgTable("reservations", {
   id: serial("id").primaryKey(),
   tripId: integer("trip_id").notNull(),
   totalAmount: doublePrecision("total_amount").notNull(),
-  email: text("email").notNull(),
+  email: text("email"), // Ahora es opcional
   phone: text("phone").notNull(),
   notes: text("notes"),
   // Campos de pago actualizados
