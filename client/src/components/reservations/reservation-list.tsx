@@ -280,6 +280,7 @@ export function ReservationList() {
   const [email, setEmail] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
   const [status, setStatus] = useState<string>("confirmed");
+  const [advancePaymentMethod, setAdvancePaymentMethod] = useState<string>("efectivo");
 
   // Edit reservation mutation
   const editReservationMutation = useMutation({
@@ -322,6 +323,7 @@ export function ReservationList() {
     setEditingReservation(reservation);
     // Inicializar todos los campos del formulario con los valores actuales
     setPaymentMethod(reservation.paymentMethod || "efectivo");
+    setAdvancePaymentMethod(reservation.advancePaymentMethod || "efectivo");
     setNotes(reservation.notes || "");
     setEmail(reservation.email || "");
     setPhone(reservation.phone || "");
