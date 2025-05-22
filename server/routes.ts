@@ -4136,6 +4136,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // NUEVA VALIDACIÓN: Verificar si el ticket ya ha sido escaneado
+      if (reservation.checkedBy !== null && reservation.checkedBy !== undefined) {
+        console.log(`[CHECK TICKET] DENEGADO: El ticket ${id} ya ha sido verificado previamente`);
+        return res.status(400).json({
+          success: false,
+          isAlreadyChecked: true,
+          reservation: reservation,
+          message: 'Este ticket ya ha sido verificado y no puede verificarse nuevamente'
+        });
+      }
+      
       // Verificar que el usuario está autenticado
       if (!req.user) {
         return res.status(401).json({ 
@@ -4230,17 +4241,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedReservation = await storage.checkTicket(id, req.user.id);
       
       // Determinar si es la primera vez que se escanea este ticket
-      const isFirstScan = reservation.checkedBy === null || reservation.checkedBy === undefined;
+      const isFirstScan = true; // Siempre será true aquí porque ya validamos que no ha sido escaneado antes
       
-      console.log(`[CHECK TICKET] Ticket ${id} ${isFirstScan ? 'escaneado por primera vez' : 're-escaneado'} por usuario ${req.user.id}`);
+      console.log(`[CHECK TICKET] Ticket ${id} escaneado por primera vez por usuario ${req.user.id}`);
       
       res.json({ 
         success: true, 
         isFirstScan,
         reservation: updatedReservation,
-        message: isFirstScan 
-          ? 'Ticket escaneado por primera vez' 
-          : 'Ticket escaneado nuevamente'
+        message: 'Ticket escaneado por primera vez'
       });
     } catch (error) {
       console.error('Error al escanear ticket:', error);

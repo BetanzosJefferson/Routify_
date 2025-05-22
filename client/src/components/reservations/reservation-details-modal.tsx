@@ -486,14 +486,20 @@ export default function ReservationDetailsModal({
                 
                 {user && hasRequiredRole(user, ["checker", "driver", "owner", "admin"]) && reservation.status !== 'canceled' && (
                   <Button
-                    className="w-full sm:w-auto text-sm bg-green-600 hover:bg-green-700"
+                    className={`w-full sm:w-auto text-sm ${reservation.checkedBy ? 'bg-gray-400 hover:bg-gray-500 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
                     onClick={handleCheckTicket}
-                    disabled={isChecking}
+                    disabled={isChecking || reservation.checkedBy !== null}
+                    title={reservation.checkedBy ? "Este ticket ya ha sido verificado" : "Verificar ticket"}
                   >
                     {isChecking ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Procesando...
+                      </>
+                    ) : reservation.checkedBy ? (
+                      <>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Ya Verificado
                       </>
                     ) : (
                       <>
