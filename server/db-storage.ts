@@ -500,55 +500,7 @@ export class DatabaseStorage implements IStorage {
     const route = await this.getRoute(trip.routeId);
     if (!route) return undefined;
     
-    // Calcular el estado del viaje según las fechas
-    const calculateTripStatus = (trip: any): string => {
-      const now = new Date();
-      const departureDate = new Date(trip.departureDate);
-      departureDate.setHours(0, 0, 0, 0); // Establecer a inicio del día
-      
-      // Parsear la hora de salida y llegada
-      const parseTimeToMinutes = (timeStr: string): number => {
-        if (!timeStr) return 0;
-        const [time, period] = timeStr.split(' ');
-        const [hoursStr, minutesStr] = time.split(':');
-        let hours = parseInt(hoursStr, 10);
-        const minutes = parseInt(minutesStr, 10);
-        
-        // Convertir a formato 24 horas
-        if (period === 'PM' && hours < 12) hours += 12;
-        if (period === 'AM' && hours === 12) hours = 0;
-        
-        return hours * 60 + minutes;
-      };
-      
-      // Establecer la hora de salida y llegada en el objeto de fecha
-      const departureTime = parseTimeToMinutes(trip.departureTime);
-      const arrivalTime = parseTimeToMinutes(trip.arrivalTime);
-      
-      // Crear fechas completas para salida y llegada
-      const fullDepartureDate = new Date(departureDate);
-      fullDepartureDate.setHours(Math.floor(departureTime / 60), departureTime % 60, 0, 0);
-      
-      const fullArrivalDate = new Date(departureDate);
-      
-      // Si la hora de llegada es menor que la de salida, asumimos que llega al día siguiente
-      if (arrivalTime < departureTime) {
-        fullArrivalDate.setDate(fullArrivalDate.getDate() + 1);
-      }
-      fullArrivalDate.setHours(Math.floor(arrivalTime / 60), arrivalTime % 60, 0, 0);
-      
-      // Determinar el estado del viaje usando las constantes del esquema
-      if (now < fullDepartureDate) {
-        return "aun_no_inicia";
-      } else if (now >= fullDepartureDate && now < fullArrivalDate) {
-        return "en_progreso";
-      } else {
-        return "finalizado";
-      }
-    };
-    
-    // Calcular el estado actual del viaje
-    const calculatedTripStatus = calculateTripStatus(trip);
+    // Ya no se calcula el estado del viaje (tripStatus), esta funcionalidad ha sido eliminada
     
     // Obtener la información de la compañía si existe
     let companyName = undefined;
@@ -928,51 +880,7 @@ export class DatabaseStorage implements IStorage {
     console.log(`Cargados ${vehicles.length} vehículos y ${drivers.length} conductores para búsqueda rápida`);
     
     // Función auxiliar para calcular el estado del viaje según las fechas
-    const calculateTripStatus = (trip: any): string => {
-      const now = new Date();
-      const departureDate = new Date(trip.departureDate);
-      departureDate.setHours(0, 0, 0, 0); // Establecer a inicio del día
-      
-      // Parsear la hora de salida y llegada
-      const parseTimeToMinutes = (timeStr: string): number => {
-        if (!timeStr) return 0;
-        const [time, period] = timeStr.split(' ');
-        const [hoursStr, minutesStr] = time.split(':');
-        let hours = parseInt(hoursStr, 10);
-        const minutes = parseInt(minutesStr, 10);
-        
-        // Convertir a formato 24 horas
-        if (period === 'PM' && hours < 12) hours += 12;
-        if (period === 'AM' && hours === 12) hours = 0;
-        
-        return hours * 60 + minutes;
-      };
-      
-      // Establecer la hora de salida y llegada en el objeto de fecha
-      const departureTime = parseTimeToMinutes(trip.departureTime);
-      const arrivalTime = parseTimeToMinutes(trip.arrivalTime);
-      
-      // Crear fechas completas para salida y llegada
-      const fullDepartureDate = new Date(departureDate);
-      fullDepartureDate.setHours(Math.floor(departureTime / 60), departureTime % 60, 0, 0);
-      
-      const fullArrivalDate = new Date(departureDate);
-      
-      // Si la hora de llegada es menor que la de salida, asumimos que llega al día siguiente
-      if (arrivalTime < departureTime) {
-        fullArrivalDate.setDate(fullArrivalDate.getDate() + 1);
-      }
-      fullArrivalDate.setHours(Math.floor(arrivalTime / 60), arrivalTime % 60, 0, 0);
-      
-      // Determinar el estado del viaje usando las constantes del esquema
-      if (now < fullDepartureDate) {
-        return "aun_no_inicia";
-      } else if (now >= fullDepartureDate && now < fullArrivalDate) {
-        return "en_progreso";
-      } else {
-        return "finalizado";
-      }
-    };
+    // Ya no se calcula el estado del viaje (tripStatus), esta funcionalidad ha sido eliminada
     
     // Now filter by origin and destination if provided
     const tripsWithRouteInfo: TripWithRouteInfo[] = [];
@@ -981,8 +889,7 @@ export class DatabaseStorage implements IStorage {
       const route = routeMap.get(trip.routeId);
       if (!route) continue;
       
-      // Calcular el estado actual del viaje
-      const calculatedTripStatus = calculateTripStatus(trip);
+      // Ya no se calcula el estado del viaje (tripStatus), esta funcionalidad ha sido eliminada
       
       // Buscar información de la compañía si existe
       let companyData = { companyName: undefined, companyLogo: undefined };
@@ -1045,7 +952,7 @@ export class DatabaseStorage implements IStorage {
         tripsWithRouteInfo.push({
           ...trip,
           route,
-          tripStatus: calculatedTripStatus, // Estado calculado dinámicamente
+          // El estado del viaje ya no se utiliza
           numStops: route.stops.length,
           companyName: companyData.companyName,
           companyLogo: companyData.companyLogo,
