@@ -850,6 +850,9 @@ export function ReservationList() {
                       <div className="text-gray-500 truncate" title={reservation.email}>
                         {reservation.email}
                       </div>
+                      <div className="text-gray-500 truncate" title={reservation.phone}>
+                        Tel: {reservation.phone}
+                      </div>
                     </div>
                     
                     <div className="col-span-2 mt-1">
