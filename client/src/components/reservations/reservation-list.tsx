@@ -544,6 +544,7 @@ export function ReservationList() {
                         {reservation.passengers.length > 1 && ` +${reservation.passengers.length - 1}`}
                       </div>
                       <div className="text-sm text-gray-500">{reservation.email}</div>
+                      <div className="text-sm text-gray-500">Tel: {reservation.phone}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{reservation.trip.route.name}</div>
