@@ -62,8 +62,16 @@ export default function TripSummary({ className }: TripSummaryProps) {
   const [totalSales, setTotalSales] = useState(0);
   const [totalCashSales, setTotalCashSales] = useState(0);
   const [totalTransferSales, setTotalTransferSales] = useState(0);
-  // Inicializar con el 21 de mayo de 2025
-  const [currentDate, setCurrentDate] = useState<Date>(new Date(2025, 4, 21));
+  // Inicializar con la fecha actual del sistema
+  const [currentDate, setCurrentDate] = useState<Date>(() => {
+    // Obtener la fecha actual
+    const today = new Date();
+    // Usar la misma "fecha base" para demo si estamos en un entorno anterior a 2025
+    if (today.getFullYear() < 2025) {
+      return new Date(2025, 4, today.getDate());
+    }
+    return today;
+  });
   
   // Estado de carga para los datos financieros - desactivado para evitar problemas de carga infinita
   const [isLoadingFinancialData, setIsLoadingFinancialData] = useState(false);
