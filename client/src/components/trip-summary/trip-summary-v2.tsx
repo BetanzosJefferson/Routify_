@@ -73,6 +73,12 @@ export default function TripSummary({ className }: TripSummaryProps) {
     return today;
   });
   
+  // Estados para métricas diarias
+  const [todayIncome, setTodayIncome] = useState<number>(0);
+  const [yesterdayIncome, setYesterdayIncome] = useState<number>(0);
+  const [incomePercentChange, setIncomePercentChange] = useState<number>(0);
+  const [isLoadingDailyMetrics, setIsLoadingDailyMetrics] = useState<boolean>(false);
+  
   // Estado de carga para los datos financieros - desactivado para evitar problemas de carga infinita
   const [isLoadingFinancialData, setIsLoadingFinancialData] = useState(false);
   
