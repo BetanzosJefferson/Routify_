@@ -24,8 +24,8 @@ import { useAllDriverReservations, Reservation, Passenger } from "@/hooks/use-dr
 import { PassengerListSidebar } from "./passenger-list-sidebar";
 
 export function BoardingList() {
-  // Usamos la fecha actual por defecto sin posibilidad de cambiarla
-  const currentDate = new Date();
+  // Usamos la fecha actual por defecto, pero permitimos cambiarla con el selector
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -95,7 +95,10 @@ export function BoardingList() {
     return format(normalizedDate, "d 'de' MMMM, yyyy", { locale: es });
   };
 
-  // Ya no necesitamos esta función, pero mantenemos formatDisplayDate para mostrar la fecha actual
+  // Función para formatear fecha para input date
+  const formatDateForInput = (date: Date) => {
+    return format(date, "yyyy-MM-dd");
+  };
 
   // Función para obtener conteo de pasajeros por viaje, incluyendo subviajes si aplica
   const getPassengerCount = (tripId: number) => {
@@ -151,13 +154,30 @@ export function BoardingList() {
         </div>
       </div>
 
-      {/* Espacio para información */}
-      <div className="mb-6 mx-auto text-center max-w-md border border-blue-100 rounded-md p-4 bg-blue-50">
-        <div className="flex items-center justify-center">
-          <CalendarIcon className="h-5 w-5 text-primary mr-2" />
-          <p className="text-sm text-gray-600">
-            Mostrando sólo viajes para el día de hoy
-          </p>
+      {/* Selector de fecha */}
+      <div className="flex justify-center items-center mb-6">
+        <div className="w-full max-w-md">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <CalendarIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <Input
+              type="date"
+              className="pl-10 pr-4 py-2 w-full"
+              value={formatDateForInput(currentDate)}
+              onChange={(e) => {
+                if (e.target.value) {
+                  // Al crear la fecha con formato yyyy-MM-dd, usar el constructor con año, mes, día para evitar problemas de zona horaria
+                  const [year, month, day] = e.target.value.split('-').map(Number);
+                  // Meses en JavaScript son 0-indexados (0-11), pero en el input date son 1-indexados (1-12)
+                  const newDate = new Date(year, month - 1, day, 12, 0, 0);
+                  setCurrentDate(newDate);
+                } else {
+                  setCurrentDate(new Date());
+                }
+              }}
+            />
+          </div>
         </div>
       </div>
 
