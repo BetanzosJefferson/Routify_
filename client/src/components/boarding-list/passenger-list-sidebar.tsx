@@ -11,7 +11,8 @@ import {
   User,
   X,
   UserIcon,
-  Search
+  Search,
+  Check as CheckIcon
 } from "lucide-react";
 import { formatTripTime } from "@/lib/trip-utils";
 import { Badge } from "@/components/ui/badge";
@@ -157,9 +158,6 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
 
   // Determinar si una reservación ha sido verificada (tiene check)
   const isReservationChecked = (reservation: any) => {
-    // Depuración: vamos a ver la estructura real de la reservación
-    console.log(`Datos completos de reservación ID ${reservation.id}:`, reservation);
-    
     // Verificación explícita: varias alternativas para detectar reservaciones verificadas
     if (reservation.checked === true) return true;
     if (reservation.checkedBy) return true;
@@ -391,7 +389,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                     key={`reservation-${reservation.id}`} 
                     className="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow"
                   >
-                    <div className={`border-b border-gray-100 ${reservation.checkedBy ? 'bg-green-50' : 'bg-gray-50'} px-4 py-2.5`}>
+                    <div className="border-b border-gray-100 bg-gray-50 px-4 py-2.5">
                       <div className="flex justify-between items-center mb-1.5">
                         <div className="flex items-center">
                           <div className="bg-primary/10 text-primary font-medium px-3 py-1 rounded-md mr-3">
@@ -404,6 +402,20 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                                 : `${reservation.passengers[0]?.firstName || 'nombre'} ${reservation.passengers[0]?.lastName || 'del pasajero'}`}
                             </div>
                             <div className="text-xs text-gray-500">{reservation.code}</div>
+                            {/* Indicador de Check */}
+                            <div className="mt-1">
+                              {(reservation.checkedBy || reservation.checkedAt || reservation.checkCount > 0) ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                  <CheckIcon className="h-3 w-3 mr-1" />
+                                  Check
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                  <X className="h-3 w-3 mr-1" />
+                                  No check
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div className="text-right flex flex-col items-end">
