@@ -1413,17 +1413,30 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                         ${reservation.totalAmount?.toFixed(2) || '0.00'}
                                       </div>
                                       
-                                      {isPaid ? (
-                                        <Badge className="mt-1 bg-green-100 text-green-800 hover:bg-green-200">PAGADO</Badge>
-                                      ) : (
-                                        <Badge className="mt-1 bg-yellow-100 text-yellow-800 hover:bg-yellow-200">PENDIENTE</Badge>
-                                      )}
+                                      <div className="mt-1">
+                                        {isPaid ? (
+                                          <div className="inline-block px-2 py-1 text-xs font-medium rounded-md bg-green-100 text-green-800">
+                                            PAGADO
+                                          </div>
+                                        ) : (
+                                          <div className="inline-block px-2 py-1 text-xs font-medium rounded-md bg-yellow-100 text-yellow-800">
+                                            PENDIENTE
+                                          </div>
+                                        )}
+                                      </div>
                                       
+                                      {/* Información de anticipo */}
                                       {hasAdvance && (
-                                        <div className="text-gray-500 text-xs mt-1">
-                                          Anticipo: ${reservation.advanceAmount?.toFixed(2)} ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
+                                        <div className="text-xs mt-1">
+                                          <div>
+                                            Anticipo: ${reservation.advanceAmount?.toFixed(2)} ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
+                                          </div>
+                                          
+                                          {/* Si está pendiente, mostrar el monto restante */}
                                           {!isPaid && remainingAmount > 0 && (
-                                            <div>Resta: ${remainingAmount.toFixed(2)} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
+                                            <div>
+                                              Resta: ${remainingAmount.toFixed(2)} {reservation.paymentMethod ? `(${reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})` : ''}
+                                            </div>
                                           )}
                                         </div>
                                       )}
