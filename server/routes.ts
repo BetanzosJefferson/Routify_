@@ -1750,28 +1750,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tripData.visibility = currentTrip.visibility || TripVisibility.PUBLISHED;
       }
       
-      if (tripData.tripStatus === undefined || tripData.tripStatus === null) {
-        tripData.tripStatus = currentTrip.tripStatus || "aun_no_inicia";
-      }
-      
-      // Actualizar automáticamente el estado del viaje en función de su fecha
-      const now = new Date();
-      const tripDate = new Date(tripData.departureDate || currentTrip.departureDate);
-      
-      // Si la fecha actual es posterior a la fecha del viaje, marcar como completado
-      // Si la fecha actual es igual a la fecha del viaje, marcar como en progreso
-      // De lo contrario, mantener el estado actual o "aún no inicia"
-      const compareDate = tripDate.setHours(0, 0, 0, 0);
-      const todayDate = new Date().setHours(0, 0, 0, 0);
-      
-      // Solo actualizar automáticamente si el viaje no está cancelado
-      if (tripData.visibility !== TripVisibility.CANCELLED) {
-        if (todayDate > compareDate) {
-          tripData.tripStatus = TripStatus.FINISHED;
-        } else if (todayDate === compareDate) {
-          tripData.tripStatus = "en_progreso";
-        }
-      }
+      // Ya no utilizamos el estado del viaje (tripStatus), esta funcionalidad ha sido eliminada
       
       // Identificar y extraer información de tiempos de parada y precios para el viaje principal
       console.log("⏰ Procesando tiempos y precios para actualización del viaje principal");
@@ -1918,7 +1897,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               vehicleType: tripData.vehicleType || updatedTrip.vehicleType,
               // Agregar campos de visibilidad y estado para mantener coherencia con el viaje principal
               visibility: tripData.visibility || updatedTrip.visibility,
-              tripStatus: tripData.tripStatus || updatedTrip.tripStatus,
             };
             
             // Si cambió la capacidad, ajustar también los asientos disponibles en sub-viajes
