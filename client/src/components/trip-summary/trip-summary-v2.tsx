@@ -86,9 +86,17 @@ export default function TripSummary({ className }: TripSummaryProps) {
   const { toast } = useToast();
   
   // Consultas y mutaciones
-  const { trips = [], isLoading: isLoadingTrips } = useTrips(format(currentDate, 'yyyy-MM-dd'));
+  const { trips = [], isLoading: isLoadingTrips } = useTrips({departureDate: format(currentDate, 'yyyy-MM-dd')});
   const { reservations, isLoading: isLoadingReservations } = useReservations();
   const { packages, isLoading: isLoadingPackages } = usePackages();
+  
+  // DEBUG: Monitorear los viajes que se reciben
+  useEffect(() => {
+    console.log(`[Bitácora] Se obtuvieron ${trips.length} viajes para la fecha: ${format(currentDate, 'yyyy-MM-dd')}`);
+    if (trips.length > 0) {
+      console.log('[Bitácora] Ejemplo del primer viaje:', JSON.stringify(trips[0], null, 2).substring(0, 200) + '...');
+    }
+  }, [trips, currentDate]);
   
   const formatHeaderDate = (date: Date) => {
     return format(date, "EEEE d 'de' MMMM, yyyy", { locale: es });
