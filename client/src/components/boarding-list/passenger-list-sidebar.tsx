@@ -629,6 +629,51 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           </div>
         )}
       </div>
+      
+      {/* Diálogo para el escáner QR */}
+      <Dialog open={showScanner} onOpenChange={setShowScanner}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Escanear Ticket</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center p-4">
+            <div className="relative w-full h-64 bg-gray-900 rounded-lg overflow-hidden mb-4">
+              {/* Simulación de video de cámara */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                  <Camera className="h-16 w-16 text-gray-400 animate-pulse" />
+                </div>
+                {/* Simulación de marco de escaneo */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-48 h-48 border-2 border-green-500 border-dashed rounded-lg"></div>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4 w-full">
+              <p className="text-sm text-center text-gray-600">
+                Apunta la cámara al código QR del boleto para verificarlo
+              </p>
+              
+              {/* Botones para simular escáner */}
+              <div className="flex justify-between gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setShowScanner(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  className="flex-1"
+                  onClick={() => handleQRScan('ticket-code-123')}
+                >
+                  Simular Escaneo
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
