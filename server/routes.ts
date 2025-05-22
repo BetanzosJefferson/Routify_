@@ -2668,7 +2668,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Obtener el usuario autenticado
+      const { user } = req as any;
+      
       const reservationData = validationResult.data;
+      
+      // Si está marcando como pagado, incluir el ID del usuario actual y la fecha
+      if (reservationData.paymentStatus === "pagado") {
+        console.log(`[PUT /reservations/${id}] Marcando como pagado por usuario ${user?.id || 'no autenticado'}`);
+        
+        // Extender los datos de reservación con el ID del usuario que marca como pagado
+        // y la fecha actual para el registro de cuándo se realizó el pago
+        reservationData.paidBy = user?.id || null;
+        reservationData.markedAsPaidAt = new Date();
+      }
+      
       const updatedReservation = await storage.updateReservation(id, reservationData);
       
       if (!updatedReservation) {
@@ -2677,6 +2691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(updatedReservation);
     } catch (error) {
+      console.error("[PUT /reservations/:id] Error:", error);
       res.status(500).json({ error: "Failed to update reservation" });
     }
   });
