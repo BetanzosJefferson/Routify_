@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ClipboardListIcon, UserIcon, DollarSignIcon, PackageIcon, ChevronLeftIcon, ChevronRightIcon, CalendarIcon, PlusCircleIcon, MinusCircleIcon, CoinsIcon, PiggyBankIcon, Calculator, Loader2, EyeIcon } from "lucide-react";
+import { ClipboardListIcon, UserIcon, DollarSignIcon, PackageIcon, ChevronLeftIcon, ChevronRightIcon, CalendarIcon, PlusCircleIcon, MinusCircleIcon, CoinsIcon, PiggyBankIcon, Calculator, Loader2, EyeIcon, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,15 @@ import { formatTripTime, extractDayIndicator } from "@/lib/trip-utils";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter
+} from "@/components/ui/dialog";
 
 type TripSummaryProps = {
   className?: string;
@@ -57,6 +66,7 @@ type Expense = {
 
 export default function TripSummary({ className }: TripSummaryProps) {
   const [selectedTrip, setSelectedTrip] = useState<number | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
   const [tripReservations, setTripReservations] = useState<ReservationWithPassengers[]>([]);
   const [totalPassengers, setTotalPassengers] = useState(0);
   const [totalSales, setTotalSales] = useState(0);
