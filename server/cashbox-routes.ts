@@ -2,33 +2,13 @@ import { Express, Request, Response } from "express";
 import { UserRole } from "@shared/schema";
 import { and, eq, gte, lte } from "drizzle-orm";
 import * as schema from "@shared/schema";
-import { WebSocket } from 'ws';
 
 /**
  * Registra las rutas relacionadas con el sistema de cajas
  * @param app - Instancia de Express
  * @param storage - Almacenamiento de datos
- * @param notifyUsers - Función para enviar notificaciones WebSocket
  */
-export function registerCashboxRoutes(
-  app: Express, 
-  storage: any, 
-  notifyUsers?: (userIds: number[], notification: any) => void
-) {
-  // Función para enviar notificaciones a los usuarios sobre cambios en la caja
-  const notifyCashboxUpdate = (userId: number) => {
-    if (!notifyUsers) return;
-    
-    console.log(`[Cashbox] Enviando notificación de actualización de caja al usuario ${userId}`);
-    
-    notifyUsers([userId], {
-      type: 'cashbox_update',
-      title: 'Actualización de caja',
-      message: 'Hay nuevos registros en tu caja',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
-  };
+export function registerCashboxRoutes(app: Express, storage: any) {
   
   // Middleware para verificar autenticación
   function isAuthenticated(req: Request, res: Response, next: any) {
@@ -596,9 +576,6 @@ export function registerCashboxRoutes(
           message: result.message
         });
       }
-      
-      // Enviar notificación de actualización de caja
-      notifyCashboxUpdate(userId);
       
       res.json({
         success: true,

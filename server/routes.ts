@@ -87,8 +87,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupAuthRoutes(app, isAuthenticated);
   
   // Registrar las rutas del sistema de caja
-  // También pasamos la función de notificación WebSocket
-  registerCashboxRoutes(app, storage, sendNotificationToUsers);
+  registerCashboxRoutes(app, storage);
 
   // Populate location data on server start
   try {
