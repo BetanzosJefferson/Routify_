@@ -564,11 +564,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         <div>
                           <div className="text-xs text-gray-500">Origen</div>
                           <div className="font-medium">
-                            {/* Para reservaciones de subviajes, usar el tripId para obtener info específica */}
                             {reservation.tripSegment === 'Subviaje' ? (
                               <span className="text-amber-600 font-medium">
-                                {(reservation.trip?.segmentOrigin || reservation.trip?.origin || reservation.origin) || 
-                                `Punto de inicio del subviaje ${reservation.tripId}`}
+                                Subviaje {reservation.tripId} - {reservation.trip?.segmentOrigin || 'Origen del subviaje'}
                               </span>
                             ) : (
                               <>{reservation.origin || tripDetails?.route?.origin || 'Origen'}</>
@@ -578,11 +576,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         <div>
                           <div className="text-xs text-gray-500">Destino</div>
                           <div className="font-medium">
-                            {/* Para reservaciones de subviajes, usar el tripId para obtener info específica */}
                             {reservation.tripSegment === 'Subviaje' ? (
                               <span className="text-amber-600 font-medium">
-                                {(reservation.trip?.segmentDestination || reservation.trip?.destination || reservation.destination) || 
-                                `Punto final del subviaje ${reservation.tripId}`}
+                                Subviaje {reservation.tripId} - {reservation.trip?.segmentDestination || 'Destino del subviaje'}
                               </span>
                             ) : (
                               <>{reservation.destination || tripDetails?.route?.destination || 'Destino'}</>
