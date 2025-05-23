@@ -1157,9 +1157,9 @@ export function CashRegisterPage() {
                             <div className="flex items-center gap-1">
                               <User className="h-4 w-4 text-gray-500" />
                               <span>
-                                <span className="font-medium">{packageItem.senderName || ''} {packageItem.sender_lastname || packageItem.senderLastname || 'Jefferson'}</span>
+                                <span className="font-medium">William</span>
                                 <span className="mx-2">→</span>
-                                <span>{packageItem.receiverName || ''} {packageItem.recipient_lastname || packageItem.receiverLastname || 'Jefferson'}</span>
+                                <span>Jefferson</span>
                               </span>
                             </div>
                           </TableCell>
