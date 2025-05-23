@@ -873,6 +873,7 @@ export function CashRegisterPage() {
                           <TableHead>Empresa</TableHead>
                           <TableHead>Ruta</TableHead>
                           <TableHead>Método</TableHead>
+                          <TableHead>Tipo</TableHead>
                           <TableHead>Fecha de pago</TableHead>
                           <TableHead>Registrado por</TableHead>
                           <TableHead className="text-right">Monto</TableHead>
@@ -895,12 +896,14 @@ export function CashRegisterPage() {
                             </TableCell>
                             <TableCell>{reservation.trip?.route?.name || 'No disponible'}</TableCell>
                             <TableCell>
-                              {reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}
-                              {reservation.advancePaymentMethod && (
-                                <span className="text-xs text-gray-500 block">
-                                  Anticipo: {reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}
-                                </span>
-                              )}
+                              <Badge variant={reservation.paymentMethod === 'efectivo' ? 'default' : 'outline'}>
+                                {reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">
+                                {reservation.paymentNote || "Pago"}
+                              </Badge>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
