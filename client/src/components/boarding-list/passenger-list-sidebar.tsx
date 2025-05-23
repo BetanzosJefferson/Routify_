@@ -502,6 +502,15 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         </div>
                       </div>
                       
+                      {/* Indicador de Subviaje si aplica */}
+                      {reservation.tripSegment === 'Subviaje' && (
+                        <div className="mb-3">
+                          <Badge variant="outline" className="bg-yellow-50 border-yellow-200 text-yellow-700">
+                            Subviaje ID: {reservation.tripId}
+                          </Badge>
+                        </div>
+                      )}
+                      
                       {/* Origen y destino completos (incluyendo punto de abordaje) */}
                       <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                         <div>
