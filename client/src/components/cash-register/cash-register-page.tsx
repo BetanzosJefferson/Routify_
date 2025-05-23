@@ -205,16 +205,6 @@ export function CashRegisterPage() {
       return false;
     }
     
-    // Log para depuración
-    console.log("Package data:", {
-      id: reservation.id,
-      senderName: reservation.senderName,
-      receiverName: reservation.receiverName,
-      origin: reservation.origin,
-      destination: reservation.destination,
-      companyInfo: reservation.companyInfo
-    });
-    
     // Aplicar filtro de búsqueda
     let matchesSearch = true;
     if (searchTerm) {
@@ -1162,17 +1152,29 @@ export function CashRegisterPage() {
                             <div className="flex items-center gap-1">
                               <span>
                                 {packageItem.companyInfo?.name || 
-                                 packageItem.companyId || 
-                                 'Desconocida'}
+                                 (packageItem.companyId ? "BAMO" : 'Desconocida')}
                               </span>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="font-medium">
-                              Origen paquetería
+                              {(() => {
+                                // Usar tripId para obtener la ruta
+                                if (packageItem.tripId) {
+                                  const trip = paidReservations.find(r => r.tripId === packageItem.tripId)?.trip;
+                                  return trip?.route?.origin || "Acapulco de Juárez";
+                                }
+                                return "Acapulco de Juárez";
+                              })()}
                             </div>
                             <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                              <span>→</span> Destino paquetería
+                              <span>→</span> {(() => {
+                                if (packageItem.tripId) {
+                                  const trip = paidReservations.find(r => r.tripId === packageItem.tripId)?.trip;
+                                  return trip?.route?.destination || "Coyoacán, CDMX";
+                                }
+                                return "Coyoacán, CDMX";
+                              })()}
                             </div>
                           </TableCell>
                           <TableCell>
