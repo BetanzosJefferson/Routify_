@@ -325,23 +325,77 @@ export async function getCashboxTransactions(cashboxId: number): Promise<any[]> 
         )
       );
     
+    console.log(`[getCashboxTransactions] Encontradas ${reservations.length} reservaciones pagadas por operador ${operatorId}`);
+    
     // Convertir reservaciones a transacciones
     for (const reservation of reservations) {
-      if (reservation.advanceAmount) {
+      // 1. Registrar el anticipo si existe
+      if (reservation.advanceAmount && reservation.advanceAmount > 0) {
         transactions.push({
-          id: `res-${reservation.id}`,
+          id: `adv-${reservation.id}`,
           type: 'reservation',
           source: 'advance',
           description: `Anticipo de reservación #${reservation.id}`,
           amount: reservation.advanceAmount,
+          paymentMethod: reservation.advancePaymentMethod || reservation.paymentMethod,
+          createdAt: reservation.createdAt,
+          reservationId: reservation.id,
+          passengerName: reservation.passengerName
+        });
+      }
+      
+      // 2. Registrar el pago restante (la diferencia entre total y anticipo)
+      const remainingAmount = (reservation.totalAmount || 0) - (reservation.advanceAmount || 0);
+      if (remainingAmount > 0) {
+        transactions.push({
+          id: `rem-${reservation.id}`,
+          type: 'reservation',
+          source: 'remaining',
+          description: `Pago restante de reservación #${reservation.id}`,
+          amount: remainingAmount,
           paymentMethod: reservation.paymentMethod,
-          createdAt: reservation.paidAt || reservation.createdAt,
-          reservationId: reservation.id
+          createdAt: reservation.paidAt || reservation.updatedAt || reservation.createdAt,
+          reservationId: reservation.id,
+          passengerName: reservation.passengerName
         });
       }
     }
     
-    // 2. Obtener paquetes creados por este operador
+    // También obtener reservaciones donde el usuario registró el anticipo pero otro usuario registró el pago final
+    const advanceReservations = await db
+      .select()
+      .from(schema.reservations)
+      .where(
+        and(
+          eq(schema.reservations.createdBy, operatorId),
+          isNotNull(schema.reservations.advanceAmount),
+          gt(schema.reservations.advanceAmount, 0)
+        )
+      );
+    
+    console.log(`[getCashboxTransactions] Encontradas ${advanceReservations.length} reservaciones con anticipos registrados por operador ${operatorId}`);
+    
+    // Registrar solo los anticipos de estas reservaciones
+    for (const reservation of advanceReservations) {
+      // Evitar duplicados (si el mismo usuario registró anticipo y pago completo)
+      if (reservation.paidBy === operatorId) {
+        continue;
+      }
+      
+      transactions.push({
+        id: `adv-${reservation.id}`,
+        type: 'reservation',
+        source: 'advance',
+        description: `Anticipo de reservación #${reservation.id}`,
+        amount: reservation.advanceAmount || 0,
+        paymentMethod: reservation.advancePaymentMethod || 'efectivo',
+        createdAt: reservation.createdAt,
+        reservationId: reservation.id,
+        passengerName: reservation.passengerName
+      });
+    }
+    
+    // 2. Obtener paquetes creados o pagados por este operador
     const packages = await db
       .select()
       .from(schema.packages)
@@ -352,6 +406,8 @@ export async function getCashboxTransactions(cashboxId: number): Promise<any[]> 
         )
       );
     
+    console.log(`[getCashboxTransactions] Encontrados ${packages.length} paquetes registrados por operador ${operatorId}`);
+    
     // Convertir paquetes a transacciones
     for (const pkg of packages) {
       transactions.push({
@@ -360,16 +416,20 @@ export async function getCashboxTransactions(cashboxId: number): Promise<any[]> 
         source: 'payment',
         description: `Pago de paquete #${pkg.id}`,
         amount: pkg.price || 0,
-        paymentMethod: pkg.paymentMethod,
+        paymentMethod: pkg.paymentMethod || 'efectivo',
         createdAt: pkg.createdAt,
-        packageId: pkg.id
+        packageId: pkg.id,
+        senderName: pkg.senderName
       });
     }
     
     // Ordenar por fecha
-    return transactions.sort((a, b) => {
+    const sortedTransactions = transactions.sort((a, b) => {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
+    
+    console.log(`[getCashboxTransactions] Total transacciones encontradas: ${sortedTransactions.length}`);
+    return sortedTransactions;
   } catch (error) {
     console.error(`[getCashboxTransactions] Error al obtener transacciones para caja ${cashboxId}:`, error);
     return [];
