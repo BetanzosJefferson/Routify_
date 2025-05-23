@@ -93,6 +93,21 @@ export function CashRegisterPage() {
     enabled: !!user && user.role === 'taquilla'
   });
   
+  // Obtener todos los viajes para tener datos de rutas
+  const {
+    data: allTrips
+  } = useQuery({
+    queryKey: ["/api/trips"],
+    queryFn: async () => {
+      const response = await fetch('/api/trips');
+      if (!response.ok) {
+        console.error("Error al obtener viajes:", await response.text());
+        return [];
+      }
+      return await response.json();
+    }
+  });
+
   // Obtener las reservaciones marcadas como pagadas por el usuario actual
   const { 
     data: paidReservations, 
@@ -1142,9 +1157,9 @@ export function CashRegisterPage() {
                             <div className="flex items-center gap-1">
                               <User className="h-4 w-4 text-gray-500" />
                               <span>
-                                <span className="font-medium">{packageItem.senderName || ''} {packageItem.senderLastname || 'Jefferson'}</span>
+                                <span className="font-medium">{packageItem.senderName || ''} {packageItem.sender_lastname || packageItem.senderLastname || 'Jefferson'}</span>
                                 <span className="mx-2">→</span>
-                                <span>{packageItem.receiverName || ''} {packageItem.receiverLastname || 'Jefferson'}</span>
+                                <span>{packageItem.receiverName || ''} {packageItem.recipient_lastname || packageItem.receiverLastname || 'Jefferson'}</span>
                               </span>
                             </div>
                           </TableCell>
@@ -1161,19 +1176,19 @@ export function CashRegisterPage() {
                               {(() => {
                                 // Usar tripId para obtener la ruta
                                 if (packageItem.tripId) {
-                                  const trip = paidReservations.find(r => r.tripId === packageItem.tripId)?.trip;
-                                  return trip?.route?.origin || "Acapulco de Juárez";
+                                  const trip = allTrips?.find(t => t.id === packageItem.tripId);
+                                  return trip?.route?.origin || packageItem.originCity || packageItem.origin || 'Sin especificar';
                                 }
-                                return "Acapulco de Juárez";
+                                return packageItem.originCity || packageItem.origin || 'Sin especificar';
                               })()}
                             </div>
                             <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                               <span>→</span> {(() => {
                                 if (packageItem.tripId) {
-                                  const trip = paidReservations.find(r => r.tripId === packageItem.tripId)?.trip;
-                                  return trip?.route?.destination || "Coyoacán, CDMX";
+                                  const trip = allTrips?.find(t => t.id === packageItem.tripId);
+                                  return trip?.route?.destination || packageItem.destinationCity || packageItem.destination || 'Sin especificar';
                                 }
-                                return "Coyoacán, CDMX";
+                                return packageItem.destinationCity || packageItem.destination || 'Sin especificar';
                               })()}
                             </div>
                           </TableCell>
