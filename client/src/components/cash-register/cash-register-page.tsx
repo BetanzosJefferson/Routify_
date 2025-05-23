@@ -220,19 +220,28 @@ export function CashRegisterPage() {
       return false;
     }
     
+    // Solo incluir paqueterías marcadas como pagadas o registradas como pagadas por el usuario actual
+    const userCreatedOrPaid = 
+      (reservation.isPaid === true && (reservation.paidBy === user?.id || reservation.createdBy === user?.id)) || 
+      (reservation.createdBy === user?.id);
+    
+    if (!userCreatedOrPaid) {
+      return false;
+    }
+    
     // Aplicar filtro de búsqueda
     let matchesSearch = true;
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       const routeName = reservation.trip?.route?.name?.toLowerCase() || '';
       const senderName = (reservation.senderName || '').toLowerCase();
-      const receiverName = (reservation.receiverName || '').toLowerCase();
+      const recipientName = (reservation.recipientName || '').toLowerCase();
       const packageId = `RES${reservation.id}`.toLowerCase();
       
       matchesSearch = (
         routeName.includes(searchLower) ||
         senderName.includes(searchLower) ||
-        receiverName.includes(searchLower) ||
+        recipientName.includes(searchLower) ||
         packageId.includes(searchLower)
       );
     }
