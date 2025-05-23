@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   DollarSign,
   X,
   AlertTriangle,
-  Check
+  Check,
+  Upload,
+  Image
 } from "lucide-react";
 import { 
   Dialog, 
@@ -36,9 +38,37 @@ export function AddExpenseModal({ isOpen, onClose, tripId, onSuccess }: AddExpen
   const [amount, setAmount] = useState<string>("0");
   const [category, setCategory] = useState<string>("gasolina");
   const [description, setDescription] = useState<string>("");
+  const [receiptImage, setReceiptImage] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Estado para manejar el loading durante la creación
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Función para manejar la selección de archivos
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    // Validar tipo de archivo (solo imágenes)
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Tipo de archivo no válido",
+        description: "Por favor selecciona una imagen (JPG, PNG, etc.)",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Crear URL para vista previa
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setPreviewImage(result);
+      setReceiptImage(result);
+    };
+    reader.readAsDataURL(file);
+  };
   
   // Función para validar el formulario
   const isFormValid = () => {
@@ -124,6 +154,7 @@ export function AddExpenseModal({ isOpen, onClose, tripId, onSuccess }: AddExpen
       description,
       userId: userId,
       createdBy: user ? `${user.firstName} ${user.lastName || ""}` : "Usuario no identificado",
+      receiptImage: receiptImage // Agregar la imagen del comprobante
     };
     
     console.log("Enviando datos de gasto con usuario:", expenseData);
