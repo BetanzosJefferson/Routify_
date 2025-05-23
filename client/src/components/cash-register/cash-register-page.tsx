@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { formatDate, formatPrice } from "@/lib/utils";
@@ -13,7 +13,9 @@ import {
   Clock,
   User,
   ArrowDownUp,
-  FilterIcon
+  FilterIcon,
+  Printer,
+  XCircle
 } from "lucide-react";
 
 // Interfaz para las reservaciones con información de compañía
@@ -37,10 +39,20 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 export function CashRegisterPage() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("todos"); // Valor por defecto
@@ -50,6 +62,9 @@ export function CashRegisterPage() {
   // Estados adicionales para mejorar la UX
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showLoadingDelay, setShowLoadingDelay] = useState(false);
+  const [isLoadingCutoff, setIsLoadingCutoff] = useState(false);
+  const [showCutoffModal, setShowCutoffModal] = useState(false);
+  const [cutoffData, setCutoffData] = useState<any>(null);
   
   // Estado para saber si estamos en modo administrador o taquillero
   const isAdminView = user?.role === 'dueño' || user?.role === 'administrador';
@@ -251,6 +266,247 @@ export function CashRegisterPage() {
     setSortDirection(prev => prev === "asc" ? "desc" : "asc");
   };
   
+  // Variable para almacenar las notas del corte
+  const [cutoffNotes, setCutoffNotes] = useState("");
+  
+  // Función para realizar el corte de caja
+  const handleCashboxCutoff = async () => {
+    if (!user) return;
+    
+    try {
+      setIsLoadingCutoff(true);
+      
+      // Determinar si estamos filtrando los datos
+      const isFiltered = searchTerm || dateFilter || paymentMethodFilter !== 'todos' || (isTicketOfficeView && companyFilter !== 'todas');
+      
+      // Si hay filtros, preguntamos al usuario si quiere hacer el corte solo de lo filtrado
+      if (isFiltered) {
+        // Aquí mostramos un modal para confirmar
+        const confirmCutoff = window.confirm(
+          "Estás realizando un corte con filtros aplicados. ¿Deseas hacer el corte solo de las transacciones mostradas?\n\n" +
+          "Presiona 'Aceptar' para hacer el corte solo de lo filtrado\n" +
+          "Presiona 'Cancelar' para hacer el corte de todas tus transacciones"
+        );
+        
+        if (!confirmCutoff) {
+          // Si no confirma, reseteamos los filtros
+          setSearchTerm("");
+          setDateFilter("");
+          setPaymentMethodFilter("todos");
+          if (isTicketOfficeView) setCompanyFilter("todas");
+        }
+      }
+      
+      // Preparar los datos para el modal
+      const cutoffSummary = {
+        date: new Date().toLocaleString(),
+        user: `${user.firstName} ${user.lastName}`,
+        totalAmount,
+        totalCash,
+        totalTransfer,
+        transactionCount: sortedReservations.length,
+        transactions: sortedReservations.map(r => ({
+          id: r.id,
+          tripName: r.trip?.route?.name || "Sin ruta",
+          passengers: r.passengers?.map(p => `${p.firstName} ${p.lastName}`).join(", ") || "Sin pasajeros",
+          amount: r.totalAmount || 0,
+          paymentMethod: getCombinedPaymentMethod(r)
+        }))
+      };
+      
+      setCutoffData(cutoffSummary);
+      setShowCutoffModal(true);
+      
+    } catch (error) {
+      console.error("Error al preparar el corte de caja:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo realizar el corte de caja. Inténtalo de nuevo.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingCutoff(false);
+    }
+  };
+  
+  // Función para completar el corte de caja
+  const completeCashboxCutoff = async () => {
+    if (!user || !cutoffData) return;
+    
+    try {
+      setIsLoadingCutoff(true);
+      
+      // Realizar la petición al servidor para guardar el corte
+      const response = await fetch('/api/cashbox/cutoff', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          notes: cutoffNotes
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+      
+      const result = await response.json();
+      
+      // Si el servidor responde con éxito
+      if (result.success) {
+        toast({
+          title: "Corte realizado",
+          description: `Se ha realizado el corte de caja correctamente.`,
+        });
+        
+        // Imprimir el ticket
+        printCutoffTicket(cutoffData, result.cutoff);
+        
+        // Limpiar los estados
+        setCutoffData(null);
+        setCutoffNotes("");
+        setShowCutoffModal(false);
+        
+        // Refrescar los datos
+        queryClient.invalidateQueries({ queryKey: ["/api/cash-register"] });
+      } else {
+        throw new Error(result.message || "Error al realizar el corte");
+      }
+    } catch (error) {
+      console.error("Error al realizar el corte:", error);
+      toast({
+        title: "Error",
+        description: typeof error === 'object' && error !== null && 'message' in error ? 
+          String(error.message) : "No se pudo realizar el corte de caja. Inténtalo de nuevo.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingCutoff(false);
+    }
+  };
+  
+  // Función para imprimir el ticket de corte
+  const printCutoffTicket = (data: any, cutoffInfo: any) => {
+    try {
+      // Crear contenido del ticket (formato 60mm)
+      const ticketContent = document.createElement('div');
+      ticketContent.style.width = '220px'; // 60mm aproximadamente
+      ticketContent.style.fontFamily = 'monospace';
+      ticketContent.style.fontSize = '10px';
+      ticketContent.style.padding = '5px';
+      
+      // Información de la empresa y corte
+      ticketContent.innerHTML = `
+        <div style="text-align:center;margin-bottom:10px;">
+          <h3 style="margin:3px 0;font-size:12px;">AUTOBUSES VIAJEROS</h3>
+          <p style="margin:3px 0;">CORTE DE CAJA #${cutoffInfo.id}</p>
+          <p style="margin:3px 0;">FECHA: ${new Date(cutoffInfo.createdAt).toLocaleString()}</p>
+          <p style="margin:3px 0;">USUARIO: ${data.user}</p>
+        </div>
+        <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;padding:5px 0;margin:5px 0;">
+          <p style="margin:3px 0;"><strong>TOTAL:</strong> ${formatPrice(data.totalAmount)}</p>
+          <p style="margin:3px 0;"><strong>EFECTIVO:</strong> ${formatPrice(data.totalCash)}</p>
+          <p style="margin:3px 0;"><strong>TRANSFERENCIA:</strong> ${formatPrice(data.totalTransfer)}</p>
+          <p style="margin:3px 0;"><strong>TRANSACCIONES:</strong> ${data.transactionCount}</p>
+        </div>
+        <div style="margin-top:10px;">
+          <p style="margin:3px 0;font-size:9px;"><strong>DETALLE DE TRANSACCIONES:</strong></p>
+      `;
+      
+      // Recorrer las transacciones (limitado a 10 para que no sea muy largo)
+      const limitedTransactions = data.transactions.slice(0, 10);
+      limitedTransactions.forEach((t: any, index: number) => {
+        ticketContent.innerHTML += `
+          <div style="font-size:8px;margin:3px 0;border-bottom:1px dotted #ccc;padding-bottom:3px;">
+            <span>#${t.id} - ${t.tripName.substring(0, 15)}${t.tripName.length > 15 ? '...' : ''}</span><br>
+            <span>${formatPrice(t.amount)} - ${t.paymentMethod}</span>
+          </div>
+        `;
+      });
+      
+      // Si hay más transacciones, mostrar un mensaje
+      if (data.transactions.length > 10) {
+        ticketContent.innerHTML += `
+          <p style="font-size:8px;text-align:center;margin:5px 0;">
+            ... y ${data.transactions.length - 10} transacciones más
+          </p>
+        `;
+      }
+      
+      // Añadir notas si existen
+      if (cutoffNotes) {
+        ticketContent.innerHTML += `
+          <div style="margin-top:10px;border-top:1px dashed #000;padding-top:5px;">
+            <p style="margin:3px 0;font-size:9px;"><strong>NOTAS:</strong></p>
+            <p style="margin:3px 0;font-size:8px;">${cutoffNotes}</p>
+          </div>
+        `;
+      }
+      
+      // Cierre del ticket
+      ticketContent.innerHTML += `
+        </div>
+        <div style="text-align:center;margin-top:20px;border-top:1px dashed #000;padding-top:10px;">
+          <p style="margin:3px 0;">¡GRACIAS POR SU SERVICIO!</p>
+          <p style="margin:3px 0;font-size:8px;">www.autobusesviajeros.com</p>
+        </div>
+      `;
+      
+      // Crear una ventana para imprimir
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        toast({
+          title: "Error",
+          description: "No se pudo abrir la ventana de impresión. Comprueba que no estén bloqueados los popups.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Corte de Caja #${cutoffInfo.id}</title>
+            <style>
+              @media print {
+                body { margin: 0; padding: 0; }
+                @page { size: 80mm auto; margin: 0; }
+              }
+            </style>
+          </head>
+          <body>
+            ${ticketContent.outerHTML}
+            <script>
+              window.onload = function() {
+                window.print();
+                setTimeout(function() { window.close(); }, 500);
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+    } catch (error) {
+      console.error("Error al imprimir ticket:", error);
+      toast({
+        title: "Error de impresión",
+        description: "No se pudo imprimir el ticket. Intenta de nuevo o imprime manualmente.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Función auxiliar para mostrar el método de pago combinado
+  const getCombinedPaymentMethod = (reservation: ReservationWithCompany) => {
+    if (reservation.advanceAmount && reservation.advanceAmount > 0) {
+      return `Anticipo: ${reservation.advancePaymentMethod} / Resto: ${reservation.paymentMethod || 'Pendiente'}`;
+    } else {
+      return reservation.paymentMethod || 'Pendiente';
+    }
+  };
+  
   return (
     <div className="py-6">
       <div className="flex items-center mb-4">
@@ -350,6 +606,27 @@ export function CashRegisterPage() {
             </div>
             
             {/* Resumen de caja */}
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium">Resumen de caja</h3>
+              <Button
+                onClick={() => handleCashboxCutoff()}
+                className="bg-green-600 hover:bg-green-700"
+                disabled={isLoadingCutoff}
+              >
+                {isLoadingCutoff ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Realizar corte
+                  </>
+                )}
+              </Button>
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="bg-primary/5">
                 <CardContent className="p-4">
