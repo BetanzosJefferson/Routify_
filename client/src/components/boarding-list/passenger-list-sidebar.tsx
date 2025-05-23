@@ -18,7 +18,9 @@ import {
   FilterIcon,
   Trash,
   ClipboardCopy,
-  LockIcon
+  LockIcon,
+  DollarSign,
+  Wallet
 } from "lucide-react";
 import { formatTripTime } from "@/lib/trip-utils";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +31,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input"; 
 import { useDriverTrips, Trip } from "@/hooks/use-driver-trips";
 import { useDriverReservations, Reservation, Passenger } from "@/hooks/use-driver-reservations";
+import { useTripBudget } from "@/hooks/use-trip-budget";
 import { normalizeToStartOfDay, formatPrice } from "@/lib/utils";
 
 interface GroupedReservation {
@@ -437,6 +440,27 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                 </div>
               </div>
             </div>
+            
+            {/* Sección de presupuesto para el operador (solo visible para conductores) */}
+            {user?.role === 'chofer' && (
+              <div className="flex items-center bg-gray-50 p-3 rounded-lg mt-2">
+                <div className="rounded-full bg-yellow-100 p-2 mr-3">
+                  <Wallet className="h-4 w-4 text-yellow-600" />
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Presupuesto asignado</div>
+                  <div className="text-sm font-medium">
+                    {isLoadingBudget ? (
+                      <span className="text-gray-400">Cargando...</span>
+                    ) : tripBudget ? (
+                      <span className="text-green-700 font-semibold">${tripBudget.amount.toFixed(2)} MXN</span>
+                    ) : (
+                      <span className="text-gray-500">Sin presupuesto asignado</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="flex items-center bg-blue-50 p-4 rounded-lg border border-blue-100">
