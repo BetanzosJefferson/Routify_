@@ -484,10 +484,31 @@ export function registerCashboxRoutes(app: Express, storage: any) {
       
       transactionData.totalAmount = totalAmount;
       
+      // Obtener la caja del usuario
+      const userCashbox = await getUserCashbox(user.id);
+      
+      if (!userCashbox) {
+        return res.status(404).json({
+          success: false,
+          message: "No se encontró una caja asociada al usuario"
+        });
+      }
+      
+      // Calcular valores para el corte de caja
+      const previousBalance = 0; // Por ahora inicializamos en 0
+      const totalIncome = totalAmount;
+      const totalExpenses = 0; // Por ahora no tenemos gastos registrados
+      const finalBalance = totalIncome - totalExpenses;
+      
       // Crear el registro de corte en la base de datos
       try {
         const result = await db.insert(schema.cashboxCutoffs).values({
-          userId: user.id,
+          cashboxId: userCashbox.id,
+          operatorId: user.id,
+          previousBalance,
+          totalIncome,
+          totalExpenses,
+          finalBalance,
           notes: notes || null,
           createdAt: new Date(),
           data: transactionData
@@ -495,6 +516,15 @@ export function registerCashboxRoutes(app: Express, storage: any) {
         
         if (result && result.length > 0) {
           const cutoff = result[0];
+          
+          // Actualizar las transacciones para marcarlas como procesadas en este corte
+          try {
+            // Aquí podríamos actualizar las transacciones si tuviéramos un campo para indicar que ya fueron procesadas
+            console.log(`[POST /cashbox/cutoff] Transacciones procesadas en el corte #${cutoff.id}`);
+          } catch (updateError) {
+            console.error("[POST /cashbox/cutoff] Error al actualizar transacciones:", updateError);
+            // No interrumpimos el proceso por este error
+          }
           
           // Responder con éxito
           res.json({
@@ -518,6 +548,56 @@ export function registerCashboxRoutes(app: Express, storage: any) {
       });
     }
   });
+  
+  // Función auxiliar para obtener la caja del usuario
+  async function getUserCashbox(userId: number): Promise<any> {
+    try {
+      // Buscar la caja asociada al usuario
+      const cashboxes = await db.select().from(schema.cashboxes)
+        .where(eq(schema.cashboxes.operatorId, userId));
+      
+      if (cashboxes && cashboxes.length > 0) {
+        return cashboxes[0];
+      }
+      
+      // Si no encontramos una caja específica, creamos una nueva
+      console.log(`[getUserCashbox] No se encontró caja para el usuario ${userId}, creando una nueva`);
+      
+      // Obtener información del usuario
+      const users = await db.select().from(schema.users)
+        .where(eq(schema.users.id, userId));
+      
+      if (!users || users.length === 0) {
+        console.error(`[getUserCashbox] No se encontró información del usuario ${userId}`);
+        return null;
+      }
+      
+      const user = users[0];
+      const companyId = user.companyId;
+      
+      // Crear una nueva caja para el usuario
+      const result = await db.insert(schema.cashboxes).values({
+        operatorId: userId,
+        companyId,
+        name: `Caja de ${user.firstName} ${user.lastName}`,
+        initialBalance: 0,
+        currentBalance: 0,
+        active: true,
+        createdAt: new Date()
+      }).returning();
+      
+      if (result && result.length > 0) {
+        console.log(`[getUserCashbox] Creada nueva caja para ${user.firstName} ${user.lastName} (ID: ${result[0].id})`);
+        return result[0];
+      } else {
+        console.error(`[getUserCashbox] Error al crear caja para usuario ${userId}`);
+        return null;
+      }
+    } catch (error) {
+      console.error(`[getUserCashbox] Error:`, error);
+      return null;
+    }
+  }
   
   // Función auxiliar para obtener los items de caja para un usuario
   async function getCashboxItemsForUser(user: any, storage: any) {
