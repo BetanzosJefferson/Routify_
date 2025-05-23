@@ -888,7 +888,14 @@ export function CashRegisterPage() {
                             <TableCell>
                               <div className="flex items-center gap-1">
                                 <User className="h-4 w-4 text-gray-500" />
-                                <span>{reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}</span>
+                                <span>
+                                  {reservation.passengers && reservation.passengers.length > 0 
+                                    ? `${reservation.passengers[0]?.firstName} ${reservation.passengers[0]?.lastName}`
+                                    : reservation.originalPackageId 
+                                      ? `${reservation.senderName || 'Remitente'} → ${reservation.receiverName || 'Destinatario'}`
+                                      : 'No disponible'
+                                  }
+                                </span>
                               </div>
                             </TableCell>
                             <TableCell>
@@ -948,9 +955,16 @@ export function CashRegisterPage() {
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <User className="h-4 w-4 text-gray-500" />
-                          <span>{reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}</span>
+                          <span>
+                            {reservation.passengers && reservation.passengers.length > 0 
+                              ? `${reservation.passengers[0]?.firstName} ${reservation.passengers[0]?.lastName}`
+                              : reservation.originalPackageId 
+                                ? `${reservation.senderName || 'Remitente'} → ${reservation.receiverName || 'Destinatario'}`
+                                : 'No disponible'
+                            }
+                          </span>
                         </div>
-                        {reservation.passengers.length > 1 && (
+                        {reservation.passengers && reservation.passengers.length > 1 && (
                           <div className="text-xs text-gray-500 ml-5 mt-1">
                             +{reservation.passengers.length - 1} pasajeros más
                           </div>
@@ -962,12 +976,27 @@ export function CashRegisterPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">
-                          {reservation.trip.segmentOrigin || reservation.trip.route.origin}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                          <span>→</span> {reservation.trip.segmentDestination || reservation.trip.route.destination}
-                        </div>
+                        {reservation.trip ? (
+                          <>
+                            <div className="font-medium">
+                              {reservation.trip.segmentOrigin || (reservation.trip.route && reservation.trip.route.origin) || 'Origen'}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                              <span>→</span> {reservation.trip.segmentDestination || (reservation.trip.route && reservation.trip.route.destination) || 'Destino'}
+                            </div>
+                          </>
+                        ) : reservation.originalPackageId ? (
+                          <>
+                            <div className="font-medium">
+                              {reservation.origin || 'Origen paquetería'}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                              <span>→</span> {reservation.destination || 'Destino paquetería'}
+                            </div>
+                          </>
+                        ) : (
+                          <span>No disponible</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge className={reservation.paymentMethod === 'efectivo' 
