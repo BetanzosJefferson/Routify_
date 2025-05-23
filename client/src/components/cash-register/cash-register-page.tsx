@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { useWebSocket } from "@/hooks/use-websocket";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { ReservationWithDetails } from "@shared/schema";
 import { 
@@ -113,8 +112,7 @@ export function CashRegisterPage() {
   const { 
     data: paidReservations, 
     isLoading,
-    error,
-    refetch: refetchCashboxData
+    error
   } = useQuery({
     queryKey: ["/api/cashbox/transactions"],
     queryFn: async () => {
@@ -127,11 +125,7 @@ export function CashRegisterPage() {
       
       return await response.json();
     },
-    enabled: !!user,
-    // Actualizar cada 30 segundos automáticamente para mostrar nuevos registros
-    refetchInterval: 30000,
-    // También actualizar cuando la ventana recupera el foco
-    refetchOnWindowFocus: true
+    enabled: !!user
   });
   
   // Actualizar estados de UI basados en el estado de carga
@@ -430,9 +424,6 @@ export function CashRegisterPage() {
     
     try {
       setIsLoadingCutoff(true);
-      
-      // Actualizar datos de caja para asegurar que tenemos los registros más recientes
-      await refetchCashboxData();
       
       // Realizar la petición al servidor para guardar el corte
       const response = await fetch('/api/cashbox/cutoff', {
