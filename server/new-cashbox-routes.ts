@@ -1,12 +1,12 @@
 import express, { Request, Response } from "express";
-import { isAuthenticated } from "./auth";
-import { UserRole } from "@shared/schema";
+import * as schema from "@shared/schema";
 import { db } from "./db";
+import { eq } from "drizzle-orm";
 import * as cashboxFunctions from "./cashbox-functions";
 
 export function registerCashboxRoutes(app: express.Express) {
   // POST /api/cashbox/cutoff - Realizar corte de caja para el usuario actual
-  app.post("/api/cashbox/cutoff", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/cashbox/cutoff", async (req: Request, res: Response) => {
     try {
       const { user } = req as any;
       const { notes } = req.body;
@@ -57,7 +57,7 @@ export function registerCashboxRoutes(app: express.Express) {
   });
 
   // GET /api/cashboxes/:id/print/:cutoffId - Generar datos para impresión de ticket
-  app.get("/api/cashboxes/:id/print/:cutoffId", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/cashboxes/:id/print/:cutoffId", async (req: Request, res: Response) => {
     try {
       const { id, cutoffId } = req.params;
       const { user } = req as any;
@@ -74,7 +74,7 @@ export function registerCashboxRoutes(app: express.Express) {
       
       // Verificar permisos
       const userCompanyId = user.companyId || user.company;
-      if (user.role !== UserRole.SUPER_ADMIN && cashbox.companyId !== userCompanyId) {
+      if (user.role !== "super-admin" && cashbox.companyId !== userCompanyId) {
         return res.status(403).json({
           success: false,
           message: "No tiene permisos para ver esta caja"
@@ -95,14 +95,14 @@ export function registerCashboxRoutes(app: express.Express) {
       const [operator] = await db
         .select()
         .from(schema.users)
-        .where(eq(schema.users.id, cutoff.operatorId));
+        .where(eq(schema.users.id, cutoff.operatorId as number));
       
       // Datos de impresión
       const printData = {
         success: true,
         cutoff: {
           ...cutoff,
-          createdAt: cutoff.createdAt.toLocaleString('es-MX')
+          createdAt: cutoff.createdAt ? cutoff.createdAt.toLocaleString('es-MX') : new Date().toLocaleString('es-MX')
         },
         cashbox: {
           id: cashbox.id,
@@ -125,9 +125,12 @@ export function registerCashboxRoutes(app: express.Express) {
       
       // Marcar el corte como impreso si no se ha hecho ya
       if (cutoff && !cutoff.printedAt) {
-        await cashboxFunctions.updateCashboxCutoff(parseInt(cutoffId), {
-          printedAt: new Date()
-        });
+        await db
+          .update(schema.cashboxCutoffs)
+          .set({
+            printedAt: new Date()
+          })
+          .where(eq(schema.cashboxCutoffs.id, parseInt(cutoffId)));
       }
       
       res.json(printData);
