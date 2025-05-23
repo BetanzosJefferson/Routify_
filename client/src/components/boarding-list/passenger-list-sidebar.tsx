@@ -97,6 +97,13 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
     tripId: tripId,
     includeRelated: true
   });
+  
+  // Cargar el presupuesto del viaje (específicamente para conductores)
+  const {
+    data: tripBudget,
+    isLoading: isLoadingBudget,
+    error: budgetError
+  } = useTripBudget(tripId);
 
   // Función para formatear fecha
   const formatDisplayDate = (dateString: string | Date) => {
