@@ -465,67 +465,70 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
             {/* Sección de presupuesto para el operador (solo visible para conductores) */}
             {user?.role === 'chofer' && (
               <div className="mt-3">
-                <div className="flex space-x-2">
-                  {/* Presupuesto asignado */}
-                  <div className="flex-1 bg-yellow-100 rounded-lg p-3">
-                    <div className="flex items-start">
-                      <Wallet className="h-5 w-5 text-yellow-600 mr-2 mt-1" />
-                      <div>
-                        <div className="text-xs text-gray-600">Presupuesto asignado</div>
-                        <div className="text-sm font-semibold">
-                          {isLoadingBudget ? (
-                            <span className="text-gray-400">Cargando...</span>
-                          ) : tripBudget ? (
-                            <span className="text-green-700">${tripBudget.amount.toFixed(2)} MXN</span>
-                          ) : (
-                            <span className="text-gray-500">Sin presupuesto</span>
-                          )}
+                <div className="border border-gray-300 rounded-lg overflow-hidden">
+                  {/* Primera fila */}
+                  <div className="flex">
+                    {/* Cuadro 1: Presupuesto asignado */}
+                    <div className="flex-1 bg-yellow-100 p-3">
+                      <div className="flex items-start">
+                        <Wallet className="h-5 w-5 text-yellow-600 mr-2 mt-1" />
+                        <div>
+                          <div className="text-xs text-gray-600">Presupuesto asignado</div>
+                          <div className="text-sm font-semibold">
+                            {isLoadingBudget ? (
+                              <span className="text-gray-400">Cargando...</span>
+                            ) : tripBudget ? (
+                              <span className="text-green-700">${tripBudget.amount.toFixed(2)} MXN</span>
+                            ) : (
+                              <span className="text-gray-500">Sin presupuesto</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
+                    
+                    {/* Cuadro 3: Balance */}
+                    <div className="w-28 bg-red-100 p-3 flex flex-col justify-center border-l border-gray-300">
+                      <div className="text-xs text-gray-600">Balance</div>
+                      {isLoadingBudget || isLoadingExpenses ? (
+                        <span className="text-gray-400 text-xs">Calculando...</span>
+                      ) : (
+                        <span className="text-sm font-bold">
+                          {(() => {
+                            const presupuesto = tripBudget?.amount || 0;
+                            const totalGastos = tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0;
+                            const balance = presupuesto - totalGastos;
+                            
+                            return (
+                              <span className={balance >= 0 ? "text-green-700" : "text-red-600"}>
+                                ${balance.toFixed(2)}
+                              </span>
+                            );
+                          })()}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   
-                  {/* Balance */}
-                  <div className="w-24 bg-red-100 rounded-lg p-3 flex flex-col justify-center">
-                    <div className="text-xs text-gray-600">Balance</div>
-                    {isLoadingBudget || isLoadingExpenses ? (
-                      <span className="text-gray-400 text-xs">Calculando...</span>
-                    ) : (
-                      <div className="text-sm font-bold">
-                        {(() => {
-                          const presupuesto = tripBudget?.amount || 0;
-                          const totalGastos = tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0;
-                          const balance = presupuesto - totalGastos;
-                          
-                          return (
-                            <span className={balance >= 0 ? "text-green-700" : "text-red-600"}>
-                              ${balance.toFixed(2)}
-                            </span>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Segunda fila */}
-                <div className="flex space-x-2 mt-2">
-                  {/* Agregar gastos */}
-                  <div className="flex-1 bg-green-100 rounded-lg p-3 flex items-center justify-between">
-                    <span className="text-sm text-gray-700">Agregar gasto</span>
-                    <ExpenseButton tripId={tripId} />
-                  </div>
-                  
-                  {/* Total de gastos */}
-                  <div className="w-24 bg-blue-50 rounded-lg p-3 flex flex-col justify-center">
-                    <div className="text-xs text-gray-600">Gastos</div>
-                    {isLoadingExpenses ? (
-                      <span className="text-gray-400 text-xs">Cargando...</span>
-                    ) : (
-                      <span className="text-sm font-bold text-red-600">
-                        ${(tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0).toFixed(2)}
-                      </span>
-                    )}
+                  {/* Segunda fila */}
+                  <div className="flex border-t border-gray-300">
+                    {/* Cuadro 2: Botón Agregar gasto */}
+                    <div className="flex-1 bg-green-100 p-3 flex items-center justify-between">
+                      <span className="text-sm text-gray-700">Agregar gasto</span>
+                      <ExpenseButton tripId={tripId} />
+                    </div>
+                    
+                    {/* Cuadro con gastos totales */}
+                    <div className="w-28 bg-gray-50 p-3 flex flex-col justify-center border-l border-gray-300">
+                      <div className="text-xs text-gray-600">Gastos</div>
+                      {isLoadingExpenses ? (
+                        <span className="text-gray-400 text-xs">Cargando...</span>
+                      ) : (
+                        <span className="text-sm font-bold text-red-600">
+                          ${(tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0).toFixed(2)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
