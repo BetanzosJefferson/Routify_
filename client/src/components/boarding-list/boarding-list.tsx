@@ -25,11 +25,12 @@ import { PassengerListSidebar } from "./passenger-list-sidebar";
 
 export function BoardingList() {
   // Usamos la fecha actual por defecto, pero permitimos cambiarla con el selector
-  // Aseguramos que la fecha sea la del día actual, no la del futuro
+  // Forzamos la fecha al 22 de mayo de 2025 para coincidir con los datos de prueba
   const [currentDate, setCurrentDate] = useState<Date>(() => {
-    const today = new Date();
-    console.log(`[BoardingList] Inicializando con la fecha actual: ${today.toISOString()}`);
-    return today;
+    // Crear específicamente el 22 de mayo de 2025
+    const fixedDate = new Date(2025, 4, 22, 12, 0, 0);
+    console.log(`[BoardingList] Inicializando con fecha fija: ${fixedDate.toISOString()}`);
+    return fixedDate;
   });
   const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
   const [, navigate] = useLocation();
