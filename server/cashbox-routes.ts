@@ -2,6 +2,7 @@ import { Express, Request, Response } from "express";
 import { UserRole } from "@shared/schema";
 import { and, eq, gte, lte } from "drizzle-orm";
 import * as schema from "@shared/schema";
+import { WebSocket } from 'ws';
 
 /**
  * Registra las rutas relacionadas con el sistema de cajas
@@ -9,6 +10,8 @@ import * as schema from "@shared/schema";
  * @param storage - Almacenamiento de datos
  */
 export function registerCashboxRoutes(app: Express, storage: any) {
+  // Variable para almacenar la referencia a la función de envío de notificaciones
+  let sendNotificationToUsers: (userIds: number[], notification: any) => void;
   
   // Middleware para verificar autenticación
   function isAuthenticated(req: Request, res: Response, next: any) {
