@@ -260,7 +260,8 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
       });
       
       // Determinar el ID de usuario a guardar (priorizar el enviado desde el cliente)
-      const userIdToSave = userId || (req.user?.id || null);
+      // Asegurarnos de que sea un número (o null si no hay valor)
+      const userIdToSave = userId ? Number(userId) : (req.user?.id ? Number(req.user.id) : null);
       
       // Determinar el nombre a guardar para el creador
       const createdByToSave = createdBy || (req.user ? `${req.user.firstName} ${req.user.lastName}` : 'Usuario del sistema');
@@ -282,6 +283,8 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
         createdAt: new Date(),
         updatedAt: new Date()
       };
+      
+      console.log("Objeto final de gasto a guardar:", JSON.stringify(newExpense, null, 2));
       
       const result = await storage.createTripExpense(newExpense);
       console.log(`[POST /trips/${tripId}/expenses] Gasto creado con ID: ${result.id}`);

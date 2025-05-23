@@ -115,11 +115,14 @@ export function AddExpenseModal({ isOpen, onClose, tripId, onSuccess }: AddExpen
     
     setIsSubmitting(true);
     
+    // Convertir el ID de usuario a número para asegurar compatibilidad con la base de datos
+    const userId = user?.id ? Number(user.id) : undefined;
+    
     const expenseData = {
       amount: parseFloat(amount),
       type: category,
       description,
-      userId: user?.id,
+      userId: userId,
       createdBy: user ? `${user.firstName} ${user.lastName || ""}` : "Usuario no identificado",
     };
     
