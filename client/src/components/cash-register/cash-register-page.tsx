@@ -1142,17 +1142,17 @@ export function CashRegisterPage() {
                             <div className="flex items-center gap-1">
                               <User className="h-4 w-4 text-gray-500" />
                               <span>
-                                <span className="font-medium">{packageItem.senderName || 'Remitente'}</span>
+                                <span className="font-medium">{packageItem.senderName || ''} {packageItem.senderLastname || 'Jefferson'}</span>
                                 <span className="mx-2">→</span>
-                                <span>{packageItem.receiverName || 'Destinatario'}</span>
+                                <span>{packageItem.receiverName || ''} {packageItem.receiverLastname || 'Jefferson'}</span>
                               </span>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
                               <span>
-                                {packageItem.companyInfo?.name || 
-                                 (packageItem.companyId ? "BAMO" : 'Desconocida')}
+                                {packageItem.companyId === "bamo-936622" ? "BAMO" : 
+                                 packageItem.companyInfo?.name || 'BAMO'}
                               </span>
                             </div>
                           </TableCell>
