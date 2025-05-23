@@ -132,6 +132,21 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
         // Obtener información del viaje asociado
         const trip = trips?.find(trip => trip.id === reservation.tripId);
         
+        // Para reservaciones de subviajes, verificar si traen su propia información de origen/destino
+        const specificOrigin = reservation.segmentOrigin || 
+                              reservation.origin || 
+                              (reservation as any).segmentOrigin || 
+                              (reservation.trip && reservation.trip.origin);
+                              
+        const specificDestination = reservation.segmentDestination || 
+                                  reservation.destination || 
+                                  (reservation as any).segmentDestination || 
+                                  (reservation.trip && reservation.trip.destination);
+        
+        // Si la reservación es de un subviaje (tripId diferente al viaje principal seleccionado)
+        const isFromSubTrip = tripId && reservation.tripId !== tripId;
+        const tripSegmentLabel = isFromSubTrip ? 'Subviaje' : 'Viaje completo';
+        
         // Crear el objeto de reservación agrupada
         const groupedReservation: GroupedReservation = {
           id: reservation.id,
@@ -144,9 +159,10 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           amount: reservation.totalAmount || 0,
           advanceAmount: (reservation as any).advanceAmount || 0,
           advancePaymentMethod: (reservation as any).advancePaymentMethod || 'efectivo',
-          tripSegment: 'Viaje completo',
-          origin: trip?.segmentOrigin || trip?.route?.origin || "Origen no especificado",
-          destination: trip?.segmentDestination || trip?.route?.destination || "Destino no especificado",
+          tripSegment: tripSegmentLabel,
+          // Usar la información específica de la reservación si está disponible
+          origin: specificOrigin || trip?.segmentOrigin || trip?.route?.origin || "Origen no especificado",
+          destination: specificDestination || trip?.segmentDestination || trip?.route?.destination || "Destino no especificado",
           notes: reservation.notes || '',
           checkCount: reservation.checkCount || 0,
           checkedBy: reservation.checkedBy || null,
