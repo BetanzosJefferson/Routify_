@@ -44,8 +44,8 @@ export function AddExpenseModal({ isOpen, onClose, tripId, onSuccess }: AddExpen
   const isFormValid = () => {
     return (
       parseFloat(amount) > 0 &&
-      category.trim() !== "" &&
-      description.trim() !== ""
+      category.trim() !== ""
+      // La descripción ahora es opcional
     );
   };
   
@@ -180,13 +180,14 @@ export function AddExpenseModal({ isOpen, onClose, tripId, onSuccess }: AddExpen
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="description">Descripción</Label>
+            <Label htmlFor="description">
+              Descripción <span className="text-xs text-gray-500">(opcional)</span>
+            </Label>
             <Input
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe el gasto..."
-              required
             />
           </div>
           
