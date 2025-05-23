@@ -4,9 +4,22 @@ import { db } from "./db";
 import { eq } from "drizzle-orm";
 import * as cashboxFunctions from "./cashbox-functions";
 
+// Función para verificar autenticación
+function checkAuth(req: Request, res: Response, next: Function) {
+  // Verifica si el usuario está autenticado
+  const user = (req as any).user;
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: "No autenticado"
+    });
+  }
+  next();
+}
+
 export function registerCashboxRoutes(app: express.Express) {
   // POST /api/cashbox/cutoff - Realizar corte de caja para el usuario actual
-  app.post("/api/cashbox/cutoff", async (req: Request, res: Response) => {
+  app.post("/api/cashbox/cutoff", checkAuth, async (req: Request, res: Response) => {
     try {
       const { user } = req as any;
       const { notes } = req.body;
@@ -57,7 +70,7 @@ export function registerCashboxRoutes(app: express.Express) {
   });
 
   // GET /api/cashboxes/:id/print/:cutoffId - Generar datos para impresión de ticket
-  app.get("/api/cashboxes/:id/print/:cutoffId", async (req: Request, res: Response) => {
+  app.get("/api/cashboxes/:id/print/:cutoffId", checkAuth, async (req: Request, res: Response) => {
     try {
       const { id, cutoffId } = req.params;
       const { user } = req as any;
