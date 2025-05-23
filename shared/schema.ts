@@ -405,7 +405,6 @@ export const tripExpenses = pgTable("trip_expenses", {
   type: text("type").notNull(), // Tipo de gasto: gasolina, casetas, comida, etc.
   amount: doublePrecision("amount").notNull(),
   description: text("description"),
-  receiptImage: text("receipt_image"), // URL o ruta de la imagen del comprobante
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   // Campo para aislamiento de datos por compañía
