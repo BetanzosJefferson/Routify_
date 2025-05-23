@@ -25,7 +25,12 @@ import { PassengerListSidebar } from "./passenger-list-sidebar";
 
 export function BoardingList() {
   // Usamos la fecha actual por defecto, pero permitimos cambiarla con el selector
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  // Aseguramos que la fecha sea la del día actual, no la del futuro
+  const [currentDate, setCurrentDate] = useState<Date>(() => {
+    const today = new Date();
+    console.log(`[BoardingList] Inicializando con la fecha actual: ${today.toISOString()}`);
+    return today;
+  });
   const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
   const [, navigate] = useLocation();
   const { user } = useAuth();
