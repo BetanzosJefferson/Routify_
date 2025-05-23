@@ -1226,6 +1226,13 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                     {expense.description && (
                                       <div className="text-sm text-gray-500">{expense.description}</div>
                                     )}
+                                    {/* Mostrar información de quién registró el gasto */}
+                                    {expense.createdBy && (
+                                      <div className="text-xs text-blue-600 mt-1 flex items-center">
+                                        <UserIcon className="h-3 w-3 mr-1" />
+                                        Registrado por: {expense.createdBy}
+                                      </div>
+                                    )}
                                   </div>
                                   <Button 
                                     variant="ghost" 
