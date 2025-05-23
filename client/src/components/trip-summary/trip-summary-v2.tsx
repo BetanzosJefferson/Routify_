@@ -52,7 +52,8 @@ type Expense = {
   description?: string;
   createdAt?: Date;
   updatedAt?: Date;
-  createdBy?: number | null;
+  userId?: number | null;    // ID del usuario que registró el gasto
+  createdBy?: string | null; // Nombre del usuario que registró el gasto
 };
 
 export default function TripSummary({ className }: TripSummaryProps) {
@@ -204,8 +205,12 @@ export default function TripSummary({ className }: TripSummaryProps) {
         const adaptedExpenses = data.map(expense => ({
           ...expense,
           // Añadir category como alias de type para mantener compatible el componente
-          category: expense.type
+          category: expense.type,
+          // Asegurarnos de que los campos de usuario se preservan
+          userId: expense.userId || null,
+          createdBy: expense.createdBy || null
         }));
+        console.log("Gastos cargados con información de usuario:", adaptedExpenses);
         setExpenses(adaptedExpenses);
       } else {
         setExpenses([]);
