@@ -1,13 +1,11 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   DollarSign,
   X,
   AlertTriangle,
-  Check,
-  Upload,
-  Image
+  Check
 } from "lucide-react";
 import { 
   Dialog, 
@@ -38,37 +36,9 @@ export function AddExpenseModal({ isOpen, onClose, tripId, onSuccess }: AddExpen
   const [amount, setAmount] = useState<string>("0");
   const [category, setCategory] = useState<string>("gasolina");
   const [description, setDescription] = useState<string>("");
-  const [receiptImage, setReceiptImage] = useState<string | null>(null);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Estado para manejar el loading durante la creación
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Función para manejar la selección de archivos
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    // Validar tipo de archivo (solo imágenes)
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: "Tipo de archivo no válido",
-        description: "Por favor selecciona una imagen (JPG, PNG, etc.)",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Crear URL para vista previa
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      setPreviewImage(result);
-      setReceiptImage(result);
-    };
-    reader.readAsDataURL(file);
-  };
   
   // Función para validar el formulario
   const isFormValid = () => {
@@ -154,7 +124,6 @@ export function AddExpenseModal({ isOpen, onClose, tripId, onSuccess }: AddExpen
       description,
       userId: userId,
       createdBy: user ? `${user.firstName} ${user.lastName || ""}` : "Usuario no identificado",
-      receiptImage: receiptImage // Agregar la imagen del comprobante
     };
     
     console.log("Enviando datos de gasto con usuario:", expenseData);
@@ -220,55 +189,6 @@ export function AddExpenseModal({ isOpen, onClose, tripId, onSuccess }: AddExpen
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe el gasto..."
             />
-          </div>
-          
-          {/* Campo para cargar imagen del comprobante */}
-          <div className="space-y-2">
-            <Label htmlFor="receiptImage">
-              Comprobante <span className="text-xs text-gray-500">(opcional)</span>
-            </Label>
-            <div className="flex flex-col space-y-3">
-              <Button 
-                type="button" 
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full flex items-center justify-center text-sm p-2"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Agregar foto
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              
-              {/* Mostrar vista previa si hay imagen seleccionada */}
-              {previewImage && (
-                <div className="relative border rounded-md overflow-hidden mt-2">
-                  <img 
-                    src={previewImage} 
-                    alt="Vista previa del comprobante" 
-                    className="w-full h-auto max-h-48 object-contain"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    className="absolute top-1 right-1 p-1 h-7 w-7 rounded-full"
-                    onClick={() => {
-                      setPreviewImage(null);
-                      setReceiptImage(null);
-                      if (fileInputRef.current) fileInputRef.current.value = '';
-                    }}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              )}
-            </div>
           </div>
           
           <DialogFooter className="flex justify-end space-x-2 pt-4">
