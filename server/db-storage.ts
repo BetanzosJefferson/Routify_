@@ -3619,14 +3619,14 @@ export class DatabaseStorage implements IStorage {
         );
       
       if (cashbox) {
-        console.log(`[getUserCashbox] Caja encontrada: (ID: ${cashbox.id})`);
+        console.log(`[getUserCashbox] Caja encontrada: ${cashbox.name} (ID: ${cashbox.id})`);
         return cashbox;
       }
       
       // Si no hay caja asignada al usuario, crear una automáticamente
       console.log(`[getUserCashbox] No se encontró caja para el usuario ${userId}. Creando una automáticamente.`);
       
-      // Obtener información del usuario para el nombre de la caja
+      // Obtener información del usuario
       const [user] = await db
         .select()
         .from(schema.users)
@@ -3644,21 +3644,14 @@ export class DatabaseStorage implements IStorage {
         description: `Caja automática para ${user.firstName} ${user.lastName}`,
         balance: 0,
         operatorId: userId,
-        isActive: true
+        isActive: true,
+        createdAt: new Date()
       };
       
-      // Insertar la nueva caja
-      const [createdCashbox] = await db
-        .insert(schema.cashboxes)
-        .values(newCashbox)
-        .returning();
+      const createdCashbox = await this.createCashbox(newCashbox);
+      console.log(`[getUserCashbox] Caja creada automáticamente: ${createdCashbox.name} (ID: ${createdCashbox.id})`);
       
-      if (createdCashbox) {
-        console.log(`[getUserCashbox] Caja creada con ID: ${createdCashbox.id}`);
-        return createdCashbox;
-      }
-      
-      return undefined;
+      return createdCashbox;
     } catch (error) {
       console.error(`[getUserCashbox] Error al buscar/crear caja para usuario ${userId}:`, error);
       return undefined;
