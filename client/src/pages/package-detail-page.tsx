@@ -78,10 +78,10 @@ export default function PackageDetailPage() {
   // Efecto para comprobar si el usuario pertenece a la misma compañía que el paquete
   useEffect(() => {
     if (user && packageQuery.data) {
-      // Si el usuario tiene rol superAdmin, siempre tiene acceso
-      if (user.role === 'superAdmin') {
+      // Roles que siempre tienen acceso: superAdmin, dueño, admin
+      if (user.role === 'superAdmin' || user.role === 'dueño' || user.role === 'admin') {
         setIsSameCompany(true);
-        console.log("¿Coincide la compañía?", true, "(superAdmin)");
+        console.log("¿Coincide la compañía?", true, `(${user.role})`);
         return;
       }
       
@@ -89,11 +89,18 @@ export default function PackageDetailPage() {
       // Convertimos el company a un formato similar al companyId (slug)
       const userCompanySlug = user.company ? user.company.toLowerCase().replace(/\s+/g, '-') : null;
       
-      // Comparación con el companyId del paquete
-      const matchesCompany = userCompanySlug ? 
-        (packageQuery.data.companyId === userCompanySlug || packageQuery.data.companyId === `${userCompanySlug}-456`) : false;
+      // Comparación con el companyId del paquete utilizando regex para manejar variaciones
+      let matchesCompany = false;
+      
+      if (userCompanySlug) {
+        const packageCompanyId = packageQuery.data.companyId || '';
+        // Verificar coincidencia directa o con variaciones comunes (números al final, etc.)
+        const companyRegex = new RegExp(`^${userCompanySlug}(-\\d+)?$`);
+        matchesCompany = companyRegex.test(packageCompanyId);
+      }
       
       console.log("Datos del paquete:", JSON.stringify(packageQuery.data, null, 2));
+      console.log("Usuario:", user.firstName, user.role, userCompanySlug);
       console.log("¿Coincide la compañía?", matchesCompany);
       
       setIsSameCompany(matchesCompany);
