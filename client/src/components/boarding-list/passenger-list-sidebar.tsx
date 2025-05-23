@@ -491,7 +491,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                     {isLoadingBudget ? (
                       <span className="text-gray-400">Cargando...</span>
                     ) : tripBudget ? (
-                      <span className="text-green-700 font-semibold">${tripBudget.amount.toFixed(2)} MXN</span>
+                      <span className="text-gray-700 font-semibold">${tripBudget.amount.toFixed(2)} MXN</span>
                     ) : (
                       <span className="text-gray-500">Sin presupuesto asignado</span>
                     )}
@@ -504,7 +504,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
             </div>
             
             {/* Sección de gastos registrados y balance */}
-            <div className="mt-3 bg-gray-50 p-3 rounded-lg border-l-4 border-blue-400">
+            <div className="mt-3 bg-gray-50 p-3 rounded-lg">
               <div className="flex justify-between mb-2">
                 <h4 className="text-sm font-medium text-gray-700">Gastos registrados:</h4>
                 {isLoadingExpenses ? (

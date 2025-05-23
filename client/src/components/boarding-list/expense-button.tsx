@@ -24,7 +24,7 @@ export function ExpenseButton({ tripId }: ExpenseButtonProps) {
       <Button 
         variant="outline" 
         size="sm" 
-        className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:text-green-800"
+        className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-800"
         onClick={() => setShowModal(true)}
       >
         <DollarSign className="h-3.5 w-3.5 mr-1" />
