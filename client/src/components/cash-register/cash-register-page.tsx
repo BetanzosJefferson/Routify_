@@ -95,11 +95,11 @@ export function CashRegisterPage() {
     isLoading,
     error
   } = useQuery({
-    queryKey: ["/api/cash-register"],
+    queryKey: ["/api/cashbox/transactions"],
     queryFn: async () => {
       if (!user) return null;
       
-      const response = await fetch('/api/cash-register');
+      const response = await fetch('/api/cashbox/transactions');
       if (!response.ok) {
         throw new Error("Error al cargar los datos de caja");
       }
@@ -908,7 +908,7 @@ export function CashRegisterPage() {
                             <TableCell>
                               <div className="flex items-center gap-1">
                                 <Clock className="h-4 w-4 text-gray-500" />
-                                <span>{formatDate(reservation.markedAsPaidAt)}</span>
+                                <span>{formatDate(reservation.paymentDate || reservation.markedAsPaidAt || reservation.createdAt)}</span>
                               </div>
                             </TableCell>
                             <TableCell>
