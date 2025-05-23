@@ -2,6 +2,25 @@ import { db } from "./db";
 import { eq, and, isNull, gt, isNotNull, desc } from "drizzle-orm";
 import * as schema from "@shared/schema";
 
+// Función para actualizar un corte
+export async function updateCashboxCutoff(id: number, update: Partial<schema.CashboxCutoff>): Promise<schema.CashboxCutoff | undefined> {
+  try {
+    const [updatedCutoff] = await db
+      .update(schema.cashboxCutoffs)
+      .set({
+        ...update,
+        updatedAt: new Date()
+      })
+      .where(eq(schema.cashboxCutoffs.id, id))
+      .returning();
+    
+    return updatedCutoff;
+  } catch (error) {
+    console.error(`[updateCashboxCutoff] Error al actualizar corte ${id}:`, error);
+    return undefined;
+  }
+}
+
 // Obtener la caja asignada a un usuario
 export async function getUserCashbox(userId: number, companyId: string): Promise<schema.Cashbox | undefined> {
   try {
