@@ -878,8 +878,6 @@ export function CashRegisterPage() {
                           <TableHead>Ruta</TableHead>
                           <TableHead>Método</TableHead>
                           <TableHead>Tipo</TableHead>
-                          <TableHead>Fecha de pago</TableHead>
-                          <TableHead>Registrado por</TableHead>
                           <TableHead className="text-right">Monto</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -914,22 +912,7 @@ export function CashRegisterPage() {
                                     : 'Pago')}
                               </Badge>
                             </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-4 w-4 text-gray-500" />
-                                <span>{formatDate(reservation.paymentDate || reservation.markedAsPaidAt || reservation.createdAt)}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {reservation.createdByUser ? (
-                                <div className="flex flex-col">
-                                  <span className="font-medium">{reservation.createdByUser.firstName} {reservation.createdByUser.lastName}</span>
-                                  <span className="text-xs text-gray-500 capitalize">{reservation.createdByUser.role}</span>
-                                </div>
-                              ) : (
-                                <span className="text-gray-500">Usuario desconocido</span>
-                              )}
-                            </TableCell>
+
                             <TableCell className="text-right">{formatPrice(reservation.totalAmount || 0)}</TableCell>
                           </TableRow>
                         ))}
