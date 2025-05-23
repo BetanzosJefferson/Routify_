@@ -203,23 +203,17 @@ export function CashRegisterPage() {
       }, {})
     : {};
   
-  // Calcular totales
+  // Calcular totales - Ahora usamos directamente el monto mostrado para cada ítem
   const totalAmount = sortedReservations.reduce((sum, reservation) => sum + (reservation.totalAmount || 0), 0);
+  
+  // Calcular efectivo y transferencia basado en los métodos de pago de los ítems
   const totalCash = sortedReservations
-    .filter(r => (r.advancePaymentMethod === 'efectivo' || r.paymentMethod === 'efectivo'))
-    .reduce((sum, r) => {
-      // Si tiene anticipo en efectivo, sumarlo
-      let cashAmount = 0;
-      if (r.advancePaymentMethod === 'efectivo') {
-        cashAmount += r.advanceAmount || 0;
-      }
-      // Si el pago restante es en efectivo, sumarlo
-      if (r.paymentMethod === 'efectivo') {
-        cashAmount += (r.totalAmount || 0) - (r.advanceAmount || 0);
-      }
-      return sum + cashAmount;
-    }, 0);
-  const totalTransfer = totalAmount - totalCash;
+    .filter(r => r.paymentMethod === 'efectivo')
+    .reduce((sum, r) => sum + (r.totalAmount || 0), 0);
+    
+  const totalTransfer = sortedReservations
+    .filter(r => r.paymentMethod === 'transferencia')
+    .reduce((sum, r) => sum + (r.totalAmount || 0), 0);
   
   // Calcular totales por compañía para taquilleros
   const companyTotals = isTicketOfficeView 
