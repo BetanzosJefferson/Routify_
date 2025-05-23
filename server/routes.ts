@@ -27,8 +27,8 @@ import {
   TransactionSource,
   TransactionType
 } from "@shared/schema";
-// Importamos rutas del sistema de cajas
-import { registerCashboxRoutes } from "./cashbox-routes";
+// Importamos las rutas del sistema de cajas (versión fija)
+import { registerCashboxRoutes } from "./cashbox-routes-fixed";
 
 // Constantes para roles y permisos de paqueterías
 const PACKAGE_ACCESS_ROLES = [
@@ -86,18 +86,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Pasamos el middleware de autenticación al setup de rutas de autenticación
   setupAuthRoutes(app, isAuthenticated);
   
-  // Registrar las rutas del sistema de caja
-  registerCashboxRoutes(app, storage);
-  
-  // Registrar las nuevas rutas de corte de caja
-  import('./new-cashbox-routes')
-    .then(module => {
-      module.registerCashboxRoutes(app, isAuthenticated);
-      console.log("Nuevas rutas de caja registradas correctamente");
-    })
-    .catch(error => {
-      console.error("Error al registrar nuevas rutas de caja:", error);
-    });
+  // Registrar las rutas del sistema de caja (versión consolidada)
+  registerCashboxRoutes(app, isAuthenticated);
+  console.log("Rutas de caja registradas correctamente");
 
   // Populate location data on server start
   try {

@@ -300,3 +300,78 @@ export async function getCashboxCutoff(id: number): Promise<schema.CashboxCutoff
     return undefined;
   }
 }
+
+// Obtener las transacciones de una caja
+export async function getCashboxTransactions(cashboxId: number): Promise<any[]> {
+  try {
+    console.log(`[getCashboxTransactions] Obteniendo transacciones para caja ${cashboxId}`);
+    
+    const transactions = [];
+    
+    // 1. Obtener reservaciones que pertenecen a esta caja
+    const cashbox = await getCashbox(cashboxId);
+    if (!cashbox) return [];
+    
+    const operatorId = cashbox.operatorId;
+    
+    // Obtener reservaciones pagadas por este operador
+    const reservations = await db
+      .select()
+      .from(schema.reservations)
+      .where(
+        and(
+          eq(schema.reservations.paidBy, operatorId),
+          eq(schema.reservations.paymentStatus, "paid")
+        )
+      );
+    
+    // Convertir reservaciones a transacciones
+    for (const reservation of reservations) {
+      if (reservation.advanceAmount) {
+        transactions.push({
+          id: `res-${reservation.id}`,
+          type: 'reservation',
+          source: 'advance',
+          description: `Anticipo de reservación #${reservation.id}`,
+          amount: reservation.advanceAmount,
+          paymentMethod: reservation.paymentMethod,
+          createdAt: reservation.paidAt || reservation.createdAt,
+          reservationId: reservation.id
+        });
+      }
+    }
+    
+    // 2. Obtener paquetes creados por este operador
+    const packages = await db
+      .select()
+      .from(schema.packages)
+      .where(
+        and(
+          eq(schema.packages.createdBy, operatorId),
+          eq(schema.packages.isPaid, true)
+        )
+      );
+    
+    // Convertir paquetes a transacciones
+    for (const pkg of packages) {
+      transactions.push({
+        id: `pkg-${pkg.id}`,
+        type: 'package',
+        source: 'payment',
+        description: `Pago de paquete #${pkg.id}`,
+        amount: pkg.price || 0,
+        paymentMethod: pkg.paymentMethod,
+        createdAt: pkg.createdAt,
+        packageId: pkg.id
+      });
+    }
+    
+    // Ordenar por fecha
+    return transactions.sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  } catch (error) {
+    console.error(`[getCashboxTransactions] Error al obtener transacciones para caja ${cashboxId}:`, error);
+    return [];
+  }
+}
