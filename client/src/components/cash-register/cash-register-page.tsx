@@ -853,7 +853,36 @@ export function CashRegisterPage() {
               <h3 className="text-lg font-medium">Resumen de caja</h3>
               <div className="flex gap-2">
                 <Button
-                  onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/cashbox/transactions"] })}
+                  onClick={() => {
+                    // Crear una función para actualizar todos los datos necesarios
+                    const refreshData = async () => {
+                      try {
+                        // Invalidar todas las consultas relevantes
+                        await queryClient.invalidateQueries({ queryKey: ["/api/cashbox/transactions"] });
+                        await queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
+                        
+                        // Forzar una recarga completa
+                        const response = await fetch('/api/cashbox/transactions');
+                        if (!response.ok) {
+                          throw new Error("Error al actualizar los datos de caja");
+                        }
+                        
+                        toast({
+                          title: "Datos actualizados",
+                          description: "La información de caja se ha actualizado correctamente",
+                        });
+                      } catch (error) {
+                        console.error("Error al actualizar:", error);
+                        toast({
+                          title: "Error al actualizar",
+                          description: "No se pudieron actualizar los datos. Intente nuevamente.",
+                          variant: "destructive",
+                        });
+                      }
+                    };
+                    
+                    refreshData();
+                  }}
                   variant="outline"
                   disabled={isLoading}
                 >
