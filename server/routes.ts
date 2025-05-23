@@ -5039,6 +5039,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Configurar rutas para presupuestos y gastos
   setupFinancialRoutes(app, isAuthenticated);
   
+  // Configurar rutas para el sistema de cajas
+  registerCashboxRoutes(app, storage);
+  
   setupPackageRoutes(app);
 
   // Endpoint para verificar si hay reservaciones creadas por comisionistas
