@@ -53,6 +53,7 @@ const PACKAGE_CREATE_ROLES = [
 
 import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
 import { setupAuthentication } from "./auth-session";
+import { registerCashboxRoutes } from "./cashbox-routes";
 // Utility function to check if two locations are in the same city
 function isSameCity(location1: string, location2: string): boolean {
   // Validar que ambas ubicaciones tienen el formato esperado
@@ -84,6 +85,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes (both old and new)
   // Pasamos el middleware de autenticación al setup de rutas de autenticación
   setupAuthRoutes(app, isAuthenticated);
+  
+  // Registrar las rutas del sistema de caja
+  registerCashboxRoutes(app, storage);
 
   // Populate location data on server start
   try {
