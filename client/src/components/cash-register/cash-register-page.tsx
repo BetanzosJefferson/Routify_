@@ -123,8 +123,29 @@ export function CashRegisterPage() {
     }
   }, [isLoading]);
   
+  // Separar reservaciones y paqueterías
+  const separateReservationsAndPackages = (items: ReservationWithCompany[] = []) => {
+    const reservations: ReservationWithCompany[] = [];
+    const packages: ReservationWithCompany[] = [];
+    
+    items.forEach(item => {
+      if (item.originalPackageId) {
+        packages.push(item);
+      } else {
+        reservations.push(item);
+      }
+    });
+    
+    return { reservations, packages };
+  };
+  
   // Filtrar las reservaciones
   const filteredReservations = paidReservations?.filter((reservation: ReservationWithCompany) => {
+    // No incluir paqueterías en esta lista
+    if (reservation.originalPackageId) {
+      return false;
+    }
+    
     // Aplicar filtro de búsqueda
     let matchesSearch = true;
     if (searchTerm) {
@@ -177,8 +198,72 @@ export function CashRegisterPage() {
     return matchesSearch && matchesDate && matchesPaymentMethod && matchesCompany;
   }) || [];
   
+  // Filtrar paqueterías
+  const filteredPackages = paidReservations?.filter((reservation: ReservationWithCompany) => {
+    // Solo incluir paqueterías en esta lista
+    if (!reservation.originalPackageId) {
+      return false;
+    }
+    
+    // Aplicar filtro de búsqueda
+    let matchesSearch = true;
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      const routeName = reservation.trip?.route?.name?.toLowerCase() || '';
+      const senderName = (reservation.senderName || '').toLowerCase();
+      const receiverName = (reservation.receiverName || '').toLowerCase();
+      const packageId = `RES${reservation.id}`.toLowerCase();
+      
+      matchesSearch = (
+        routeName.includes(searchLower) ||
+        senderName.includes(searchLower) ||
+        receiverName.includes(searchLower) ||
+        packageId.includes(searchLower)
+      );
+    }
+    
+    // Aplicar filtro de fecha (misma lógica que para reservaciones)
+    let matchesDate = true;
+    if (dateFilter) {
+      const packageDate = new Date(reservation.paymentDate || reservation.markedAsPaidAt || reservation.paidAt || reservation.createdAt || '');
+      const filterDate = new Date(dateFilter);
+      
+      matchesDate = (
+        packageDate.getFullYear() === filterDate.getFullYear() &&
+        packageDate.getMonth() === filterDate.getMonth() &&
+        packageDate.getDate() === filterDate.getDate()
+      );
+    }
+    
+    // Aplicar filtro de método de pago
+    let matchesPaymentMethod = true;
+    if (paymentMethodFilter && paymentMethodFilter !== 'todos') {
+      matchesPaymentMethod = reservation.paymentMethod === paymentMethodFilter;
+    }
+    
+    // Aplicar filtro de empresa (solo para taquilleros)
+    let matchesCompany = true;
+    if (isTicketOfficeView && companyFilter !== 'todas') {
+      matchesCompany = reservation.companyInfo?.id === companyFilter;
+    }
+    
+    return matchesSearch && matchesDate && matchesPaymentMethod && matchesCompany;
+  }) || [];
+
   // Ordenar por fecha
   const sortedReservations = [...filteredReservations].sort((a, b) => {
+    const dateA = new Date(a.markedAsPaidAt || '');
+    const dateB = new Date(b.markedAsPaidAt || '');
+    
+    if (sortDirection === "asc") {
+      return dateA.getTime() - dateB.getTime();
+    } else {
+      return dateB.getTime() - dateA.getTime();
+    }
+  });
+  
+  // Ordenar paqueterías por fecha
+  const sortedPackages = [...filteredPackages].sort((a, b) => {
     const dateA = new Date(a.markedAsPaidAt || '');
     const dateB = new Date(b.markedAsPaidAt || '');
     
