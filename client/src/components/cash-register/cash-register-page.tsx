@@ -937,9 +937,7 @@ export function CashRegisterPage() {
                     <TableHead>Empresa</TableHead>
                     <TableHead>Ruta</TableHead>
                     <TableHead>Método</TableHead>
-                    <TableHead>Fecha de pago</TableHead>
-                    {isAdminView && <TableHead>Cobrado por</TableHead>}
-                    {isAdminView && <TableHead>Registrado por</TableHead>}
+
                     <TableHead className="text-right">Monto</TableHead>
                   </TableRow>
                 </TableHeader>
