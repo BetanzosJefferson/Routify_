@@ -27,7 +27,8 @@ import {
   TransactionSource,
   TransactionType
 } from "@shared/schema";
-import { registerCashboxRoutes } from "./cashbox-routes";
+// Importamos las rutas del sistema de cajas (versión fija)
+import { registerCashboxRoutes } from "./cashbox-routes-fixed";
 
 // Constantes para roles y permisos de paqueterías
 const PACKAGE_ACCESS_ROLES = [
@@ -53,7 +54,6 @@ const PACKAGE_CREATE_ROLES = [
 
 import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
 import { setupAuthentication } from "./auth-session";
-import { registerCashboxRoutes } from "./cashbox-routes";
 // Utility function to check if two locations are in the same city
 function isSameCity(location1: string, location2: string): boolean {
   // Validar que ambas ubicaciones tienen el formato esperado
@@ -86,8 +86,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Pasamos el middleware de autenticación al setup de rutas de autenticación
   setupAuthRoutes(app, isAuthenticated);
   
-  // Registrar las rutas del sistema de caja
-  registerCashboxRoutes(app, storage);
+  // Registrar las rutas del sistema de caja (versión consolidada)
+  registerCashboxRoutes(app, isAuthenticated);
+  console.log("Rutas de caja registradas correctamente");
 
   // Populate location data on server start
   try {

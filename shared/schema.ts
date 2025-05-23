@@ -422,6 +422,8 @@ export const insertCouponSchema = createInsertSchema(coupons);
 export type InsertCoupon = z.infer<typeof insertCouponSchema>;
 export type Coupon = typeof coupons.$inferSelect;
 
+// Las definiciones de schema para cajas y cortes ya están definidas más abajo en el archivo
+
 // RELACIONES ENTRE TABLAS
 export const routeRelations = relations(routes, ({ many }) => ({
   trips: many(trips),
@@ -524,8 +526,6 @@ export const insertPackageSchema = createInsertSchema(packages).omit({
 });
 export type InsertPackage = z.infer<typeof insertPackageSchema>;
 export type Package = typeof packages.$inferSelect;
-
-
 
 // Relaciones para paqueterías
 export const packageRelations = relations(packages, ({ one }) => ({
@@ -869,25 +869,12 @@ export const cashboxCutoffs = pgTable("cashbox_cutoffs", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   printedAt: timestamp("printed_at"),
-  // Agregar un campo data para almacenar los IDs de transacciones procesadas
-  data: json("data").$type<{
-    date: string;
-    totalAmount: number;
-    totalCash: number;
-    totalTransfer: number;
-    transactions: Array<{
-      id: number;
-      type: 'reservation' | 'package';
-      amount: number;
-      paymentMethod: string;
-      paymentNote?: string;
-    }>;
-  }>(),
 });
 
-export const insertCashboxCutoffSchema = createInsertSchema(cashboxCutoffs).omit({
-  id: true,
-  createdAt: true,
+export const insertCashboxCutoffSchema = createInsertSchema(cashboxCutoffs, {
+  notes: z.string().optional(),
+  createdAt: z.date().optional(),
+  printedAt: z.date().optional(),
 });
 
 export type InsertCashboxCutoff = z.infer<typeof insertCashboxCutoffSchema>;
