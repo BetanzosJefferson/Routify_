@@ -3278,6 +3278,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const packageId = parseInt(req.params.id, 10);
       console.log(`[POST /public/packages/${packageId}/mark-paid] Marcando paquete como pagado`);
       
+      // Obtener los datos del usuario que realiza la acción
+      const { paidBy, paidByName } = req.body;
+      console.log(`[POST /public/packages/${packageId}/mark-paid] Usuario que marca como pagado:`, paidBy, paidByName);
+      
       // Verificar que el paquete existe
       const packageData = await storage.getPackage(packageId);
       if (!packageData) {
@@ -3285,12 +3289,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Paquete no encontrado" });
       }
       
+      // Obtener fecha actual para el registro
+      const paidAt = new Date();
+      
       // Actualizar el estado de pago
       console.log(`[POST /public/packages/${packageId}/mark-paid] Estado actual de pago:`, packageData.isPaid);
       const updatedPackage = await storage.updatePackage(packageId, {
         isPaid: true,
         paymentMethod: packageData.paymentMethod || 'efectivo',
-        updatedAt: new Date()
+        updatedAt: paidAt,
+        paidAt: paidAt,
+        paidBy: paidBy || null,
+        paidByName: paidByName || null
       });
       console.log(`[POST /public/packages/${packageId}/mark-paid] Nuevo estado de pago:`, updatedPackage?.isPaid);
       
@@ -3308,6 +3318,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const packageId = parseInt(req.params.id, 10);
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Marcando paquete como entregado`);
       
+      // Obtener los datos del usuario que realiza la acción
+      const { deliveredBy, deliveredByName } = req.body;
+      console.log(`[POST /public/packages/${packageId}/mark-delivered] Usuario que marca como entregado:`, deliveredBy, deliveredByName);
+      
       // Verificar que el paquete existe
       const packageData = await storage.getPackage(packageId);
       if (!packageData) {
@@ -3321,7 +3335,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedPackage = await storage.updatePackage(packageId, {
         deliveryStatus: 'entregado',
         deliveredAt: currentDate,
-        updatedAt: currentDate
+        updatedAt: currentDate,
+        deliveredBy: deliveredBy || null,
+        deliveredByName: deliveredByName || null
       });
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Nuevo estado de entrega:`, updatedPackage?.deliveryStatus);
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Fecha de entrega:`, updatedPackage?.deliveredAt);

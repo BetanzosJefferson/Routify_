@@ -504,6 +504,9 @@ export const packages = pgTable("packages", {
   // Estado del pago
   isPaid: boolean("is_paid").default(false).notNull(),
   paymentMethod: text("payment_method"), // efectivo, transferencia, etc.
+  paidAt: timestamp("paid_at"),
+  paidBy: integer("paid_by").references(() => users.id), // ID del usuario que marca como pagado
+  paidByName: text("paid_by_name"), // Nombre del usuario que marca como pagado
   
   // Metadatos
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -514,6 +517,8 @@ export const packages = pgTable("packages", {
   // Para seguimiento de estado
   deliveryStatus: text("delivery_status").notNull().default("pendiente"), // pendiente, entregado
   deliveredAt: timestamp("delivered_at"),
+  deliveredBy: integer("delivered_by").references(() => users.id), // ID del usuario que marca como entregado
+  deliveredByName: text("delivered_by_name"), // Nombre del usuario que marca como entregado
 });
 
 export const insertPackageSchema = createInsertSchema(packages).omit({ 

@@ -227,7 +227,11 @@ export default function PackageDetailPage() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ isPaid: true })
+        body: JSON.stringify({ 
+          isPaid: true,
+          paidBy: user?.id,
+          paidByName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
+        })
       });
       
       if (!response.ok) {
@@ -268,7 +272,11 @@ export default function PackageDetailPage() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ deliveryStatus: 'entregado' })
+        body: JSON.stringify({ 
+          deliveryStatus: 'entregado',
+          deliveredBy: user?.id,
+          deliveredByName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
+        })
       });
       
       if (!response.ok) {
