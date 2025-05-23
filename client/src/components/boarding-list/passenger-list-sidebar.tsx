@@ -13,6 +13,7 @@ import {
   User,
   X,
   UserIcon,
+  ImageIcon,
   Search,
   Check as CheckIcon,
   Phone,
@@ -520,8 +521,19 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
               {!isLoadingExpenses && tripExpenses && tripExpenses.length > 0 ? (
                 <div className="space-y-1 mt-2 mb-3 max-h-24 overflow-y-auto">
                   {tripExpenses.map((expense) => (
-                    <div key={expense.id} className="flex justify-between text-xs px-2 py-1 rounded bg-white">
-                      <span className="text-gray-600">{expense.type}: {expense.description?.substring(0, 20)}{expense.description?.length > 20 ? '...' : ''}</span>
+                    <div key={expense.id} className="flex justify-between items-center text-xs px-2 py-1 rounded bg-white">
+                      <div className="flex items-center gap-1">
+                        {expense.receiptImage && (
+                          <div className="flex-shrink-0 cursor-pointer" 
+                               title="Ver comprobante"
+                               onClick={() => window.open(expense.receiptImage, '_blank')}>
+                            <ImageIcon className="h-3.5 w-3.5 text-blue-500" />
+                          </div>
+                        )}
+                        <span className="text-gray-600">
+                          {expense.type}: {expense.description?.substring(0, 20)}{expense.description?.length > 20 ? '...' : ''}
+                        </span>
+                      </div>
                       <span className="text-red-500">${expense.amount.toFixed(2)}</span>
                     </div>
                   ))}

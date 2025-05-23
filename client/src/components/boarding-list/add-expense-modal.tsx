@@ -222,6 +222,55 @@ export function AddExpenseModal({ isOpen, onClose, tripId, onSuccess }: AddExpen
             />
           </div>
           
+          {/* Campo para cargar imagen del comprobante */}
+          <div className="space-y-2">
+            <Label htmlFor="receiptImage">
+              Comprobante <span className="text-xs text-gray-500">(opcional)</span>
+            </Label>
+            <div className="flex flex-col space-y-3">
+              <Button 
+                type="button" 
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center justify-center text-sm p-2"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Agregar foto
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              
+              {/* Mostrar vista previa si hay imagen seleccionada */}
+              {previewImage && (
+                <div className="relative border rounded-md overflow-hidden mt-2">
+                  <img 
+                    src={previewImage} 
+                    alt="Vista previa del comprobante" 
+                    className="w-full h-auto max-h-48 object-contain"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="absolute top-1 right-1 p-1 h-7 w-7 rounded-full"
+                    onClick={() => {
+                      setPreviewImage(null);
+                      setReceiptImage(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+          
           <DialogFooter className="flex justify-end space-x-2 pt-4">
             <Button
               type="button"
