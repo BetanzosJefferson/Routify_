@@ -33,6 +33,7 @@ import { useDriverTrips, Trip } from "@/hooks/use-driver-trips";
 import { useDriverReservations, Reservation, Passenger } from "@/hooks/use-driver-reservations";
 import { useTripBudget } from "@/hooks/use-trip-budget";
 import { normalizeToStartOfDay, formatPrice } from "@/lib/utils";
+import { AddExpenseModal } from "./add-expense-modal";
 
 interface GroupedReservation {
   id: number;
@@ -68,6 +69,9 @@ interface PassengerListSidebarProps {
 export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarProps) {
   // Estado para la búsqueda de pasajeros
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Estado para controlar la visibilidad del modal de agregar gasto
+  const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
   
   // Obtener información del usuario actual para restricciones por rol
   const { user } = useAuth();
@@ -450,23 +454,36 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
             
             {/* Sección de presupuesto para el operador (solo visible para conductores) */}
             {user?.role === 'chofer' && (
-              <div className="flex items-center bg-gray-50 p-3 rounded-lg mt-2">
-                <div className="rounded-full bg-yellow-100 p-2 mr-3">
-                  <Wallet className="h-4 w-4 text-yellow-600" />
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Presupuesto asignado</div>
-                  <div className="text-sm font-medium">
-                    {isLoadingBudget ? (
-                      <span className="text-gray-400">Cargando...</span>
-                    ) : tripBudget ? (
-                      <span className="text-green-700 font-semibold">${tripBudget.amount.toFixed(2)} MXN</span>
-                    ) : (
-                      <span className="text-gray-500">Sin presupuesto asignado</span>
-                    )}
+              <>
+                <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg mt-2">
+                  <div className="flex items-center">
+                    <div className="rounded-full bg-yellow-100 p-2 mr-3">
+                      <Wallet className="h-4 w-4 text-yellow-600" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Presupuesto asignado</div>
+                      <div className="text-sm font-medium">
+                        {isLoadingBudget ? (
+                          <span className="text-gray-400">Cargando...</span>
+                        ) : tripBudget ? (
+                          <span className="text-green-700 font-semibold">${tripBudget.amount.toFixed(2)} MXN</span>
+                        ) : (
+                          <span className="text-gray-500">Sin presupuesto asignado</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:text-green-800"
+                    onClick={() => setShowAddExpenseModal(true)}
+                  >
+                    <DollarSign className="h-3.5 w-3.5 mr-1" />
+                    Agregar gasto
+                  </Button>
                 </div>
-              </div>
+              </>
             )}
           </div>
           
