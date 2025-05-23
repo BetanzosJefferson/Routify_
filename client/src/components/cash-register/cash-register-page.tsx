@@ -131,21 +131,24 @@ export function CashRegisterPage() {
       ).join(" ");
       const email = (reservation.email || '').toLowerCase();
       const phone = (reservation.phone || '').toLowerCase();
-      const reservationId = `RES${reservation.id}`.toLowerCase();
+      const reservationId = `RES${reservation.originalReservationId || reservation.id}`.toLowerCase();
+      const paymentNote = (reservation.paymentNote || '').toLowerCase();
       
       matchesSearch = (
         routeName.includes(searchLower) ||
         passengerNames.includes(searchLower) ||
         email.includes(searchLower) ||
         phone.includes(searchLower) ||
-        reservationId.includes(searchLower)
+        reservationId.includes(searchLower) ||
+        paymentNote.includes(searchLower)
       );
     }
     
     // Aplicar filtro de fecha
     let matchesDate = true;
     if (dateFilter) {
-      const reservationDate = new Date(reservation.markedAsPaidAt || '');
+      // Usar la fecha de pago específica para este ítem (anticipo o restante)
+      const reservationDate = new Date(reservation.paymentDate || reservation.markedAsPaidAt || reservation.paidAt || reservation.createdAt || '');
       const filterDate = new Date(dateFilter);
       
       matchesDate = (
@@ -155,22 +158,10 @@ export function CashRegisterPage() {
       );
     }
     
-    // Aplicar filtro de método de pago
+    // Aplicar filtro de método de pago - ahora usamos directamente el método asignado al ítem
     let matchesPaymentMethod = true;
     if (paymentMethodFilter && paymentMethodFilter !== 'todos') {
-      // Verificar si el pago fue con anticipio o pago completo
-      if (reservation.advanceAmount && reservation.advanceAmount > 0) {
-        // Si hay anticipo, verificar ambos métodos
-        matchesPaymentMethod = (
-          (paymentMethodFilter === 'efectivo' && 
-           (reservation.advancePaymentMethod === 'efectivo' || reservation.paymentMethod === 'efectivo')) ||
-          (paymentMethodFilter === 'transferencia' && 
-           (reservation.advancePaymentMethod === 'transferencia' || reservation.paymentMethod === 'transferencia'))
-        );
-      } else {
-        // Solo verificar el método principal
-        matchesPaymentMethod = reservation.paymentMethod === paymentMethodFilter;
-      }
+      matchesPaymentMethod = reservation.paymentMethod === paymentMethodFilter;
     }
     
     // Aplicar filtro de empresa (solo para taquilleros)
