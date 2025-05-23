@@ -4793,10 +4793,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filters.tripId = parseInt(tripId as string);
       }
       
+      // CASO ESPECIAL: CONDUCTORES (CHOFER) - solo ven paqueterías de sus viajes asignados
+      if ((user.role === UserRole.DRIVER || user.role === 'CHOFER') && !tripId) {
+        console.log(`[GET /packages] CONDUCTOR solicitando paqueterías - verificando viajes asignados`);
+        
+        // Obtener los viajes asignados al conductor
+        const assignedTrips = await storage.searchTrips({ driverId: user.id, companyId: userCompanyId });
+        
+        if (assignedTrips.length === 0) {
+          console.log(`[GET /packages] Conductor ${user.id} no tiene viajes asignados`);
+          return res.json([]);
+        }
+        
+        // Obtener IDs de viajes asignados al conductor
+        const assignedTripIds = assignedTrips.map(trip => trip.id);
+        console.log(`[GET /packages] Conductor ${user.id} tiene ${assignedTripIds.length} viajes asignados: [${assignedTripIds.join(', ')}]`);
+        
+        // Guardamos el filtro de viajes asignados al conductor para usarlo después
+        filters.tripIds = assignedTripIds;
+      }
+      
       console.log(`[GET /packages] Buscando paqueterías con filtros:`, filters);
       
       // Obtener paqueterías con los filtros aplicados incluyendo información de viaje
-      const packages = await storage.getPackagesWithTripInfo(filters);
+      let packages = await storage.getPackagesWithTripInfo(filters);
       
       // Responder con las paqueterías encontradas (ahora incluyen origen y destino)
       res.json(packages);
