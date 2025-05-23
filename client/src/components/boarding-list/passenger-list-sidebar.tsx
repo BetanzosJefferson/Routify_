@@ -464,86 +464,82 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
             
             {/* Sección de presupuesto para el operador (solo visible para conductores) */}
             {user?.role === 'chofer' && (
-              <div className="mt-4 border-t pt-3">
-                {/* Sección superior con grid de 2 columnas */}
-                <div className="flex flex-col">
-                  {/* Primera fila - Presupuesto y Balance */}
-                  <div className="flex">
-                    {/* Cuadro 1: Presupuesto asignado */}
-                    <div className="flex-1 p-3 bg-yellow-100 border border-b-0 border-r-0 border-gray-300">
-                      <div className="text-xs text-gray-600">Presupuesto asignado</div>
-                      <div className="text-base font-semibold">
+              <>
+                {/* Sección de presupuesto asignado */}
+                <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg mt-2">
+                  <div className="flex items-center">
+                    <div className="rounded-full bg-yellow-100 p-2 mr-3">
+                      <Wallet className="h-4 w-4 text-yellow-600" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Presupuesto asignado</div>
+                      <div className="text-sm font-medium">
                         {isLoadingBudget ? (
                           <span className="text-gray-400">Cargando...</span>
                         ) : tripBudget ? (
-                          <span className="text-green-700">${tripBudget.amount.toFixed(2)} MXN</span>
+                          <span className="text-green-700 font-semibold">${tripBudget.amount.toFixed(2)} MXN</span>
                         ) : (
-                          <span className="text-gray-500">Sin presupuesto</span>
+                          <span className="text-gray-500">Sin presupuesto asignado</span>
                         )}
                       </div>
                     </div>
-                    
-                    {/* Cuadro 2: Balance */}
-                    <div className="w-1/3 p-3 bg-red-100 border border-b-0 border-l-0 border-gray-300">
-                      <div className="text-xs text-gray-600">Balance</div>
-                      {isLoadingBudget || isLoadingExpenses ? (
-                        <span className="text-gray-400 text-xs">Calculando...</span>
-                      ) : (
-                        <div className="text-base font-bold">
-                          {(() => {
-                            const presupuesto = tripBudget?.amount || 0;
-                            const totalGastos = tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0;
-                            const balance = presupuesto - totalGastos;
-                            
-                            return (
-                              <span className={balance >= 0 ? "text-green-700" : "text-red-600"}>
-                                ${balance.toFixed(2)}
-                              </span>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
                   </div>
                   
-                  {/* Segunda fila con flex-row - Agregar gasto y Gastos totales */}
-                  <div className="flex">
-                    {/* Cuadro 3: Botón Agregar gasto */}
-                    <div className="flex-1 p-3 bg-green-100 border border-t-0 border-r-0 border-gray-300 flex items-center space-x-2">
-                      <span className="text-sm text-gray-700">Agregar gasto</span>
-                      <ExpenseButton tripId={tripId} />
-                    </div>
-                    
-                    {/* Cuadro 4: Gastos */}
-                    <div className="w-1/3 p-3 bg-white border border-t-0 border-l-0 border-gray-300">
-                      <div className="text-xs text-gray-600">Gastos</div>
-                      {isLoadingExpenses ? (
-                        <span className="text-gray-400 text-xs">Cargando...</span>
-                      ) : (
-                        <div className="text-base font-bold text-red-600">
-                          ${(tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0).toFixed(2)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  {/* Usamos nuestro nuevo componente ExpenseButton */}
+                  <ExpenseButton tripId={tripId} />
                 </div>
                 
-                {/* Lista de gastos individuales */}
-                {!isLoadingExpenses && tripExpenses && tripExpenses.length > 0 && (
-                  <div className="mt-1">
-                    <div className="max-h-20 overflow-y-auto">
+                {/* Nueva sección de gastos registrados y balance */}
+                <div className="mt-3 bg-gray-50 p-3 rounded-lg border-l-4 border-blue-400">
+                  <div className="flex justify-between mb-2">
+                    <h4 className="text-sm font-medium text-gray-700">Gastos registrados:</h4>
+                    {isLoadingExpenses ? (
+                      <span className="text-gray-400 text-xs">Cargando...</span>
+                    ) : (
+                      <span className="text-red-600 font-medium text-sm">
+                        ${(tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0).toFixed(2)} MXN
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Lista breve de gastos */}
+                  {!isLoadingExpenses && tripExpenses && tripExpenses.length > 0 ? (
+                    <div className="space-y-1 mt-2 mb-3 max-h-24 overflow-y-auto">
                       {tripExpenses.map((expense) => (
-                        <div key={expense.id} className="flex justify-between text-xs py-1 border-b border-gray-100">
-                          <span className="text-gray-600 truncate max-w-[70%]">
-                            {expense.type}{expense.description ? `: ${expense.description}` : ''}
-                          </span>
-                          <span className="text-red-500 whitespace-nowrap">${expense.amount.toFixed(2)}</span>
+                        <div key={expense.id} className="flex justify-between text-xs px-2 py-1 rounded bg-white">
+                          <span className="text-gray-600">{expense.type}: {expense.description?.substring(0, 20)}{expense.description?.length > 20 ? '...' : ''}</span>
+                          <span className="text-red-500">${expense.amount.toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
+                  ) : !isLoadingExpenses ? (
+                    <div className="text-xs text-gray-500 mb-3">No hay gastos registrados</div>
+                  ) : null}
+                  
+                  {/* Mostrar balance (presupuesto - gastos) */}
+                  <Separator className="my-2" />
+                  <div className="flex justify-between mt-2">
+                    <span className="text-sm font-medium">Balance:</span>
+                    {isLoadingBudget || isLoadingExpenses ? (
+                      <span className="text-gray-400 text-xs">Calculando...</span>
+                    ) : (
+                      <div className="text-sm font-bold">
+                        {(() => {
+                          const presupuesto = tripBudget?.amount || 0;
+                          const totalGastos = tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0;
+                          const balance = presupuesto - totalGastos;
+                          
+                          return (
+                            <span className={balance >= 0 ? "text-green-600" : "text-red-600"}>
+                              ${balance.toFixed(2)} MXN
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
+              </>
             )}
           </div>
           
