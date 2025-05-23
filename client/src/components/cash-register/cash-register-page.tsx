@@ -1020,30 +1020,7 @@ export function CashRegisterPage() {
                               : 'Pago')}
                         </Badge>
                       </TableCell>
-                      {isAdminView && (
-                        <TableCell>
-                          {reservation.paidByUserInfo ? (
-                            <div className="flex flex-col">
-                              <span className="font-medium">{reservation.paidByUserInfo.firstName} {reservation.paidByUserInfo.lastName}</span>
-                              <span className="text-xs text-gray-500 capitalize">{reservation.paidByUserInfo.role}</span>
-                            </div>
-                          ) : (
-                            <span className="text-gray-500">Usuario desconocido</span>
-                          )}
-                        </TableCell>
-                      )}
-                      {isAdminView && (
-                        <TableCell>
-                          {reservation.createdByUser ? (
-                            <div className="flex flex-col">
-                              <span className="font-medium">{reservation.createdByUser.firstName} {reservation.createdByUser.lastName}</span>
-                              <span className="text-xs text-gray-500 capitalize">{reservation.createdByUser.role}</span>
-                            </div>
-                          ) : (
-                            <span className="text-gray-500">Usuario desconocido</span>
-                          )}
-                        </TableCell>
-                      )}
+
                       <TableCell className="text-right font-medium">
                         {formatPrice(reservation.totalAmount)}
                       </TableCell>
