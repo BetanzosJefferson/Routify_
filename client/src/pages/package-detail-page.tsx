@@ -446,8 +446,8 @@ export default function PackageDetailPage() {
           </CardContent>
           
           <CardFooter className="flex flex-wrap gap-3 justify-center pt-2 pb-4">
-            {/* Botones condicionales para marcado de estado - solo visibles si coincide la compañía */}
-            {isSameCompany && (
+            {/* Botones para marcar estado - ahora siempre visibles para todos los usuarios con sesión iniciada */}
+            {user && (
               <>
                 {!packageData.isPaid && (
                   <Button 
