@@ -250,6 +250,11 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
         }
       }
       
+      // Extraer información de usuario si fue proporcionada
+      const { userId, createdBy } = req.body;
+      
+      console.log(`[POST /trips/${tripId}/expenses] Información de usuario: ID=${userId}, Nombre=${createdBy || 'No proporcionado'}`);
+      
       // Crear el nuevo gasto (adaptando category a type según el esquema de BD)
       const newExpense = {
         tripId,
@@ -257,6 +262,10 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
         description: description || '', // Hacer descripción opcional
         amount: parseFloat(amount),
         companyId: trip.companyId, // Asegurar que el gasto tenga la misma compañía que el viaje
+        // Guardar info del usuario que registra el gasto, prioriza los datos enviados 
+        // desde el cliente pero usa los datos de sesión como respaldo
+        userId: userId || req.user?.id || null,
+        createdBy: createdBy || (req.user ? `${req.user.firstName} ${req.user.lastName}` : 'Usuario del sistema'),
         createdAt: new Date(),
         updatedAt: new Date()
       };
