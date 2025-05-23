@@ -851,23 +851,42 @@ export function CashRegisterPage() {
             {/* Resumen de caja */}
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium">Resumen de caja</h3>
-              <Button
-                onClick={() => handleCashboxCutoff()}
-                className="bg-green-600 hover:bg-green-700"
-                disabled={isLoadingCutoff}
-              >
-                {isLoadingCutoff ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Procesando...
-                  </>
-                ) : (
-                  <>
-                    <DollarSign className="h-4 w-4 mr-2" />
-                    Realizar corte
-                  </>
-                )}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/cashbox/transactions"] })}
+                  variant="outline"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Actualizando...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowDownUp className="h-4 w-4 mr-2" />
+                      Actualizar
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={() => handleCashboxCutoff()}
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={isLoadingCutoff}
+                >
+                  {isLoadingCutoff ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      Realizar corte
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
