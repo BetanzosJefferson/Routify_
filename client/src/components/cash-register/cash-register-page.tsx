@@ -307,17 +307,32 @@ export function CashRegisterPage() {
       }, {})
     : {};
   
-  // Calcular totales - Ahora usamos directamente el monto mostrado para cada ítem
-  const totalAmount = sortedReservations.reduce((sum, reservation) => sum + (reservation.totalAmount || 0), 0);
+  // Calcular totales - Ahora incluimos tanto reservaciones como paqueterías
+  const reservationTotal = sortedReservations.reduce((sum, reservation) => sum + (reservation.totalAmount || 0), 0);
+  const packageTotal = sortedPackages.reduce((sum, packageItem) => sum + (packageItem.price || 0), 0);
+  const totalAmount = reservationTotal + packageTotal;
   
-  // Calcular efectivo y transferencia basado en los métodos de pago de los ítems
-  const totalCash = sortedReservations
+  // Calcular efectivo y transferencia basado en los métodos de pago para reservaciones
+  const reservationTotalCash = sortedReservations
     .filter(r => r.paymentMethod === 'efectivo')
     .reduce((sum, r) => sum + (r.totalAmount || 0), 0);
     
-  const totalTransfer = sortedReservations
+  const reservationTotalTransfer = sortedReservations
     .filter(r => r.paymentMethod === 'transferencia')
     .reduce((sum, r) => sum + (r.totalAmount || 0), 0);
+    
+  // Calcular efectivo y transferencia para paqueterías  
+  const packageTotalCash = sortedPackages
+    .filter(p => p.paymentMethod === 'efectivo')
+    .reduce((sum, p) => sum + (p.price || 0), 0);
+    
+  const packageTotalTransfer = sortedPackages
+    .filter(p => p.paymentMethod === 'transferencia')
+    .reduce((sum, p) => sum + (p.price || 0), 0);
+    
+  // Totales combinados
+  const totalCash = reservationTotalCash + packageTotalCash;
+  const totalTransfer = reservationTotalTransfer + packageTotalTransfer;
   
   // Calcular totales por compañía para taquilleros
   const companyTotals = isTicketOfficeView 
@@ -365,6 +380,12 @@ export function CashRegisterPage() {
     try {
       setIsLoadingCutoff(true);
       
+      // Refrescar los datos para asegurarnos de tener todas las transacciones actualizadas
+      await queryClient.invalidateQueries({ queryKey: ["/api/cashbox/transactions"] });
+      
+      // Esperar un momento para que la consulta se complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // Determinar si estamos filtrando los datos
       const isFiltered = searchTerm || dateFilter || paymentMethodFilter !== 'todos' || (isTicketOfficeView && companyFilter !== 'todas');
       
@@ -386,21 +407,35 @@ export function CashRegisterPage() {
         }
       }
       
-      // Preparar los datos para el modal
+      // Preparar los datos para el modal - incluimos tanto reservaciones como paqueterías
       const cutoffSummary = {
         date: new Date().toLocaleString(),
         user: `${user.firstName} ${user.lastName}`,
-        totalAmount,
+        totalAmount, // El total ya incluye reservaciones y paqueterías
         totalCash,
         totalTransfer,
-        transactionCount: sortedReservations.length,
-        transactions: sortedReservations.map(r => ({
-          id: r.id,
-          tripName: r.trip?.route?.name || "Sin ruta",
-          passengers: r.passengers?.map(p => `${p.firstName} ${p.lastName}`).join(", ") || "Sin pasajeros",
-          amount: r.totalAmount || 0,
-          paymentMethod: getCombinedPaymentMethod(r)
-        }))
+        transactionCount: sortedReservations.length + sortedPackages.length, // Total de transacciones
+        transactions: [
+          // Reservaciones
+          ...sortedReservations.map(r => ({
+            id: r.id,
+            type: 'reservation',
+            tripName: r.trip?.route?.name || "Sin ruta",
+            passengers: r.passengers?.map(p => `${p.firstName} ${p.lastName}`).join(", ") || "Sin pasajeros",
+            amount: r.totalAmount || 0,
+            paymentMethod: getCombinedPaymentMethod(r)
+          })),
+          // Paqueterías
+          ...sortedPackages.map(p => ({
+            id: p.id,
+            type: 'package',
+            tripName: p.trip?.route?.name || "Sin ruta",
+            sender: `${p.senderName || ''} ${p.senderLastName || ''}`,
+            recipient: `${p.recipientName || ''} ${p.recipientLastName || ''}`,
+            amount: p.price || 0,
+            paymentMethod: p.paymentMethod || 'efectivo'
+          }))
+        ]
       };
       
       setCutoffData(cutoffSummary);
