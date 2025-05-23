@@ -1,36 +1,20 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import * as schema from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import * as cashboxFunctions from "./cashbox-functions";
 
-// Función para verificar autenticación
-function checkAuth(req: Request, res: Response, next: Function) {
-  // Verifica si el usuario está autenticado
-  const user = (req as any).user;
-  if (!user) {
-    console.log("[checkAuth] Usuario no autenticado");
-    return res.status(401).json({
-      success: false,
-      message: "No autenticado"
-    });
-  }
-  
-  console.log(`[checkAuth] Usuario autenticado: ${user.id} (${user.firstName} ${user.lastName})`);
-  next();
-}
-
-export function registerCashboxRoutes(app: express.Express) {
+export function registerCashboxRoutes(app: express.Express, isAuthenticated: (req: Request, res: Response, next: NextFunction) => void) {
   // Middleware para obtener el usuario de la sesión
   app.use("/api/cashbox", (req: Request, res: Response, next: Function) => {
     // Si existe una sesión con usuario autenticado, guardarla en req.user
-    if (req.session && req.session.passport && req.session.passport.user) {
-      (req as any).user = req.session.passport.user;
+    if (req.session && (req.session as any).passport && (req.session as any).passport.user) {
+      (req as any).user = (req.session as any).passport.user;
     }
     next();
   });
   // POST /api/cashbox/cutoff - Realizar corte de caja para el usuario actual
-  app.post("/api/cashbox/cutoff", checkAuth, async (req: Request, res: Response) => {
+  app.post("/api/cashbox/cutoff", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { user } = req as any;
       const { notes } = req.body;
@@ -81,7 +65,7 @@ export function registerCashboxRoutes(app: express.Express) {
   });
 
   // GET /api/cashboxes/:id/print/:cutoffId - Generar datos para impresión de ticket
-  app.get("/api/cashboxes/:id/print/:cutoffId", checkAuth, async (req: Request, res: Response) => {
+  app.get("/api/cashboxes/:id/print/:cutoffId", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id, cutoffId } = req.params;
       const { user } = req as any;
