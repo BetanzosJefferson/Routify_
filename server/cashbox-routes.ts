@@ -2,6 +2,7 @@ import { Express, Request, Response } from "express";
 import { UserRole } from "@shared/schema";
 import { and, eq, gte, lte } from "drizzle-orm";
 import * as schema from "@shared/schema";
+import * as cashboxFunctions from "./cashbox-functions";
 
 /**
  * Registra las rutas relacionadas con el sistema de cajas
@@ -558,7 +559,7 @@ export function registerCashboxRoutes(app: Express, storage: any) {
       }
       
       // Obtener la caja del usuario
-      const cashbox = await storage.getUserCashbox(userId, companyId);
+      const cashbox = await cashboxFunctions.getUserCashbox(userId, companyId);
       
       if (!cashbox) {
         return res.status(404).json({
@@ -568,7 +569,7 @@ export function registerCashboxRoutes(app: Express, storage: any) {
       }
       
       // Realizar el corte
-      const result = await storage.createCashboxCutoff(userId, cashbox.id, notes);
+      const result = await cashboxFunctions.createCashboxCutoff(userId, cashbox.id, notes);
       
       if (!result.success) {
         return res.status(400).json({
@@ -598,7 +599,8 @@ export function registerCashboxRoutes(app: Express, storage: any) {
       const { user } = req as any;
       
       // Obtener la caja para verificar permisos
-      const cashbox = await storage.getCashbox(parseInt(id));
+      const { getCashbox } = require('./cashbox-functions');
+      const cashbox = await getCashbox(parseInt(id));
       
       if (!cashbox) {
         return res.status(404).json({

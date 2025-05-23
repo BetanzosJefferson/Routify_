@@ -220,28 +220,19 @@ export function CashRegisterPage() {
       return false;
     }
     
-    // Solo incluir paqueterías marcadas como pagadas o registradas como pagadas por el usuario actual
-    const userCreatedOrPaid = 
-      (reservation.isPaid === true && (reservation.paidBy === user?.id || reservation.createdBy === user?.id)) || 
-      (reservation.createdBy === user?.id);
-    
-    if (!userCreatedOrPaid) {
-      return false;
-    }
-    
     // Aplicar filtro de búsqueda
     let matchesSearch = true;
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       const routeName = reservation.trip?.route?.name?.toLowerCase() || '';
       const senderName = (reservation.senderName || '').toLowerCase();
-      const recipientName = (reservation.recipientName || '').toLowerCase();
+      const receiverName = (reservation.receiverName || '').toLowerCase();
       const packageId = `RES${reservation.id}`.toLowerCase();
       
       matchesSearch = (
         routeName.includes(searchLower) ||
         senderName.includes(searchLower) ||
-        recipientName.includes(searchLower) ||
+        receiverName.includes(searchLower) ||
         packageId.includes(searchLower)
       );
     }
@@ -851,53 +842,23 @@ export function CashRegisterPage() {
             {/* Resumen de caja */}
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium">Resumen de caja</h3>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => {
-                    // Usar directamente refetch para una actualización más rápida
-                    queryClient.refetchQueries({ 
-                      queryKey: ["/api/cashbox/transactions"],
-                      exact: true
-                    });
-                    
-                    toast({
-                      title: "Actualizando",
-                      description: "Cargando las transacciones más recientes...",
-                    });
-                  }}
-                  variant="outline"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Actualizando...
-                    </>
-                  ) : (
-                    <>
-                      <ArrowDownUp className="h-4 w-4 mr-2" />
-                      Actualizar
-                    </>
-                  )}
-                </Button>
-                <Button
-                  onClick={() => handleCashboxCutoff()}
-                  className="bg-green-600 hover:bg-green-700"
-                  disabled={isLoadingCutoff}
-                >
-                  {isLoadingCutoff ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Procesando...
-                    </>
-                  ) : (
-                    <>
-                      <DollarSign className="h-4 w-4 mr-2" />
-                      Realizar corte
-                    </>
-                  )}
-                </Button>
-              </div>
+              <Button
+                onClick={() => handleCashboxCutoff()}
+                className="bg-green-600 hover:bg-green-700"
+                disabled={isLoadingCutoff}
+              >
+                {isLoadingCutoff ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Realizar corte
+                  </>
+                )}
+              </Button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
