@@ -198,12 +198,22 @@ export function CashRegisterPage() {
     return matchesSearch && matchesDate && matchesPaymentMethod && matchesCompany;
   }) || [];
   
-  // Filtrar paqueterías
+  // Filtrar y enriquecer paqueterías
   const filteredPackages = paidReservations?.filter((reservation: ReservationWithCompany) => {
     // Solo incluir paqueterías en esta lista
     if (!reservation.originalPackageId) {
       return false;
     }
+    
+    // Log para depuración
+    console.log("Package data:", {
+      id: reservation.id,
+      senderName: reservation.senderName,
+      receiverName: reservation.receiverName,
+      origin: reservation.origin,
+      destination: reservation.destination,
+      companyInfo: reservation.companyInfo
+    });
     
     // Aplicar filtro de búsqueda
     let matchesSearch = true;
@@ -1029,7 +1039,7 @@ export function CashRegisterPage() {
                     <TableHead>Empresa</TableHead>
                     <TableHead>Ruta</TableHead>
                     <TableHead>Método</TableHead>
-
+                    <TableHead>Concepto</TableHead>
                     <TableHead className="text-right">Monto</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1141,7 +1151,11 @@ export function CashRegisterPage() {
                           <TableCell>
                             <div className="flex items-center gap-1">
                               <User className="h-4 w-4 text-gray-500" />
-                              <span>{packageItem.senderName || 'Remitente'} → {packageItem.receiverName || 'Destinatario'}</span>
+                              <span>
+                                <span className="font-medium">{packageItem.senderName || 'Remitente'}</span>
+                                <span className="mx-2">→</span>
+                                <span>{packageItem.receiverName || 'Destinatario'}</span>
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -1149,16 +1163,16 @@ export function CashRegisterPage() {
                               <span>
                                 {packageItem.companyInfo?.name || 
                                  packageItem.companyId || 
-                                 'No disponible'}
+                                 'Desconocida'}
                               </span>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="font-medium">
-                              {packageItem.origin || 'Origen paquetería'}
+                              Origen paquetería
                             </div>
                             <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                              <span>→</span> {packageItem.destination || 'Destino paquetería'}
+                              <span>→</span> Destino paquetería
                             </div>
                           </TableCell>
                           <TableCell>
