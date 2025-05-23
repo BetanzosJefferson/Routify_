@@ -4115,6 +4115,43 @@ export class DatabaseStorage implements IStorage {
           }
         }
         
+        // Preparar los datos de transacciones para el campo data
+        const transactionData = {
+          date: new Date().toISOString(),
+          totalAmount: totalIncome,
+          totalCash: 0,
+          totalTransfer: 0,
+          transactions: [] as Array<{
+            id: number;
+            type: 'reservation' | 'package';
+            amount: number;
+            paymentMethod: string;
+            paymentNote?: string;
+          }>
+        };
+        
+        // Clasificar transacciones por método de pago
+        for (const transaction of transactions) {
+          // Determinar tipo (reservation o package)
+          const type = transaction.reservationId ? 'reservation' : 'package';
+          
+          // Agregar a datos de transacciones
+          transactionData.transactions.push({
+            id: transaction.id,
+            type,
+            amount: transaction.amount,
+            paymentMethod: transaction.description.includes('efectivo') ? 'efectivo' : 'transferencia',
+            paymentNote: transaction.description
+          });
+          
+          // Sumar según método de pago
+          if (transaction.description.includes('efectivo')) {
+            transactionData.totalCash += transaction.amount;
+          } else {
+            transactionData.totalTransfer += transaction.amount;
+          }
+        }
+        
         // 5. Crear el corte
         const [newCutoff] = await tx
           .insert(schema.cashboxCutoffs)
@@ -4126,7 +4163,8 @@ export class DatabaseStorage implements IStorage {
             totalExpenses,
             finalBalance: cashbox.balance,
             notes: notes || '',
-            createdAt: new Date()
+            createdAt: new Date(),
+            data: transactionData
           })
           .returning();
         
