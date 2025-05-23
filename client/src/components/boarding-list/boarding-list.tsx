@@ -276,32 +276,12 @@ export function BoardingList() {
                         </span>
                       </div>
                       
-                      <div className="flex items-center text-gray-600">
-                        <User className="h-4 w-4 mr-2" />
-                        {trip.driverId && user?.role === 'chofer' && user?.id === trip.driverId ? (
-                          <span className="font-medium text-green-600">Asignado a ti</span>
-                        ) : (
-                          <span>
-                            {/* Buscar y mostrar el nombre del conductor asignado */}
-                            {(() => {
-                              // Si hay un ID de conductor pero no tenemos sus datos, mostrar ID
-                              if (trip.driverId) {
-                                // Buscar si tenemos datos del conductor
-                                const driver = trips?.find(t => 
-                                  t.driver?.id === trip.driverId
-                                )?.driver;
-                                
-                                if (driver) {
-                                  return `${driver.firstName || ''} ${driver.lastName || ''}`.trim();
-                                }
-                                
-                                return `Operador #${trip.driverId}`;
-                              }
-                              return 'Operador no asignado';
-                            })()}
-                          </span>
-                        )}
-                      </div>
+                      {trip.driverId && user?.role === 'chofer' && (
+                        <div className="flex items-center text-green-600">
+                          <User className="h-4 w-4 mr-2" />
+                          <span className="font-medium">Asignado a ti</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
