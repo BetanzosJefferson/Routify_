@@ -516,17 +516,29 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         <div>
                           <div className="text-xs text-gray-500">Origen</div>
                           <div className="font-medium">
-                            {reservation.origin && !reservation.origin.includes('no especificado') 
-                              ? reservation.origin
-                              : tripDetails?.route?.origin || 'Origen'}
+                            {/* Para reservaciones de subviajes, usar el tripId para obtener info específica */}
+                            {reservation.tripSegment === 'Subviaje' ? (
+                              <span className="text-amber-600 font-medium">
+                                {(reservation.trip?.segmentOrigin || reservation.trip?.origin || reservation.origin) || 
+                                `Punto de inicio del subviaje ${reservation.tripId}`}
+                              </span>
+                            ) : (
+                              <>{reservation.origin || tripDetails?.route?.origin || 'Origen'}</>
+                            )}
                           </div>
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">Destino</div>
                           <div className="font-medium">
-                            {reservation.destination && !reservation.destination.includes('no especificado') 
-                              ? reservation.destination
-                              : tripDetails?.route?.destination || 'Destino'}
+                            {/* Para reservaciones de subviajes, usar el tripId para obtener info específica */}
+                            {reservation.tripSegment === 'Subviaje' ? (
+                              <span className="text-amber-600 font-medium">
+                                {(reservation.trip?.segmentDestination || reservation.trip?.destination || reservation.destination) || 
+                                `Punto final del subviaje ${reservation.tripId}`}
+                              </span>
+                            ) : (
+                              <>{reservation.destination || tripDetails?.route?.destination || 'Destino'}</>
+                            )}
                           </div>
                         </div>
                       </div>
