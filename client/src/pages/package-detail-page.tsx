@@ -78,10 +78,10 @@ export default function PackageDetailPage() {
   // Efecto para comprobar si el usuario pertenece a la misma compañía que el paquete
   useEffect(() => {
     if (user && packageQuery.data) {
-      // Roles que siempre tienen acceso: superAdmin, dueño, admin
-      if (user.role === 'superAdmin' || user.role === 'dueño' || user.role === 'admin') {
+      // Si el usuario tiene rol superAdmin, siempre tiene acceso
+      if (user.role === 'superAdmin') {
         setIsSameCompany(true);
-        console.log("¿Coincide la compañía?", true, `(${user.role})`);
+        console.log("¿Coincide la compañía?", true, "(superAdmin)");
         return;
       }
       
@@ -89,18 +89,11 @@ export default function PackageDetailPage() {
       // Convertimos el company a un formato similar al companyId (slug)
       const userCompanySlug = user.company ? user.company.toLowerCase().replace(/\s+/g, '-') : null;
       
-      // Comparación con el companyId del paquete utilizando regex para manejar variaciones
-      let matchesCompany = false;
-      
-      if (userCompanySlug) {
-        const packageCompanyId = packageQuery.data.companyId || '';
-        // Verificar coincidencia directa o con variaciones comunes (números al final, etc.)
-        const companyRegex = new RegExp(`^${userCompanySlug}(-\\d+)?$`);
-        matchesCompany = companyRegex.test(packageCompanyId);
-      }
+      // Comparación con el companyId del paquete
+      const matchesCompany = userCompanySlug ? 
+        (packageQuery.data.companyId === userCompanySlug || packageQuery.data.companyId === `${userCompanySlug}-456`) : false;
       
       console.log("Datos del paquete:", JSON.stringify(packageQuery.data, null, 2));
-      console.log("Usuario:", user.firstName, user.role, userCompanySlug);
       console.log("¿Coincide la compañía?", matchesCompany);
       
       setIsSameCompany(matchesCompany);
@@ -227,11 +220,7 @@ export default function PackageDetailPage() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 
-          isPaid: true,
-          paidBy: user?.id,
-          paidByName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
-        })
+        body: JSON.stringify({ isPaid: true })
       });
       
       if (!response.ok) {
@@ -272,11 +261,7 @@ export default function PackageDetailPage() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 
-          deliveryStatus: 'entregado',
-          deliveredBy: user?.id,
-          deliveredByName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
-        })
+        body: JSON.stringify({ deliveryStatus: 'entregado' })
       });
       
       if (!response.ok) {
@@ -454,8 +439,8 @@ export default function PackageDetailPage() {
           </CardContent>
           
           <CardFooter className="flex flex-wrap gap-3 justify-center pt-2 pb-4">
-            {/* Botones para marcar estado - ahora siempre visibles para todos los usuarios con sesión iniciada */}
-            {user && (
+            {/* Botones condicionales para marcado de estado - solo visibles si coincide la compañía */}
+            {isSameCompany && (
               <>
                 {!packageData.isPaid && (
                   <Button 

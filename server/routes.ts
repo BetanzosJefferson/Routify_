@@ -27,7 +27,8 @@ import {
   TransactionSource,
   TransactionType
 } from "@shared/schema";
-import { registerCashboxRoutes } from "./cashbox-routes";
+// Importamos las rutas del sistema de cajas (versión fija)
+import { registerCashboxRoutes } from "./cashbox-routes-fixed";
 
 // Constantes para roles y permisos de paqueterías
 const PACKAGE_ACCESS_ROLES = [
@@ -53,7 +54,6 @@ const PACKAGE_CREATE_ROLES = [
 
 import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
 import { setupAuthentication } from "./auth-session";
-import { registerCashboxRoutes } from "./cashbox-routes";
 // Utility function to check if two locations are in the same city
 function isSameCity(location1: string, location2: string): boolean {
   // Validar que ambas ubicaciones tienen el formato esperado
@@ -86,8 +86,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Pasamos el middleware de autenticación al setup de rutas de autenticación
   setupAuthRoutes(app, isAuthenticated);
   
-  // Registrar las rutas del sistema de caja
-  registerCashboxRoutes(app, storage);
+  // Registrar las rutas del sistema de caja (versión consolidada)
+  registerCashboxRoutes(app, isAuthenticated);
+  console.log("Rutas de caja registradas correctamente");
 
   // Populate location data on server start
   try {
@@ -3278,10 +3279,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const packageId = parseInt(req.params.id, 10);
       console.log(`[POST /public/packages/${packageId}/mark-paid] Marcando paquete como pagado`);
       
-      // Obtener los datos del usuario que realiza la acción
-      const { paidBy, paidByName } = req.body;
-      console.log(`[POST /public/packages/${packageId}/mark-paid] Usuario que marca como pagado:`, paidBy, paidByName);
-      
       // Verificar que el paquete existe
       const packageData = await storage.getPackage(packageId);
       if (!packageData) {
@@ -3289,18 +3286,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Paquete no encontrado" });
       }
       
-      // Obtener fecha actual para el registro
-      const paidAt = new Date();
-      
       // Actualizar el estado de pago
       console.log(`[POST /public/packages/${packageId}/mark-paid] Estado actual de pago:`, packageData.isPaid);
       const updatedPackage = await storage.updatePackage(packageId, {
         isPaid: true,
         paymentMethod: packageData.paymentMethod || 'efectivo',
-        updatedAt: paidAt,
-        paidAt: paidAt,
-        paidBy: paidBy || null,
-        paidByName: paidByName || null
+        updatedAt: new Date()
       });
       console.log(`[POST /public/packages/${packageId}/mark-paid] Nuevo estado de pago:`, updatedPackage?.isPaid);
       
@@ -3318,10 +3309,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const packageId = parseInt(req.params.id, 10);
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Marcando paquete como entregado`);
       
-      // Obtener los datos del usuario que realiza la acción
-      const { deliveredBy, deliveredByName } = req.body;
-      console.log(`[POST /public/packages/${packageId}/mark-delivered] Usuario que marca como entregado:`, deliveredBy, deliveredByName);
-      
       // Verificar que el paquete existe
       const packageData = await storage.getPackage(packageId);
       if (!packageData) {
@@ -3335,9 +3322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedPackage = await storage.updatePackage(packageId, {
         deliveryStatus: 'entregado',
         deliveredAt: currentDate,
-        updatedAt: currentDate,
-        deliveredBy: deliveredBy || null,
-        deliveredByName: deliveredByName || null
+        updatedAt: currentDate
       });
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Nuevo estado de entrega:`, updatedPackage?.deliveryStatus);
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Fecha de entrega:`, updatedPackage?.deliveredAt);
@@ -5060,7 +5045,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupFinancialRoutes(app, isAuthenticated);
   
   // Configurar rutas para el sistema de cajas
-  registerCashboxRoutes(app, storage);
+  registerCashboxRoutes(app, isAuthenticated);
   
   setupPackageRoutes(app);
 
