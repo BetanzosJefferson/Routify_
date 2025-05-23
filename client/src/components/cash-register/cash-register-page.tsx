@@ -972,7 +972,12 @@ export function CashRegisterPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <span>{reservation.companyInfo?.name || reservation.trip.route.companyId || 'No disponible'}</span>
+                          <span>
+                            {reservation.companyInfo?.name || 
+                             (reservation.trip && reservation.trip.route && reservation.trip.route.companyId) || 
+                             reservation.companyId || 
+                             'No disponible'}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -1006,10 +1011,14 @@ export function CashRegisterPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4 text-gray-500" />
-                          <span>{formatDate(reservation.markedAsPaidAt)}</span>
-                        </div>
+                        <Badge variant="secondary">
+                          {reservation.paymentNote || 
+                            (reservation.advanceAmount && 
+                             reservation.advanceAmount > 0 && 
+                             reservation.totalAmount === reservation.advanceAmount 
+                              ? 'Anticipo' 
+                              : 'Pago')}
+                        </Badge>
                       </TableCell>
                       {isAdminView && (
                         <TableCell>
