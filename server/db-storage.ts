@@ -95,10 +95,25 @@ export class DatabaseStorage implements IStorage {
   async createTripExpense(expense: InsertTripExpense): Promise<TripExpense> {
     try {
       console.log(`DB Storage: Creando gasto para viaje ID: ${expense.tripId} con descripción: ${expense.description} y monto: ${expense.amount}`);
+      console.log(`DB Storage: Datos de usuario para el gasto - userID: ${expense.userId}, createdBy: ${expense.createdBy}`);
+      
+      // Asegurarse de que todos los campos estén presentes y formateados correctamente
+      const expenseToSave = {
+        ...expense,
+        // Asegurarnos de que userId sea un número o null (no undefined)
+        userId: expense.userId !== undefined ? Number(expense.userId) : null,
+        // Asegurar que createdBy sea un string
+        createdBy: expense.createdBy || "Usuario del sistema"
+      };
+      
+      console.log("Datos finales de gasto a insertar:", JSON.stringify(expenseToSave, null, 2));
+      
       const [newExpense] = await db
         .insert(schema.tripExpenses)
-        .values(expense)
+        .values(expenseToSave)
         .returning();
+        
+      console.log("Gasto creado con éxito:", JSON.stringify(newExpense, null, 2));
       return newExpense;
     } catch (error) {
       console.error(`DB Storage ERROR - createTripExpense: ${error}`);
