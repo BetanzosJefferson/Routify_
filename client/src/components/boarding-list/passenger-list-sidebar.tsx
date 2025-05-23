@@ -476,6 +476,86 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           </div>
         </div>
         
+        {/* Nueva sección independiente de presupuesto y gastos para conductores */}
+        {user?.role === 'chofer' && (
+          <div className="mb-6 bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+            {/* Sección de presupuesto asignado */}
+            <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+              <div className="flex items-center">
+                <div className="rounded-full bg-yellow-100 p-2 mr-3">
+                  <Wallet className="h-4 w-4 text-yellow-600" />
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Presupuesto asignado</div>
+                  <div className="text-sm font-medium">
+                    {isLoadingBudget ? (
+                      <span className="text-gray-400">Cargando...</span>
+                    ) : tripBudget ? (
+                      <span className="text-green-700 font-semibold">${tripBudget.amount.toFixed(2)} MXN</span>
+                    ) : (
+                      <span className="text-gray-500">Sin presupuesto asignado</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Usamos nuestro componente ExpenseButton */}
+              <ExpenseButton tripId={tripId} />
+            </div>
+            
+            {/* Sección de gastos registrados y balance */}
+            <div className="mt-3 bg-gray-50 p-3 rounded-lg border-l-4 border-blue-400">
+              <div className="flex justify-between mb-2">
+                <h4 className="text-sm font-medium text-gray-700">Gastos registrados:</h4>
+                {isLoadingExpenses ? (
+                  <span className="text-gray-400 text-xs">Cargando...</span>
+                ) : (
+                  <span className="text-red-600 font-medium text-sm">
+                    ${(tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0).toFixed(2)} MXN
+                  </span>
+                )}
+              </div>
+              
+              {/* Lista breve de gastos */}
+              {!isLoadingExpenses && tripExpenses && tripExpenses.length > 0 ? (
+                <div className="space-y-1 mt-2 mb-3 max-h-24 overflow-y-auto">
+                  {tripExpenses.map((expense) => (
+                    <div key={expense.id} className="flex justify-between text-xs px-2 py-1 rounded bg-white">
+                      <span className="text-gray-600">{expense.type}: {expense.description?.substring(0, 20)}{expense.description?.length > 20 ? '...' : ''}</span>
+                      <span className="text-red-500">${expense.amount.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : !isLoadingExpenses ? (
+                <div className="text-xs text-gray-500 mb-3">No hay gastos registrados</div>
+              ) : null}
+              
+              {/* Mostrar balance (presupuesto - gastos) */}
+              <Separator className="my-2" />
+              <div className="flex justify-between mt-2">
+                <span className="text-sm font-medium">Balance:</span>
+                {isLoadingBudget || isLoadingExpenses ? (
+                  <span className="text-gray-400 text-xs">Calculando...</span>
+                ) : (
+                  <div className="text-sm font-bold">
+                    {(() => {
+                      const presupuesto = tripBudget?.amount || 0;
+                      const totalGastos = tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0;
+                      const balance = presupuesto - totalGastos;
+                      
+                      return (
+                        <span className={balance >= 0 ? "text-green-600" : "text-red-600"}>
+                          ${balance.toFixed(2)} MXN
+                        </span>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div className="mb-4">
           <h3 className="text-lg font-semibold text-gray-800 mb-2">Lista de Pasajeros</h3>
           
