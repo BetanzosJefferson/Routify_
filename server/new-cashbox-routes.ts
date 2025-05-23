@@ -9,15 +9,26 @@ function checkAuth(req: Request, res: Response, next: Function) {
   // Verifica si el usuario está autenticado
   const user = (req as any).user;
   if (!user) {
+    console.log("[checkAuth] Usuario no autenticado");
     return res.status(401).json({
       success: false,
       message: "No autenticado"
     });
   }
+  
+  console.log(`[checkAuth] Usuario autenticado: ${user.id} (${user.firstName} ${user.lastName})`);
   next();
 }
 
 export function registerCashboxRoutes(app: express.Express) {
+  // Middleware para obtener el usuario de la sesión
+  app.use("/api/cashbox", (req: Request, res: Response, next: Function) => {
+    // Si existe una sesión con usuario autenticado, guardarla en req.user
+    if (req.session && req.session.passport && req.session.passport.user) {
+      (req as any).user = req.session.passport.user;
+    }
+    next();
+  });
   // POST /api/cashbox/cutoff - Realizar corte de caja para el usuario actual
   app.post("/api/cashbox/cutoff", checkAuth, async (req: Request, res: Response) => {
     try {
@@ -109,6 +120,12 @@ export function registerCashboxRoutes(app: express.Express) {
         .select()
         .from(schema.users)
         .where(eq(schema.users.id, cutoff.operatorId as number));
+        
+      // Obtener información de la compañía
+      const [companyInfo] = await db
+        .select()
+        .from(schema.companies)
+        .where(eq(schema.companies.id, cashbox.companyId as string));
       
       // Datos de impresión
       const printData = {
@@ -126,9 +143,12 @@ export function registerCashboxRoutes(app: express.Express) {
           id: operator.id,
           name: `${operator.firstName} ${operator.lastName}`,
         } : null,
-        company: {
+        company: companyInfo ? {
+          id: companyInfo.id,
+          name: companyInfo.name
+        } : {
           id: cashbox.companyId,
-          name: "Tu empresa" // Esto debe ser reemplazado por el nombre real de la empresa
+          name: "Empresa"
         },
         totalCash: cutoff.totalIncome, // Esto debe ajustarse con datos reales
         totalTransfer: 0, // Esto debe ajustarse con datos reales
