@@ -92,7 +92,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Registrar las nuevas rutas de corte de caja
   import('./new-cashbox-routes')
     .then(module => {
-      module.registerCashboxRoutes(app);
+      module.registerCashboxRoutes(app, isAuthenticated);
       console.log("Nuevas rutas de caja registradas correctamente");
     })
     .catch(error => {
