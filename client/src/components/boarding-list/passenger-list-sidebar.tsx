@@ -464,49 +464,72 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
             
             {/* Sección de presupuesto para el operador (solo visible para conductores) */}
             {user?.role === 'chofer' && (
-              <>
-                {/* Sección de presupuesto asignado */}
-                <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg mt-2">
-                  <div className="flex items-center">
-                    <div className="rounded-full bg-yellow-100 p-2 mr-3">
-                      <Wallet className="h-4 w-4 text-yellow-600" />
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Presupuesto asignado</div>
-                      <div className="text-sm font-medium">
-                        {isLoadingBudget ? (
-                          <span className="text-gray-400">Cargando...</span>
-                        ) : tripBudget ? (
-                          <span className="text-green-700 font-semibold">${tripBudget.amount.toFixed(2)} MXN</span>
-                        ) : (
-                          <span className="text-gray-500">Sin presupuesto asignado</span>
-                        )}
-                      </div>
+              <div className="grid grid-cols-3 gap-3 mt-3">
+                {/* Zona amarilla - Presupuesto asignado */}
+                <div className="col-span-2 bg-yellow-100 rounded-lg p-3 shadow-sm flex items-center">
+                  <div className="mr-2">
+                    <Wallet className="h-5 w-5 text-yellow-600" />
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-600">Presupuesto asignado</div>
+                    <div className="text-sm font-semibold">
+                      {isLoadingBudget ? (
+                        <span className="text-gray-400">Cargando...</span>
+                      ) : tripBudget ? (
+                        <span className="text-green-700">${tripBudget.amount.toFixed(2)} MXN</span>
+                      ) : (
+                        <span className="text-gray-500">Sin presupuesto asignado</span>
+                      )}
                     </div>
                   </div>
-                  
-                  {/* Usamos nuestro nuevo componente ExpenseButton */}
+                </div>
+                
+                {/* Zona roja - Balance */}
+                <div className="col-span-1 bg-red-100 rounded-lg p-3 shadow-sm flex flex-col justify-center">
+                  <div className="text-xs text-gray-600 mb-1">Balance</div>
+                  {isLoadingBudget || isLoadingExpenses ? (
+                    <span className="text-gray-400 text-xs">Calculando...</span>
+                  ) : (
+                    <span className="text-sm font-bold">
+                      {(() => {
+                        const presupuesto = tripBudget?.amount || 0;
+                        const totalGastos = tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0;
+                        const balance = presupuesto - totalGastos;
+                        
+                        return (
+                          <span className={balance >= 0 ? "text-green-700" : "text-red-600"}>
+                            ${balance.toFixed(2)}
+                          </span>
+                        );
+                      })()}
+                    </span>
+                  )}
+                </div>
+                
+                {/* Zona verde - Botón agregar gasto */}
+                <div className="col-span-2 bg-green-100 rounded-lg p-3 shadow-sm flex justify-between items-center">
+                  <div className="text-sm font-medium text-gray-700">Agregar gasto</div>
                   <ExpenseButton tripId={tripId} />
                 </div>
                 
-                {/* Nueva sección de gastos registrados y balance */}
-                <div className="mt-3 bg-gray-50 p-3 rounded-lg border-l-4 border-blue-400">
-                  <div className="flex justify-between mb-2">
-                    <h4 className="text-sm font-medium text-gray-700">Gastos registrados:</h4>
-                    {isLoadingExpenses ? (
-                      <span className="text-gray-400 text-xs">Cargando...</span>
-                    ) : (
-                      <span className="text-red-600 font-medium text-sm">
-                        ${(tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0).toFixed(2)} MXN
-                      </span>
-                    )}
-                  </div>
-                  
-                  {/* Lista breve de gastos */}
-                  {!isLoadingExpenses && tripExpenses && tripExpenses.length > 0 ? (
-                    <div className="space-y-1 mt-2 mb-3 max-h-24 overflow-y-auto">
+                {/* Lista de gastos registrados */}
+                <div className="col-span-1 row-span-1 bg-blue-50 rounded-lg p-3 shadow-sm flex flex-col justify-center">
+                  <div className="text-xs text-gray-600 mb-1">Gastos</div>
+                  {isLoadingExpenses ? (
+                    <span className="text-gray-400 text-xs">Cargando...</span>
+                  ) : (
+                    <span className="text-sm font-bold text-red-600">
+                      ${(tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0).toFixed(2)}
+                    </span>
+                  )}
+                </div>
+                
+                {/* Detalles de gastos */}
+                {!isLoadingExpenses && tripExpenses && tripExpenses.length > 0 && (
+                  <div className="col-span-3 bg-white rounded-lg border border-gray-200 p-2">
+                    <div className="max-h-24 overflow-y-auto space-y-1">
                       {tripExpenses.map((expense) => (
-                        <div key={expense.id} className="flex justify-between text-xs px-2 py-1 rounded bg-white">
+                        <div key={expense.id} className="flex justify-between text-xs px-2 py-1 rounded bg-gray-50">
                           <span className="text-gray-600 truncate max-w-[70%]">
                             {expense.type}{expense.description ? `: ${expense.description}` : ''}
                           </span>
@@ -514,34 +537,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         </div>
                       ))}
                     </div>
-                  ) : !isLoadingExpenses ? (
-                    <div className="text-xs text-gray-500 mb-3">No hay gastos registrados</div>
-                  ) : null}
-                  
-                  {/* Mostrar balance (presupuesto - gastos) */}
-                  <Separator className="my-2" />
-                  <div className="flex justify-between mt-2">
-                    <span className="text-sm font-medium">Balance:</span>
-                    {isLoadingBudget || isLoadingExpenses ? (
-                      <span className="text-gray-400 text-xs">Calculando...</span>
-                    ) : (
-                      <span className="text-sm font-bold">
-                        {(() => {
-                          const presupuesto = tripBudget?.amount || 0;
-                          const totalGastos = tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0;
-                          const balance = presupuesto - totalGastos;
-                          
-                          return (
-                            <span className={balance >= 0 ? "text-green-600" : "text-red-600"}>
-                              ${balance.toFixed(2)} MXN
-                            </span>
-                          );
-                        })()}
-                      </span>
-                    )}
                   </div>
-                </div>
-              </>
+                )}
+              </div>
             )}
           </div>
           
