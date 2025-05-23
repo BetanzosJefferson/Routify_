@@ -1,5 +1,4 @@
 import { Express, Request, Response } from "express";
-import { apiRouter } from "./utils";
 import { UserRole } from "@shared/schema";
 import { and, eq, gte, lte } from "drizzle-orm";
 import * as schema from "@shared/schema";
@@ -12,7 +11,7 @@ import * as schema from "@shared/schema";
 export function registerCashboxRoutes(app: Express, storage: any) {
   
   // Middleware para verificar autenticación
-  function isAuthenticated(req: Request, res: Response, next: Function) {
+  function isAuthenticated(req: Request, res: Response, next: any) {
     const user = (req as any).user;
     if (!user) {
       return res.status(401).json({ message: "No autenticado" });
@@ -46,7 +45,7 @@ export function registerCashboxRoutes(app: Express, storage: any) {
   }
 
   // GET /api/cashboxes - Obtener todas las cajas de la compañía
-  app.get(apiRouter("/cashboxes"), isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/cashboxes", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { user } = req as any;
       const companyId = user.companyId || user.company;
@@ -73,7 +72,7 @@ export function registerCashboxRoutes(app: Express, storage: any) {
   });
 
   // GET /api/cashboxes/:id - Obtener una caja específica
-  app.get(apiRouter("/cashboxes/:id"), isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/cashboxes/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const { user } = req as any;
@@ -108,7 +107,7 @@ export function registerCashboxRoutes(app: Express, storage: any) {
   });
 
   // GET /api/cashboxes/:id/transactions - Obtener transacciones de una caja
-  app.get(apiRouter("/cashboxes/:id/transactions"), isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/cashboxes/:id/transactions", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const { user } = req as any;
@@ -155,7 +154,7 @@ export function registerCashboxRoutes(app: Express, storage: any) {
   });
 
   // GET /api/cashboxes/:id/cutoffs - Obtener cortes de una caja
-  app.get(apiRouter("/cashboxes/:id/cutoffs"), isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/cashboxes/:id/cutoffs", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const { user } = req as any;
@@ -193,7 +192,7 @@ export function registerCashboxRoutes(app: Express, storage: any) {
   });
 
   // GET /api/cashboxes/user - Obtener caja del usuario actual
-  app.get(apiRouter("/cashboxes/user"), isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/cashboxes/user", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { user } = req as any;
       const userId = user.id;
@@ -227,7 +226,7 @@ export function registerCashboxRoutes(app: Express, storage: any) {
   });
 
   // POST /api/cashboxes/:id/cutoff - Realizar corte de caja
-  app.post(apiRouter("/cashboxes/:id/cutoff"), isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/cashboxes/:id/cutoff", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const { user } = req as any;
@@ -292,7 +291,7 @@ export function registerCashboxRoutes(app: Express, storage: any) {
   });
 
   // GET /api/cashboxes/:id/cutoffs/:cutoffId - Obtener detalles de un corte específico
-  app.get(apiRouter("/cashboxes/:id/cutoffs/:cutoffId"), isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/cashboxes/:id/cutoffs/:cutoffId", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id, cutoffId } = req.params;
       const { user } = req as any;
@@ -358,7 +357,7 @@ export function registerCashboxRoutes(app: Express, storage: any) {
   });
 
   // POST /api/cashboxes/:id/transactions - Crear transacción manual
-  app.post(apiRouter("/cashboxes/:id/transactions"), isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/cashboxes/:id/transactions", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const { user } = req as any;
@@ -419,7 +418,7 @@ export function registerCashboxRoutes(app: Express, storage: any) {
   });
   
   // GET /api/cashboxes/:id/print/:cutoffId - Generar datos para impresión de ticket
-  app.get(apiRouter("/cashboxes/:id/print/:cutoffId"), isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/cashboxes/:id/print/:cutoffId", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { id, cutoffId } = req.params;
       const { user } = req as any;
