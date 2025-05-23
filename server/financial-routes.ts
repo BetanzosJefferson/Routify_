@@ -205,7 +205,7 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
       
       // Validar datos del gasto
       // Compatibilidad: aceptar tanto "type" (backend) como "category" (frontend)
-      const { type, category, description, amount } = req.body;
+      const { type, category, description, amount, receiptImage } = req.body;
       
       // Usar type o category, lo que esté disponible
       const expenseType = type || category;
@@ -277,6 +277,7 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
         type: expenseType, // Usar el tipo determinado anteriormente (category o type)
         description: description || '', // Hacer descripción opcional
         amount: parseFloat(amount),
+        receiptImage: receiptImage || null, // Incluir la imagen del comprobante si existe
         companyId: trip.companyId, // Asegurar que el gasto tenga la misma compañía que el viaje
         userId: userIdToSave,
         createdBy: createdByToSave,
