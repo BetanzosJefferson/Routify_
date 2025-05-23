@@ -3598,6 +3598,587 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
   }
+
+  // ========== SISTEMA DE CAJAS ==========
+
+  // Obtener la caja asignada a un usuario
+  async getUserCashbox(userId: number, companyId: string): Promise<schema.Cashbox | undefined> {
+    try {
+      console.log(`[getUserCashbox] Buscando caja para usuario ${userId} en compañía ${companyId}`);
+      
+      // Buscar caja donde el operador sea este usuario
+      const [cashbox] = await db
+        .select()
+        .from(schema.cashboxes)
+        .where(
+          and(
+            eq(schema.cashboxes.operatorId, userId),
+            eq(schema.cashboxes.companyId, companyId),
+            eq(schema.cashboxes.isActive, true)
+          )
+        );
+      
+      if (cashbox) {
+        console.log(`[getUserCashbox] Caja encontrada: ${cashbox.name} (ID: ${cashbox.id})`);
+        return cashbox;
+      }
+      
+      // Si no hay caja asignada al usuario, crear una automáticamente
+      console.log(`[getUserCashbox] No se encontró caja para el usuario ${userId}. Creando una automáticamente.`);
+      
+      // Obtener información del usuario
+      const [user] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.id, userId));
+      
+      if (!user) {
+        console.error(`[getUserCashbox] No se encontró el usuario ${userId}`);
+        return undefined;
+      }
+      
+      // Crear nueva caja para el usuario
+      const newCashbox: schema.InsertCashbox = {
+        companyId,
+        name: `Caja de ${user.firstName} ${user.lastName}`,
+        description: `Caja automática para ${user.firstName} ${user.lastName}`,
+        balance: 0,
+        operatorId: userId,
+        isActive: true,
+        createdAt: new Date()
+      };
+      
+      const createdCashbox = await this.createCashbox(newCashbox);
+      console.log(`[getUserCashbox] Caja creada automáticamente: ${createdCashbox.name} (ID: ${createdCashbox.id})`);
+      
+      return createdCashbox;
+    } catch (error) {
+      console.error(`[getUserCashbox] Error al buscar/crear caja para usuario ${userId}:`, error);
+      return undefined;
+    }
+  }
+  
+  // Obtener todas las cajas de una compañía
+  async getCashboxes(companyId: string): Promise<schema.Cashbox[]> {
+    try {
+      console.log(`[getCashboxes] Obteniendo cajas para la compañía ${companyId}`);
+      
+      const cashboxes = await db
+        .select()
+        .from(schema.cashboxes)
+        .where(eq(schema.cashboxes.companyId, companyId))
+        .orderBy(desc(schema.cashboxes.createdAt));
+      
+      console.log(`[getCashboxes] Se encontraron ${cashboxes.length} cajas para la compañía ${companyId}`);
+      return cashboxes;
+    } catch (error) {
+      console.error(`[getCashboxes] Error al obtener cajas para compañía ${companyId}:`, error);
+      return [];
+    }
+  }
+  
+  // Obtener una caja específica por ID
+  async getCashbox(id: number): Promise<schema.Cashbox | undefined> {
+    try {
+      console.log(`[getCashbox] Buscando caja con ID ${id}`);
+      
+      const [cashbox] = await db
+        .select()
+        .from(schema.cashboxes)
+        .where(eq(schema.cashboxes.id, id));
+      
+      if (!cashbox) {
+        console.log(`[getCashbox] No se encontró la caja con ID ${id}`);
+        return undefined;
+      }
+      
+      console.log(`[getCashbox] Caja encontrada: ${cashbox.name} (ID: ${cashbox.id})`);
+      return cashbox;
+    } catch (error) {
+      console.error(`[getCashbox] Error al buscar caja con ID ${id}:`, error);
+      return undefined;
+    }
+  }
+  
+  // Crear una nueva caja
+  async createCashbox(cashbox: schema.InsertCashbox): Promise<schema.Cashbox> {
+    try {
+      console.log(`[createCashbox] Creando nueva caja "${cashbox.name}" para operador ${cashbox.operatorId}`);
+      
+      const [newCashbox] = await db
+        .insert(schema.cashboxes)
+        .values({
+          ...cashbox,
+          createdAt: cashbox.createdAt || new Date(),
+          balance: cashbox.balance || 0,
+          isActive: cashbox.isActive === undefined ? true : cashbox.isActive
+        })
+        .returning();
+      
+      console.log(`[createCashbox] Caja creada con ID ${newCashbox.id}`);
+      return newCashbox;
+    } catch (error) {
+      console.error(`[createCashbox] Error al crear caja:`, error);
+      throw new Error(`Error al crear caja: ${error}`);
+    }
+  }
+  
+  // Actualizar una caja
+  async updateCashbox(id: number, update: Partial<schema.Cashbox>): Promise<schema.Cashbox | undefined> {
+    try {
+      console.log(`[updateCashbox] Actualizando caja con ID ${id}`);
+      
+      const [updatedCashbox] = await db
+        .update(schema.cashboxes)
+        .set({
+          ...update,
+          updatedAt: new Date()
+        })
+        .where(eq(schema.cashboxes.id, id))
+        .returning();
+      
+      if (!updatedCashbox) {
+        console.log(`[updateCashbox] No se encontró la caja con ID ${id}`);
+        return undefined;
+      }
+      
+      console.log(`[updateCashbox] Caja actualizada: ${updatedCashbox.name} (ID: ${updatedCashbox.id})`);
+      return updatedCashbox;
+    } catch (error) {
+      console.error(`[updateCashbox] Error al actualizar caja con ID ${id}:`, error);
+      return undefined;
+    }
+  }
+  
+  // Obtener transacciones de una caja
+  async getCashboxTransactions(
+    cashboxId: number, 
+    filters?: { 
+      startDate?: Date; 
+      endDate?: Date;
+      type?: string;
+      source?: string;
+    }
+  ): Promise<schema.CashboxTransaction[]> {
+    try {
+      console.log(`[getCashboxTransactions] Obteniendo transacciones para caja ${cashboxId} con filtros:`, filters);
+      
+      let query = db
+        .select()
+        .from(schema.cashboxTransactions)
+        .where(eq(schema.cashboxTransactions.cashboxId, cashboxId));
+      
+      // Aplicar filtros si existen
+      if (filters) {
+        if (filters.startDate) {
+          query = query.where(gte(schema.cashboxTransactions.createdAt, filters.startDate));
+        }
+        
+        if (filters.endDate) {
+          query = query.where(lte(schema.cashboxTransactions.createdAt, filters.endDate));
+        }
+        
+        if (filters.type) {
+          query = query.where(eq(schema.cashboxTransactions.type, filters.type));
+        }
+        
+        if (filters.source) {
+          query = query.where(eq(schema.cashboxTransactions.source, filters.source));
+        }
+      }
+      
+      // Ordenar por fecha de creación descendente (más recientes primero)
+      const transactions = await query.orderBy(desc(schema.cashboxTransactions.createdAt));
+      
+      console.log(`[getCashboxTransactions] Se encontraron ${transactions.length} transacciones para la caja ${cashboxId}`);
+      return transactions;
+    } catch (error) {
+      console.error(`[getCashboxTransactions] Error al obtener transacciones para caja ${cashboxId}:`, error);
+      return [];
+    }
+  }
+  
+  // Crear una nueva transacción de caja
+  async createCashboxTransaction(transaction: schema.InsertCashboxTransaction): Promise<schema.CashboxTransaction> {
+    try {
+      console.log(`[createCashboxTransaction] Creando nueva transacción para caja ${transaction.cashboxId}`);
+      
+      // Iniciar transacción en BD para operación atómica
+      return await db.transaction(async (tx) => {
+        // 1. Insertar la transacción
+        const [newTransaction] = await tx
+          .insert(schema.cashboxTransactions)
+          .values({
+            ...transaction,
+            createdAt: transaction.createdAt || new Date()
+          })
+          .returning();
+        
+        // 2. Actualizar el saldo de la caja
+        const cashbox = await tx
+          .select()
+          .from(schema.cashboxes)
+          .where(eq(schema.cashboxes.id, transaction.cashboxId));
+        
+        if (!cashbox.length) {
+          throw new Error(`No se encontró la caja con ID ${transaction.cashboxId}`);
+        }
+        
+        const currentCashbox = cashbox[0];
+        let newBalance = currentCashbox.balance;
+        
+        // Calcular nuevo saldo según el tipo de transacción
+        if (transaction.type === schema.TransactionType.INCOME) {
+          newBalance += transaction.amount;
+        } else if (transaction.type === schema.TransactionType.EXPENSE || 
+                   transaction.type === schema.TransactionType.WITHDRAW) {
+          newBalance -= transaction.amount;
+        }
+        
+        // Actualizar el saldo de la caja
+        await tx
+          .update(schema.cashboxes)
+          .set({ 
+            balance: newBalance,
+            updatedAt: new Date()
+          })
+          .where(eq(schema.cashboxes.id, transaction.cashboxId));
+        
+        console.log(`[createCashboxTransaction] Transacción creada con ID ${newTransaction.id}. Nuevo saldo: ${newBalance}`);
+        return newTransaction;
+      });
+    } catch (error) {
+      console.error(`[createCashboxTransaction] Error al crear transacción:`, error);
+      throw new Error(`Error al crear transacción: ${error}`);
+    }
+  }
+  
+  // Registrar pago de reservación en caja
+  async registerReservationPayment(
+    reservationId: number, 
+    userId: number, 
+    amount: number, 
+    paymentMethod: string
+  ): Promise<{ success: boolean; transaction?: schema.CashboxTransaction; message: string }> {
+    try {
+      console.log(`[registerReservationPayment] Registrando pago de reservación ${reservationId} por $${amount}`);
+      
+      // 1. Verificar que la reservación existe
+      const reservation = await this.getReservation(reservationId);
+      if (!reservation) {
+        return { 
+          success: false, 
+          message: `No se encontró la reservación con ID ${reservationId}` 
+        };
+      }
+      
+      // 2. Obtener la compañía del usuario
+      const [user] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.id, userId));
+      
+      if (!user) {
+        return { 
+          success: false, 
+          message: `No se encontró el usuario con ID ${userId}` 
+        };
+      }
+      
+      const companyId = user.companyId || user.company;
+      if (!companyId) {
+        return { 
+          success: false, 
+          message: `El usuario no tiene una compañía asignada` 
+        };
+      }
+      
+      // 3. Obtener o crear la caja del usuario
+      const userCashbox = await this.getUserCashbox(userId, companyId);
+      if (!userCashbox) {
+        return { 
+          success: false, 
+          message: `No se pudo obtener o crear una caja para el usuario` 
+        };
+      }
+      
+      // 4. Crear la transacción en la caja
+      const transaction: schema.InsertCashboxTransaction = {
+        cashboxId: userCashbox.id,
+        type: schema.TransactionType.INCOME,
+        source: schema.TransactionSource.RESERVATION,
+        amount,
+        description: `Pago de reservación #${reservationId}`,
+        createdBy: userId,
+        sourceId: reservationId,
+        paymentMethod
+      };
+      
+      const newTransaction = await this.createCashboxTransaction(transaction);
+      
+      console.log(`[registerReservationPayment] Pago registrado en caja. Transacción ID: ${newTransaction.id}`);
+      return { 
+        success: true, 
+        transaction: newTransaction,
+        message: `Pago registrado correctamente en la caja` 
+      };
+    } catch (error) {
+      console.error(`[registerReservationPayment] Error al registrar pago:`, error);
+      return { 
+        success: false, 
+        message: `Error al registrar el pago: ${error}` 
+      };
+    }
+  }
+  
+  // Registrar pago de paquetería en caja
+  async registerPackagePayment(
+    packageId: number, 
+    userId: number, 
+    amount: number, 
+    paymentMethod: string
+  ): Promise<{ success: boolean; transaction?: schema.CashboxTransaction; message: string }> {
+    try {
+      console.log(`[registerPackagePayment] Registrando pago de paquetería ${packageId} por $${amount}`);
+      
+      // 1. Verificar que la paquetería existe
+      const pkg = await this.getPackage(packageId);
+      if (!pkg) {
+        return { 
+          success: false, 
+          message: `No se encontró la paquetería con ID ${packageId}` 
+        };
+      }
+      
+      // 2. Obtener la compañía del usuario
+      const [user] = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.id, userId));
+      
+      if (!user) {
+        return { 
+          success: false, 
+          message: `No se encontró el usuario con ID ${userId}` 
+        };
+      }
+      
+      const companyId = user.companyId || user.company;
+      if (!companyId) {
+        return { 
+          success: false, 
+          message: `El usuario no tiene una compañía asignada` 
+        };
+      }
+      
+      // 3. Obtener o crear la caja del usuario
+      const userCashbox = await this.getUserCashbox(userId, companyId);
+      if (!userCashbox) {
+        return { 
+          success: false, 
+          message: `No se pudo obtener o crear una caja para el usuario` 
+        };
+      }
+      
+      // 4. Crear la transacción en la caja
+      const transaction: schema.InsertCashboxTransaction = {
+        cashboxId: userCashbox.id,
+        type: schema.TransactionType.INCOME,
+        source: schema.TransactionSource.PACKAGE,
+        amount,
+        description: `Pago de paquetería #${packageId}`,
+        createdBy: userId,
+        sourceId: packageId,
+        paymentMethod
+      };
+      
+      const newTransaction = await this.createCashboxTransaction(transaction);
+      
+      console.log(`[registerPackagePayment] Pago registrado en caja. Transacción ID: ${newTransaction.id}`);
+      return { 
+        success: true, 
+        transaction: newTransaction,
+        message: `Pago registrado correctamente en la caja` 
+      };
+    } catch (error) {
+      console.error(`[registerPackagePayment] Error al registrar pago:`, error);
+      return { 
+        success: false, 
+        message: `Error al registrar el pago: ${error}` 
+      };
+    }
+  }
+  
+  // Obtener cortes de caja
+  async getCashboxCutoffs(cashboxId: number): Promise<schema.CashboxCutoff[]> {
+    try {
+      console.log(`[getCashboxCutoffs] Obteniendo cortes para caja ${cashboxId}`);
+      
+      const cutoffs = await db
+        .select()
+        .from(schema.cashboxCutoffs)
+        .where(eq(schema.cashboxCutoffs.cashboxId, cashboxId))
+        .orderBy(desc(schema.cashboxCutoffs.createdAt));
+      
+      console.log(`[getCashboxCutoffs] Se encontraron ${cutoffs.length} cortes para la caja ${cashboxId}`);
+      return cutoffs;
+    } catch (error) {
+      console.error(`[getCashboxCutoffs] Error al obtener cortes para caja ${cashboxId}:`, error);
+      return [];
+    }
+  }
+  
+  // Obtener un corte específico
+  async getCashboxCutoff(id: number): Promise<schema.CashboxCutoff | undefined> {
+    try {
+      console.log(`[getCashboxCutoff] Buscando corte con ID ${id}`);
+      
+      const [cutoff] = await db
+        .select()
+        .from(schema.cashboxCutoffs)
+        .where(eq(schema.cashboxCutoffs.id, id));
+      
+      if (!cutoff) {
+        console.log(`[getCashboxCutoff] No se encontró el corte con ID ${id}`);
+        return undefined;
+      }
+      
+      console.log(`[getCashboxCutoff] Corte encontrado con ID ${cutoff.id}`);
+      return cutoff;
+    } catch (error) {
+      console.error(`[getCashboxCutoff] Error al buscar corte con ID ${id}:`, error);
+      return undefined;
+    }
+  }
+  
+  // Realizar un corte de caja
+  async createCashboxCutoff(
+    userId: number, 
+    cashboxId: number, 
+    notes?: string
+  ): Promise<{ success: boolean; cutoff?: schema.CashboxCutoff; message: string }> {
+    try {
+      console.log(`[createCashboxCutoff] Realizando corte de caja para caja ${cashboxId} por usuario ${userId}`);
+      
+      // Iniciar transacción en BD para operación atómica
+      return await db.transaction(async (tx) => {
+        // 1. Verificar que la caja existe
+        const [cashbox] = await tx
+          .select()
+          .from(schema.cashboxes)
+          .where(eq(schema.cashboxes.id, cashboxId));
+        
+        if (!cashbox) {
+          return { 
+            success: false, 
+            message: `No se encontró la caja con ID ${cashboxId}` 
+          };
+        }
+        
+        // 2. Obtener transacciones desde el último corte
+        const lastCutoff = await tx
+          .select()
+          .from(schema.cashboxCutoffs)
+          .where(eq(schema.cashboxCutoffs.cashboxId, cashboxId))
+          .orderBy(desc(schema.cashboxCutoffs.createdAt))
+          .limit(1);
+        
+        let lastCutoffDate = cashbox.lastCutoffAt || cashbox.createdAt;
+        if (lastCutoff.length > 0) {
+          lastCutoffDate = lastCutoff[0].createdAt;
+        }
+        
+        // 3. Obtener transacciones desde el último corte
+        const transactions = await tx
+          .select()
+          .from(schema.cashboxTransactions)
+          .where(
+            and(
+              eq(schema.cashboxTransactions.cashboxId, cashboxId),
+              gte(schema.cashboxTransactions.createdAt, lastCutoffDate),
+              isNull(schema.cashboxTransactions.cutoffId)
+            )
+          );
+        
+        console.log(`[createCashboxCutoff] Se encontraron ${transactions.length} transacciones sin procesar`);
+        
+        // 4. Calcular totales
+        let totalIncome = 0;
+        let totalExpenses = 0;
+        
+        for (const transaction of transactions) {
+          if (transaction.type === schema.TransactionType.INCOME) {
+            totalIncome += transaction.amount;
+          } else if (transaction.type === schema.TransactionType.EXPENSE || 
+                     transaction.type === schema.TransactionType.WITHDRAW) {
+            totalExpenses += transaction.amount;
+          }
+        }
+        
+        // 5. Crear el corte
+        const [newCutoff] = await tx
+          .insert(schema.cashboxCutoffs)
+          .values({
+            cashboxId,
+            operatorId: userId,
+            previousBalance: cashbox.balance,
+            totalIncome,
+            totalExpenses,
+            finalBalance: cashbox.balance,
+            notes: notes || '',
+            createdAt: new Date()
+          })
+          .returning();
+        
+        // 6. Actualizar las transacciones con el ID del corte
+        for (const transaction of transactions) {
+          await tx
+            .update(schema.cashboxTransactions)
+            .set({ cutoffId: newCutoff.id })
+            .where(eq(schema.cashboxTransactions.id, transaction.id));
+        }
+        
+        // 7. Actualizar la caja con el nuevo saldo y fecha de último corte
+        await tx
+          .update(schema.cashboxes)
+          .set({ 
+            lastCutoffAt: newCutoff.createdAt,
+            updatedAt: new Date(),
+            balance: 0  // Reiniciar saldo a 0 después del corte
+          })
+          .where(eq(schema.cashboxes.id, cashboxId));
+        
+        // 8. Crear una transacción de retiro con el saldo final
+        if (cashbox.balance > 0) {
+          await tx
+            .insert(schema.cashboxTransactions)
+            .values({
+              cashboxId,
+              type: schema.TransactionType.WITHDRAW,
+              source: schema.TransactionSource.MANUAL,
+              amount: cashbox.balance,
+              description: `Retiro por corte de caja #${newCutoff.id}`,
+              createdBy: userId,
+              createdAt: new Date(),
+              cutoffId: newCutoff.id
+            });
+        }
+        
+        console.log(`[createCashboxCutoff] Corte realizado con ID ${newCutoff.id}`);
+        return { 
+          success: true, 
+          cutoff: newCutoff,
+          message: `Corte de caja realizado correctamente` 
+        };
+      });
+    } catch (error) {
+      console.error(`[createCashboxCutoff] Error al realizar corte:`, error);
+      return { 
+        success: false, 
+        message: `Error al realizar el corte: ${error}` 
+      };
+    }
+  }
   
   async checkReservationTransferPermission(reservationId: number, userId: number): Promise<boolean> {
     try {
