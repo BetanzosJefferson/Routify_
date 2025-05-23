@@ -25,7 +25,13 @@ import {
   TripBudget,
   InsertTripBudget,
   TripExpense,
-  InsertTripExpense
+  InsertTripExpense,
+  Cashbox,
+  InsertCashbox,
+  CashboxTransaction,
+  InsertCashboxTransaction,
+  CashboxCutoff,
+  InsertCashboxCutoff
 } from "@shared/schema";
 
 export interface IStorage {
@@ -47,6 +53,46 @@ export interface IStorage {
   createTripExpense(expense: InsertTripExpense): Promise<TripExpense>;
   updateTripExpense(id: number, expense: Partial<TripExpense>): Promise<TripExpense | undefined>;
   deleteTripExpense(id: number): Promise<boolean>;
+  
+  // Sistema de Cajas
+  getUserCashbox(userId: number, companyId: string): Promise<Cashbox | undefined>;
+  getCashboxes(companyId: string): Promise<Cashbox[]>;
+  getCashbox(id: number): Promise<Cashbox | undefined>;
+  createCashbox(cashbox: InsertCashbox): Promise<Cashbox>;
+  updateCashbox(id: number, update: Partial<Cashbox>): Promise<Cashbox | undefined>;
+  
+  // Transacciones de Cajas
+  getCashboxTransactions(cashboxId: number, filters?: { 
+    startDate?: Date; 
+    endDate?: Date;
+    type?: string;
+    source?: string;
+  }): Promise<CashboxTransaction[]>;
+  createCashboxTransaction(transaction: InsertCashboxTransaction): Promise<CashboxTransaction>;
+  
+  // Métodos específicos para operaciones de caja
+  registerReservationPayment(
+    reservationId: number, 
+    userId: number, 
+    amount: number, 
+    paymentMethod: string
+  ): Promise<{ success: boolean; transaction?: CashboxTransaction; message: string }>;
+  
+  registerPackagePayment(
+    packageId: number, 
+    userId: number, 
+    amount: number, 
+    paymentMethod: string
+  ): Promise<{ success: boolean; transaction?: CashboxTransaction; message: string }>;
+  
+  // Cortes de Caja
+  getCashboxCutoffs(cashboxId: number): Promise<CashboxCutoff[]>;
+  getCashboxCutoff(id: number): Promise<CashboxCutoff | undefined>;
+  createCashboxCutoff(userId: number, cashboxId: number, notes?: string): Promise<{ 
+    success: boolean; 
+    cutoff?: CashboxCutoff; 
+    message: string 
+  }>;
   
   // Trip methods
   getTrips(companyId?: string): Promise<TripWithRouteInfo[]>;
