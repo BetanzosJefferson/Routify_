@@ -106,17 +106,29 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
     if (!tripId || !reservations) return [];
     
     try {
-      // Debug para ver todas las reservaciones y su estructura
-      console.log('[PassengerListSidebar] Todas las reservaciones:', JSON.stringify(
-        reservations.map(r => ({
-          id: r.id,
-          tripId: r.tripId,
-          origin: (r as any).origin,
-          destination: (r as any).destination,
-          trip: (r as any).trip,
-          subTripInfo: (r as any).subTripInfo
-        }))
-      ));
+      // Obtener información de los subviajes
+      console.log('[PassengerListSidebar] Buscando información de subviajes...');
+      
+      // Crear mapa de viajes para búsqueda rápida
+      const tripsMap = new Map();
+      
+      // Añadir los viajes que ya tenemos en el estado
+      if (trips) {
+        trips.forEach(trip => {
+          tripsMap.set(trip.id, trip);
+        });
+      }
+      
+      // Añadir información de trip que viene en las reservaciones
+      reservations.forEach(res => {
+        if ((res as any).trip && (res as any).trip.id) {
+          const tripInfo = (res as any).trip;
+          if (!tripsMap.has(tripInfo.id)) {
+            tripsMap.set(tripInfo.id, tripInfo);
+            console.log(`[PassengerListSidebar] Añadido viaje ${tripInfo.id} desde la reservación ${res.id}`);
+          }
+        }
+      });
       
       // Filtrar solo reservaciones que tienen pasajeros
       const relevantReservations = reservations.map(res => {
@@ -141,59 +153,58 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           reservation.passengers = [];
         }
         
-        // Obtener información del viaje asociado
-        const trip = trips?.find(trip => trip.id === reservation.tripId);
-        
-        // Si esta es una reservación de subviaje, vamos a buscar información específica
+        // Verificar si es un subviaje
         const isFromSubTrip = tripId && reservation.tripId !== tripId;
         
-        // Depurar para ver qué información específica tiene esta reservación
-        if (isFromSubTrip) {
-          console.log(`[PassengerListSidebar] Detalle de subviaje reservación ${reservation.id}, tripId ${reservation.tripId}:`, 
-            {
-              "tripOriginal": tripId,
-              "tripReservación": reservation.tripId,
-              "trip_info": trip ? {
-                id: trip.id,
-                segmentOrigin: trip.segmentOrigin,
-                segmentDestination: trip.segmentDestination,
-                route: trip.route ? {
-                  origin: trip.route.origin,
-                  destination: trip.route.destination
-                } : null
-              } : "No encontrado en trips",
-              "reservationOrigin": (reservation as any).origin,
-              "reservationDestination": (reservation as any).destination,
-              "reservationTrip": (reservation as any).trip,
-              "reservationSubTripInfo": (reservation as any).subTripInfo
-            }
-          );
+        // Obtener información del subviaje de diferentes posibles fuentes
+        let tripInfo = tripsMap.get(reservation.tripId);
+        
+        // Si no tenemos info del viaje pero hay una propiedad 'trip' en la reservación
+        if (!tripInfo && (reservation as any).trip) {
+          tripInfo = (reservation as any).trip;
         }
         
-        // Buscar información de origen/destino específica para cada reservación
-        const specificOrigin = 
-              (reservation as any).segmentOrigin || 
-              (reservation as any).origin || 
-              (trip?.segmentOrigin) ||
-              ((reservation as any).trip && (reservation as any).trip.origin) ||
-              ((reservation as any).subTripInfo && (reservation as any).subTripInfo.origin);
-                              
-        const specificDestination = 
-              (reservation as any).segmentDestination || 
-              (reservation as any).destination || 
-              (trip?.segmentDestination) ||
-              ((reservation as any).trip && (reservation as any).trip.destination) ||
-              ((reservation as any).subTripInfo && (reservation as any).subTripInfo.destination);
-        
-        // Si la reservación es de un subviaje (tripId diferente al viaje principal seleccionado)
+        if (isFromSubTrip) {
+          console.log(`[PassengerListSidebar] Información de subviaje ${reservation.tripId} para reservación ${reservation.id}:`, 
+            tripInfo ? JSON.stringify({
+              id: tripInfo.id,
+              segmentOrigin: tripInfo.segmentOrigin,
+              segmentDestination: tripInfo.segmentDestination,
+            }) : "No hay información de viaje"
+          );
+        }
+                        
+        // La etiqueta que indica si es viaje completo o subviaje
         const tripSegmentLabel = isFromSubTrip ? 'Subviaje' : 'Viaje completo';
         
-        // Si es un subviaje, intentaremos obtener datos más específicos
-        const subTripOrigin = isFromSubTrip ? 
-          (specificOrigin || `Subviaje ${reservation.tripId} - Sin origen específico`) : specificOrigin;
+        // Determinar origen y destino específicos para este viaje/subviaje
+        let tripOrigin = "";
+        let tripDestination = "";
+        
+        if (tripInfo) {
+          // Para subviajes, usar segmentOrigin y segmentDestination
+          if (isFromSubTrip && tripInfo.segmentOrigin) {
+            tripOrigin = tripInfo.segmentOrigin;
+          } else if (tripInfo.route && tripInfo.route.origin) {
+            tripOrigin = tripInfo.route.origin;
+          }
           
-        const subTripDestination = isFromSubTrip ? 
-          (specificDestination || `Subviaje ${reservation.tripId} - Sin destino específico`) : specificDestination;
+          if (isFromSubTrip && tripInfo.segmentDestination) {
+            tripDestination = tripInfo.segmentDestination;
+          } else if (tripInfo.route && tripInfo.route.destination) {
+            tripDestination = tripInfo.route.destination;
+          }
+        }
+        
+        // Formatear los orígenes y destinos
+        let formattedOrigin = tripOrigin || (reservation as any).origin || "Origen no especificado";
+        let formattedDestination = tripDestination || (reservation as any).destination || "Destino no especificado";
+        
+        // Para subviajes, añadir un indicador visual
+        if (isFromSubTrip) {
+          formattedOrigin = `${formattedOrigin}`;
+          formattedDestination = `${formattedDestination}`;
+        }
         
         // Crear el objeto de reservación agrupada
         const groupedReservation: GroupedReservation = {
@@ -208,9 +219,8 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
           advanceAmount: (reservation as any).advanceAmount || 0,
           advancePaymentMethod: (reservation as any).advancePaymentMethod || 'efectivo',
           tripSegment: tripSegmentLabel,
-          // Usar la información específica de la reservación si está disponible
-          origin: subTripOrigin || trip?.route?.origin || "Origen no especificado",
-          destination: subTripDestination || trip?.route?.destination || "Destino no especificado",
+          origin: formattedOrigin,
+          destination: formattedDestination,
           notes: reservation.notes || '',
           checkCount: reservation.checkCount || 0,
           checkedBy: reservation.checkedBy || null,
@@ -566,7 +576,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           <div className="font-medium">
                             {reservation.tripSegment === 'Subviaje' ? (
                               <span className="text-amber-600 font-medium">
-                                Subviaje {reservation.tripId} - {reservation.trip?.segmentOrigin || 'Origen del subviaje'}
+                                {reservation.origin}
                               </span>
                             ) : (
                               <>{reservation.origin || tripDetails?.route?.origin || 'Origen'}</>
@@ -578,7 +588,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                           <div className="font-medium">
                             {reservation.tripSegment === 'Subviaje' ? (
                               <span className="text-amber-600 font-medium">
-                                Subviaje {reservation.tripId} - {reservation.trip?.segmentDestination || 'Destino del subviaje'}
+                                {reservation.destination}
                               </span>
                             ) : (
                               <>{reservation.destination || tripDetails?.route?.destination || 'Destino'}</>
