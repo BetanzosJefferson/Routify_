@@ -20,7 +20,7 @@ export function registerCashboxRoutes(app: Express, storage: any) {
   }
 
   // Middleware para verificar roles con acceso a cajas
-  function hasCashboxAccess(req: Request, res: Response, next: Function) {
+  function hasCashboxAccess(req: Request, res: Response, next: any) {
     const user = (req as any).user;
     
     if (!user) {
