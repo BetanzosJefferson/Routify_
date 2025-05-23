@@ -3631,24 +3631,11 @@ export class DatabaseStorage implements IStorage {
         .select()
         .from(schema.users)
         .where(eq(schema.users.id, userId));
-        
-      const userName = user ? `${user.firstName} ${user.lastName}` : `Usuario ${userId}`;
       
-      // Crear una nueva caja para el usuario
-      const cashboxResult = await db.insert(schema.cashboxes).values({
-        operatorId: userId,
-        companyId: companyId,
-        name: `Caja de ${userName}`,
-        balance: 0,
-        isActive: true,
-      }).returning();
-      
-      if (cashboxResult && cashboxResult[0]) {
-        console.log(`[getUserCashbox] Nueva caja creada con ID: ${cashboxResult[0].id}`);
-        return cashboxResult[0];
+      if (!user) {
+        console.error(`[getUserCashbox] No se encontró el usuario ${userId}`);
+        return undefined;
       }
-      
-      return undefined;
       
       // Crear nueva caja para el usuario
       const newCashbox: schema.InsertCashbox = {
@@ -3657,14 +3644,21 @@ export class DatabaseStorage implements IStorage {
         description: `Caja automática para ${user.firstName} ${user.lastName}`,
         balance: 0,
         operatorId: userId,
-        isActive: true,
-        createdAt: new Date()
+        isActive: true
       };
       
-      const createdCashbox = await this.createCashbox(newCashbox);
-      console.log(`[getUserCashbox] Caja creada automáticamente: ${createdCashbox.name} (ID: ${createdCashbox.id})`);
+      // Insertar la nueva caja
+      const [createdCashbox] = await db
+        .insert(schema.cashboxes)
+        .values(newCashbox)
+        .returning();
       
-      return createdCashbox;
+      if (createdCashbox) {
+        console.log(`[getUserCashbox] Caja creada con ID: ${createdCashbox.id}`);
+        return createdCashbox;
+      }
+      
+      return undefined;
     } catch (error) {
       console.error(`[getUserCashbox] Error al buscar/crear caja para usuario ${userId}:`, error);
       return undefined;
