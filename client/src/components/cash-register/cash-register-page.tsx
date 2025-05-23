@@ -516,6 +516,116 @@ export function CashRegisterPage() {
         <h2 className="text-xl font-semibold text-gray-800">Caja</h2>
       </div>
       
+      {/* Modal de confirmación del corte de caja */}
+      <Dialog open={showCutoffModal} onOpenChange={setShowCutoffModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar corte de caja</DialogTitle>
+            <DialogDescription>
+              Por favor verifica los detalles del corte antes de confirmar.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {cutoffData && (
+            <div className="space-y-4">
+              <div className="border rounded-lg p-4 bg-secondary/10">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Usuario</p>
+                    <p className="font-medium">{cutoffData.user}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Fecha</p>
+                    <p className="font-medium">{cutoffData.date}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total</p>
+                    <p className="font-medium text-primary">{formatPrice(cutoffData.totalAmount)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Transacciones</p>
+                    <p className="font-medium">{cutoffData.transactionCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Efectivo</p>
+                    <p className="font-medium text-green-600">{formatPrice(cutoffData.totalCash)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Transferencia</p>
+                    <p className="font-medium text-blue-600">{formatPrice(cutoffData.totalTransfer)}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label htmlFor="notes" className="text-sm font-medium">
+                  Notas para el corte (opcional)
+                </label>
+                <Textarea
+                  id="notes"
+                  placeholder="Añadir notas o comentarios sobre este corte..."
+                  className="mt-1"
+                  value={cutoffNotes}
+                  onChange={(e) => setCutoffNotes(e.target.value)}
+                />
+              </div>
+              
+              <div className="border rounded-lg p-4 max-h-[200px] overflow-y-auto">
+                <h4 className="text-sm font-semibold mb-2">Transacciones incluidas</h4>
+                <div className="space-y-2">
+                  {cutoffData.transactions.slice(0, 5).map((t: any) => (
+                    <div key={t.id} className="border-b pb-2 text-sm">
+                      <p><span className="font-medium">ID:</span> {t.id}</p>
+                      <p><span className="font-medium">Ruta:</span> {t.tripName}</p>
+                      <p><span className="font-medium">Monto:</span> {formatPrice(t.amount)}</p>
+                      <p><span className="font-medium">Método:</span> {t.paymentMethod}</p>
+                    </div>
+                  ))}
+                  {cutoffData.transactions.length > 5 && (
+                    <p className="text-sm text-muted-foreground text-center">
+                      ... y {cutoffData.transactions.length - 5} transacciones más
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="flex space-x-2 sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowCutoffModal(false)}
+              disabled={isLoadingCutoff}
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Cancelar
+            </Button>
+            <div className="flex space-x-2">
+              <Button
+                type="button"
+                variant="default"
+                onClick={completeCashboxCutoff}
+                disabled={isLoadingCutoff}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isLoadingCutoff ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Realizar corte e imprimir
+                  </>
+                )}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       <Card className="mb-6">
         <CardContent className="p-6">
           <div className="space-y-6">
