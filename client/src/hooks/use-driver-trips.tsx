@@ -38,13 +38,6 @@ export interface Trip {
   companyId?: string;
   assignedVehicle?: AssignedVehicle;
   
-  // Información del conductor asignado
-  driver?: {
-    id: number;
-    firstName: string;
-    lastName: string;
-  };
-  
   // Backward compatibility with existing code
   vehicle?: VehicleOld;
   route?: {
