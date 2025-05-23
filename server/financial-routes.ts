@@ -253,7 +253,22 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
       // Extraer información de usuario si fue proporcionada
       const { userId, createdBy } = req.body;
       
-      console.log(`[POST /trips/${tripId}/expenses] Información de usuario: ID=${userId}, Nombre=${createdBy || 'No proporcionado'}`);
+      console.log(`[POST /trips/${tripId}/expenses] Información de usuario recibida del cliente:`, { 
+        userId, 
+        createdBy,
+        bodyData: JSON.stringify(req.body)
+      });
+      
+      // Determinar el ID de usuario a guardar (priorizar el enviado desde el cliente)
+      const userIdToSave = userId || (req.user?.id || null);
+      
+      // Determinar el nombre a guardar para el creador
+      const createdByToSave = createdBy || (req.user ? `${req.user.firstName} ${req.user.lastName}` : 'Usuario del sistema');
+      
+      console.log(`[POST /trips/${tripId}/expenses] Información de usuario procesada:`, {
+        userIdToSave,
+        createdByToSave
+      });
       
       // Crear el nuevo gasto (adaptando category a type según el esquema de BD)
       const newExpense = {
@@ -262,10 +277,8 @@ export function setupFinancialRoutes(app: Express, isAuthenticated: any) {
         description: description || '', // Hacer descripción opcional
         amount: parseFloat(amount),
         companyId: trip.companyId, // Asegurar que el gasto tenga la misma compañía que el viaje
-        // Guardar info del usuario que registra el gasto, prioriza los datos enviados 
-        // desde el cliente pero usa los datos de sesión como respaldo
-        userId: userId || req.user?.id || null,
-        createdBy: createdBy || (req.user ? `${req.user.firstName} ${req.user.lastName}` : 'Usuario del sistema'),
+        userId: userIdToSave,
+        createdBy: createdByToSave,
         createdAt: new Date(),
         updatedAt: new Date()
       };

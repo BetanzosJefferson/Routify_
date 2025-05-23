@@ -120,8 +120,10 @@ export function AddExpenseModal({ isOpen, onClose, tripId, onSuccess }: AddExpen
       type: category,
       description,
       userId: user?.id,
-      createdBy: user?.firstName + " " + (user?.lastName || ""),
+      createdBy: user ? `${user.firstName} ${user.lastName || ""}` : "Usuario no identificado",
     };
+    
+    console.log("Enviando datos de gasto con usuario:", expenseData);
     
     createExpenseMutation.mutate(expenseData);
   };
