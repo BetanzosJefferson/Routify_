@@ -23,7 +23,11 @@ interface ReservationWithCompany extends ReservationWithDetails {
   companyInfo?: {
     id: string;
     name: string;
-  }
+  },
+  paymentNote?: string;      // Indica si es anticipo o restante
+  paymentDate?: string;      // Fecha específica del pago
+  cashItemId?: string;       // ID único para el ítem de caja
+  originalReservationId?: number; // ID de la reservación original
 }
 import {
   Table,
@@ -902,7 +906,12 @@ export function CashRegisterPage() {
                             </TableCell>
                             <TableCell>
                               <Badge variant="secondary">
-                                {reservation.paymentNote || "Pago"}
+                                {reservation.paymentNote || 
+                                  (reservation.advanceAmount && 
+                                   reservation.advanceAmount > 0 && 
+                                   reservation.totalAmount === reservation.advanceAmount 
+                                    ? 'Anticipo' 
+                                    : 'Pago')}
                               </Badge>
                             </TableCell>
                             <TableCell>
