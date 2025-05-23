@@ -72,6 +72,32 @@ export function registerCashboxRoutes(app: Express, storage: any) {
         }
       }
       
+      // Obtener todas las paqueterías para añadirlas a la caja
+      try {
+        const allPackages = await storage.getPackages();
+        
+        // Recorrer todas las paqueterías
+        for (const packageItem of allPackages) {
+          // Si el usuario creó o procesó el pago de la paquetería
+          if (packageItem.createdBy === user.id || packageItem.paidBy === user.id) {
+            console.log(`[GET /cashbox/transactions] Paquetería ${packageItem.id} registrada por usuario ${user.id}`);
+            
+            // Crear un ítem de caja para la paquetería
+            cashboxItems.push({
+              ...packageItem,
+              totalAmount: packageItem.price,
+              paymentNote: "Paquetería", 
+              paymentMethod: packageItem.paymentMethod || "efectivo",
+              paymentDate: packageItem.paidAt || packageItem.createdAt,
+              cashItemId: `paquete-${packageItem.id}`,
+              originalPackageId: packageItem.id
+            });
+          }
+        }
+      } catch (error) {
+        console.error('[GET /cashbox/transactions] Error al procesar paqueterías:', error);
+      }
+      
       console.log(`[GET /cashbox/transactions] Se encontraron ${cashboxItems.length} ítems para el usuario ${user.id}`);
       
       // Enriquecer con información de compañía para usuarios especiales
