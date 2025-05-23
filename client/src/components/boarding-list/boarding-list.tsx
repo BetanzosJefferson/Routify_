@@ -113,10 +113,13 @@ export function BoardingList() {
     // Si es un viaje principal, incluir también pasajeros de subviajes
     if (!trip.isSubTrip) {
       const subTripIds = trips
-        .filter(t => t.parentTripId === tripId)
+        .filter(t => t.isSubTrip && t.parentTripId === tripId)
         .map(t => t.id);
       
-      relevantTripIds = [...relevantTripIds, ...subTripIds];
+      if (subTripIds.length > 0) {
+        console.log(`[BoardingList] Viaje ${tripId} tiene ${subTripIds.length} subviajes: ${subTripIds.join(', ')}`);
+        relevantTripIds = [...relevantTripIds, ...subTripIds];
+      }
     }
     
     // Contar todos los pasajeros en todos los viajes relevantes
@@ -125,18 +128,22 @@ export function BoardingList() {
     // Filtrar reservaciones para los viajes relevantes
     const relevantReservations = reservations.filter(r => relevantTripIds.includes(r.tripId));
     
-    console.log(`[BoardingList] Contando pasajeros para viaje ${tripId} (incluye ${relevantTripIds.length} viajes relacionados)`);
+    console.log(`[BoardingList] Contando pasajeros para viaje ${tripId} (incluye ${relevantTripIds.length - 1} viajes relacionados)`);
     console.log(`[BoardingList] Encontradas ${relevantReservations.length} reservaciones relevantes`);
     
     // Contar el número total de pasajeros en todas las reservaciones relevantes
     for (const reservation of relevantReservations) {
       if (reservation.passengers && Array.isArray(reservation.passengers)) {
         totalPassengers += reservation.passengers.length;
-        console.log(`[BoardingList] Reserva ${reservation.id}: ${reservation.passengers.length} pasajeros`);
+        console.log(`[BoardingList] Reserva ${reservation.id} (Viaje ${reservation.tripId}): ${reservation.passengers.length} pasajeros`);
       }
     }
     
-    console.log(`[BoardingList] Total de pasajeros para viaje ${tripId}: ${totalPassengers}`);
+    // Verificación adicional para asegurar que contamos todos los pasajeros
+    if (relevantTripIds.length > 1) {
+      console.log(`[BoardingList] VERIFICACIÓN DE CONTEO - Total de pasajeros para viaje ${tripId} y sus ${relevantTripIds.length - 1} subviajes: ${totalPassengers}`);
+    }
+    
     return totalPassengers;
   };
 
