@@ -35,6 +35,13 @@ import {
 } from "@shared/schema";
 
 export interface IStorage {
+  // Funciones de cajas
+  getUserCashbox(userId: number, companyId: string): Promise<schema.Cashbox | undefined>;
+  createCashboxCutoff(userId: number, cashboxId: number, notes?: string): Promise<{
+    success: boolean;
+    message: string;
+    cutoff?: schema.CashboxCutoff;
+  }>;
   // Route methods
   getRoutes(companyId?: string): Promise<Route[]>;
   getRoute(id: number): Promise<Route | undefined>;
