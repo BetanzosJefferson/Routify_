@@ -5045,7 +5045,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupFinancialRoutes(app, isAuthenticated);
   
   // Configurar rutas para el sistema de cajas
-  registerCashboxRoutes(app, storage);
+  registerCashboxRoutes(app, isAuthenticated);
   
   setupPackageRoutes(app);
 
