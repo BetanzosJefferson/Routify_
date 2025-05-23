@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { useDriverTrips, Trip } from "@/hooks/use-driver-trips";
 import { useDriverReservations, Reservation, Passenger } from "@/hooks/use-driver-reservations";
 import { useTripBudget } from "@/hooks/use-trip-budget";
+import { useTripExpenses, TripExpense } from "@/hooks/use-trip-expenses";
 import { normalizeToStartOfDay, formatPrice } from "@/lib/utils";
 import { AddExpenseModal } from "./add-expense-modal";
 import { ExpenseButton } from "./expense-button";
@@ -110,6 +111,13 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
     isLoading: isLoadingBudget,
     error: budgetError
   } = useTripBudget(tripId);
+  
+  // Cargar los gastos del viaje para mostrar el resumen presupuesto - gastos
+  const {
+    data: tripExpenses,
+    isLoading: isLoadingExpenses,
+    error: expensesError
+  } = useTripExpenses(tripId);
 
   // Función para formatear fecha
   const formatDisplayDate = (dateString: string | Date) => {
@@ -457,6 +465,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
             {/* Sección de presupuesto para el operador (solo visible para conductores) */}
             {user?.role === 'chofer' && (
               <>
+                {/* Sección de presupuesto asignado */}
                 <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg mt-2">
                   <div className="flex items-center">
                     <div className="rounded-full bg-yellow-100 p-2 mr-3">
@@ -478,6 +487,57 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                   
                   {/* Usamos nuestro nuevo componente ExpenseButton */}
                   <ExpenseButton tripId={tripId} />
+                </div>
+                
+                {/* Nueva sección de gastos registrados y balance */}
+                <div className="mt-3 bg-gray-50 p-3 rounded-lg border-l-4 border-blue-400">
+                  <div className="flex justify-between mb-2">
+                    <h4 className="text-sm font-medium text-gray-700">Gastos registrados:</h4>
+                    {isLoadingExpenses ? (
+                      <span className="text-gray-400 text-xs">Cargando...</span>
+                    ) : (
+                      <span className="text-red-600 font-medium text-sm">
+                        ${(tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0).toFixed(2)} MXN
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Lista breve de gastos */}
+                  {!isLoadingExpenses && tripExpenses && tripExpenses.length > 0 ? (
+                    <div className="space-y-1 mt-2 mb-3 max-h-24 overflow-y-auto">
+                      {tripExpenses.map((expense) => (
+                        <div key={expense.id} className="flex justify-between text-xs px-2 py-1 rounded bg-white">
+                          <span className="text-gray-600">{expense.type}: {expense.description?.substring(0, 20)}{expense.description?.length > 20 ? '...' : ''}</span>
+                          <span className="text-red-500">${expense.amount.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : !isLoadingExpenses ? (
+                    <div className="text-xs text-gray-500 mb-3">No hay gastos registrados</div>
+                  ) : null}
+                  
+                  {/* Mostrar balance (presupuesto - gastos) */}
+                  <Separator className="my-2" />
+                  <div className="flex justify-between mt-2">
+                    <span className="text-sm font-medium">Balance:</span>
+                    {isLoadingBudget || isLoadingExpenses ? (
+                      <span className="text-gray-400 text-xs">Calculando...</span>
+                    ) : (
+                      <div className="text-sm font-bold">
+                        {(() => {
+                          const presupuesto = tripBudget?.amount || 0;
+                          const totalGastos = tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0;
+                          const balance = presupuesto - totalGastos;
+                          
+                          return (
+                            <span className={balance >= 0 ? "text-green-600" : "text-red-600"}>
+                              ${balance.toFixed(2)} MXN
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </>
             )}
