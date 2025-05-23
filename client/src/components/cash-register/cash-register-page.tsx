@@ -520,9 +520,6 @@ export function CashRegisterPage() {
       ticketContent.style.fontSize = '10px';
       ticketContent.style.padding = '5px';
       
-      // Verificar si tenemos datos de transacción detallados en el nuevo formato
-      const detailedData = cutoffInfo.data || null;
-      
       // Información de la empresa y corte
       ticketContent.innerHTML = `
         <div style="text-align:center;margin-bottom:10px;">
@@ -532,50 +529,31 @@ export function CashRegisterPage() {
           <p style="margin:3px 0;">USUARIO: ${data.user}</p>
         </div>
         <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;padding:5px 0;margin:5px 0;">
-          <p style="margin:3px 0;"><strong>TOTAL:</strong> ${formatPrice(detailedData ? detailedData.totalAmount : data.totalAmount)}</p>
-          <p style="margin:3px 0;"><strong>EFECTIVO:</strong> ${formatPrice(detailedData ? detailedData.totalCash : data.totalCash)}</p>
-          <p style="margin:3px 0;"><strong>TRANSFERENCIA:</strong> ${formatPrice(detailedData ? detailedData.totalTransfer : data.totalTransfer)}</p>
-          <p style="margin:3px 0;"><strong>TRANSACCIONES:</strong> ${detailedData ? detailedData.transactions.length : data.transactionCount}</p>
+          <p style="margin:3px 0;"><strong>TOTAL:</strong> ${formatPrice(data.totalAmount)}</p>
+          <p style="margin:3px 0;"><strong>EFECTIVO:</strong> ${formatPrice(data.totalCash)}</p>
+          <p style="margin:3px 0;"><strong>TRANSFERENCIA:</strong> ${formatPrice(data.totalTransfer)}</p>
+          <p style="margin:3px 0;"><strong>TRANSACCIONES:</strong> ${data.transactionCount}</p>
         </div>
         <div style="margin-top:10px;">
           <p style="margin:3px 0;font-size:9px;"><strong>DETALLE DE TRANSACCIONES:</strong></p>
       `;
       
-      // Determinar qué transacciones mostrar
-      const transactionsToShow = detailedData ? detailedData.transactions : data.transactions;
-      
       // Recorrer las transacciones (limitado a 10 para que no sea muy largo)
-      const limitedTransactions = transactionsToShow.slice(0, 10);
+      const limitedTransactions = data.transactions.slice(0, 10);
       limitedTransactions.forEach((t: any, index: number) => {
-        // Obtener información según formato
-        const id = t.id;
-        const amount = formatPrice(t.amount);
-        const paymentMethod = t.paymentMethod;
-        
-        // Información adicional (texto descriptivo, puede variar según formato)
-        let description = '';
-        if (detailedData) {
-          // Si es el nuevo formato, usar tipo de transacción para descripción
-          description = `${t.type === 'reservation' ? 'Reserva' : 'Paquete'}`;
-          if (t.paymentNote) description += ` - ${t.paymentNote}`;
-        } else {
-          // Formato antiguo
-          description = t.tripName ? t.tripName.substring(0, 15) + (t.tripName.length > 15 ? '...' : '') : 'Transacción';
-        }
-        
         ticketContent.innerHTML += `
           <div style="font-size:8px;margin:3px 0;border-bottom:1px dotted #ccc;padding-bottom:3px;">
-            <span>#${id} - ${description}</span><br>
-            <span>${amount} - ${paymentMethod}</span>
+            <span>#${t.id} - ${t.tripName.substring(0, 15)}${t.tripName.length > 15 ? '...' : ''}</span><br>
+            <span>${formatPrice(t.amount)} - ${t.paymentMethod}</span>
           </div>
         `;
       });
       
       // Si hay más transacciones, mostrar un mensaje
-      if (transactionsToShow.length > 10) {
+      if (data.transactions.length > 10) {
         ticketContent.innerHTML += `
           <p style="font-size:8px;text-align:center;margin:5px 0;">
-            ... y ${transactionsToShow.length - 10} transacciones más
+            ... y ${data.transactions.length - 10} transacciones más
           </p>
         `;
       }

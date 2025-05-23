@@ -1,8 +1,8 @@
 import { Express, Request, Response } from "express";
 import { UserRole } from "@shared/schema";
-import { and, eq, gte, lte, isNull } from "drizzle-orm";
+import { and, eq, gte, lte } from "drizzle-orm";
 import * as schema from "@shared/schema";
-import { db } from "./db";
+import * as cashboxFunctions from "./cashbox-functions";
 
 /**
  * Registra las rutas relacionadas con el sistema de cajas
@@ -413,269 +413,6 @@ export function registerCashboxRoutes(app: Express, storage: any) {
       });
     }
   });
-  
-  // POST /api/cashbox/cutoff - Endpoint simplificado para realizar corte de caja (versión simplificada para la interfaz)
-  app.post("/api/cashbox/cutoff", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const { user } = req as any;
-      const { notes } = req.body;
-      
-      console.log(`[POST /cashbox/cutoff] Usuario ${user.firstName} ${user.lastName} solicitando corte de caja`);
-      
-      // Obtener las transacciones de caja del usuario
-      const cashItems = await getCashboxItemsForUser(user, storage);
-      
-      if (cashItems.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: "No hay transacciones para procesar en el corte de caja"
-        });
-      }
-      
-      // Calcular totales
-      let totalAmount = 0;
-      let totalCash = 0;
-      let totalTransfer = 0;
-      
-      // Formatear los datos para almacenar en el campo data
-      const transactionData = {
-        date: new Date().toISOString(),
-        totalAmount: 0,
-        totalCash: 0, 
-        totalTransfer: 0,
-        transactions: [] as Array<{
-          id: number;
-          type: 'reservation' | 'package';
-          amount: number;
-          paymentMethod: string;
-          paymentNote?: string;
-        }>
-      };
-      
-      // Procesar cada item para obtener los totales
-      for (const item of cashItems) {
-        const amount = item.totalAmount || 0;
-        totalAmount += amount;
-        
-        // Determinar método de pago
-        const paymentMethod = item.paymentMethod || "efectivo";
-        
-        // Sumar al total según método de pago
-        if (paymentMethod.includes("efectivo")) {
-          totalCash += amount;
-          transactionData.totalCash += amount;
-        } else {
-          totalTransfer += amount;
-          transactionData.totalTransfer += amount;
-        }
-        
-        // Determinar tipo y añadir a transacciones
-        const type = item.originalPackageId ? 'package' : 'reservation';
-        const id = item.originalPackageId || item.originalReservationId || item.id;
-        
-        transactionData.transactions.push({
-          id,
-          type,
-          amount,
-          paymentMethod,
-          paymentNote: item.paymentNote
-        });
-      }
-      
-      transactionData.totalAmount = totalAmount;
-      
-      // Obtener la caja del usuario
-      const userCashbox = await getUserCashbox(user.id);
-      
-      if (!userCashbox) {
-        return res.status(404).json({
-          success: false,
-          message: "No se encontró una caja asociada al usuario"
-        });
-      }
-      
-      // Calcular valores para el corte de caja
-      const previousBalance = 0; // Por ahora inicializamos en 0
-      const totalIncome = totalAmount;
-      const totalExpenses = 0; // Por ahora no tenemos gastos registrados
-      const finalBalance = totalIncome - totalExpenses;
-      
-      // Crear el registro de corte en la base de datos
-      try {
-        const result = await db.insert(schema.cashboxCutoffs).values({
-          cashboxId: userCashbox.id,
-          operatorId: user.id,
-          previousBalance,
-          totalIncome,
-          totalExpenses,
-          finalBalance,
-          notes: notes || null,
-          createdAt: new Date(),
-          data: transactionData
-        }).returning();
-        
-        if (result && result.length > 0) {
-          const cutoff = result[0];
-          
-          // Actualizar las transacciones para marcarlas como procesadas en este corte
-          try {
-            // Aquí podríamos actualizar las transacciones si tuviéramos un campo para indicar que ya fueron procesadas
-            console.log(`[POST /cashbox/cutoff] Transacciones procesadas en el corte #${cutoff.id}`);
-          } catch (updateError) {
-            console.error("[POST /cashbox/cutoff] Error al actualizar transacciones:", updateError);
-            // No interrumpimos el proceso por este error
-          }
-          
-          // Responder con éxito
-          res.json({
-            success: true,
-            message: `Corte realizado exitosamente con ${cashItems.length} transacciones`,
-            cutoff,
-            transactionData
-          });
-        } else {
-          throw new Error("No se pudo crear el registro de corte");
-        }
-      } catch (dbError) {
-        console.error("[POST /cashbox/cutoff] Error al guardar corte en BD:", dbError);
-        throw new Error("Error al guardar el corte en la base de datos");
-      }
-    } catch (error) {
-      console.error("[POST /cashbox/cutoff] Error:", error);
-      res.status(500).json({
-        success: false,
-        message: error instanceof Error ? error.message : "Error al realizar el corte de caja"
-      });
-    }
-  });
-  
-  // Función auxiliar para obtener la caja del usuario
-  async function getUserCashbox(userId: number): Promise<any> {
-    try {
-      // Buscar la caja asociada al usuario
-      const cashboxes = await db.select().from(schema.cashboxes)
-        .where(eq(schema.cashboxes.operatorId, userId));
-      
-      if (cashboxes && cashboxes.length > 0) {
-        return cashboxes[0];
-      }
-      
-      // Si no encontramos una caja específica, creamos una nueva
-      console.log(`[getUserCashbox] No se encontró caja para el usuario ${userId}, creando una nueva`);
-      
-      // Obtener información del usuario
-      const users = await db.select().from(schema.users)
-        .where(eq(schema.users.id, userId));
-      
-      if (!users || users.length === 0) {
-        console.error(`[getUserCashbox] No se encontró información del usuario ${userId}`);
-        return null;
-      }
-      
-      const user = users[0];
-      const companyId = user.companyId;
-      
-      // Crear una nueva caja para el usuario
-      const result = await db.insert(schema.cashboxes).values({
-        operatorId: userId,
-        companyId,
-        name: `Caja de ${user.firstName} ${user.lastName}`,
-        balance: 0,
-        isActive: true,
-        createdAt: new Date()
-      }).returning();
-      
-      if (result && result.length > 0) {
-        console.log(`[getUserCashbox] Creada nueva caja para ${user.firstName} ${user.lastName} (ID: ${result[0].id})`);
-        return result[0];
-      } else {
-        console.error(`[getUserCashbox] Error al crear caja para usuario ${userId}`);
-        return null;
-      }
-    } catch (error) {
-      console.error(`[getUserCashbox] Error:`, error);
-      return null;
-    }
-  }
-  
-  // Función auxiliar para obtener los items de caja para un usuario
-  async function getCashboxItemsForUser(user: any, storage: any) {
-    // Obtener todas las reservaciones para procesarlas
-    const allReservations = await storage.getReservations();
-    console.log(`[getCashboxItemsForUser] Analizando ${allReservations.length} reservaciones para el usuario ${user.id}`);
-    
-    // Array para almacenar los ítems de caja (anticipos y restantes)
-    let cashboxItems: any[] = [];
-    
-    // Recorrer todas las reservaciones
-    for (const reservation of allReservations) {
-      // 1. Anticipos: Si el usuario creó la reservación y tiene anticipo
-      if (reservation.createdBy === user.id && reservation.advanceAmount && reservation.advanceAmount > 0) {
-        console.log(`[getCashboxItemsForUser] Anticipo de ${reservation.advanceAmount} de reserva ${reservation.id}`);
-        
-        // Crear un ítem de caja para el anticipo
-        cashboxItems.push({
-          ...reservation,
-          totalAmount: reservation.advanceAmount, // Solo monto del anticipo
-          paymentNote: "Anticipo", // Indicamos que es un anticipo
-          paymentMethod: reservation.advancePaymentMethod,
-          paymentDate: reservation.createdAt,
-          cashItemId: `anticipo-${reservation.id}`,
-          originalReservationId: reservation.id
-        });
-      }
-      
-      // 2. Pagos restantes: Si el usuario marcó como pagado el restante
-      if (reservation.paidBy === user.id) {
-        const restanteAmount = (reservation.totalAmount || 0) - (reservation.advanceAmount || 0);
-        
-        // Solo incluir si hay monto restante
-        if (restanteAmount > 0) {
-          console.log(`[getCashboxItemsForUser] Restante de ${restanteAmount} de reserva ${reservation.id}`);
-          
-          // Crear un ítem de caja para el pago restante
-          cashboxItems.push({
-            ...reservation,
-            totalAmount: restanteAmount, // Solo monto del restante
-            paymentNote: "Restante", // Indicamos que es un restante
-            paymentMethod: reservation.paymentMethod,
-            paymentDate: reservation.paidAt,
-            cashItemId: `restante-${reservation.id}`,
-            originalReservationId: reservation.id
-          });
-        }
-      }
-    }
-    
-    // Obtener todas las paqueterías para añadirlas a la caja
-    try {
-      const allPackages = await storage.getPackages();
-      
-      // Recorrer todas las paqueterías
-      for (const packageItem of allPackages) {
-        // Si el usuario creó o procesó el pago de la paquetería
-        if (packageItem.createdBy === user.id || packageItem.paidBy === user.id) {
-          console.log(`[getCashboxItemsForUser] Paquetería ${packageItem.id} registrada por usuario ${user.id}`);
-          
-          // Crear un ítem de caja para la paquetería
-          cashboxItems.push({
-            ...packageItem,
-            totalAmount: packageItem.price,
-            paymentNote: "Paquetería", 
-            paymentMethod: packageItem.paymentMethod || "efectivo",
-            paymentDate: packageItem.paidAt || packageItem.createdAt,
-            cashItemId: `paquete-${packageItem.id}`,
-            originalPackageId: packageItem.id
-          });
-        }
-      }
-    } catch (error) {
-      console.error('[getCashboxItemsForUser] Error al procesar paqueterías:', error);
-    }
-    
-    console.log(`[getCashboxItemsForUser] Se encontraron ${cashboxItems.length} ítems para el usuario ${user.id}`);
-    return cashboxItems;
-  }
 
   // GET /api/cashboxes/:id/cutoffs/:cutoffId - Obtener detalles de un corte específico
   app.get("/api/cashboxes/:id/cutoffs/:cutoffId", isAuthenticated, async (req: Request, res: Response) => {
@@ -822,7 +559,7 @@ export function registerCashboxRoutes(app: Express, storage: any) {
       }
       
       // Obtener la caja del usuario
-      const cashbox = await storage.getUserCashbox(userId, companyId);
+      const cashbox = await cashboxFunctions.getUserCashbox(userId, companyId);
       
       if (!cashbox) {
         return res.status(404).json({
@@ -832,7 +569,7 @@ export function registerCashboxRoutes(app: Express, storage: any) {
       }
       
       // Realizar el corte
-      const result = await storage.createCashboxCutoff(userId, cashbox.id, notes);
+      const result = await cashboxFunctions.createCashboxCutoff(userId, cashbox.id, notes);
       
       if (!result.success) {
         return res.status(400).json({
@@ -862,7 +599,8 @@ export function registerCashboxRoutes(app: Express, storage: any) {
       const { user } = req as any;
       
       // Obtener la caja para verificar permisos
-      const cashbox = await storage.getCashbox(parseInt(id));
+      const { getCashbox } = require('./cashbox-functions');
+      const cashbox = await getCashbox(parseInt(id));
       
       if (!cashbox) {
         return res.status(404).json({
