@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useAuth } from "@/hooks/use-auth";
+import { useQueryClient } from "@tanstack/react-query";
 import { 
   CalendarIcon, 
   ClipboardListIcon,
@@ -34,6 +35,7 @@ import { useDriverReservations, Reservation, Passenger } from "@/hooks/use-drive
 import { useTripBudget } from "@/hooks/use-trip-budget";
 import { normalizeToStartOfDay, formatPrice } from "@/lib/utils";
 import { AddExpenseModal } from "./add-expense-modal";
+import { ExpenseButton } from "./expense-button";
 
 interface GroupedReservation {
   id: number;
@@ -70,11 +72,11 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
   // Estado para la búsqueda de pasajeros
   const [searchQuery, setSearchQuery] = useState("");
   
-  // Estado para controlar la visibilidad del modal de agregar gasto
-  const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
-  
   // Obtener información del usuario actual para restricciones por rol
   const { user } = useAuth();
+  
+  // Query client para refrescar datos después de agregar gastos
+  const queryClient = useQueryClient();
   
   // Función para verificar si el usuario puede ver números telefónicos
   const canViewPhoneNumbers = () => {
@@ -473,15 +475,9 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                       </div>
                     </div>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:text-green-800"
-                    onClick={() => setShowAddExpenseModal(true)}
-                  >
-                    <DollarSign className="h-3.5 w-3.5 mr-1" />
-                    Agregar gasto
-                  </Button>
+                  
+                  {/* Usamos nuestro nuevo componente ExpenseButton */}
+                  <ExpenseButton tripId={tripId} />
                 </div>
               </>
             )}
