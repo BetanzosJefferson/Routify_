@@ -23,8 +23,11 @@ import {
   userCompanies,
   companies,
   insertTripBudgetSchema,
-  insertTripExpenseSchema
+  insertTripExpenseSchema,
+  TransactionSource,
+  TransactionType
 } from "@shared/schema";
+import { registerCashboxRoutes } from "./cashbox-routes";
 
 // Constantes para roles y permisos de paqueterías
 const PACKAGE_ACCESS_ROLES = [
