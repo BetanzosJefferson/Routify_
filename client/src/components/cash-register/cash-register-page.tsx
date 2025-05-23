@@ -1141,7 +1141,8 @@ export function CashRegisterPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>ID Paquetería</TableHead>
-                        <TableHead>Remitente → Destinatario</TableHead>
+                        <TableHead>Remitente</TableHead>
+                        <TableHead>Destinatario</TableHead>
                         <TableHead>Empresa</TableHead>
                         <TableHead>Ruta</TableHead>
                         <TableHead>Método</TableHead>
@@ -1156,11 +1157,13 @@ export function CashRegisterPage() {
                           <TableCell>
                             <div className="flex items-center gap-1">
                               <User className="h-4 w-4 text-gray-500" />
-                              <span>
-                                <span className="font-medium">William</span>
-                                <span className="mx-2">→</span>
-                                <span>Jefferson</span>
-                              </span>
+                              <span className="font-medium">William</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <User className="h-4 w-4 text-gray-500" />
+                              <span>Jefferson</span>
                             </div>
                           </TableCell>
                           <TableCell>
