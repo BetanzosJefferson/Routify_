@@ -507,8 +507,10 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                     <div className="space-y-1 mt-2 mb-3 max-h-24 overflow-y-auto">
                       {tripExpenses.map((expense) => (
                         <div key={expense.id} className="flex justify-between text-xs px-2 py-1 rounded bg-white">
-                          <span className="text-gray-600">{expense.type}: {expense.description?.substring(0, 20)}{expense.description?.length > 20 ? '...' : ''}</span>
-                          <span className="text-red-500">${expense.amount.toFixed(2)}</span>
+                          <span className="text-gray-600 truncate max-w-[70%]">
+                            {expense.type}{expense.description ? `: ${expense.description}` : ''}
+                          </span>
+                          <span className="text-red-500 ml-1 whitespace-nowrap">${expense.amount.toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
@@ -523,7 +525,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                     {isLoadingBudget || isLoadingExpenses ? (
                       <span className="text-gray-400 text-xs">Calculando...</span>
                     ) : (
-                      <div className="text-sm font-bold">
+                      <span className="text-sm font-bold">
                         {(() => {
                           const presupuesto = tripBudget?.amount || 0;
                           const totalGastos = tripExpenses?.reduce((total, expense) => total + expense.amount, 0) || 0;
@@ -535,7 +537,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                             </span>
                           );
                         })()}
-                      </div>
+                      </span>
                     )}
                   </div>
                 </div>
