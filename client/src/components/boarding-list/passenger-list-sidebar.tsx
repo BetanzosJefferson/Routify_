@@ -560,39 +560,20 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                         </div>
                       </div>
                       
-                      {/* Indicador de Subviaje si aplica */}
-                      {reservation.tripSegment === 'Subviaje' && (
-                        <div className="mb-3">
-                          <Badge variant="outline" className="bg-yellow-50 border-yellow-200 text-yellow-700">
-                            Subviaje ID: {reservation.tripId}
-                          </Badge>
-                        </div>
-                      )}
+                      {/* Etiqueta de subviaje eliminada */}
                       
                       {/* Origen y destino completos (incluyendo punto de abordaje) */}
                       <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                         <div>
                           <div className="text-xs text-gray-500">Origen</div>
                           <div className="font-medium">
-                            {reservation.tripSegment === 'Subviaje' ? (
-                              <span className="text-amber-600 font-medium">
-                                {reservation.origin}
-                              </span>
-                            ) : (
-                              <>{reservation.origin || tripDetails?.route?.origin || 'Origen'}</>
-                            )}
+                            {reservation.origin || tripDetails?.route?.origin || 'Origen'}
                           </div>
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">Destino</div>
                           <div className="font-medium">
-                            {reservation.tripSegment === 'Subviaje' ? (
-                              <span className="text-amber-600 font-medium">
-                                {reservation.destination}
-                              </span>
-                            ) : (
-                              <>{reservation.destination || tripDetails?.route?.destination || 'Destino'}</>
-                            )}
+                            {reservation.destination || tripDetails?.route?.destination || 'Destino'}
                           </div>
                         </div>
                       </div>
