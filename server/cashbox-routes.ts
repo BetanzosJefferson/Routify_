@@ -580,9 +580,8 @@ export function registerCashboxRoutes(app: Express, storage: any) {
         operatorId: userId,
         companyId,
         name: `Caja de ${user.firstName} ${user.lastName}`,
-        initialBalance: 0,
-        currentBalance: 0,
-        active: true,
+        balance: 0,
+        isActive: true,
         createdAt: new Date()
       }).returning();
       
