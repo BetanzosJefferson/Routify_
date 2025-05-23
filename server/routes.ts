@@ -4813,6 +4813,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filters.tripIds = assignedTripIds;
       }
       
+      // Añadir un mensaje de log para depuración
+      if (user.role === UserRole.DRIVER || user.role === 'CHOFER') {
+        console.log(`[GET /packages] Restricción de conductor aplicada: Solo verá paqueterías de sus viajes asignados`);
+      }
+      
       console.log(`[GET /packages] Buscando paqueterías con filtros:`, filters);
       
       // Obtener paqueterías con los filtros aplicados incluyendo información de viaje

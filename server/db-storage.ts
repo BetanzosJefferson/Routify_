@@ -3284,7 +3284,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // PACKAGE METHODS
-  async getPackages(filters?: { companyId?: string, tripId?: number }): Promise<schema.Package[]> {
+  async getPackages(filters?: { companyId?: string, tripId?: number, tripIds?: number[] }): Promise<schema.Package[]> {
     try {
       console.log(`[getPackages] Buscando paqueterías con filtros:`, filters);
       
@@ -3298,10 +3298,15 @@ export class DatabaseStorage implements IStorage {
           console.log(`[getPackages] Aplicando filtro de compañía: ${filters.companyId}`);
         }
         
-        // Filtro por viaje
+        // Filtro por viaje único
         if (filters.tripId) {
           query = query.where(eq(schema.packages.tripId, filters.tripId));
-          console.log(`[getPackages] Aplicando filtro de viaje: ${filters.tripId}`);
+          console.log(`[getPackages] Aplicando filtro de viaje único: ${filters.tripId}`);
+        }
+        // Filtro por múltiples viajes (para conductores)
+        else if (filters.tripIds && filters.tripIds.length > 0) {
+          query = query.where(inArray(schema.packages.tripId, filters.tripIds));
+          console.log(`[getPackages] Aplicando filtro de múltiples viajes: [${filters.tripIds.join(', ')}]`);
         }
       }
       
@@ -3316,7 +3321,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getPackagesWithTripInfo(filters?: { companyId?: string, tripId?: number }): Promise<(schema.Package & { tripOrigin?: string, tripDestination?: string, segmentOrigin?: string, segmentDestination?: string })[]> {
+  async getPackagesWithTripInfo(filters?: { companyId?: string, tripId?: number, tripIds?: number[] }): Promise<(schema.Package & { tripOrigin?: string, tripDestination?: string, segmentOrigin?: string, segmentDestination?: string })[]> {
     try {
       // Primero obtenemos los paquetes
       const packages = await this.getPackages(filters);
