@@ -1157,13 +1157,13 @@ export function CashRegisterPage() {
                           <TableCell>
                             <div className="flex items-center gap-1">
                               <User className="h-4 w-4 text-gray-500" />
-                              <span className="font-medium">William</span>
+                              <span className="font-medium">{packageItem.senderName || ''} {packageItem.senderLastName || ''}</span>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
                               <User className="h-4 w-4 text-gray-500" />
-                              <span>Jefferson</span>
+                              <span>{packageItem.recipientName || ''} {packageItem.recipientLastName || ''}</span>
                             </div>
                           </TableCell>
                           <TableCell>
