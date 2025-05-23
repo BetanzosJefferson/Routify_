@@ -409,6 +409,9 @@ export const tripExpenses = pgTable("trip_expenses", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   // Campo para aislamiento de datos por compañía
   companyId: text("company_id"),
+  // Campos para el registro del usuario que creó el gasto
+  userId: integer("user_id").references(() => users.id),
+  createdBy: text("created_by"), // Nombre del usuario que registró el gasto
 });
 
 export const insertTripExpenseSchema = createInsertSchema(tripExpenses);
