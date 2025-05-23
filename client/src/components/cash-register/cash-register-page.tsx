@@ -1034,8 +1034,10 @@ export function CashRegisterPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedReservations.map((reservation) => (
-                    <TableRow key={reservation.id}>
+                  {sortedReservations
+                    .filter(reservation => !reservation.originalPackageId)
+                    .map((reservation) => (
+                    <TableRow key={`res-${reservation.id}`}>
                       <TableCell className="font-medium">RES{reservation.id}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
@@ -1043,9 +1045,7 @@ export function CashRegisterPage() {
                           <span>
                             {reservation.passengers && reservation.passengers.length > 0 
                               ? `${reservation.passengers[0]?.firstName} ${reservation.passengers[0]?.lastName}`
-                              : reservation.originalPackageId 
-                                ? `${reservation.senderName || 'Remitente'} → ${reservation.receiverName || 'Destinatario'}`
-                                : 'No disponible'
+                              : 'No disponible'
                             }
                           </span>
                         </div>
@@ -1102,7 +1102,11 @@ export function CashRegisterPage() {
                              reservation.advanceAmount > 0 && 
                              reservation.totalAmount === reservation.advanceAmount 
                               ? 'Anticipo' 
-                              : 'Pago')}
+                              : reservation.advanceAmount && 
+                                reservation.advanceAmount > 0 && 
+                                reservation.totalAmount > reservation.advanceAmount
+                                ? 'Restante'
+                                : 'Pago completo')}
                         </Badge>
                       </TableCell>
 
@@ -1113,6 +1117,71 @@ export function CashRegisterPage() {
                   ))}
                 </TableBody>
               </Table>
+              
+              {/* Sección de paqueterías */}
+              {sortedPackages.length > 0 && (
+                <div className="mt-8">
+                  <h3 className="text-lg font-semibold mb-4">Pagos de Paqueterías</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID Paquetería</TableHead>
+                        <TableHead>Remitente → Destinatario</TableHead>
+                        <TableHead>Empresa</TableHead>
+                        <TableHead>Ruta</TableHead>
+                        <TableHead>Método</TableHead>
+                        <TableHead>Concepto</TableHead>
+                        <TableHead className="text-right">Monto</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedPackages.map((packageItem) => (
+                        <TableRow key={`package-${packageItem.id}`}>
+                          <TableCell className="font-medium">RES{packageItem.id}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <User className="h-4 w-4 text-gray-500" />
+                              <span>{packageItem.senderName || 'Remitente'} → {packageItem.receiverName || 'Destinatario'}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <span>
+                                {packageItem.companyInfo?.name || 
+                                 packageItem.companyId || 
+                                 'No disponible'}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">
+                              {packageItem.origin || 'Origen paquetería'}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                              <span>→</span> {packageItem.destination || 'Destino paquetería'}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={packageItem.paymentMethod === 'efectivo' 
+                              ? 'bg-green-100 text-green-800 border-green-200' 
+                              : 'bg-blue-100 text-blue-800 border-blue-200'}>
+                              {packageItem.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              Paquetería
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatPrice(packageItem.totalAmount)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </div>
           )}
         </div>
