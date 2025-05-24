@@ -1194,20 +1194,8 @@ Total transacciones: ${cutoffData.transactionCount}
                     <p className="font-medium">{cutoffData.date}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Total</p>
-                    <p className="font-medium text-primary">{formatPrice(cutoffData.totalAmount)}</p>
-                  </div>
-                  <div>
                     <p className="text-xs text-muted-foreground">Transacciones</p>
                     <p className="font-medium">{cutoffData.transactionCount}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Efectivo</p>
-                    <p className="font-medium text-green-600">{formatPrice(cutoffData.totalCash)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Transferencia</p>
-                    <p className="font-medium text-blue-600">{formatPrice(cutoffData.totalTransfer)}</p>
                   </div>
                 </div>
               </div>
