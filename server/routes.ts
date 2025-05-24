@@ -3320,12 +3320,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Paquete no encontrado" });
       }
       
+      // Obtener el ID del usuario autenticado (si está disponible)
+      const userId = req.user ? (req.user as any).id : null;
+      console.log(`[POST /public/packages/${packageId}/mark-delivered] Usuario que marca como entregado:`, userId);
+      
       // Actualizar el estado de entrega
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Estado actual de entrega:`, packageData.deliveryStatus);
       const currentDate = new Date();
       const updatedPackage = await storage.updatePackage(packageId, {
         deliveryStatus: 'entregado',
         deliveredAt: currentDate,
+        deliveredBy: userId, // Guardar el ID del usuario que marca como entregado
         updatedAt: currentDate
       });
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Nuevo estado de entrega:`, updatedPackage?.deliveryStatus);

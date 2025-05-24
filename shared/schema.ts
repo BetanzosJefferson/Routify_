@@ -515,6 +515,7 @@ export const packages = pgTable("packages", {
   // Para seguimiento de estado
   deliveryStatus: text("delivery_status").notNull().default("pendiente"), // pendiente, entregado
   deliveredAt: timestamp("delivered_at"),
+  deliveredBy: integer("delivered_by"), // ID del usuario que marca como entregado
 });
 
 export const insertPackageSchema = createInsertSchema(packages).omit({ 
@@ -538,6 +539,10 @@ export const packageRelations = relations(packages, ({ one }) => ({
   }),
   paidByUser: one(users, {
     fields: [packages.paidBy],
+    references: [users.id]
+  }),
+  deliveredByUser: one(users, {
+    fields: [packages.deliveredBy],
     references: [users.id]
   }),
   company: one(companies, {

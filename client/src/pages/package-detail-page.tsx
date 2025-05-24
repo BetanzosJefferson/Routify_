@@ -276,12 +276,18 @@ export default function PackageDetailPage() {
       
       console.log(`Enviando petición para marcar como entregado el paquete ${packageId}`);
       
+      // No necesitamos enviar el ID del usuario en la petición
+      // El servidor lo obtendrá de la sesión autenticada
       const response = await fetch(`/api/public/packages/${packageId}/mark-delivered`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ deliveryStatus: 'entregado' })
+        body: JSON.stringify({ 
+          deliveryStatus: 'entregado',
+          // Solo enviamos los datos necesarios, el servidor se encargará 
+          // de obtener el usuario desde la sesión
+        })
       });
       
       if (!response.ok) {
