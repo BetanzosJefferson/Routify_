@@ -85,28 +85,14 @@ export default function PackageDetailPage() {
         return;
       }
       
-      // Para otros roles, comprobar si el companyId coincide
-      // El usuario puede tener la compañía en diferentes formatos:
-      // 1. user.companyId - identificador directo de la compañía (formato slug)
-      // 2. user.company - nombre de la compañía que podemos convertir a slug
+      // Para otros roles, hacer una comparación directa del ID de la compañía
       const userCompanyId = user.companyId || "";
-      const userCompanySlug = user.company ? user.company.toLowerCase().replace(/\s+/g, '-') : "";
-      
-      // Comparación con el companyId del paquete
-      // Intentamos todas las posibles coincidencias
       const packageCompanyId = packageQuery.data.companyId || "";
       
-      const matchesCompany = 
-        // Verificar coincidencia directa por companyId
-        (userCompanyId && packageCompanyId && packageCompanyId === userCompanyId) ||
-        // Verificar coincidencia por slug de company
-        (userCompanySlug && packageCompanyId && packageCompanyId === userCompanySlug) ||
-        // Verificar coincidencia por slug con formato típico (company-123)
-        (userCompanySlug && packageCompanyId && packageCompanyId.startsWith(userCompanySlug + '-'));
+      // Comparación exacta del ID de la compañía
+      const matchesCompany = userCompanyId === packageCompanyId;
       
-      console.log("Datos del paquete:", JSON.stringify(packageQuery.data, null, 2));
       console.log("CompanyId del usuario:", userCompanyId);
-      console.log("Company del usuario (slug):", userCompanySlug);
       console.log("CompanyId del paquete:", packageCompanyId);
       console.log("¿Coincide la compañía?", matchesCompany);
       
