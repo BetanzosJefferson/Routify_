@@ -121,7 +121,8 @@ export function CashRegisterPage() {
   // Obtener las cajas de la compañía con transacciones (solo para dueños y admins)
   const {
     data: companyCashboxes,
-    isLoading: isLoadingCashboxes
+    isLoading: isLoadingCashboxes,
+    refetch: refetchCompanyCashboxes
   } = useQuery({
     queryKey: ["/api/cashboxes/company/with-transactions"],
     queryFn: async () => {
@@ -137,6 +138,8 @@ export function CashRegisterPage() {
     },
     enabled: !!user && isOwnerOrAdmin
   });
+  
+
   
   // Obtener las empresas asociadas para usuarios de taquilla
   const { 
@@ -1440,6 +1443,31 @@ Total transacciones: ${cutoffData.transactionCount}
                   </SelectContent>
                 </Select>
               </div>
+              
+              {/* Selector de cajas para dueños y administradores */}
+              {isOwnerOrAdmin && (
+                <div>
+                  <label htmlFor="cashboxSelector" className="mb-2 block text-sm font-medium">
+                    Seleccionar caja
+                  </label>
+                  <Select 
+                    value={selectedCashbox ? selectedCashbox.toString() : "mi-caja"} 
+                    onValueChange={handleCashboxChange}
+                  >
+                    <SelectTrigger id="cashboxSelector" className="w-full">
+                      <SelectValue placeholder="Seleccionar caja" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="mi-caja">Mi caja</SelectItem>
+                      {companyCashboxes && companyCashboxes.map((cashbox) => (
+                        <SelectItem key={cashbox.id} value={cashbox.id.toString()}>
+                          {cashbox.operatorInfo ? `${cashbox.operatorInfo.name}` : `Caja #${cashbox.id}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               
               {/* Selector de empresa (solo para taquilleros) */}
               {isTicketOfficeView && (
