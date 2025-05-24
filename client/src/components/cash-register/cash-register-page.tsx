@@ -387,10 +387,10 @@ export function CashRegisterPage() {
   
   // Obtener las paqueterías directamente de los datos cargados
   // Extraer paqueterías del array de datos cargados
-  console.log("Transacciones de caja cargadas:", cashboxData?.length || 0);
+  console.log("Transacciones de caja cargadas:", paidReservations?.length || 0);
   
   // Filtrar y enriquecer paqueterías
-  const filteredPackages = cashboxData?.filter((item: any) => {
+  const filteredPackages = paidReservations?.filter((item: any) => {
     // Solo incluir items que sean paqueterías
     if (!item.originalPackageId && !item.packageDescription) {
       return false;
