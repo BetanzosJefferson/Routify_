@@ -133,7 +133,9 @@ export class CutoffService {
             route: item.tripName || 'Sin ruta',
             passenger: isPackage ? 
               (item.sender || item.senderName || 'Sin remitente') : 
-              (item.passengers?.map(p => `${p.firstName} ${p.lastName}`).join(', ') || 'Sin pasajeros')
+              (Array.isArray(item.passengers) ? 
+                item.passengers.map(p => `${p.firstName || ''} ${p.lastName || ''}`).join(', ') : 
+                (item.name || 'Sin pasajeros'))
           })
         });
       }
