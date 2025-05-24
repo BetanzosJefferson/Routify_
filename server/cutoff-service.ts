@@ -381,34 +381,63 @@ export class CutoffService {
           const tripId = item.tripId || 0;
           
           if (tripId > 0) {
-            // NUEVA IMPLEMENTACIÓN: Obtener datos de la ruta directamente
-            // Esto asegura que tengamos la información correcta incluso si otras partes fallan
-            const routeInfo = await this.getRouteByTripId(tripId);
-            
-            if (routeInfo) {
-              console.log(`[createCutoff] DATOS DE RUTA OBTENIDOS DIRECTAMENTE:`, JSON.stringify(routeInfo));
-              
-              // Transferir la información obtenida directamente al item
-              item.routeName = routeInfo.name;
-              item.origin = routeInfo.origin;
-              item.destination = routeInfo.destination;
-              
-              // Log para verificar los datos transferidos
-              console.log(`[createCutoff] Datos transferidos: Origen=${item.origin}, Destino=${item.destination}`);
-            } else {
-              console.warn(`[createCutoff] No se pudieron obtener datos de la ruta para el viaje ${tripId}`);
-            }
-            
-            // También seguimos obteniendo los datos del viaje para tener la información de fecha/hora
+            // Obtenemos primero los datos del viaje para poder acceder a segmentOrigin/segmentDestination
             const trip = await db
               .select()
               .from(schema.trips)
               .where(eq(schema.trips.id, tripId))
               .limit(1);
-            
+              
             if (trip.length > 0) {
+              // Guardamos la información de fecha/hora
               item.departureDate = trip[0].departureDate;
               item.departureTime = trip[0].departureTime;
+              
+              // Comprobamos si hay segmentos específicos definidos
+              const hasSegmentOrigin = trip[0].segmentOrigin && trip[0].segmentOrigin.trim() !== '';
+              const hasSegmentDestination = trip[0].segmentDestination && trip[0].segmentDestination.trim() !== '';
+              
+              console.log(`[createCutoff] Información del viaje:`, {
+                id: trip[0].id,
+                routeId: trip[0].routeId,
+                segmentOrigin: trip[0].segmentOrigin,
+                segmentDestination: trip[0].segmentDestination,
+                hasSegmentOrigin,
+                hasSegmentDestination
+              });
+              
+              // Si existe un ID de ruta, vamos a obtener los datos de la ruta
+              if (trip[0].routeId) {
+                const route = await db
+                  .select()
+                  .from(schema.routes)
+                  .where(eq(schema.routes.id, trip[0].routeId))
+                  .limit(1);
+                  
+                if (route.length > 0) {
+                  // Guardamos el nombre de la ruta
+                  item.routeName = route[0].name;
+                  
+                  // IMPORTANTE: Usamos exactamente la misma lógica que en la interfaz de usuario
+                  // Prioridad: segmentOrigin o route.origin (igual que el código frontend)
+                  item.origin = hasSegmentOrigin ? trip[0].segmentOrigin : route[0].origin;
+                  item.destination = hasSegmentDestination ? trip[0].segmentDestination : route[0].destination;
+                  
+                  console.log(`[createCutoff] DATOS COMPLETOS:`, {
+                    routeName: item.routeName,
+                    origin: item.origin,
+                    destination: item.destination,
+                    routeOrigin: route[0].origin,
+                    routeDestination: route[0].destination
+                  });
+                } else {
+                  console.warn(`[createCutoff] No se encontró la ruta ${trip[0].routeId}`);
+                }
+              } else {
+                console.warn(`[createCutoff] El viaje ${tripId} no tiene routeId`);
+              }
+            } else {
+              console.warn(`[createCutoff] No se encontró el viaje ${tripId}`);
             }
           }
           
