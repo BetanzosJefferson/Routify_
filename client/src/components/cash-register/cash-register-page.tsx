@@ -502,26 +502,38 @@ export function CashRegisterPage() {
     }
   };
   
-  // Cargar historial de cortes y elementos procesados desde localStorage
-  useEffect(() => {
-    // Cargar historial de cortes
-    const storedHistory = localStorage.getItem('cutoffHistory');
-    if (storedHistory) {
-      try {
-        setCutoffHistory(JSON.parse(storedHistory));
-      } catch (e) {
-        console.error("Error al cargar historial de cortes:", e);
+  // Función para cargar el historial de cortes desde el servidor
+  const loadCutoffHistory = async () => {
+    if (!user) return;
+    
+    try {
+      const response = await fetch('/api/cutoffs');
+      if (response.ok) {
+        const cutoffs = await response.json();
+        setCutoffHistory(cutoffs);
+      } else {
+        console.error("Error al cargar historial de cortes:", await response.text());
         setCutoffHistory([]);
       }
+    } catch (error) {
+      console.error("Error al cargar historial de cortes:", error);
+      setCutoffHistory([]);
+    }
+  };
+  
+  // Cargar historial de cortes desde el servidor
+  useEffect(() => {
+    if (user) {
+      loadCutoffHistory();
     }
     
-    // También inicializar el estado isInitialLoad a false después de cargar datos
+    // Inicializar el estado isInitialLoad a false después de cargar datos
     const timer = setTimeout(() => {
       setIsInitialLoad(false);
     }, 1000);
     
     return () => clearTimeout(timer);
-  }, []);
+  }, [user]);
 
   // Función para mostrar el historial de cortes
   const showCutoffHistory = () => {
@@ -553,53 +565,41 @@ export function CashRegisterPage() {
     try {
       setIsLoadingCutoff(true);
       
-      // En lugar de comunicarnos con el backend, simulamos un corte local
-      // Esta es una solución temporal hasta que se implemente completamente el backend
+      // Conectamos con el backend para realizar el corte de caja persistente
       
-      // Crear un nuevo registro de corte
-      const newCutoff = {
-        id: Date.now(),
-        date: new Date().toISOString(),
-        user: `${user.firstName} ${user.lastName}`,
-        totalAmount: cutoffData.totalAmount,
-        totalCash: cutoffData.totalCash,
-        totalTransfer: cutoffData.totalTransfer,
-        transactionCount: cutoffData.transactionCount,
-        items: cutoffData.transactions,
-        notes: cutoffNotes || ""
+      // Preparar los datos para enviar al servidor
+      const requestData = {
+        notes: cutoffNotes || `Corte realizado por ${user.firstName} ${user.lastName}`,
+        items: cutoffData.transactions.map(item => ({
+          ...item,
+          // Asegurarse de que cada elemento tenga el tipo correcto
+          type: item.originalPackageId ? 'package' : 'reservation'
+        }))
       };
       
-      // Guardar en historial local
-      const storedHistory = localStorage.getItem('cutoffHistory');
-      const history = storedHistory ? JSON.parse(storedHistory) : [];
-      history.unshift(newCutoff); // Agregar al inicio para mostrar más recientes primero
-      localStorage.setItem('cutoffHistory', JSON.stringify(history));
-      setCutoffHistory(history);
-      
-      // Guardar IDs de elementos procesados en localStorage para simular
-      // la limpieza de la tabla sin depender de la tabla processed_items en el servidor
-      const processedItemsKey = `processed_items_${user.id}`;
-      const storedProcessedItems = localStorage.getItem(processedItemsKey);
-      const processedItems = storedProcessedItems ? JSON.parse(storedProcessedItems) : [];
-      
-      // Agregar IDs de los elementos procesados en este corte
-      cutoffData.transactions.forEach(item => {
-        const itemId = item.id;
-        const itemType = item.type || (item.originalPackageId ? 'package' : 'reservation');
-        processedItems.push({ 
-          type: itemType, 
-          id: itemId,
-          processedAt: new Date().toISOString(),
-          cutoffId: newCutoff.id
-        });
+      // Enviar datos al servidor para crear el corte en la base de datos
+      const response = await fetch('/api/cutoffs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
       });
       
-      // Guardar en localStorage
-      localStorage.setItem(processedItemsKey, JSON.stringify(processedItems));
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al procesar el corte");
+      }
       
-      // En un entorno real, esto enviaría los datos al servidor y luego refrescaría
-      // Pero para esta simulación, simplemente invalidamos la caché para forzar una recarga
+      const result = await response.json();
+      console.log("Corte creado exitosamente:", result);
+      
+      // Invalidar la caché para forzar una recarga de las transacciones
+      // Esto eliminará los elementos procesados en este corte
       queryClient.invalidateQueries({ queryKey: ["/api/cashbox/transactions"] });
+      
+      // También invalidar la caché de los cortes para mostrar el nuevo corte
+      queryClient.invalidateQueries({ queryKey: ["/api/cutoffs"] });
       
       // Limpiar los filtros para mostrar la vista limpia
       setSearchTerm("");
