@@ -494,21 +494,6 @@ export function CashRegisterPage() {
   // Variable para almacenar las notas del corte
   const [cutoffNotes, setCutoffNotes] = useState("");
   
-  // Función para determinar el origen o destino de una ruta con prioridad
-  const determineRoutePoint = (segmentPoint: string | null, routePoint: string | null, directPoint: string | null): string => {
-    // Prioridad 1: Usar punto de segmento si está disponible
-    if (segmentPoint) return segmentPoint;
-    
-    // Prioridad 2: Usar punto de ruta si está disponible
-    if (routePoint) return routePoint;
-    
-    // Prioridad 3: Usar punto directo si está disponible
-    if (directPoint) return directPoint;
-    
-    // Valor por defecto si no hay información
-    return "Punto no especificado";
-  };
-
   // Función para realizar el corte de caja
   const handleCashboxCutoff = async () => {
     if (!user) return;
@@ -520,8 +505,24 @@ export function CashRegisterPage() {
       toast({
         title: "Actualizando datos",
         description: "Obteniendo las transacciones más recientes...",
-        duration: 3000,
       });
+      
+      // Refrescar los datos para asegurarnos de tener todas las transacciones actualizadas
+      await queryClient.invalidateQueries({ queryKey: ["/api/cashbox/transactions"] });
+      
+      // Esperar a que la consulta se complete haciendo una nueva consulta directa
+      // para asegurar que tenemos los datos más recientes
+      const response = await fetch('/api/cashbox/transactions');
+      if (!response.ok) {
+        throw new Error("Error al actualizar las transacciones");
+      }
+      
+      // Obtener los datos frescos
+      const freshTransactions = await response.json();
+      console.log("Transacciones actualizadas para el corte:", freshTransactions.length);
+      
+      // Asegurar que la actualización se refleje en el estado local
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       // Determinar si estamos filtrando los datos
       const isFiltered = searchTerm || dateFilter || paymentMethodFilter !== 'todos' || (isTicketOfficeView && companyFilter !== 'todas');
@@ -544,35 +545,17 @@ export function CashRegisterPage() {
         }
       }
       
-      // Preparar los datos para el modal - calculamos los totales actuales
+      // Preparar los datos para el modal - incluimos tanto reservaciones como paqueterías
       const cutoffSummary = {
-        date: new Date().toLocaleString('es-MX', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
+        date: new Date().toLocaleString(),
         user: `${user.firstName} ${user.lastName}`,
         totalAmount, // El total ya incluye reservaciones y paqueterías
         totalCash,
         totalTransfer,
-        transactionCount: sortedReservations.length + sortedPackages.length
-      };
-      
-      // Establecer los datos del corte y mostrar el modal
-      setCutoffData(cutoffSummary);
-      setShowCutoffModal(true);
-    } catch (error) {
-      console.error("Error al preparar el corte de caja:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo preparar el corte de caja. Por favor intente nuevamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoadingCutoff(false);
-    }
+        transactionCount: sortedReservations.length + sortedPackages.length, // Total de transacciones
+        transactions: [
+          // Reservaciones
+          ...sortedReservations.map(r => {
             // Usar la misma lógica que usamos en el console.log para origen/destino
             const origin = r.trip?.segmentOrigin || (r.trip?.route && r.trip.route.origin) || r.origin || "Origen no especificado";
             const destination = r.trip?.segmentDestination || (r.trip?.route && r.trip.route.destination) || r.destination || "Destino no especificado";
@@ -1141,7 +1124,7 @@ Total transacciones: ${cutoffData.transactionCount}
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Total</p>
-                    <p className="font-medium text-primary">${cutoffData.totalAmount}</p>
+                    <p className="font-medium text-primary">{formatPrice(cutoffData.totalAmount)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Transacciones</p>
@@ -1149,11 +1132,11 @@ Total transacciones: ${cutoffData.transactionCount}
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Efectivo</p>
-                    <p className="font-medium text-green-600">${cutoffData.totalCash}</p>
+                    <p className="font-medium text-green-600">{formatPrice(cutoffData.totalCash)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Transferencia</p>
-                    <p className="font-medium text-blue-600">${cutoffData.totalTransfer}</p>
+                    <p className="font-medium text-blue-600">{formatPrice(cutoffData.totalTransfer)}</p>
                   </div>
                 </div>
               </div>
