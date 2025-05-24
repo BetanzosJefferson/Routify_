@@ -1937,11 +1937,28 @@ Total transacciones: ${cutoffData.transactionCount}
                             }
                           });
                           
-                          // Usar la función de generación de PDF para el ticket
+                          // Recalcular los totales de efectivo y transferencia a partir de las transacciones detalladas
+                          // para asegurar que los montos del PDF reflejen el mismo desglose que se muestra en el modal
+                          const calculatedTotalCash = transactionsDetailed
+                            .filter(t => t.paymentMethod === 'efectivo')
+                            .reduce((sum, t) => sum + (t.amount || 0), 0);
+                            
+                          const calculatedTotalTransfer = transactionsDetailed
+                            .filter(t => t.paymentMethod === 'transferencia')
+                            .reduce((sum, t) => sum + (t.amount || 0), 0);
+                            
+                          console.log('Recalculando totales para PDF:', {
+                            calculatedTotalCash,
+                            calculatedTotalTransfer,
+                            transactionsDetallesCount: transactionsDetailed.length
+                          });
+                            
+                          // Usar la función de generación de PDF para el ticket con los totales recalculados
                           await generateCutoffTicketPDF({
                             totalAmount: cutoff.totalAmount,
-                            totalCash: cutoff.totalCash,
-                            totalTransfer: cutoff.totalTransfer,
+                            // Usar los totales recalculados para asegurar consistencia
+                            totalCash: calculatedTotalCash,
+                            totalTransfer: calculatedTotalTransfer,
                             transactionCount: cutoff.transactionCount,
                             user: cutoff.user,
                             // Ahora incluimos las transacciones detalladas
