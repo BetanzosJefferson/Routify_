@@ -68,12 +68,6 @@ export function CashRegisterPage() {
   // Variable para almacenar información completa de rutas
   const [completeRoutes, setCompleteRoutes] = useState<{[key: string]: string}>({});
   
-  // Hook para obtener cajas con transacciones pendientes (solo para rol dueño)
-  const { data: pendingCashboxes, isLoading: isLoadingPendingCashboxes } = useQuery({
-    queryKey: ['/api/cashboxes/company/pending'],
-    enabled: user?.role === 'dueño' || user?.role === 'OWNER'
-  });
-  
   // Estados adicionales para mejorar la UX
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showLoadingDelay, setShowLoadingDelay] = useState(false);
@@ -556,8 +550,26 @@ export function CashRegisterPage() {
       // Preparar los datos para el modal usando las transacciones frescas obtenidas directamente del servidor
       // Esto garantiza que estamos usando los datos más actualizados
       
-      // Procesar los datos frescos de transacciones
-      const freshReservations = freshTransactions.filter(t => t.type === 'reservation');
+      // Procesar los datos frescos de transacciones y asegurar que tengan nombre de pasajero
+      const freshReservations = freshTransactions.filter(t => t.type === 'reservation').map(r => {
+        // Asegurar que tengamos el nombre del pasajero correctamente formateado
+        const passengerName = r.passengers && Array.isArray(r.passengers) && r.passengers.length > 0
+          ? `${r.passengers[0]?.firstName || ''} ${r.passengers[0]?.lastName || ''}`.trim()
+          : 'Sin pasajeros';
+        
+        // Loguear para verificar que estamos obteniendo el nombre del pasajero
+        console.log(`Procesando pasajero para reserva ${r.id}:`, {
+          id: r.id,
+          passengers: r.passengers,
+          extractedName: passengerName
+        });
+        
+        return {
+          ...r,
+          passengerName
+        };
+      });
+      
       const freshPackages = freshTransactions.filter(t => t.type === 'package');
       
       // Calcular nuevos totales basados en los datos frescos
@@ -639,15 +651,26 @@ export function CashRegisterPage() {
               calculatedAmount: transactionAmount
             });
             
+            // Extraer el nombre del pasajero de forma segura
+            const passengerName = r.passengerName || (
+              r.passengers && Array.isArray(r.passengers) && r.passengers.length > 0 
+              ? `${r.passengers[0]?.firstName || ''} ${r.passengers[0]?.lastName || ''}`.trim()
+              : "Sin pasajeros"
+            );
+            
+            console.log("Preparando datos de pasajero para el modal:", {
+              id: r.id,
+              passengerName,
+              hasPassengers: r.passengers && r.passengers.length > 0
+            });
+            
             return {
               id: r.id,
               type: 'reservation',
               tripName: r.trip?.route?.name || "Sin ruta",
               origin,
               destination,
-              passengerName: r.passengers && r.passengers.length > 0 
-                ? `${r.passengers[0]?.firstName || ''} ${r.passengers[0]?.lastName || ''}`.trim()
-                : "Sin pasajeros",
+              passengerName,
               passengers: r.passengers?.map(p => `${p.firstName} ${p.lastName}`).join(", ") || "Sin pasajeros",
               amount: transactionAmount, // Usar el monto calculado correctamente
               paymentMethod: getCombinedPaymentMethod(r)
@@ -801,11 +824,36 @@ export function CashRegisterPage() {
       // Preparar los datos para enviar al servidor
       const requestData = {
         notes: cutoffNotes || `Corte realizado por ${user.firstName} ${user.lastName}`,
-        items: cutoffData.transactions.map(item => ({
-          ...item,
-          // Asegurarse de que cada elemento tenga el tipo correcto
-          type: item.originalPackageId ? 'package' : 'reservation'
-        }))
+        items: cutoffData.transactions.map(item => {
+          // Asegurarse de que el pasajero/remitente se incluya en los detalles
+          const itemDetails = {
+            passengerName: item.type === 'reservation' 
+              ? (item.passengerName || 
+                 (item.passengers && Array.isArray(item.passengers) && item.passengers.length > 0 
+                   ? `${item.passengers[0]?.firstName || ''} ${item.passengers[0]?.lastName || ''}`.trim() 
+                   : 'No disponible'))
+              : (item.type === 'package' ? (item.sender || 'Remitente sin nombre') : 'No disponible'),
+            origin: item.origin || 'Origen no especificado',
+            destination: item.destination || 'Destino no especificado',
+            amount: item.amount || 0,
+            totalAmount: item.totalAmount || 0,
+            tripName: item.tripName || ''
+          };
+          
+          console.log("Enviando información al servidor:", {
+            id: item.id,
+            type: item.type,
+            passengerName: itemDetails.passengerName
+          });
+          
+          return {
+            ...item,
+            // Asegurarse de que cada elemento tenga el tipo correcto
+            type: item.originalPackageId ? 'package' : 'reservation',
+            // Incluir los detalles importantes que queremos guardar
+            details: itemDetails
+          };
+        })
       };
       
       // Enviar datos al servidor para crear el corte en la base de datos
@@ -1228,7 +1276,10 @@ Total transacciones: ${cutoffData.transactionCount}
                       <p>
                         <span className="font-medium">Pasajero:</span> {
                           t.type === 'reservation' 
-                            ? (t.passengerName || 'No disponible')
+                            ? (t.passengerName || 
+                               (t.passengers && Array.isArray(t.passengers) && t.passengers.length > 0 
+                                 ? `${t.passengers[0]?.firstName || ''} ${t.passengers[0]?.lastName || ''}`.trim() 
+                                 : 'No disponible'))
                             : (t.type === 'package' ? (t.sender || 'Remitente sin nombre') : 'No disponible')
                         }
                       </p>
