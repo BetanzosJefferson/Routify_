@@ -188,7 +188,7 @@ export function CajaNuevaPage() {
       
       toast({
         title: "Corte realizado",
-        description: `Se ha realizado el corte con éxito. Total: ${formatPrice(data.corte.totalGeneral)}`,
+        description: `Se ha realizado el corte con éxito. Total: ${formatCurrency(data.corte.totalGeneral)}`,
       });
       
       // Cerrar modal y recargar datos
@@ -249,7 +249,7 @@ export function CajaNuevaPage() {
       
       toast({
         title: "Gasto registrado",
-        description: `Se ha registrado el gasto de ${formatPrice(monto)} correctamente`,
+        description: `Se ha registrado el gasto de ${formatCurrency(monto)} correctamente`,
       });
       
       // Cerrar modal y recargar datos
@@ -412,7 +412,7 @@ export function CajaNuevaPage() {
                     <DollarSign className="h-5 w-5 text-primary mr-2" />
                     <p className="text-sm font-medium">Total en Caja</p>
                   </div>
-                  <p className="text-2xl font-bold">{formatPrice(totalGeneral)}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(totalGeneral)}</p>
                 </CardContent>
               </Card>
               
@@ -422,7 +422,7 @@ export function CajaNuevaPage() {
                     <Banknote className="h-5 w-5 text-green-600 mr-2" />
                     <p className="text-sm font-medium">Efectivo</p>
                   </div>
-                  <p className="text-2xl font-bold text-green-700">{formatPrice(totalEfectivo)}</p>
+                  <p className="text-2xl font-bold text-green-700">{formatCurrency(totalEfectivo)}</p>
                 </CardContent>
               </Card>
               
@@ -432,7 +432,7 @@ export function CajaNuevaPage() {
                     <CreditCard className="h-5 w-5 text-blue-600 mr-2" />
                     <p className="text-sm font-medium">Transferencia</p>
                   </div>
-                  <p className="text-2xl font-bold text-blue-700">{formatPrice(totalTransferencia)}</p>
+                  <p className="text-2xl font-bold text-blue-700">{formatCurrency(totalTransferencia)}</p>
                 </CardContent>
               </Card>
               
@@ -442,7 +442,7 @@ export function CajaNuevaPage() {
                     <Trash className="h-5 w-5 text-red-600 mr-2" />
                     <p className="text-sm font-medium">Gastos</p>
                   </div>
-                  <p className="text-2xl font-bold text-red-600">{formatPrice(totalGastos)}</p>
+                  <p className="text-2xl font-bold text-red-600">{formatCurrency(totalGastos)}</p>
                 </CardContent>
               </Card>
             </div>
@@ -588,7 +588,7 @@ export function CajaNuevaPage() {
                               ? "text-red-600 font-medium" 
                               : "font-medium"
                           }>
-                            {transaccion.tipo === "gasto" ? "-" : ""}{formatPrice(transaccion.monto)}
+                            {transaccion.tipo === "gasto" ? "-" : ""}{formatCurrency(transaccion.monto)}
                           </span>
                         </TableCell>
                       </TableRow>
