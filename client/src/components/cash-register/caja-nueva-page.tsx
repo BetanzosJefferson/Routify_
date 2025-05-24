@@ -615,25 +615,25 @@ export function CajaNuevaPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-muted p-3 rounded-md">
                 <p className="text-sm font-medium mb-1">En efectivo</p>
-                <p className="text-xl font-semibold">{formatPrice(totalEfectivo)}</p>
+                <p className="text-xl font-semibold">{formatCurrency(totalEfectivo)}</p>
               </div>
               
               <div className="bg-muted p-3 rounded-md">
                 <p className="text-sm font-medium mb-1">Transferencia</p>
-                <p className="text-xl font-semibold">{formatPrice(totalTransferencia)}</p>
+                <p className="text-xl font-semibold">{formatCurrency(totalTransferencia)}</p>
               </div>
             </div>
             
             <div className="bg-muted p-3 rounded-md">
               <p className="text-sm font-medium mb-1">Gastos</p>
-              <p className="text-xl font-semibold text-red-600">{formatPrice(totalGastos)}</p>
+              <p className="text-xl font-semibold text-red-600">{formatCurrency(totalGastos)}</p>
             </div>
             
             <Separator />
             
             <div className="bg-primary/10 p-3 rounded-md">
               <p className="text-sm font-medium mb-1">Total corte</p>
-              <p className="text-2xl font-bold">{formatPrice(totalGeneral)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(totalGeneral)}</p>
             </div>
             
             <div>
