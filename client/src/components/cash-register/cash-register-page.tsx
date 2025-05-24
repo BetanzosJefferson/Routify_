@@ -4,6 +4,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { ReservationWithDetails } from "@shared/schema";
+import { jsPDF } from "jspdf";
+import QRCode from "qrcode";
 import { 
   DollarSign, 
   Search, 
@@ -703,8 +705,141 @@ Total transacciones: ${cutoffData.transactionCount}
     }
   };
   
+  // Función para generar un PDF del ticket de corte en formato térmico (60mm)
+  const generateCutoffTicketPDF = async (data: any, cutoffInfo: any) => {
+    try {
+      // Crear un nuevo documento PDF con dimensiones 60mm x altura variable
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: [58, 160], // 58mm (ancho estándar para tickets de 60mm) x 160mm de alto
+      });
+      
+      // Configuración básica
+      doc.setFont("courier", "normal");
+      
+      // Variables para posición vertical
+      let y = 5;
+      const margin = 5;
+      
+      // Encabezado
+      doc.setFontSize(10);
+      doc.setFont("courier", "bold");
+      
+      // Centrar el texto del encabezado
+      doc.text("AUTOBUSES VIAJEROS", 29, y, { align: "center" });
+      y += 4;
+      
+      doc.setFontSize(8);
+      doc.text(`CORTE DE CAJA #${cutoffInfo.id}`, 29, y, { align: "center" });
+      y += 3;
+      
+      // Añadir fecha 
+      try {
+        const fechaCorte = new Date(cutoffInfo.createdAt);
+        if (!isNaN(fechaCorte.getTime())) {
+          doc.text(`FECHA: ${fechaCorte.toLocaleString('es-MX', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}`, margin, y);
+        } else {
+          doc.text(`FECHA: ${new Date().toLocaleString('es-MX')}`, margin, y);
+        }
+      } catch (e) {
+        doc.text(`FECHA: ${new Date().toLocaleString('es-MX')}`, margin, y);
+      }
+      
+      y += 3;
+      
+      // Línea separadora
+      y += 2;
+      doc.setDrawColor(0);
+      doc.line(margin, y, 53, y);
+      y += 3;
+      
+      // Información del corte
+      doc.setFontSize(8);
+      doc.setFont("courier", "bold");
+      doc.text("RESUMEN DE CAJA:", margin, y);
+      y += 4;
+      
+      doc.setFont("courier", "normal");
+      doc.text(`TOTAL: ${formatPrice(data.totalAmount)}`, margin, y);
+      y += 3;
+      doc.text(`EFECTIVO: ${formatPrice(data.totalCash)}`, margin, y);
+      y += 3;
+      doc.text(`TRANSFERENCIA: ${formatPrice(data.totalTransfer)}`, margin, y);
+      y += 3;
+      doc.text(`TRANSACCIONES: ${data.transactionCount}`, margin, y);
+      y += 4;
+      
+      // Otra línea separadora
+      doc.line(margin, y, 53, y);
+      y += 4;
+      
+      // Detalles de las transacciones
+      if (data.transactions && data.transactions.length > 0) {
+        doc.setFontSize(7);
+        doc.setFont("courier", "bold");
+        doc.text("DETALLE DE TRANSACCIONES:", margin, y);
+        y += 3;
+        
+        // Mostrar solo las primeras 10 transacciones
+        const limitedTransactions = data.transactions.slice(0, 10);
+        
+        doc.setFont("courier", "normal");
+        limitedTransactions.forEach((t: any) => {
+          // Limitar longitud del nombre
+          const tripName = t.tripName ? 
+            (t.tripName.length > 18 ? t.tripName.substring(0, 15) + '...' : t.tripName) : 
+            'Sin nombre';
+          
+          doc.text(`#${t.id} - ${tripName}`, margin, y);
+          y += 2.5;
+          doc.text(`${formatPrice(t.amount)} - ${t.paymentMethod}`, margin + 2, y);
+          y += 3;
+        });
+        
+        // Si hay más transacciones
+        if (data.transactions.length > 10) {
+          y += 1;
+          doc.text(`... y ${data.transactions.length - 10} transacciones más`, margin, y);
+          y += 3;
+        }
+      }
+      
+      // Línea final
+      y += 2;
+      doc.line(margin, y, 53, y);
+      y += 4;
+      
+      // Pie de página
+      doc.setFontSize(8);
+      doc.text("¡GRACIAS POR SU SERVICIO!", 29, y, { align: "center" });
+      y += 3;
+      doc.setFontSize(6);
+      doc.text("www.autobusesviajeros.com", 29, y, { align: "center" });
+      
+      // Abrir el PDF en una nueva ventana
+      window.open(URL.createObjectURL(doc.output('blob')));
+      
+      return doc;
+    } catch (error) {
+      console.error("Error al generar el PDF del corte:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo generar el ticket PDF. Intente nuevamente.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+  
   // Función para imprimir el ticket de corte
-  const printCutoffTicket = (data: any, cutoffInfo: any) => {
+  const printCutoffTicket = async (data: any, cutoffInfo: any) => {
     try {
       // Crear contenido del ticket (formato 60mm)
       const ticketContent = document.createElement('div');
