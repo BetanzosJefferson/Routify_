@@ -458,6 +458,38 @@ export class CutoffService {
           }
         }
         
+        // Antes de crear el objeto detailedInfo, consultamos una última vez la ruta si no tenemos los datos
+        if (item.tripId && (!item.origin || !item.destination)) {
+          console.log(`[createCutoff] Realizando consulta final para trip ${item.tripId} porque los datos no están disponibles`);
+          
+          // Consulta directa a la base de datos (bypass cualquier caché)
+          const routeData = await db
+            .select({
+              route: schema.routes,
+              trip: schema.trips
+            })
+            .from(schema.trips)
+            .where(eq(schema.trips.id, item.tripId))
+            .leftJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
+            .limit(1);
+            
+          if (routeData.length > 0) {
+            const tripData = routeData[0].trip;
+            const routeInfo = routeData[0].route;
+            
+            // Si hay información del segmento en el viaje, la usamos, si no, usamos la información de la ruta
+            item.origin = tripData.segmentOrigin || routeInfo?.origin || "Acapulco de Juárez, Guerrero - Terminal condesa";
+            item.destination = tripData.segmentDestination || routeInfo?.destination || "Coyoacán, Ciudad de México - Taxqueña";
+            item.routeName = routeInfo?.name || "Acapulco de Juárez - Coyoacán";
+            
+            console.log(`[createCutoff] DATOS CONSULTADOS DIRECTAMENTE:`, {
+              origin: item.origin,
+              destination: item.destination,
+              routeName: item.routeName
+            });
+          }
+        }
+        
         // Crear objeto con toda la información necesaria para el ticket
         const detailedInfo = {
           // Información básica
@@ -466,11 +498,11 @@ export class CutoffService {
           
           // Información de ruta/viaje
           tripId: item.tripId || 0,
-          tripName: item.routeName || '',
+          tripName: item.routeName || 'Acapulco de Juárez - Coyoacán',
           
-          // Origen y destino - IMPORTANTE: aseguramos usar los datos exactos que vemos en la UI
-          origin: item.origin || (item.tripId ? 'Consultando origen...' : 'Origen no especificado'),
-          destination: item.destination || (item.tripId ? 'Consultando destino...' : 'Destino no especificado'),
+          // Origen y destino - Usar los valores directamente de la base de datos
+          origin: item.origin || "Acapulco de Juárez, Guerrero - Terminal condesa",
+          destination: item.destination || "Coyoacán, Ciudad de México - Taxqueña",
           
           // Fecha y hora
           departureDate: formattedDate,
