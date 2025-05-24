@@ -1569,27 +1569,27 @@ Total transacciones: ${cutoffData.transactionCount}
                           const tripData = reservation.trip;
                           const hasSegments = tripData && tripData.segmentOrigin && tripData.segmentDestination;
                           
-                          console.log("Información de celda de ruta:", {
-                            id: reservation.id,
-                            hasTrip: !!reservation.trip,
-                            routeInfo: hasSegments 
+                          // Obtenemos la información de origen y destino según corresponda
+                          const routeInfo = hasSegments 
+                            ? {
+                                origin: tripData.segmentOrigin,
+                                destination: tripData.segmentDestination,
+                                isSegment: true
+                              }
+                            : tripData
                               ? {
-                                  // Si hay segmentos específicos, solo mostramos esos
-                                  origin: tripData.segmentOrigin,
-                                  destination: tripData.segmentDestination,
-                                  isSegment: true
+                                  origin: tripData.route?.origin,
+                                  destination: tripData.route?.destination,
+                                  isSegment: false
                                 }
-                              : tripData
-                                ? {
-                                    // Si no hay segmentos, mostramos la ruta general
-                                    origin: tripData.route?.origin,
-                                    destination: tripData.route?.destination,
-                                    isSegment: false
-                                  }
-                                : null,
-                            isPackage: !!reservation.originalPackageId,
-                            packageOrigin: reservation.origin,
-                            packageDestination: reservation.destination
+                              : null;
+                          
+                          // Log simplificado con solo la información solicitada
+                          console.log("Ruta:", {
+                            id: reservation.id,
+                            isSegment: routeInfo?.isSegment || false,
+                            origin: routeInfo?.origin || "No disponible",
+                            destination: routeInfo?.destination || "No disponible"
                           });
                           
                           // Devuelve el contenido original
