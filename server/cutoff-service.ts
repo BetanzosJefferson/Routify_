@@ -176,13 +176,12 @@ export class CutoffService {
         .from(schema.passengers)
         .where(eq(schema.passengers.reservationId, reservationId));
       
-      // Transformamos a un formato más simple para evitar problemas de serialización
+      // Transformamos a un formato más simple usando exactamente los campos de la tabla
       const processedPassengers = passengers.map(p => ({
-        firstName: p.firstName || '',
-        lastName: p.lastName || '',
-        phone: p.phone || '',
-        email: p.email || '',
-        seatNumber: p.seatNumber || ''
+        id: p.id,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        reservationId: p.reservationId
       }));
       
       console.log(`[getReservationPassengers] ${processedPassengers.length} pasajeros encontrados para reservación ${reservationId}`);
@@ -409,11 +408,10 @@ export class CutoffService {
           dimensions: isPackage ? (item.dimensions || '') : '',
           
           // Para reservaciones - usando los pasajeros obtenidos de la BD o el objeto
+          // Filtramos solo los campos que existen en la tabla
           passengers: passengers.map((p: any) => ({
             firstName: p.firstName || '',
-            lastName: p.lastName || '',
-            phone: p.phone || '',
-            email: p.email || ''
+            lastName: p.lastName || ''
           })),
           
           // Metadatos
