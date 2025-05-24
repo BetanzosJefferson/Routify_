@@ -811,12 +811,21 @@ Total transacciones: ${cutoffData.transactionCount}
             if (t.tripName) {
               // Formatear el nombre del viaje (ruta) para evitar desbordamiento
               let tripText = `Viaje: ${t.tripName}`;
+              
+              // Si es demasiado largo, dividir en múltiples líneas
               if (tripText.length > 30) {
-                // Si es demasiado largo, truncar y añadir ...
-                tripText = tripText.substring(0, 27) + '...';
+                // Usar la función splitTextToSize para dividir el texto en líneas
+                const tripLines = doc.splitTextToSize(tripText, 46); // 46mm es el ancho disponible
+                
+                // Mostrar cada línea
+                tripLines.forEach((line: string, i: number) => {
+                  doc.text(i === 0 ? line : `  ${line}`, margin + 2, y);
+                  y += 2;
+                });
+              } else {
+                doc.text(tripText, margin + 2, y);
+                y += 2;
               }
-              doc.text(tripText, margin + 2, y);
-              y += 2;
             }
             
             // Mostrar fecha y hora del viaje si están disponibles
@@ -878,23 +887,25 @@ Total transacciones: ${cutoffData.transactionCount}
             
             // Ruta (origen y destino)
             if (t.origin && t.destination) {
-              // Limitar el largo de la ruta para evitar desbordamiento
-              let originText = t.origin;
-              let destText = t.destination;
+              // Construir el texto de la ruta
+              const routeText = `Ruta: ${t.origin} → ${t.destination}`;
               
-              if ((originText + ' → ' + destText).length > 30) {
-                // Si es demasiado largo, acortar los nombres manteniendo el formato Origen → Destino
-                const maxTextLength = Math.floor((30 - 3) / 2); // 3 es el largo de " → "
-                if (originText.length > maxTextLength) {
-                  originText = originText.substring(0, maxTextLength - 2) + '..';
-                }
-                if (destText.length > maxTextLength) {
-                  destText = destText.substring(0, maxTextLength - 2) + '..';
-                }
+              // Si es demasiado largo, dividir en múltiples líneas
+              if (routeText.length > 30) {
+                // Mostramos "Ruta:" en la primera línea
+                doc.text("Ruta:", margin + 2, y);
+                y += 2;
+                
+                // Luego mostramos Origen y Destino en líneas separadas
+                doc.text(`  Origen: ${t.origin}`, margin + 2, y);
+                y += 2;
+                doc.text(`  Destino: ${t.destination}`, margin + 2, y);
+                y += 2;
+              } else {
+                // Si es corto, mostrar en una sola línea
+                doc.text(routeText, margin + 2, y);
+                y += 2;
               }
-              
-              doc.text(`Ruta: ${originText} → ${destText}`, margin + 2, y);
-              y += 2;
             }
           }
           
