@@ -436,7 +436,7 @@ export function CashRegisterPage() {
     // Aplicar filtro de fecha (misma lógica que para reservaciones)
     let matchesDate = true;
     if (dateFilter) {
-      const packageDate = new Date(reservation.paymentDate || reservation.markedAsPaidAt || reservation.paidAt || reservation.createdAt || '');
+      const packageDate = new Date(item.paymentDate || item.createdAt || '');
       const filterDate = new Date(dateFilter);
       
       matchesDate = (
@@ -449,13 +449,13 @@ export function CashRegisterPage() {
     // Aplicar filtro de método de pago
     let matchesPaymentMethod = true;
     if (paymentMethodFilter && paymentMethodFilter !== 'todos') {
-      matchesPaymentMethod = reservation.paymentMethod === paymentMethodFilter;
+      matchesPaymentMethod = item.paymentMethod === paymentMethodFilter;
     }
     
     // Aplicar filtro de empresa (solo para taquilleros)
     let matchesCompany = true;
     if (isTicketOfficeView && companyFilter !== 'todas') {
-      matchesCompany = reservation.companyInfo?.id === companyFilter;
+      matchesCompany = item.companyId === companyFilter;
     }
     
     return matchesSearch && matchesDate && matchesPaymentMethod && matchesCompany;
