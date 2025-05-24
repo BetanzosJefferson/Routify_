@@ -134,16 +134,26 @@ export class CutoffService {
         return null;
       }
       
-      const result = trips[0];
-      console.log(`[getDetailedTrip] Información obtenida para viaje ${tripId}:`, {
-        id: result.trip.id,
-        routeId: result.trip.routeId,
-        routeName: result.route?.name,
-        departureDate: result.trip.departureDate,
-        departureTime: result.trip.departureTime,
-        origin: result.route?.origin,
-        destination: result.route?.destination
-      });
+      // Transformamos los datos a un formato más simple que elimina problemas de serialización
+      const result = {
+        trip: {
+          id: trips[0].trip.id,
+          routeId: trips[0].trip.routeId,
+          departureDate: trips[0].trip.departureDate ? new Date(trips[0].trip.departureDate).toISOString() : null,
+          departureTime: trips[0].trip.departureTime || '',
+          segmentOrigin: trips[0].trip.segmentOrigin || '',
+          segmentDestination: trips[0].trip.segmentDestination || '',
+          companyId: trips[0].trip.companyId || '',
+        },
+        route: {
+          id: trips[0].route?.id || 0,
+          name: trips[0].route?.name || '',
+          origin: trips[0].route?.origin || '',
+          destination: trips[0].route?.destination || '',
+        }
+      };
+      
+      console.log(`[getDetailedTrip] Información procesada para viaje ${tripId}:`, JSON.stringify(result));
       
       return result;
     } catch (error) {
@@ -166,8 +176,19 @@ export class CutoffService {
         .from(schema.passengers)
         .where(eq(schema.passengers.reservationId, reservationId));
       
-      console.log(`[getReservationPassengers] ${passengers.length} pasajeros encontrados para reservación ${reservationId}`);
-      return passengers;
+      // Transformamos a un formato más simple para evitar problemas de serialización
+      const processedPassengers = passengers.map(p => ({
+        firstName: p.firstName || '',
+        lastName: p.lastName || '',
+        phone: p.phone || '',
+        email: p.email || '',
+        seatNumber: p.seatNumber || ''
+      }));
+      
+      console.log(`[getReservationPassengers] ${processedPassengers.length} pasajeros encontrados para reservación ${reservationId}`);
+      console.log(`[getReservationPassengers] Datos de pasajeros:`, JSON.stringify(processedPassengers));
+      
+      return processedPassengers;
     } catch (error) {
       console.error(`[getReservationPassengers] Error al obtener pasajeros:`, error);
       return [];
@@ -303,14 +324,28 @@ export class CutoffService {
         const trip = tripDetails ? tripDetails.trip : (item.trip || {});
         const route = tripDetails ? tripDetails.route : (item.trip?.route || {});
         
-        console.log(`[createCutoff] Datos finales del viaje para procesamiento:`, {
-          tripId: trip.id,
-          routeName: route.name,
-          departureDate: trip.departureDate,
-          departureTime: trip.departureTime,
-          origin: route.origin,
-          destination: route.destination
-        });
+        // Agregamos log detallado mostrando todos los datos que tenemos disponibles
+        console.log(`[createCutoff] DATOS COMPLETOS DISPONIBLES:`, JSON.stringify({
+          tripDetailsFromDB: tripDetails ? {
+            tripId: tripDetails.trip.id,
+            routeId: tripDetails.trip.routeId,
+            routeName: tripDetails.route?.name,
+            origin: tripDetails.route?.origin,
+            destination: tripDetails.route?.destination,
+            segmentOrigin: tripDetails.trip.segmentOrigin,
+            segmentDestination: tripDetails.trip.segmentDestination,
+            departureDate: tripDetails.trip.departureDate,
+            departureTime: tripDetails.trip.departureTime
+          } : null,
+          tripFromItem: item.trip ? {
+            id: item.trip.id,
+            routeId: item.trip.routeId,
+            routeName: item.trip.route?.name,
+            origin: item.trip.route?.origin,
+            destination: item.trip.route?.destination
+          } : null,
+          pasajeros: passengersList.length
+        }));
         
         // Formatear fecha correctamente si existe
         let departureDate = '';
@@ -332,28 +367,24 @@ export class CutoffService {
         
         console.log(`[createCutoff] Procesando ${passengers.length} pasajeros para el item ${item.id}`);
         
-        // Crear objeto con todos los detalles relevantes para guardar
+        // Crear un objeto final con TODOS los detalles disponibles - priorizando datos de la BD
         const detailedInfo = {
           // Información básica
           id: item.id,
           type: isPackage ? 'package' : 'reservation',
           
-          // Información de ruta/viaje (priorizando datos de la BD)
-          tripId: trip.id || item.tripId,
-          tripName: route.name || item.tripName || '',
+          // Información de ruta/viaje - usando la información más específica
+          tripId: trip.id || item.tripId || 0,
+          tripName: route?.name || item.tripName || '',
           
-          // Origen y destino (priorizando datos de la BD)
-          origin: route.origin || 
-                 trip.segmentOrigin || 
-                 item.origin || '',
-                 
-          destination: route.destination || 
-                      trip.segmentDestination || 
-                      item.destination || '',
+          // Origen y destino - preferimos los segmentos específicos del viaje si están disponibles
+          // Para estos campos específicos, aseguramos que contengan datos válidos
+          origin: trip.segmentOrigin || route?.origin || item.origin || 'Origen no especificado',
+          destination: trip.segmentDestination || route?.destination || item.destination || 'Destino no especificado',
           
-          // Fecha y hora de salida
-          departureDate: departureDate,
-          departureTime: trip.departureTime || '',
+          // Fecha y hora de salida - aseguramos que estén presentes
+          departureDate: departureDate || (trip.departureDate ? String(trip.departureDate) : ''),
+          departureTime: trip.departureTime || item.departureTime || '',
           
           // Información de pago
           amount: item.amount || item.totalAmount || 0,
