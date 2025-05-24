@@ -460,14 +460,15 @@ export function CashRegisterPage() {
     try {
       setIsLoadingCutoff(true);
       
-      // Realizar la petición al servidor para guardar el corte
-      const response = await fetch('/api/cashbox/cutoff', {
+      // Enviar los datos completos al nuevo endpoint de cortes
+      const response = await fetch('/api/cutoffs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          notes: cutoffNotes
+          notes: cutoffNotes,
+          items: cutoffData.transactions // Incluir todas las transacciones para procesarlas
         })
       });
       
@@ -481,19 +482,32 @@ export function CashRegisterPage() {
       if (result.success) {
         toast({
           title: "Corte realizado",
-          description: `Se ha realizado el corte de caja correctamente.`,
+          description: `Se ha realizado el corte de caja correctamente. Las transacciones han sido movidas al historial.`,
         });
         
-        // Imprimir el ticket
-        printCutoffTicket(cutoffData, result.cutoff);
+        // Imprimir el ticket si existe la función
+        if (typeof printCutoffTicket === 'function') {
+          printCutoffTicket(cutoffData, result);
+        }
         
         // Limpiar los estados
         setCutoffData(null);
         setCutoffNotes("");
         setShowCutoffModal(false);
         
-        // Refrescar los datos
-        queryClient.invalidateQueries({ queryKey: ["/api/cash-register"] });
+        // Refrescar los datos para mostrar solo las transacciones no procesadas
+        queryClient.invalidateQueries({ queryKey: ["/api/cashbox/transactions"] });
+        
+        // Mostrar opción para ver el historial
+        const viewHistory = window.confirm(
+          "Corte realizado con éxito. ¿Deseas ver el historial de cortes?"
+        );
+        
+        if (viewHistory) {
+          // Aquí se podría redirigir a una página de historial o mostrar un modal
+          // Por ahora, solo mostramos un mensaje
+          alert("Funcionalidad de historial en desarrollo");
+        }
       } else {
         throw new Error(result.message || "Error al realizar el corte");
       }
