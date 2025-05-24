@@ -189,11 +189,25 @@ export function CashRegisterPage() {
           const tripInfo = allTrips.find((t: any) => t.id === reservation.tripId);
           
           let fullRouteInfo = routeName;
+          let origin = '';
+          let destination = '';
           
           if (tripInfo) {
-            // Añadir origen y destino específicos si están disponibles
-            if (tripInfo.origin && tripInfo.destination) {
-              fullRouteInfo = `${routeName} - ${tripInfo.origin} → ${tripInfo.destination}`;
+            // Determinar origen y destino considerando si es un sub-viaje
+            if (reservation.segmentOrigin && reservation.segmentDestination) {
+              // Es un sub-viaje, usar los segmentos específicos
+              origin = reservation.segmentOrigin;
+              destination = reservation.segmentDestination;
+              console.log(`Sub-viaje detectado para ${tripId}: ${origin} → ${destination}`);
+            } else if (tripInfo.origin && tripInfo.destination) {
+              // Viaje normal, usar origen y destino del viaje principal
+              origin = tripInfo.origin;
+              destination = tripInfo.destination;
+            }
+            
+            // Construir información completa de la ruta con origen y destino
+            if (origin && destination) {
+              fullRouteInfo = `${routeName} - ${origin} → ${destination}`;
             }
             
             // Añadir información de horario si está disponible
@@ -942,9 +956,19 @@ Total transacciones: ${cutoffData.transactionCount}
             }
             
             // Ruta (origen y destino)
-            if (t.origin && t.destination) {
+            let origin = t.origin || '';
+            let destination = t.destination || '';
+            
+            // Si hay información de segmentos de sub-viaje, usarla con prioridad
+            if (t.segmentOrigin && t.segmentDestination) {
+              origin = t.segmentOrigin;
+              destination = t.segmentDestination;
+              console.log(`Usando segmentos específicos en PDF: ${origin} → ${destination}`);
+            }
+            
+            if (origin && destination) {
               // Construir el texto de la ruta
-              const routeText = `Ruta: ${t.origin} → ${t.destination}`;
+              const routeText = `Ruta: ${origin} → ${destination}`;
               
               // Si es demasiado largo, dividir en múltiples líneas
               if (routeText.length > 30) {
@@ -953,9 +977,9 @@ Total transacciones: ${cutoffData.transactionCount}
                 y += 2;
                 
                 // Luego mostramos Origen y Destino en líneas separadas
-                doc.text(`  Origen: ${t.origin}`, margin + 2, y);
+                doc.text(`  Origen: ${origin}`, margin + 2, y);
                 y += 2;
-                doc.text(`  Destino: ${t.destination}`, margin + 2, y);
+                doc.text(`  Destino: ${destination}`, margin + 2, y);
                 y += 2;
               } else {
                 // Si es corto, mostrar en una sola línea
