@@ -154,6 +154,57 @@ export class CutoffService {
                                item.type === 'package' || 
                                (item.senderName !== undefined && item.receiverName !== undefined));
         
+        // Crear objeto con todos los detalles relevantes para guardar
+        const detailedInfo = {
+          // Información básica
+          id: item.id,
+          type: isPackage ? 'package' : 'reservation',
+          
+          // Información de ruta/viaje
+          tripId: item.tripId,
+          tripName: item.tripName || (item.trip ? `${item.trip.route?.name || 'Ruta'} - ${new Date(item.trip?.departureDate).toLocaleDateString()}` : ''),
+          origin: item.origin || item.trip?.segmentOrigin || item.trip?.route?.origin || '',
+          destination: item.destination || item.trip?.segmentDestination || item.trip?.route?.destination || '',
+          departureDate: item.trip?.departureDate || '',
+          departureTime: item.trip?.departureTime || '',
+          
+          // Información de pago
+          amount: item.amount || item.totalAmount || 0,
+          advanceAmount: item.advanceAmount || 0,
+          paymentMethod: item.paymentMethod || 'efectivo',
+          paymentNote: item.paymentNote || (isPackage ? 'Paquetería' : (
+            item.advanceAmount && item.totalAmount > item.advanceAmount ? 'Anticipo' : 'Pago completo'
+          )),
+          concept: isPackage ? 'Paquetería' : 'Reservación',
+          
+          // Información de pasajeros/paquetes
+          passengerCount: item.passengerCount || (Array.isArray(item.passengers) ? item.passengers.length : 0),
+          seatNumbers: item.seatNumbers || [],
+          
+          // Para paqueterías
+          senderName: isPackage ? (item.senderName || '') : '',
+          senderLastName: isPackage ? (item.senderLastName || '') : '',
+          receiverName: isPackage ? (item.receiverName || '') : '',
+          receiverLastName: isPackage ? (item.receiverLastName || '') : '',
+          weight: isPackage ? (item.weight || '') : '',
+          dimensions: isPackage ? (item.dimensions || '') : '',
+          
+          // Para reservaciones
+          passengers: Array.isArray(item.passengers) ? 
+            item.passengers.map((p: any) => ({
+              firstName: p.firstName || '',
+              lastName: p.lastName || '',
+              phone: p.phone || '',
+              email: p.email || ''
+            })) : [],
+          
+          // Metadatos
+          companyId: item.companyId || item.trip?.companyId || '',
+          companyName: item.companyInfo?.name || '',
+          createdAt: item.createdAt || new Date().toISOString(),
+          paidAt: item.paidAt || item.paymentAt || new Date().toISOString()
+        };
+        
         // Guardar en la tabla de elementos procesados
         await this.addProcessedItem({
           cutoffId: cutoff.id,
@@ -162,14 +213,7 @@ export class CutoffService {
           amount: item.amount || item.totalAmount || 0,
           paymentMethod: item.paymentMethod || 'efectivo',
           concept: item.paymentNote || (isPackage ? 'Paquetería' : 'Reservación'),
-          details: JSON.stringify({
-            route: item.tripName || 'Sin ruta',
-            passenger: isPackage ? 
-              (item.sender || item.senderName || item.receiverName || 'Sin remitente') : 
-              (Array.isArray(item.passengers) ? 
-                item.passengers.map(p => `${String(p.firstName || '')} ${String(p.lastName || '')}`).join(', ') : 
-                (item.name || item.passengerName || 'Sin pasajeros'))
-          })
+          details: JSON.stringify(detailedInfo)
         });
       }
       
