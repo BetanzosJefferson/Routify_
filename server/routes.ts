@@ -5792,6 +5792,7 @@ function setupPackageRoutes(app: Express) {
   app.get(apiRouter('/packages'), isAuthenticated, hasPackageAccess, async (req, res) => {
     try {
       const tripId = req.query.tripId ? parseInt(req.query.tripId as string) : undefined;
+      const includeDetails = req.query.includeDetails === "true";
       
       // Filtrar por compañía para asegurar aislamiento de datos
       let companyFilter = null;
@@ -5801,6 +5802,53 @@ function setupPackageRoutes(app: Express) {
       
       // Obtener paquetes
       const packages = await storage.getPackages(companyFilter, tripId);
+      
+      // Si se solicitan detalles adicionales, obtener información de los usuarios relacionados
+      if (includeDetails && packages.length > 0) {
+        const db = storage.getDatabaseClient();
+        
+        // Obtener IDs de los usuarios relacionados con los paquetes
+        const userIds = new Set<number>();
+        for (const pkg of packages) {
+          if (pkg.createdBy) userIds.add(pkg.createdBy);
+          if (pkg.markedAsPaidBy) userIds.add(pkg.markedAsPaidBy);
+          if (pkg.markedAsDeliveredBy) userIds.add(pkg.markedAsDeliveredBy);
+        }
+        
+        const userIdsArray = Array.from(userIds);
+        if (userIdsArray.length > 0) {
+          // Consultar información de los usuarios
+          const usersData = await db.query.users.findMany({
+            where: inArray(users.id, userIdsArray),
+            columns: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              role: true
+            }
+          });
+          
+          // Crear un mapa para acceso rápido a los datos de usuario por ID
+          const usersMap = new Map();
+          for (const user of usersData) {
+            usersMap.set(user.id, user);
+          }
+          
+          // Añadir información de usuarios a los paquetes
+          for (const pkg of packages) {
+            if (pkg.createdBy && usersMap.has(pkg.createdBy)) {
+              pkg.createdByUser = usersMap.get(pkg.createdBy);
+            }
+            if (pkg.markedAsPaidBy && usersMap.has(pkg.markedAsPaidBy)) {
+              pkg.markedAsPaidByUser = usersMap.get(pkg.markedAsPaidBy);
+            }
+            if (pkg.markedAsDeliveredBy && usersMap.has(pkg.markedAsDeliveredBy)) {
+              pkg.markedAsDeliveredByUser = usersMap.get(pkg.markedAsDeliveredBy);
+            }
+          }
+        }
+      }
       
       res.json(packages);
     } catch (error) {
