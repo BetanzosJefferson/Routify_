@@ -516,38 +516,54 @@ export function CashRegisterPage() {
     }
   };
   
-  // Función para cargar el historial de cortes 
-  // Usando localStorage como respaldo mientras se resuelve el problema de base de datos
+  // Función para cargar el historial de cortes desde la API
   const loadCutoffHistory = () => {
     if (!user) return;
     
-    try {
-      // Usar localStorage como respaldo hasta que la API esté disponible
-      const storedHistory = localStorage.getItem('cutoffHistory');
-      if (storedHistory) {
-        setCutoffHistory(JSON.parse(storedHistory));
-      } else {
-        setCutoffHistory([]);
+    // Mostrar el modal y la consulta de React Query ya se habrá encargado de cargar los datos
+    setShowHistoryModal(true);
+    
+    // Si todavía no tenemos datos de la API, usamos los del localStorage como respaldo
+    if (!cutoffsData) {
+      try {
+        const storedHistory = localStorage.getItem('cutoffHistory');
+        if (storedHistory) {
+          setCutoffHistory(JSON.parse(storedHistory));
+        }
+      } catch (error) {
+        console.error("Error al cargar historial de cortes del respaldo:", error);
       }
-    } catch (error) {
-      console.error("Error al cargar historial de cortes:", error);
-      setCutoffHistory([]);
     }
   };
   
-  // Cargar historial de cortes desde el servidor
+  // Procesar los datos de cortes recibidos de la API
   useEffect(() => {
-    if (user) {
-      loadCutoffHistory();
+    if (cutoffsData && Array.isArray(cutoffsData) && cutoffsData.length > 0) {
+      // Transformar los datos de la API al formato esperado por la interfaz
+      const formattedHistory = cutoffsData.map(cutoff => ({
+        id: cutoff.id,
+        date: new Date(cutoff.createdAt).toLocaleString(),
+        user: `Usuario ID: ${cutoff.operatorId}`,
+        totalAmount: cutoff.totalIncome,
+        totalCash: cutoff.totalCash || 0,
+        totalTransfer: cutoff.totalTransfer || 0,
+        transactionCount: cutoff.transactionCount || 0,
+        notes: cutoff.notes || ''
+      }));
+      
+      setCutoffHistory(formattedHistory);
     }
-    
+  }, [cutoffsData]);
+  
+  // Inicializar isInitialLoad
+  useEffect(() => {
     // Inicializar el estado isInitialLoad a false después de cargar datos
     const timer = setTimeout(() => {
       setIsInitialLoad(false);
     }, 1000);
     
     return () => clearTimeout(timer);
-  }, [user]);
+  }, []);
 
   // Función para mostrar el historial de cortes
   const showCutoffHistory = () => {
