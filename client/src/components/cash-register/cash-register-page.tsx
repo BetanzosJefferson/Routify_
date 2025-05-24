@@ -1600,17 +1600,6 @@ Total transacciones: ${cutoffData.transactionCount}
         </CardContent>
       </Card>
       
-      {/* Sección de Paqueterías */}
-      <div className="my-6">
-        <PackageList 
-          packages={filteredPackages || []} 
-          routeInfoMap={completeRoutes}
-          isLoading={isLoading}
-          sortDirection={sortDirection}
-          userName={user?.firstName || ''}
-        />
-      </div>
-      
       <Card>
         <CardHeader className="pb-0 pt-4 px-4">
           <div className="flex items-center justify-between">
@@ -2009,6 +1998,17 @@ Total transacciones: ${cutoffData.transactionCount}
           )}
         </div>
       </Card>
+      
+      {/* Sección de Paqueterías */}
+      <div className="my-6">
+        <PackageList 
+          packages={filteredPackages || []} 
+          routeInfoMap={completeRoutes}
+          isLoading={isLoading}
+          sortDirection={sortDirection}
+          userName={user?.firstName || ''}
+        />
+      </div>
       
       {/* Modal para mostrar el historial de cortes */}
       <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
