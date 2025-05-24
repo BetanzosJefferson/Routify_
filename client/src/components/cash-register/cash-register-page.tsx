@@ -1878,9 +1878,17 @@ Total transacciones: ${cutoffData.transactionCount}
               
               {/* Sección de paqueterías */}
               {sortedPackages.length > 0 && (
-                <div className="mt-8">
-                  <h3 className="text-lg font-semibold mb-4">Pagos de Paqueterías</h3>
+                <div className="mt-8 border-t pt-8">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center">
+                    <Package className="h-5 w-5 text-primary mr-2" />
+                    Paqueterías Registradas
+                  </h3>
                   <Table>
+                    <TableCaption>
+                      {isAdminView 
+                        ? 'Lista de paqueterías registradas por todos los usuarios de la empresa' 
+                        : `Lista de paqueterías registradas por ${user?.firstName}`}
+                    </TableCaption>
                     <TableHeader>
                       <TableRow>
                         <TableHead>ID Paquetería</TableHead>
@@ -1896,7 +1904,7 @@ Total transacciones: ${cutoffData.transactionCount}
                     <TableBody>
                       {sortedPackages.map((packageItem) => (
                         <TableRow key={`package-${packageItem.id}`}>
-                          <TableCell className="font-medium">RES{packageItem.id}</TableCell>
+                          <TableCell className="font-medium">PKG{packageItem.id}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
                               <User className="h-4 w-4 text-gray-500" />
