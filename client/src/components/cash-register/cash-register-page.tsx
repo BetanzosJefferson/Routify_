@@ -799,7 +799,10 @@ export function CashRegisterPage() {
           // Asegurarse de que el pasajero/remitente se incluya en los detalles
           const itemDetails = {
             passengerName: item.type === 'reservation' 
-              ? (item.passengerName || item.passengers || 'No disponible')
+              ? (item.passengerName || 
+                 (item.passengers && Array.isArray(item.passengers) && item.passengers.length > 0 
+                   ? `${item.passengers[0]?.firstName || ''} ${item.passengers[0]?.lastName || ''}`.trim() 
+                   : 'No disponible'))
               : (item.type === 'package' ? (item.sender || 'Remitente sin nombre') : 'No disponible'),
             origin: item.origin || 'Origen no especificado',
             destination: item.destination || 'Destino no especificado',
@@ -1244,7 +1247,10 @@ Total transacciones: ${cutoffData.transactionCount}
                       <p>
                         <span className="font-medium">Pasajero:</span> {
                           t.type === 'reservation' 
-                            ? (t.passengerName || t.passengers || 'No disponible')
+                            ? (t.passengerName || 
+                               (t.passengers && Array.isArray(t.passengers) && t.passengers.length > 0 
+                                 ? `${t.passengers[0]?.firstName || ''} ${t.passengers[0]?.lastName || ''}`.trim() 
+                                 : 'No disponible'))
                             : (t.type === 'package' ? (t.sender || 'Remitente sin nombre') : 'No disponible')
                         }
                       </p>
