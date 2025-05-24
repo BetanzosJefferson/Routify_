@@ -56,13 +56,10 @@ import {
   Loader2,
   Plus,
   Share2,
-  Info,
 } from "lucide-react";
 
-// Importar componentes relacionados con paquetes
+// Importar el componente de ticket de paquete
 import { PackageTicket } from "./package-ticket";
-import PackageDetailModal from "./package-detail-modal";
-import { CheckCircle, Truck } from "lucide-react";
 
 interface PackageListProps {
   onAddPackage: () => void;
@@ -74,7 +71,6 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
   const { user } = useAuth();
   const [packageToDelete, setPackageToDelete] = useState<number | null>(null);
   const [packageToView, setPackageToView] = useState<any | null>(null);
-  const [packageToDetail, setPackageToDetail] = useState<any | null>(null);
   
   // Determinar si el usuario puede añadir/editar paquetes
   const canCreateEdit = user ? hasRoleAccess(user.role, [UserRole.OWNER, UserRole.ADMIN, UserRole.CALL_CENTER, UserRole.CHECKER]) : false;
@@ -82,12 +78,11 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
   // Determinar si el usuario puede eliminar paquetes
   const canDelete = user ? hasRoleAccess(user.role, [UserRole.OWNER, UserRole.ADMIN]) : false;
   
-  // Obtener los paquetes con detalles adicionales
+  // Obtener los paquetes
   const packagesQuery = useQuery({
     queryKey: ["/api/packages"],
     queryFn: async () => {
-      // Solicitud para obtener paquetes con información detallada, incluyendo usuario creador, marcador de pago, etc.
-      const response = await fetch("/api/packages?includeDetails=true");
+      const response = await fetch("/api/packages");
       if (!response.ok) {
         throw new Error("Error al cargar paquetes");
       }
@@ -274,11 +269,7 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
           </TableHeader>
           <TableBody>
             {packagesQuery.data.map((pkg: any) => (
-              <TableRow 
-                key={pkg.id} 
-                className="cursor-pointer hover:bg-muted/30"
-                onClick={() => setPackageToDetail(pkg)}
-              >
+              <TableRow key={pkg.id}>
                 <TableCell className="font-medium">{pkg.id}</TableCell>
                 <TableCell>
                   {pkg.senderName} {pkg.senderLastName}
@@ -331,7 +322,7 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                   )}
                 </TableCell>
                 <TableCell>{pkg.tripDate ? formatDate(new Date(pkg.tripDate)) : formatDate(new Date(pkg.createdAt))}</TableCell>
-                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm">
@@ -339,13 +330,6 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem 
-                        onClick={() => setPackageToDetail(pkg)}
-                      >
-                        <Info className="mr-2 h-4 w-4" />
-                        Ver detalles completos
-                      </DropdownMenuItem>
-                      
                       {canCreateEdit && (
                         <DropdownMenuItem onClick={() => onEditPackage(pkg.id)}>
                           <Edit className="mr-2 h-4 w-4" />
@@ -452,77 +436,6 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      
-      {/* Modal de detalles del paquete */}
-      <Dialog open={!!packageToDetail} onOpenChange={(open) => !open && setPackageToDetail(null)}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center">
-              <Package className="mr-2 h-5 w-5" />
-              Detalles del Paquete #{packageToDetail?.id}
-            </DialogTitle>
-          </DialogHeader>
-          
-          {packageToDetail && (
-            <PackageDetailModal packageData={packageToDetail} />
-          )}
-          
-          <div className="flex justify-end gap-2 mt-4">
-            <Button 
-              variant="outline" 
-              onClick={() => setPackageToDetail(null)}
-            >
-              Cerrar
-            </Button>
-            
-            {/* Botones de acción solo visibles cuando corresponde */}
-            {packageToDetail && !packageToDetail.isPaid && canCreateEdit && (
-              <Button 
-                variant="default" 
-                className="bg-green-600 hover:bg-green-700" 
-                onClick={() => {
-                  // Actualizar el estado del paquete y recargar la lista
-                  apiRequest("PATCH", `/api/packages/${packageToDetail.id}`, { 
-                    isPaid: true,
-                    paymentMethod: packageToDetail.paymentMethod || 'efectivo'
-                  }).then(() => {
-                    toast({
-                      title: "Paquete actualizado",
-                      description: "El paquete ha sido marcado como pagado",
-                      variant: "default",
-                    });
-                    queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
-                    setPackageToDetail(null);
-                  }).catch(error => {
-                    toast({
-                      title: "Error",
-                      description: "No se pudo marcar el paquete como pagado",
-                      variant: "destructive",
-                    });
-                  });
-                }}
-              >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Marcar como pagado
-              </Button>
-            )}
-            
-            {packageToDetail && packageToDetail.deliveryStatus !== 'entregado' && canCreateEdit && (
-              <Button 
-                variant="default" 
-                className="bg-blue-600 hover:bg-blue-700" 
-                onClick={() => {
-                  markAsDeliveredMutation.mutate(packageToDetail.id);
-                  setPackageToDetail(null);
-                }}
-              >
-                <Truck className="mr-2 h-4 w-4" />
-                Marcar como entregado
-              </Button>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

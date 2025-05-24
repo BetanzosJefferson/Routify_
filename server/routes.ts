@@ -3285,18 +3285,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Paquete no encontrado" });
       }
       
-      // Obtener el ID del usuario autenticado, si existe
-      const userId = req.user?.id || null;
-      console.log(`[POST /public/packages/${packageId}/mark-paid] Usuario que marca como pagado:`, userId);
-      
       // Actualizar el estado de pago
       console.log(`[POST /public/packages/${packageId}/mark-paid] Estado actual de pago:`, packageData.isPaid);
       const updatedPackage = await storage.updatePackage(packageId, {
         isPaid: true,
         paymentMethod: packageData.paymentMethod || 'efectivo',
-        updatedAt: new Date(),
-        markedAsPaidBy: userId,
-        markedAsPaidAt: new Date()
+        updatedAt: new Date()
       });
       console.log(`[POST /public/packages/${packageId}/mark-paid] Nuevo estado de pago:`, updatedPackage?.isPaid);
       
@@ -3321,18 +3315,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Paquete no encontrado" });
       }
       
-      // Obtener el ID del usuario autenticado, si existe
-      const userId = req.user?.id || null;
-      console.log(`[POST /public/packages/${packageId}/mark-delivered] Usuario que marca como entregado:`, userId);
-      
       // Actualizar el estado de entrega
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Estado actual de entrega:`, packageData.deliveryStatus);
       const currentDate = new Date();
       const updatedPackage = await storage.updatePackage(packageId, {
         deliveryStatus: 'entregado',
         deliveredAt: currentDate,
-        updatedAt: currentDate,
-        markedAsDeliveredBy: userId
+        updatedAt: currentDate
       });
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Nuevo estado de entrega:`, updatedPackage?.deliveryStatus);
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Fecha de entrega:`, updatedPackage?.deliveredAt);
@@ -5792,7 +5781,6 @@ function setupPackageRoutes(app: Express) {
   app.get(apiRouter('/packages'), isAuthenticated, hasPackageAccess, async (req, res) => {
     try {
       const tripId = req.query.tripId ? parseInt(req.query.tripId as string) : undefined;
-      const includeDetails = req.query.includeDetails === "true";
       
       // Filtrar por compañía para asegurar aislamiento de datos
       let companyFilter = null;
@@ -5802,64 +5790,6 @@ function setupPackageRoutes(app: Express) {
       
       // Obtener paquetes
       const packages = await storage.getPackages(companyFilter, tripId);
-      
-      // Si se solicitan detalles adicionales, obtener información de los usuarios relacionados
-      if (includeDetails && packages.length > 0) {
-        try {
-          console.log("Incluyendo detalles de usuarios para paquetes");
-          
-          // Obtener IDs de los usuarios relacionados con los paquetes
-          const userIds = new Set<number>();
-          for (const pkg of packages) {
-            console.log(`Paquete ID ${pkg.id} creado por: ${pkg.createdBy}, pagado por: ${pkg.markedAsPaidBy}, entregado por: ${pkg.markedAsDeliveredBy}`);
-            if (pkg.createdBy) userIds.add(pkg.createdBy);
-            if (pkg.markedAsPaidBy) userIds.add(pkg.markedAsPaidBy);
-            if (pkg.markedAsDeliveredBy) userIds.add(pkg.markedAsDeliveredBy);
-          }
-          
-          const userIdsArray = Array.from(userIds);
-          console.log("IDs de usuarios a consultar:", userIdsArray);
-          
-          if (userIdsArray.length > 0) {
-            // Consultar información de los usuarios directamente
-            const userResults = await storage.getUsers();
-            const filteredUsers = userResults.filter(user => userIdsArray.includes(user.id));
-            console.log(`Encontrados ${filteredUsers.length} usuarios de ${userResults.length} totales`);
-            
-            // Crear un mapa para acceso rápido a los datos de usuario por ID
-            const usersMap = new Map();
-            for (const user of filteredUsers) {
-              usersMap.set(user.id, {
-                id: user.id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                role: user.role
-              });
-            }
-            
-            // Añadir información de usuarios a los paquetes
-            for (const pkg of packages) {
-              if (pkg.createdBy && usersMap.has(pkg.createdBy)) {
-                pkg.createdByUser = usersMap.get(pkg.createdBy);
-                console.log(`Paquete ${pkg.id}: creado por ${pkg.createdByUser.firstName} ${pkg.createdByUser.lastName}`);
-              }
-              
-              if (pkg.markedAsPaidBy && usersMap.has(pkg.markedAsPaidBy)) {
-                pkg.markedAsPaidByUser = usersMap.get(pkg.markedAsPaidBy);
-                console.log(`Paquete ${pkg.id}: pagado por ${pkg.markedAsPaidByUser.firstName} ${pkg.markedAsPaidByUser.lastName}`);
-              }
-              
-              if (pkg.markedAsDeliveredBy && usersMap.has(pkg.markedAsDeliveredBy)) {
-                pkg.markedAsDeliveredByUser = usersMap.get(pkg.markedAsDeliveredBy);
-                console.log(`Paquete ${pkg.id}: entregado por ${pkg.markedAsDeliveredByUser.firstName} ${pkg.markedAsDeliveredByUser.lastName}`);
-              }
-            }
-          }
-        } catch (err) {
-          console.error("Error al incluir detalles de usuarios para paquetes:", err);
-        }
-      }
       
       res.json(packages);
     } catch (error) {
