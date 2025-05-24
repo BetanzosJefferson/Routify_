@@ -70,6 +70,10 @@ export function CashRegisterPage() {
   const [showCutoffModal, setShowCutoffModal] = useState(false);
   const [cutoffData, setCutoffData] = useState<any>(null);
   
+  // Estados para el historial de cortes
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [cutoffHistory, setCutoffHistory] = useState<any[]>([]);
+  
   // Estado para saber si estamos en modo administrador o taquillero
   const isAdminView = user?.role === 'dueño' || user?.role === 'administrador';
   const isTicketOfficeView = user?.role === 'taquilla';
@@ -453,6 +457,24 @@ export function CashRegisterPage() {
     }
   };
   
+  // Cargar historial de cortes desde localStorage
+  useEffect(() => {
+    const storedHistory = localStorage.getItem('cutoffHistory');
+    if (storedHistory) {
+      try {
+        setCutoffHistory(JSON.parse(storedHistory));
+      } catch (e) {
+        console.error("Error al cargar historial de cortes:", e);
+        setCutoffHistory([]);
+      }
+    }
+  }, []);
+
+  // Función para mostrar el historial de cortes
+  const showCutoffHistory = () => {
+    setShowHistoryModal(true);
+  };
+
   // Función para completar el corte de caja
   const completeCashboxCutoff = async () => {
     if (!user || !cutoffData) return;
@@ -462,6 +484,26 @@ export function CashRegisterPage() {
       
       // En lugar de comunicarnos con el backend, simulamos un corte local
       // Esta es una solución temporal hasta que se implemente completamente el backend
+      
+      // Crear un nuevo registro de corte
+      const newCutoff = {
+        id: Date.now(),
+        date: new Date().toISOString(),
+        user: `${user.firstName} ${user.lastName}`,
+        totalAmount: cutoffData.totalAmount,
+        totalCash: cutoffData.totalCash,
+        totalTransfer: cutoffData.totalTransfer,
+        transactionCount: cutoffData.transactionCount,
+        items: cutoffData.transactions,
+        notes: cutoffNotes || ""
+      };
+      
+      // Guardar en historial local
+      const storedHistory = localStorage.getItem('cutoffHistory');
+      const history = storedHistory ? JSON.parse(storedHistory) : [];
+      history.unshift(newCutoff); // Agregar al inicio para mostrar más recientes primero
+      localStorage.setItem('cutoffHistory', JSON.stringify(history));
+      setCutoffHistory(history);
       
       // Mostrar mensaje de éxito
       toast({
