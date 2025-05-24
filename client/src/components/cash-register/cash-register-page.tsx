@@ -18,7 +18,9 @@ import {
   FilterIcon,
   Printer,
   XCircle,
-  Users
+  Users,
+  Package,
+  TicketIcon
 } from "lucide-react";
 
 // Interfaz para las reservaciones con información de compañía
@@ -384,14 +386,22 @@ export function CashRegisterPage() {
   }) || [];
   
   // Filtrar y enriquecer paqueterías
-  const filteredPackages = paidReservations?.filter((reservation: ReservationWithCompany) => {
-    // Solo incluir paqueterías en esta lista
-    if (!reservation.originalPackageId) {
+  const filteredPackages = packages?.filter((packageItem: any) => {
+    // Verificar que es una paquetería y que está marcada como pagada
+    if (!packageItem.isPaid) {
+      return false;
+    }
+    
+    // Si el usuario actual marcó esta paquetería como pagada o es admin/dueño
+    const userMarkedAsPaid = packageItem.paidBy === user?.id;
+    const userCanViewAll = isAdminView;
+    
+    if (!userMarkedAsPaid && !userCanViewAll) {
       return false;
     }
     
     // No incluir elementos ya procesados en cortes anteriores
-    if (isItemProcessed('package', reservation.id)) {
+    if (isItemProcessed('package', packageItem.id)) {
       return false;
     }
     
