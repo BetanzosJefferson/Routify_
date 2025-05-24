@@ -794,11 +794,17 @@ Total transacciones: ${cutoffData.transactionCount}
   // Función para generar un PDF del ticket de corte en formato térmico (60mm)
   const generateCutoffTicketPDF = async (data: any, cutoffInfo: any) => {
     try {
-      // Crear un nuevo documento PDF con dimensiones 60mm x altura variable
+      // Calcular altura dinámica basada en el número de transacciones
+      // Estimamos aproximadamente 30mm por transacción + 80mm para encabezado y resumen
+      const estimatedHeight = Math.max(200, 80 + (data.transactions?.length || 0) * 30);
+      
+      console.log(`Generando PDF con altura estimada: ${estimatedHeight}mm para ${data.transactions?.length || 0} transacciones`);
+      
+      // Crear un nuevo documento PDF con dimensiones 60mm x altura dinámica
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "mm",
-        format: [58, 200], // 58mm (ancho estándar para tickets de 60mm) x altura ampliada para más detalles
+        format: [58, estimatedHeight], // 58mm (ancho estándar para tickets de 60mm) x altura dinámica
       });
       
       // Configuración básica
@@ -891,42 +897,50 @@ Total transacciones: ${cutoffData.transactionCount}
             y += 2;
             doc.text(`Destinatario: ${t.receiverName || ''} ${t.receiverLastName || ''}`, margin + 2, y);
             y += 2;
-            doc.text(`Ruta: ${t.originCity || t.origin || ''} → ${t.destinationCity || t.destination || ''}`, margin + 2, y);
+            // Dividir la ruta en dos líneas para mejor legibilidad
+            doc.text(`Origen: ${t.originCity || t.origin || ''}`, margin + 2, y);
+            y += 2;
+            doc.text(`Destino: ${t.destinationCity || t.destination || ''}`, margin + 2, y);
           } else {
-            // Detalles para reservaciones
+            // Detalles para reservaciones - Usar formato más limpio y con mejor legibilidad
+            doc.text("Pasajero:", margin + 2, y);
+            y += 2;
+            
+            // Mostrar información del pasajero con indentación
+            const passengerName = t.passengerName || (t.passengers && t.passengers.length > 0 ? t.passengers : 'No disponible');
+            doc.text(`  ${passengerName}`, margin + 2, y);
+            y += 2;
+            
+            // Mostrar origen y destino en líneas separadas
+            doc.text("Origen:", margin + 2, y);
+            y += 2;
+            
+            // Dividir origen si es muy largo
+            const originText = t.origin || 'No especificado';
+            const splitOrigin = doc.splitTextToSize(originText, 44);
+            splitOrigin.forEach((line: string) => {
+              doc.text(`  ${line}`, margin + 2, y);
+              y += 2;
+            });
+            
+            // Mostrar destino
+            doc.text("Destino:", margin + 2, y);
+            y += 2;
+            
+            // Dividir destino si es muy largo
+            const destinationText = t.destination || 'No especificado';
+            const splitDestination = doc.splitTextToSize(destinationText, 44);
+            splitDestination.forEach((line: string) => {
+              doc.text(`  ${line}`, margin + 2, y);
+              y += 2;
+            });
+            
+            // Si hay información adicional de viaje o tripName, mostrarla también
             if (t.tripName) {
-              // Primero ponemos la etiqueta "Viaje:"
               doc.text("Viaje:", margin + 2, y);
               y += 2;
-              
-              // Buscar información completa de la ruta en completeRoutes
-              let routeInfo = t.tripName;
-              if (t.tripId && completeRoutes[t.tripId]) {
-                routeInfo = completeRoutes[t.tripId];
-                console.log(`Usando información completa de ruta para ${t.tripId}: ${completeRoutes[t.tripId]}`);
-              }
-              
-              // Dividir el texto por saltos de línea explícitos
-              const routeLines = routeInfo.split('\n');
-              
-              // Procesar cada línea por separado
-              routeLines.forEach((line: string) => {
-                // Si la línea es demasiado larga, dividirla para ajustarla al ancho
-                if (line.length > 38) { // reducimos el ancho para mejor legibilidad
-                  // Usar splitTextToSize para manejar líneas largas
-                  const splitLines = doc.splitTextToSize(line, 44); // 44mm es el ancho disponible
-                  
-                  // Mostrar cada línea dividida
-                  splitLines.forEach((splitLine: string) => {
-                    doc.text(`  ${splitLine}`, margin + 2, y);
-                    y += 2;
-                  });
-                } else {
-                  // Si no es demasiado larga, mostrarla directamente
-                  doc.text(`  ${line}`, margin + 2, y);
-                  y += 2;
-                }
-              });
+              doc.text(`  ${t.tripName}`, margin + 2, y);
+              y += 2;
             }
             
             // Mostrar fecha y hora del viaje si están disponibles
@@ -1010,19 +1024,21 @@ Total transacciones: ${cutoffData.transactionCount}
             }
           }
           
-          // Información de pago común para ambos tipos
+          // Información de pago común para ambos tipos - con línea separadora para mejor legibilidad
+          doc.setDrawColor(200, 200, 200); // Línea gris clara para separar
+          doc.line(margin + 2, y, 51, y);
+          y += 2;
+          
           doc.text(`Monto: ${formatPrice(t.amount)}`, margin + 2, y);
           y += 2;
           doc.text(`Método: ${t.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}`, margin + 2, y);
           y += 2;
           doc.text(`Concepto: ${t.paymentNote || (t.advanceAmount && t.advanceAmount > 0 ? 'Anticipo' : 'Pago completo')}`, margin + 2, y);
           
-          // Separador entre transacciones
+          // Agregar un poco más de espacio después de cada transacción
           y += 3;
-          doc.setDrawColor(200, 200, 200); // Línea gris clara para separar
-          doc.line(margin + 2, y, 51, y);
-          doc.setDrawColor(0); // Volver a negro para otras líneas
-          y += 3;
+          
+          // Ya agregamos separador y espacio arriba, así que eliminamos este bloque de código redundante
         });
       } else if (cutoffInfo.notes) {
         // Si no hay transacciones detalladas pero hay notas, mostrarlas
