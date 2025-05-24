@@ -520,6 +520,8 @@ export function CashRegisterPage() {
       // Obtener los datos frescos directamente del servidor
       const freshTransactions = await response.json();
       console.log("Transacciones actualizadas para el corte:", freshTransactions.length);
+      // Mostrar la estructura completa para depuración
+      console.log("Estructura de las transacciones frescas:", JSON.stringify(freshTransactions[0], null, 2));
       
       // Usar estas transacciones frescas en lugar de las del estado para preparar el corte
       // Esto garantiza que estamos usando los datos más actualizados
