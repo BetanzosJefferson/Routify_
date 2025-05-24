@@ -1710,6 +1710,11 @@ Total transacciones: ${cutoffData.transactionCount}
                               // Intentar parsear los detalles JSON
                               const details = item.details ? JSON.parse(item.details) : {};
                               
+                              // Mostrar detalles completos en la consola
+                              console.log(`Detalles JSON para el ítem ${item.itemId}:`, details);
+                              console.log(`Fecha y hora del viaje:`, details.departureDate, details.departureTime);
+                              console.log(`Pasajeros:`, details.passengers);
+                              
                               // Normalizar el método de pago para mostrar correctamente
                               let normalizedPaymentMethod = (item.paymentMethod || '').toLowerCase().trim();
                               if (normalizedPaymentMethod.includes('efectivo') || normalizedPaymentMethod === 'cash') {
