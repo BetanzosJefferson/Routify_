@@ -99,13 +99,43 @@ export class CutoffService {
         }
       }
       
+      // Buscar o crear una caja para el operador
+      let cashboxId = 0;
+      
+      // Intentar encontrar una caja existente para el operador
+      const existingCashboxes = await db
+        .select()
+        .from(schema.cashboxes)
+        .where(eq(schema.cashboxes.operatorId, operatorId))
+        .limit(1);
+      
+      if (existingCashboxes.length > 0) {
+        cashboxId = existingCashboxes[0].id;
+        console.log(`[createCutoff] Encontrada caja existente para el operador: ${cashboxId}`);
+      } else {
+        // Si no existe una caja para este operador, crearla
+        const [newCashbox] = await db
+          .insert(schema.cashboxes)
+          .values({
+            name: `Caja de Operador ${operatorId}`,
+            description: 'Caja creada automáticamente',
+            operatorId,
+            balance: 0,
+            isActive: true
+          })
+          .returning();
+        
+        cashboxId = newCashbox.id;
+        console.log(`[createCutoff] Creada nueva caja para el operador: ${cashboxId}`);
+      }
+      
       // Crear el registro del corte
       const [cutoff] = await db
         .insert(schema.cashboxCutoffs)
         .values({
-          cashboxId: 1, // Valor por defecto, se actualizará cuando exista integración con cajas
+          cashboxId,
           operatorId,
-          previousBalance: 0, // Se actualizará cuando exista integración con cajas
+          previousBalance: 0, // Se actualizará con cálculos más avanzados en el futuro
           totalIncome: totalAmount,
           totalExpenses: 0,
           finalBalance: totalAmount,
@@ -132,10 +162,10 @@ export class CutoffService {
           details: JSON.stringify({
             route: item.tripName || 'Sin ruta',
             passenger: isPackage ? 
-              (item.sender || item.senderName || 'Sin remitente') : 
+              (item.sender || item.senderName || item.receiverName || 'Sin remitente') : 
               (Array.isArray(item.passengers) ? 
                 item.passengers.map(p => `${p.firstName || ''} ${p.lastName || ''}`).join(', ') : 
-                (item.name || 'Sin pasajeros'))
+                (item.name || item.passengerName || 'Sin pasajeros'))
           })
         });
       }
