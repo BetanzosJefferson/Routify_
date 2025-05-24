@@ -550,8 +550,26 @@ export function CashRegisterPage() {
       // Preparar los datos para el modal usando las transacciones frescas obtenidas directamente del servidor
       // Esto garantiza que estamos usando los datos más actualizados
       
-      // Procesar los datos frescos de transacciones
-      const freshReservations = freshTransactions.filter(t => t.type === 'reservation');
+      // Procesar los datos frescos de transacciones y asegurar que tengan nombre de pasajero
+      const freshReservations = freshTransactions.filter(t => t.type === 'reservation').map(r => {
+        // Asegurar que tengamos el nombre del pasajero correctamente formateado
+        const passengerName = r.passengers && Array.isArray(r.passengers) && r.passengers.length > 0
+          ? `${r.passengers[0]?.firstName || ''} ${r.passengers[0]?.lastName || ''}`.trim()
+          : 'Sin pasajeros';
+        
+        // Loguear para verificar que estamos obteniendo el nombre del pasajero
+        console.log(`Procesando pasajero para reserva ${r.id}:`, {
+          id: r.id,
+          passengers: r.passengers,
+          extractedName: passengerName
+        });
+        
+        return {
+          ...r,
+          passengerName
+        };
+      });
+      
       const freshPackages = freshTransactions.filter(t => t.type === 'package');
       
       // Calcular nuevos totales basados en los datos frescos
@@ -633,15 +651,26 @@ export function CashRegisterPage() {
               calculatedAmount: transactionAmount
             });
             
+            // Extraer el nombre del pasajero de forma segura
+            const passengerName = r.passengerName || (
+              r.passengers && Array.isArray(r.passengers) && r.passengers.length > 0 
+              ? `${r.passengers[0]?.firstName || ''} ${r.passengers[0]?.lastName || ''}`.trim()
+              : "Sin pasajeros"
+            );
+            
+            console.log("Preparando datos de pasajero para el modal:", {
+              id: r.id,
+              passengerName,
+              hasPassengers: r.passengers && r.passengers.length > 0
+            });
+            
             return {
               id: r.id,
               type: 'reservation',
               tripName: r.trip?.route?.name || "Sin ruta",
               origin,
               destination,
-              passengerName: r.passengers && r.passengers.length > 0 
-                ? `${r.passengers[0]?.firstName || ''} ${r.passengers[0]?.lastName || ''}`.trim()
-                : "Sin pasajeros",
+              passengerName,
               passengers: r.passengers?.map(p => `${p.firstName} ${p.lastName}`).join(", ") || "Sin pasajeros",
               amount: transactionAmount, // Usar el monto calculado correctamente
               paymentMethod: getCombinedPaymentMethod(r)
