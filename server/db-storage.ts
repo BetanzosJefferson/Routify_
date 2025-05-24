@@ -3681,6 +3681,72 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
+  // Obtener cajas de una compañía que tienen transacciones
+  async getCompanyCashboxesWithTransactions(companyId: string): Promise<any[]> {
+    try {
+      console.log(`[getCompanyCashboxesWithTransactions] Obteniendo cajas con transacciones para la compañía ${companyId}`);
+      
+      // Obtener todas las cajas de la compañía
+      const cashboxes = await this.getCashboxes(companyId);
+      
+      if (!cashboxes.length) {
+        console.log(`[getCompanyCashboxesWithTransactions] No se encontraron cajas para la compañía ${companyId}`);
+        return [];
+      }
+      
+      // Resultado filtrado - solo cajas con transacciones
+      const result = [];
+      
+      // Para cada caja, verificar si tiene transacciones
+      for (const cashbox of cashboxes) {
+        try {
+          // Obtener transacciones de la caja (solo verificamos si existen)
+          const transactions = await db
+            .select({ count: count() })
+            .from(schema.cashboxTransactions)
+            .where(eq(schema.cashboxTransactions.cashboxId, cashbox.id));
+          
+          const transactionCount = transactions[0]?.count || 0;
+          
+          if (transactionCount > 0) {
+            console.log(`[getCompanyCashboxesWithTransactions] Caja ${cashbox.id} tiene ${transactionCount} transacciones`);
+            
+            // Obtener información del operador
+            let operatorInfo = null;
+            if (cashbox.operatorId) {
+              try {
+                const operator = await this.getUserById(cashbox.operatorId);
+                if (operator) {
+                  operatorInfo = {
+                    id: operator.id,
+                    name: `${operator.firstName} ${operator.lastName}`,
+                    email: operator.email
+                  };
+                }
+              } catch (err) {
+                console.error(`Error al obtener operador de caja ${cashbox.id}:`, err);
+              }
+            }
+            
+            result.push({
+              ...cashbox,
+              operatorInfo,
+              transactionsCount: transactionCount
+            });
+          }
+        } catch (err) {
+          console.error(`Error al procesar la caja ${cashbox.id}:`, err);
+        }
+      }
+      
+      console.log(`[getCompanyCashboxesWithTransactions] Se encontraron ${result.length} cajas con transacciones para la compañía ${companyId}`);
+      return result;
+    } catch (error) {
+      console.error(`[getCompanyCashboxesWithTransactions] Error:`, error);
+      return [];
+    }
+  }
+  
   // Obtener todas las cajas de una compañía
   async getCashboxes(companyId: string): Promise<schema.Cashbox[]> {
     try {
