@@ -736,6 +736,10 @@ export type InsertReservationRequest = z.infer<typeof insertReservationRequestSc
 export type ReservationRequest = typeof reservationRequests.$inferSelect;
 
 // ESQUEMA PARA NOTIFICACIONES
+// Nota: Se removió el esquema duplicado de cashboxCutoffs y cutoffItems para evitar conflictos.
+// El sistema ya cuenta con una implementación existente de estas tablas.
+// La implementación del historial de cortes de caja se manejará usando las tablas existentes.
+
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(), // Usuario al que va dirigida la notificación
@@ -855,7 +859,7 @@ export const insertCashboxTransactionSchema = createInsertSchema(cashboxTransact
 export type InsertCashboxTransaction = z.infer<typeof insertCashboxTransactionSchema>;
 export type CashboxTransaction = typeof cashboxTransactions.$inferSelect;
 
-// CORTES DE CAJA SCHEMA
+// CORTES DE CAJA SCHEMA (Ampliado para soportar paqueterías)
 export const cashboxCutoffs = pgTable("cashbox_cutoffs", {
   id: serial("id").primaryKey(),
   cashboxId: integer("cashbox_id").notNull(),
@@ -864,6 +868,9 @@ export const cashboxCutoffs = pgTable("cashbox_cutoffs", {
   totalIncome: doublePrecision("total_income").notNull(),
   totalExpenses: doublePrecision("total_expenses").notNull(),
   finalBalance: doublePrecision("final_balance").notNull(),
+  totalCash: doublePrecision("total_cash").default(0),  // Total de efectivo en el corte
+  totalTransfer: doublePrecision("total_transfer").default(0), // Total de transferencias en el corte
+  transactionCount: integer("transaction_count").default(0), // Cantidad de transacciones
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   printedAt: timestamp("printed_at"),
@@ -873,6 +880,9 @@ export const insertCashboxCutoffSchema = createInsertSchema(cashboxCutoffs, {
   notes: z.string().optional(),
   createdAt: z.date().optional(),
   printedAt: z.date().optional(),
+  totalCash: z.number().default(0),
+  totalTransfer: z.number().default(0),
+  transactionCount: z.number().default(0),
 });
 
 export type InsertCashboxCutoff = z.infer<typeof insertCashboxCutoffSchema>;
@@ -907,6 +917,28 @@ export const cashboxTransactionRelations = relations(cashboxTransactions, ({ one
   })
 }));
 
+// Tabla para registrar elementos procesados en un corte
+export const processedItems = pgTable("processed_items", {
+  id: serial("id").primaryKey(),
+  cutoffId: integer("cutoff_id").references(() => cashboxCutoffs.id).notNull(),
+  itemType: text("item_type").notNull(), // 'reservation' o 'package'
+  itemId: integer("item_id").notNull(),
+  amount: doublePrecision("amount").notNull(),
+  paymentMethod: text("payment_method").notNull(),
+  concept: text("concept").notNull(), // 'Anticipo', 'Restante', 'Paquetería'
+  details: text("details"), // JSON con información adicional
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const insertProcessedItemSchema = createInsertSchema(processedItems, {
+  id: z.number().optional(),
+  createdAt: z.date().optional(),
+  details: z.string().optional()
+});
+
+export type ProcessedItem = typeof processedItems.$inferSelect;
+export type InsertProcessedItem = z.infer<typeof insertProcessedItemSchema>;
+
 export const cashboxCutoffRelations = relations(cashboxCutoffs, ({ one, many }) => ({
   cashbox: one(cashboxes, {
     fields: [cashboxCutoffs.cashboxId],
@@ -916,5 +948,13 @@ export const cashboxCutoffRelations = relations(cashboxCutoffs, ({ one, many }) 
     fields: [cashboxCutoffs.operatorId],
     references: [users.id]
   }),
-  transactions: many(cashboxTransactions)
+  transactions: many(cashboxTransactions),
+  processedItems: many(processedItems)
+}));
+
+export const processedItemsRelations = relations(processedItems, ({ one }) => ({
+  cutoff: one(cashboxCutoffs, {
+    fields: [processedItems.cutoffId],
+    references: [cashboxCutoffs.id]
+  })
 }));
