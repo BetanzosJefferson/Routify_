@@ -953,6 +953,37 @@ export function CashRegisterPage() {
       const result = await response.json();
       console.log("Corte creado exitosamente:", result);
       
+      // Marcar elementos procesados en localStorage para que no se muestren en futuros cortes
+      // Esto incluye tanto reservaciones como paqueterías
+      if (user) {
+        try {
+          const processedItemsKey = `processed_items_${user.id}`;
+          // Obtener elementos ya procesados
+          const storedProcessedItems = localStorage.getItem(processedItemsKey);
+          let processedItems = storedProcessedItems ? JSON.parse(storedProcessedItems) : [];
+          
+          // Agregar elementos de este corte
+          cutoffData.transactions.forEach(item => {
+            // Determinar el tipo correcto del elemento
+            const itemType = item.originalPackageId ? 'package' : 'reservation';
+            
+            // Agregar a la lista de procesados
+            processedItems.push({
+              id: item.id,
+              type: itemType,
+              processedAt: new Date().toISOString(),
+              cutoffId: result.id // ID del corte actual
+            });
+          });
+          
+          // Guardar la lista actualizada
+          localStorage.setItem(processedItemsKey, JSON.stringify(processedItems));
+          console.log(`Marcados ${cutoffData.transactions.length} elementos como procesados en el corte #${result.id}`);
+        } catch (e) {
+          console.error("Error al marcar elementos como procesados:", e);
+        }
+      }
+      
       // Invalidar la caché para forzar una recarga de las transacciones
       // Esto eliminará los elementos procesados en este corte
       queryClient.invalidateQueries({ queryKey: ["/api/cashbox/transactions"] });
