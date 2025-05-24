@@ -490,6 +490,18 @@ export class CutoffService {
           }
         }
         
+        // LOGGING ANTES DE CREAR EL OBJETO FINAL
+        console.log(`[createCutoff] 🔍 DATOS DEL ITEM ANTES DE CREAR DETAILEDINFO:`, {
+          id: item.id,
+          type: isPackage ? 'package' : 'reservation',
+          tripId: item.tripId || 0,
+          routeName: item.routeName || '',
+          segmentOrigin: item.segmentOrigin || '',
+          segmentDestination: item.segmentDestination || '',
+          origin: item.origin || '',
+          destination: item.destination || ''
+        });
+        
         // Crear objeto con toda la información necesaria para el ticket
         const detailedInfo = {
           // Información básica
