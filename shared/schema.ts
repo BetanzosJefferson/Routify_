@@ -504,6 +504,7 @@ export const packages = pgTable("packages", {
   // Estado del pago
   isPaid: boolean("is_paid").default(false).notNull(),
   paymentMethod: text("payment_method"), // efectivo, transferencia, etc.
+  paidBy: integer("paid_by").references(() => users.id), // ID del usuario que marca como pagado el paquete
   
   // Metadatos
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -514,13 +515,16 @@ export const packages = pgTable("packages", {
   // Para seguimiento de estado
   deliveryStatus: text("delivery_status").notNull().default("pendiente"), // pendiente, entregado
   deliveredAt: timestamp("delivered_at"),
+  deliveredBy: integer("delivered_by").references(() => users.id), // ID del usuario que marca como entregado el paquete
 });
 
 export const insertPackageSchema = createInsertSchema(packages).omit({ 
   id: true, 
   createdAt: true, 
   updatedAt: true,
-  deliveredAt: true 
+  deliveredAt: true,
+  deliveredBy: true,
+  paidBy: true
 });
 export type InsertPackage = z.infer<typeof insertPackageSchema>;
 export type Package = typeof packages.$inferSelect;
@@ -535,11 +539,31 @@ export const packageRelations = relations(packages, ({ one }) => ({
     fields: [packages.createdBy],
     references: [users.id]
   }),
+  paidByUser: one(users, {
+    fields: [packages.paidBy],
+    references: [users.id]
+  }),
+  deliveredByUser: one(users, {
+    fields: [packages.deliveredBy],
+    references: [users.id]
+  }),
   company: one(companies, {
     fields: [packages.companyId],
     references: [companies.identifier]
   })
 }));
+
+// Tipo extendido para paquetes con información adicional
+export type PackageWithDetails = Package & {
+  trip?: Trip;
+  createdByUser?: User;
+  paidByUser?: User;
+  deliveredByUser?: User;
+  companyInfo?: {
+    id: string | null;
+    name: string;
+  };
+};
 
 // COMPANIES SCHEMA
 export const companies = pgTable("companies", {
