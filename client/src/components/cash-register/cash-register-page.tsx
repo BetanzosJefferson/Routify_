@@ -841,110 +841,13 @@ Total transacciones: ${cutoffData.transactionCount}
   // Función para imprimir el ticket de corte
   const printCutoffTicket = async (data: any, cutoffInfo: any) => {
     try {
-      // Crear contenido del ticket (formato 60mm)
-      const ticketContent = document.createElement('div');
-      ticketContent.style.width = '220px'; // 60mm aproximadamente
-      ticketContent.style.fontFamily = 'monospace';
-      ticketContent.style.fontSize = '10px';
-      ticketContent.style.padding = '5px';
-      
-      // Información de la empresa y corte
-      ticketContent.innerHTML = `
-        <div style="text-align:center;margin-bottom:10px;">
-          <h3 style="margin:3px 0;font-size:12px;">AUTOBUSES VIAJEROS</h3>
-          <p style="margin:3px 0;">CORTE DE CAJA #${cutoffInfo.id}</p>
-          <p style="margin:3px 0;">FECHA: ${new Date(cutoffInfo.createdAt).toLocaleString()}</p>
-          <p style="margin:3px 0;">USUARIO: ${data.user}</p>
-        </div>
-        <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;padding:5px 0;margin:5px 0;">
-          <p style="margin:3px 0;"><strong>TOTAL:</strong> ${formatPrice(data.totalAmount)}</p>
-          <p style="margin:3px 0;"><strong>EFECTIVO:</strong> ${formatPrice(data.totalCash)}</p>
-          <p style="margin:3px 0;"><strong>TRANSFERENCIA:</strong> ${formatPrice(data.totalTransfer)}</p>
-          <p style="margin:3px 0;"><strong>TRANSACCIONES:</strong> ${data.transactionCount}</p>
-        </div>
-        <div style="margin-top:10px;">
-          <p style="margin:3px 0;font-size:9px;"><strong>DETALLE DE TRANSACCIONES:</strong></p>
-      `;
-      
-      // Recorrer las transacciones (limitado a 10 para que no sea muy largo)
-      const limitedTransactions = data.transactions.slice(0, 10);
-      limitedTransactions.forEach((t: any, index: number) => {
-        ticketContent.innerHTML += `
-          <div style="font-size:8px;margin:3px 0;border-bottom:1px dotted #ccc;padding-bottom:3px;">
-            <span>#${t.id} - ${t.tripName.substring(0, 15)}${t.tripName.length > 15 ? '...' : ''}</span><br>
-            <span>${formatPrice(t.amount)} - ${t.paymentMethod}</span>
-          </div>
-        `;
-      });
-      
-      // Si hay más transacciones, mostrar un mensaje
-      if (data.transactions.length > 10) {
-        ticketContent.innerHTML += `
-          <p style="font-size:8px;text-align:center;margin:5px 0;">
-            ... y ${data.transactions.length - 10} transacciones más
-          </p>
-        `;
-      }
-      
-      // Añadir notas si existen
-      if (cutoffNotes) {
-        ticketContent.innerHTML += `
-          <div style="margin-top:10px;border-top:1px dashed #000;padding-top:5px;">
-            <p style="margin:3px 0;font-size:9px;"><strong>NOTAS:</strong></p>
-            <p style="margin:3px 0;font-size:8px;">${cutoffNotes}</p>
-          </div>
-        `;
-      }
-      
-      // Cierre del ticket
-      ticketContent.innerHTML += `
-        </div>
-        <div style="text-align:center;margin-top:20px;border-top:1px dashed #000;padding-top:10px;">
-          <p style="margin:3px 0;">¡GRACIAS POR SU SERVICIO!</p>
-          <p style="margin:3px 0;font-size:8px;">www.autobusesviajeros.com</p>
-        </div>
-      `;
-      
-      // Crear una ventana para imprimir
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        toast({
-          title: "Error",
-          description: "No se pudo abrir la ventana de impresión. Comprueba que no estén bloqueados los popups.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Corte de Caja #${cutoffInfo.id}</title>
-            <style>
-              @media print {
-                body { margin: 0; padding: 0; }
-                @page { size: 80mm auto; margin: 0; }
-              }
-            </style>
-          </head>
-          <body>
-            ${ticketContent.outerHTML}
-            <script>
-              window.onload = function() {
-                window.print();
-                setTimeout(function() { window.close(); }, 500);
-              };
-            </script>
-          </body>
-        </html>
-      `);
-      
-      printWindow.document.close();
+      // Utilizamos la función de generación de PDF en formato 60mm
+      await generateCutoffTicketPDF(data, cutoffInfo);
     } catch (error) {
-      console.error("Error al imprimir ticket:", error);
+      console.error("Error al preparar el ticket:", error);
       toast({
-        title: "Error de impresión",
-        description: "No se pudo imprimir el ticket. Intenta de nuevo o imprime manualmente.",
+        title: "Error",
+        description: "No se pudo generar el ticket para imprimir.",
         variant: "destructive"
       });
     }
