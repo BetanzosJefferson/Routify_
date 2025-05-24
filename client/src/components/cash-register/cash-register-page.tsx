@@ -794,17 +794,26 @@ Total transacciones: ${cutoffData.transactionCount}
   // Función para generar un PDF del ticket de corte en formato térmico (60mm)
   const generateCutoffTicketPDF = async (data: any, cutoffInfo: any) => {
     try {
-      // Calcular altura dinámica basada en el número de transacciones
-      // Estimamos aproximadamente 30mm por transacción + 80mm para encabezado y resumen
-      const estimatedHeight = Math.max(200, 80 + (data.transactions?.length || 0) * 30);
+      // Cálculo más preciso de la altura basado en el número de transacciones
+      // Estimamos el espacio por transacción basado en su complejidad
       
-      console.log(`Generando PDF con altura estimada: ${estimatedHeight}mm para ${data.transactions?.length || 0} transacciones`);
+      // Base para encabezado y pie: 80mm
+      // Por cada transacción regular: 25mm
+      // Ajuste final para precisión: 10mm
+      let baseHeight = 80; // Encabezado, resumen y notas
+      let heightPerTransaction = 25; // Espacio promedio por transacción
       
-      // Crear un nuevo documento PDF con dimensiones 60mm x altura dinámica
+      // Calcular altura estimada total
+      const transactionCount = data.transactions?.length || 0;
+      const estimatedHeight = Math.max(120, baseHeight + (transactionCount * heightPerTransaction) + 10);
+      
+      console.log(`Generando PDF con altura estimada: ${estimatedHeight}mm para ${transactionCount} transacciones`);
+      
+      // Crear un nuevo documento PDF con dimensiones 60mm x altura dinámica optimizada
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "mm",
-        format: [58, estimatedHeight], // 58mm (ancho estándar para tickets de 60mm) x altura dinámica
+        format: [58, estimatedHeight], // 58mm (ancho estándar para tickets de 60mm) x altura optimizada
       });
       
       // Configuración básica
