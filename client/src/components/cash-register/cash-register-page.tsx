@@ -609,6 +609,30 @@ export function CashRegisterPage() {
               destination
             });
             
+            // Determinar el monto correcto para la transacción
+            let transactionAmount = 0;
+            
+            // Si es un anticipo
+            if (r.isAdvancePayment) {
+              transactionAmount = r.advanceAmount || 0;
+            } 
+            // Si es un pago restante
+            else if (r.advanceAmount && r.advanceAmount > 0 && r.paymentDate) {
+              transactionAmount = (r.totalAmount || 0) - (r.advanceAmount || 0);
+            } 
+            // Si es un pago completo
+            else {
+              transactionAmount = r.totalAmount || 0;
+            }
+            
+            console.log("Calculando monto de transacción para el modal:", {
+              id: r.id,
+              isAdvancePayment: r.isAdvancePayment,
+              advanceAmount: r.advanceAmount,
+              totalAmount: r.totalAmount,
+              calculatedAmount: transactionAmount
+            });
+            
             return {
               id: r.id,
               type: 'reservation',
@@ -619,7 +643,7 @@ export function CashRegisterPage() {
                 ? `${r.passengers[0]?.firstName || ''} ${r.passengers[0]?.lastName || ''}`.trim()
                 : "Sin pasajeros",
               passengers: r.passengers?.map(p => `${p.firstName} ${p.lastName}`).join(", ") || "Sin pasajeros",
-              amount: r.totalAmount || 0,
+              amount: transactionAmount, // Usar el monto calculado correctamente
               paymentMethod: getCombinedPaymentMethod(r)
             };
           } else {
@@ -627,6 +651,16 @@ export function CashRegisterPage() {
             const p = item;
             const origin = p.trip?.segmentOrigin || (p.trip?.route && p.trip.route.origin) || p.origin || "Origen no especificado";
             const destination = p.trip?.segmentDestination || (p.trip?.route && p.trip.route.destination) || p.destination || "Destino no especificado";
+            
+            // Asegurarnos de que el monto se muestra correctamente
+            const packageAmount = p.price || p.totalAmount || 0;
+            
+            console.log("Calculando monto para paquetería:", {
+              id: p.id,
+              price: p.price,
+              totalAmount: p.totalAmount,
+              calculatedAmount: packageAmount
+            });
             
             return {
               id: p.id,
@@ -636,7 +670,7 @@ export function CashRegisterPage() {
               destination,
               sender: `${p.senderName || ''} ${p.senderLastName || ''}`,
               recipient: `${p.recipientName || ''} ${p.recipientLastName || ''}`,
-              amount: p.price || 0,
+              amount: packageAmount,
               paymentMethod: p.paymentMethod || 'efectivo'
             };
           }
