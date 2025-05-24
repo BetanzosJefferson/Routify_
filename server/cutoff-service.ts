@@ -128,37 +128,35 @@ export class CutoffService {
       
       console.log(`[getTripInfo] Consultando información del viaje ${tripId}`);
       
-      // Obtenemos primero el viaje
-      const trips = await db
-        .select()
+      // Consulta optimizada para obtener el viaje Y la ruta en una sola operación
+      const tripWithRoute = await db
+        .select({
+          trip: schema.trips,
+          route: schema.routes
+        })
         .from(schema.trips)
+        .leftJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
         .where(eq(schema.trips.id, tripId))
         .limit(1);
       
-      if (trips.length === 0) {
+      if (tripWithRoute.length === 0) {
         console.log(`[getTripInfo] No se encontró el viaje ${tripId}`);
         return null;
       }
       
-      const trip = trips[0];
-      let routeName = '';
-      let routeOrigin = '';
-      let routeDestination = '';
+      const data = tripWithRoute[0];
       
-      // Obtenemos la información de la ruta
-      if (trip.routeId) {
-        const routes = await db
-          .select()
-          .from(schema.routes)
-          .where(eq(schema.routes.id, trip.routeId))
-          .limit(1);
-          
-        if (routes.length > 0) {
-          routeName = routes[0].name || '';
-          routeOrigin = routes[0].origin || '';
-          routeDestination = routes[0].destination || '';
-        }
-      }
+      // Extraemos los datos relevantes con valores por defecto para evitar campos nulos
+      const trip = data.trip;
+      const route = data.route;
+      
+      // Mostramos la información exacta que obtenemos de manera segura
+      console.log(`[getTripInfo] Ruta completa:`, JSON.stringify({
+        id: route?.id || 0,
+        name: route?.name || 'Sin nombre',
+        origin: route?.origin || 'Sin origen',
+        destination: route?.destination || 'Sin destino'
+      }));
       
       // Creamos un objeto simplificado con toda la información
       const result = {
@@ -168,12 +166,13 @@ export class CutoffService {
         departureTime: trip.departureTime || '',
         segmentOrigin: trip.segmentOrigin || '',
         segmentDestination: trip.segmentDestination || '',
-        routeName: routeName,
-        routeOrigin: routeOrigin,
-        routeDestination: routeDestination
+        routeName: route.name || '',
+        // Aseguramos que estos campos no sean nulos ni indefinidos
+        routeOrigin: route.origin || 'Sin origen registrado',
+        routeDestination: route.destination || 'Sin destino registrado'
       };
       
-      console.log(`[getTripInfo] Información obtenida para viaje ${tripId}:`, JSON.stringify(result));
+      console.log(`[getTripInfo] Información final procesada para viaje ${tripId}:`, JSON.stringify(result));
       
       return result;
     } catch (error) {
@@ -211,6 +210,64 @@ export class CutoffService {
     } catch (error) {
       console.error(`[getReservationPassengers] Error al obtener pasajeros:`, error);
       return [];
+    }
+  }
+
+  /**
+   * Función auxiliar para obtener los datos de una ruta directamente
+   */
+  private async getRouteDirectly(routeId: number): Promise<{
+    name: string;
+    origin: string;
+    destination: string;
+  } | null> {
+    try {
+      if (!routeId) return null;
+      
+      const route = await db
+        .select()
+        .from(schema.routes)
+        .where(eq(schema.routes.id, routeId))
+        .limit(1);
+        
+      if (route.length === 0) return null;
+      
+      return {
+        name: route[0].name || '',
+        origin: route[0].origin || '',
+        destination: route[0].destination || ''
+      };
+    } catch (error) {
+      console.error(`[getRouteDirectly] Error obteniendo ruta ${routeId}:`, error);
+      return null;
+    }
+  }
+  
+  /**
+   * Función auxiliar para obtener datos de la ruta asociada a un viaje
+   */
+  private async getRouteByTripId(tripId: number): Promise<{
+    name: string;
+    origin: string;
+    destination: string;
+  } | null> {
+    try {
+      if (!tripId) return null;
+      
+      // Primero obtenemos el ID de la ruta desde el viaje
+      const trip = await db
+        .select()
+        .from(schema.trips)
+        .where(eq(schema.trips.id, tripId))
+        .limit(1);
+        
+      if (trip.length === 0 || !trip[0].routeId) return null;
+      
+      // Con el ID de la ruta, obtenemos sus datos
+      return this.getRouteDirectly(trip[0].routeId);
+    } catch (error) {
+      console.error(`[getRouteByTripId] Error obteniendo ruta para viaje ${tripId}:`, error);
+      return null;
     }
   }
 
@@ -324,21 +381,34 @@ export class CutoffService {
           const tripId = item.tripId || 0;
           
           if (tripId > 0) {
-            // Obtener información completa del viaje
-            const tripInfo = await this.getTripInfo(tripId);
+            // NUEVA IMPLEMENTACIÓN: Obtener datos de la ruta directamente
+            // Esto asegura que tengamos la información correcta incluso si otras partes fallan
+            const routeInfo = await this.getRouteByTripId(tripId);
             
-            if (tripInfo) {
-              console.log(`[createCutoff] Información del viaje obtenida:`, JSON.stringify(tripInfo));
+            if (routeInfo) {
+              console.log(`[createCutoff] DATOS DE RUTA OBTENIDOS DIRECTAMENTE:`, JSON.stringify(routeInfo));
               
-              // Transferir información al item para usarla más adelante
-              item.routeName = tripInfo.routeName;
+              // Transferir la información obtenida directamente al item
+              item.routeName = routeInfo.name;
+              item.origin = routeInfo.origin;
+              item.destination = routeInfo.destination;
               
-              // Para origen y destino, vamos a usar exactamente los mismos valores que se muestran en la columna "Ruta"
-              item.origin = tripInfo.routeOrigin; // Siempre usamos el origen de la ruta principal
-              item.destination = tripInfo.routeDestination; // Siempre usamos el destino de la ruta principal
-              
-              item.departureDate = tripInfo.departureDate;
-              item.departureTime = tripInfo.departureTime;
+              // Log para verificar los datos transferidos
+              console.log(`[createCutoff] Datos transferidos: Origen=${item.origin}, Destino=${item.destination}`);
+            } else {
+              console.warn(`[createCutoff] No se pudieron obtener datos de la ruta para el viaje ${tripId}`);
+            }
+            
+            // También seguimos obteniendo los datos del viaje para tener la información de fecha/hora
+            const trip = await db
+              .select()
+              .from(schema.trips)
+              .where(eq(schema.trips.id, tripId))
+              .limit(1);
+            
+            if (trip.length > 0) {
+              item.departureDate = trip[0].departureDate;
+              item.departureTime = trip[0].departureTime;
             }
           }
           
@@ -369,9 +439,9 @@ export class CutoffService {
           tripId: item.tripId || 0,
           tripName: item.routeName || '',
           
-          // Origen y destino
-          origin: item.origin || 'Origen no especificado',
-          destination: item.destination || 'Destino no especificado',
+          // Origen y destino - IMPORTANTE: aseguramos usar los datos exactos que vemos en la UI
+          origin: item.origin || (item.tripId ? 'Consultando origen...' : 'Origen no especificado'),
+          destination: item.destination || (item.tripId ? 'Consultando destino...' : 'Destino no especificado'),
           
           // Fecha y hora
           departureDate: formattedDate,
