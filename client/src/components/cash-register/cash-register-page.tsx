@@ -80,6 +80,7 @@ export function CashRegisterPage() {
     totalTransfer: number;
     transactionCount: number;
     notes?: string;
+    items?: any[];
   }
   
   // Estados para el historial de cortes
