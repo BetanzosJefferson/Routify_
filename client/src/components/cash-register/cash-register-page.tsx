@@ -712,7 +712,7 @@ Total transacciones: ${cutoffData.transactionCount}
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "mm",
-        format: [58, 160], // 58mm (ancho estándar para tickets de 60mm) x 160mm de alto
+        format: [58, 200], // 58mm (ancho estándar para tickets de 60mm) x altura ampliada para más detalles
       });
       
       // Configuración básica
@@ -722,19 +722,20 @@ Total transacciones: ${cutoffData.transactionCount}
       let y = 5;
       const margin = 5;
       
-      // Encabezado
+      // Encabezado - Usar el nombre de la empresa del usuario actual
       doc.setFontSize(10);
       doc.setFont("courier", "bold");
       
-      // Centrar el texto del encabezado
-      doc.text("AUTOBUSES VIAJEROS", 29, y, { align: "center" });
+      // Obtener el nombre de la empresa del usuario
+      const companyName = user?.company?.toUpperCase() || (user?.companyId ? user.companyId.toUpperCase() : "SISTEMA DE CAJA");
+      doc.text(companyName, 29, y, { align: "center" });
       y += 4;
       
       doc.setFontSize(8);
       doc.text(`CORTE DE CAJA #${cutoffInfo.id}`, 29, y, { align: "center" });
       y += 3;
       
-      // Añadir fecha 
+      // Añadir fecha y usuario que realizó el corte
       try {
         const fechaCorte = new Date(cutoffInfo.createdAt);
         if (!isNaN(fechaCorte.getTime())) {
@@ -753,9 +754,11 @@ Total transacciones: ${cutoffData.transactionCount}
       }
       
       y += 3;
+      doc.text(`OPERADOR: ${user ? `${user.firstName} ${user.lastName}` : data.user}`, margin, y);
+      y += 3;
       
       // Línea separadora
-      y += 2;
+      y += 1;
       doc.setDrawColor(0);
       doc.line(margin, y, 53, y);
       y += 3;
@@ -780,48 +783,91 @@ Total transacciones: ${cutoffData.transactionCount}
       doc.line(margin, y, 53, y);
       y += 4;
       
-      // Detalles de las transacciones
+      // Detalles completos de las transacciones
       if (data.transactions && data.transactions.length > 0) {
         doc.setFontSize(7);
         doc.setFont("courier", "bold");
         doc.text("DETALLE DE TRANSACCIONES:", margin, y);
         y += 3;
         
-        // Mostrar solo las primeras 10 transacciones
-        const limitedTransactions = data.transactions.slice(0, 10);
-        
         doc.setFont("courier", "normal");
-        limitedTransactions.forEach((t: any) => {
-          // Limitar longitud del nombre
-          const tripName = t.tripName ? 
-            (t.tripName.length > 18 ? t.tripName.substring(0, 15) + '...' : t.tripName) : 
-            'Sin nombre';
-          
-          doc.text(`#${t.id} - ${tripName}`, margin, y);
+        data.transactions.forEach((t: any, index: number) => {
+          // Sección principal de la transacción
+          doc.setFont("courier", "bold");
+          doc.text(`${index + 1}. ${t.type === 'package' ? 'PAQUETERÍA' : 'RESERVACIÓN'} #${t.id}`, margin, y);
           y += 2.5;
-          doc.text(`${formatPrice(t.amount)} - ${t.paymentMethod}`, margin + 2, y);
+          
+          // Detalles específicos según el tipo
+          doc.setFont("courier", "normal");
+          if (t.type === 'package') {
+            // Detalles para paqueterías
+            doc.text(`Remitente: ${t.senderName || ''} ${t.senderLastName || ''}`, margin + 2, y);
+            y += 2;
+            doc.text(`Destinatario: ${t.receiverName || ''} ${t.receiverLastName || ''}`, margin + 2, y);
+            y += 2;
+            doc.text(`Ruta: ${t.originCity || t.origin || ''} → ${t.destinationCity || t.destination || ''}`, margin + 2, y);
+          } else {
+            // Detalles para reservaciones
+            if (t.tripName) {
+              doc.text(`Viaje: ${t.tripName}`, margin + 2, y);
+              y += 2;
+            }
+            
+            if (t.passengerCount) {
+              doc.text(`Pasajeros: ${t.passengerCount}`, margin + 2, y);
+              y += 2;
+            }
+            
+            if (t.origin && t.destination) {
+              doc.text(`Ruta: ${t.origin} → ${t.destination}`, margin + 2, y);
+              y += 2;
+            }
+          }
+          
+          // Información de pago común para ambos tipos
+          doc.text(`Monto: ${formatPrice(t.amount)}`, margin + 2, y);
+          y += 2;
+          doc.text(`Método: ${t.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}`, margin + 2, y);
+          y += 2;
+          doc.text(`Concepto: ${t.paymentNote || (t.advanceAmount && t.advanceAmount > 0 ? 'Anticipo' : 'Pago completo')}`, margin + 2, y);
+          
+          // Separador entre transacciones
+          y += 3;
+          doc.setDrawColor(200, 200, 200); // Línea gris clara para separar
+          doc.line(margin + 2, y, 51, y);
+          doc.setDrawColor(0); // Volver a negro para otras líneas
           y += 3;
         });
+      } else if (cutoffInfo.notes) {
+        // Si no hay transacciones detalladas pero hay notas, mostrarlas
+        y += 3;
+        doc.setFont("courier", "italic");
+        doc.text("Información no disponible para cortes antiguos", margin, y);
+        y += 3;
+      }
+      
+      // Mostrar notas del corte si existen
+      if (cutoffInfo.notes) {
+        y += 2;
+        doc.setFont("courier", "bold");
+        doc.text("NOTAS:", margin, y);
+        y += 3;
+        doc.setFont("courier", "normal");
         
-        // Si hay más transacciones
-        if (data.transactions.length > 10) {
-          y += 1;
-          doc.text(`... y ${data.transactions.length - 10} transacciones más`, margin, y);
-          y += 3;
-        }
+        // Dividir notas largas en múltiples líneas
+        const notesWidth = 48; // Ancho máximo para notas
+        const splitNotes = doc.splitTextToSize(cutoffInfo.notes, notesWidth);
+        splitNotes.forEach((line: string) => {
+          doc.text(line, margin, y);
+          y += 2.5;
+        });
       }
       
       // Línea final
       y += 2;
       doc.line(margin, y, 53, y);
-      y += 4;
       
-      // Pie de página
-      doc.setFontSize(8);
-      doc.text("¡GRACIAS POR SU SERVICIO!", 29, y, { align: "center" });
-      y += 3;
-      doc.setFontSize(6);
-      doc.text("www.autobusesviajeros.com", 29, y, { align: "center" });
+      // No incluimos pie de página con "¡GRACIAS POR SU SERVICIO!" como se solicitó
       
       // Abrir el PDF en una nueva ventana
       window.open(URL.createObjectURL(doc.output('blob')));
