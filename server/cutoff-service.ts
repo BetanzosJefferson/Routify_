@@ -208,6 +208,33 @@ export class CutoffService {
         
         console.log(`[createCutoff] Procesando método de pago - Original: "${item.paymentMethod}", Normalizado: "${simplePaymentMethod}"`);
         
+        // Obtener datos completos del viaje desde objeto trip si existe
+        const trip = item.trip || {};
+        const route = trip.route || {};
+        console.log(`[createCutoff] Procesando item con trip:`, {
+          tripId: trip.id,
+          routeName: route.name,
+          departureDate: trip.departureDate,
+          departureTime: trip.departureTime
+        });
+        
+        // Intentar obtener fecha y hora más confiable
+        let departureDate = '';
+        if (trip.departureDate) {
+          try {
+            // Asegurarnos de tener una fecha válida en formato ISO
+            const date = new Date(trip.departureDate);
+            departureDate = date.toISOString();
+          } catch (e) {
+            console.error(`[createCutoff] Error al formatear fecha:`, e);
+            departureDate = trip.departureDate;
+          }
+        }
+        
+        // Extraer los datos de pasajeros si están disponibles
+        const passengers = Array.isArray(item.passengers) ? item.passengers : [];
+        console.log(`[createCutoff] Procesando ${passengers.length} pasajeros para el item ${item.id}`);
+        
         // Crear objeto con todos los detalles relevantes para guardar
         const detailedInfo = {
           // Información básica
@@ -215,12 +242,25 @@ export class CutoffService {
           type: isPackage ? 'package' : 'reservation',
           
           // Información de ruta/viaje
-          tripId: item.tripId,
-          tripName: item.tripName || (item.trip ? `${item.trip.route?.name || 'Ruta'} - ${new Date(item.trip?.departureDate).toLocaleDateString()}` : ''),
-          origin: item.origin || item.trip?.segmentOrigin || item.trip?.route?.origin || '',
-          destination: item.destination || item.trip?.segmentDestination || item.trip?.route?.destination || '',
-          departureDate: item.trip?.departureDate || '',
-          departureTime: item.trip?.departureTime || '',
+          tripId: item.tripId || trip.id,
+          tripName: item.tripName || 
+                   (route.name ? route.name : '') || 
+                   (trip.route ? trip.route.name : ''),
+          
+          // Origen y destino, intentando obtenerlos de múltiples fuentes
+          origin: item.origin || 
+                 trip.segmentOrigin || 
+                 route.origin || 
+                 (trip.origin ? trip.origin : ''),
+                 
+          destination: item.destination || 
+                      trip.segmentDestination || 
+                      route.destination || 
+                      (trip.destination ? trip.destination : ''),
+          
+          // Fecha y hora de salida
+          departureDate: departureDate,
+          departureTime: trip.departureTime || '',
           
           // Información de pago
           amount: item.amount || item.totalAmount || 0,
@@ -233,7 +273,7 @@ export class CutoffService {
           concept: isPackage ? 'Paquetería' : 'Reservación',
           
           // Información de pasajeros/paquetes
-          passengerCount: item.passengerCount || (Array.isArray(item.passengers) ? item.passengers.length : 0),
+          passengerCount: passengers.length || item.passengerCount || 0,
           seatNumbers: item.seatNumbers || [],
           
           // Para paqueterías
@@ -244,17 +284,16 @@ export class CutoffService {
           weight: isPackage ? (item.weight || '') : '',
           dimensions: isPackage ? (item.dimensions || '') : '',
           
-          // Para reservaciones
-          passengers: Array.isArray(item.passengers) ? 
-            item.passengers.map((p: any) => ({
-              firstName: p.firstName || '',
-              lastName: p.lastName || '',
-              phone: p.phone || '',
-              email: p.email || ''
-            })) : [],
+          // Para reservaciones - procesando pasajeros más cuidadosamente
+          passengers: passengers.map((p: any) => ({
+            firstName: p.firstName || '',
+            lastName: p.lastName || '',
+            phone: p.phone || '',
+            email: p.email || ''
+          })),
           
           // Metadatos
-          companyId: item.companyId || item.trip?.companyId || '',
+          companyId: item.companyId || (trip.companyId ? trip.companyId : ''),
           companyName: item.companyInfo?.name || '',
           createdAt: item.createdAt || new Date().toISOString(),
           paidAt: item.paidAt || item.paymentAt || new Date().toISOString()
