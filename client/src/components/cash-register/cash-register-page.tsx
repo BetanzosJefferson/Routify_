@@ -537,10 +537,44 @@ export function CashRegisterPage() {
       localStorage.setItem('cutoffHistory', JSON.stringify(history));
       setCutoffHistory(history);
       
+      // Guardar IDs de elementos procesados en localStorage para simular
+      // la limpieza de la tabla sin depender de la tabla processed_items en el servidor
+      const processedItemsKey = `processed_items_${user.id}`;
+      const storedProcessedItems = localStorage.getItem(processedItemsKey);
+      const processedItems = storedProcessedItems ? JSON.parse(storedProcessedItems) : [];
+      
+      // Agregar IDs de los elementos procesados en este corte
+      cutoffData.transactions.forEach(item => {
+        const itemId = item.id;
+        const itemType = item.type || (item.originalPackageId ? 'package' : 'reservation');
+        processedItems.push({ 
+          type: itemType, 
+          id: itemId,
+          processedAt: new Date().toISOString(),
+          cutoffId: newCutoff.id
+        });
+      });
+      
+      // Guardar en localStorage
+      localStorage.setItem(processedItemsKey, JSON.stringify(processedItems));
+      
+      // En un entorno real, esto enviaría los datos al servidor y luego refrescaría
+      // Pero para esta simulación, simplemente invalidamos la caché para forzar una recarga
+      queryClient.invalidateQueries({ queryKey: ["/api/cashbox/transactions"] });
+      
+      // Limpiar los filtros para mostrar la vista limpia
+      setSearchTerm("");
+      setDateFilter("");
+      setPaymentMethodFilter("todos");
+      if (isTicketOfficeView) setCompanyFilter("todas");
+      
+      // Cerrar el modal de corte
+      setShowCutoffModal(false);
+      
       // Mostrar mensaje de éxito
       toast({
         title: "Corte realizado",
-        description: "Se ha realizado el corte de caja correctamente.",
+        description: "Se ha realizado el corte de caja correctamente. Las transacciones procesadas se han movido al historial.",
       });
       
       // Imprimir el ticket (simulación)
