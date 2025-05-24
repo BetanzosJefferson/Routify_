@@ -332,8 +332,11 @@ export class CutoffService {
               
               // Transferir información al item para usarla más adelante
               item.routeName = tripInfo.routeName;
-              item.origin = tripInfo.segmentOrigin || tripInfo.routeOrigin;
-              item.destination = tripInfo.segmentDestination || tripInfo.routeDestination;
+              
+              // Para origen y destino, vamos a usar exactamente los mismos valores que se muestran en la columna "Ruta"
+              item.origin = tripInfo.routeOrigin; // Siempre usamos el origen de la ruta principal
+              item.destination = tripInfo.routeDestination; // Siempre usamos el destino de la ruta principal
+              
               item.departureDate = tripInfo.departureDate;
               item.departureTime = tripInfo.departureTime;
             }
