@@ -58,8 +58,9 @@ import {
   Share2,
 } from "lucide-react";
 
-// Importar el componente de ticket de paquete
+// Importar componentes relacionados con paquetes
 import { PackageTicket } from "./package-ticket";
+import { PackageDetailsModal } from "./package-details-modal";
 
 interface PackageListProps {
   onAddPackage: () => void;
@@ -71,6 +72,8 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
   const { user } = useAuth();
   const [packageToDelete, setPackageToDelete] = useState<number | null>(null);
   const [packageToView, setPackageToView] = useState<any | null>(null);
+  const [packageToDetail, setPackageToDetail] = useState<any | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
   
   // Determinar si el usuario puede añadir/editar paquetes
   const canCreateEdit = user ? hasRoleAccess(user.role, [UserRole.OWNER, UserRole.ADMIN, UserRole.CALL_CENTER, UserRole.CHECKER]) : false;
@@ -269,7 +272,14 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
           </TableHeader>
           <TableBody>
             {packagesQuery.data.map((pkg: any) => (
-              <TableRow key={pkg.id}>
+              <TableRow 
+                key={pkg.id} 
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => {
+                  setPackageToDetail(pkg);
+                  setIsDetailModalOpen(true);
+                }}
+              >
                 <TableCell className="font-medium">{pkg.id}</TableCell>
                 <TableCell>
                   {pkg.senderName} {pkg.senderLastName}
@@ -322,7 +332,7 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                   )}
                 </TableCell>
                 <TableCell>{pkg.tripDate ? formatDate(new Date(pkg.tripDate)) : formatDate(new Date(pkg.createdAt))}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm">
@@ -436,6 +446,13 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Modal de detalles de paquete */}
+      <PackageDetailsModal 
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        packageData={packageToDetail}
+      />
     </div>
   );
 }

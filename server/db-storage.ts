@@ -3321,7 +3321,15 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getPackagesWithTripInfo(filters?: { companyId?: string, tripId?: number, tripIds?: number[] }): Promise<(schema.Package & { tripOrigin?: string, tripDestination?: string, segmentOrigin?: string, segmentDestination?: string })[]> {
+  async getPackagesWithTripInfo(filters?: { companyId?: string, tripId?: number, tripIds?: number[] }): Promise<(schema.Package & { 
+    tripOrigin?: string, 
+    tripDestination?: string, 
+    segmentOrigin?: string, 
+    segmentDestination?: string,
+    createdByUser?: { firstName: string, lastName: string },
+    paidByUser?: { firstName: string, lastName: string },
+    deliveredByUser?: { firstName: string, lastName: string }
+  })[]> {
     try {
       // Primero obtenemos los paquetes
       const packages = await this.getPackages(filters);
@@ -3364,7 +3372,33 @@ export class DatabaseStorage implements IStorage {
         return acc;
       }, {} as Record<number, typeof routes[0]>);
       
-      // Añadimos origen y destino a cada paquete
+      // Extraemos los IDs de usuarios para buscarlos (creador, quien marcó como pagado, quien entregó)
+      const userIds = new Set<number>();
+      packages.forEach(pkg => {
+        if (pkg.createdBy) userIds.add(pkg.createdBy);
+        if (pkg.paidBy) userIds.add(pkg.paidBy);
+        if (pkg.deliveredBy) userIds.add(pkg.deliveredBy);
+      });
+      
+      // Si hay usuarios relacionados, obtenemos sus datos
+      let usersMap: Record<number, { firstName: string, lastName: string }> = {};
+      if (userIds.size > 0) {
+        const userIdsArray = [...userIds];
+        const users = await db.select({
+          id: schema.users.id,
+          firstName: schema.users.firstName,
+          lastName: schema.users.lastName
+        }).from(schema.users)
+          .where(inArray(schema.users.id, userIdsArray));
+        
+        // Crear mapa de usuarios para fácil acceso
+        usersMap = users.reduce((acc, user) => {
+          acc[user.id] = { firstName: user.firstName, lastName: user.lastName };
+          return acc;
+        }, {} as Record<number, { firstName: string, lastName: string }>);
+      }
+      
+      // Añadimos origen, destino e información de usuarios a cada paquete
       return packages.map(pkg => {
         const tripInfo = tripsMap[pkg.tripId];
         const routeInfo = tripInfo ? routesMap[tripInfo.routeId] : null;
@@ -3375,7 +3409,11 @@ export class DatabaseStorage implements IStorage {
           tripOrigin: routeInfo?.origin || "No disponible",
           tripDestination: routeInfo?.destination || "No disponible",
           segmentOrigin: tripInfo?.segmentOrigin || routeInfo?.origin || "No disponible",
-          segmentDestination: tripInfo?.segmentDestination || routeInfo?.destination || "No disponible"
+          segmentDestination: tripInfo?.segmentDestination || routeInfo?.destination || "No disponible",
+          // Información de usuarios
+          createdByUser: pkg.createdBy ? usersMap[pkg.createdBy] : undefined,
+          paidByUser: pkg.paidBy ? usersMap[pkg.paidBy] : undefined,
+          deliveredByUser: pkg.deliveredBy ? usersMap[pkg.deliveredBy] : undefined
         };
       });
     } catch (error) {
