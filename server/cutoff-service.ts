@@ -558,14 +558,100 @@ export class CutoffService {
           }
         }
         
+        // CONSULTA ESPECIAL PARA OBTENER DATOS PRECISOS DE ORIGEN/DESTINO
+        let origin = '';
+        let destination = '';
+        let routeName = '';
+        
+        // Solo para reservaciones (no para paquetes), hacemos un último intento directo
+        if (!isPackage && item.id) {
+          try {
+            console.log(`[createCutoff] 🚨 Realizando consulta FINAL para reservación ${item.id}`);
+            
+            // Consulta directa a la base de datos para obtener todos los datos relevantes en una sola operación
+            const reservationWithData = await db.query.reservations.findFirst({
+              where: eq(schema.reservations.id, item.id),
+              with: {
+                trip: {
+                  with: {
+                    route: true
+                  }
+                }
+              }
+            });
+            
+            if (reservationWithData && reservationWithData.trip) {
+              const trip = reservationWithData.trip;
+              const isSubtrip = !!trip.parentTripId;
+              
+              console.log(`[createCutoff] 📊 Datos obtenidos para reservación ${item.id}:`, {
+                tripId: trip.id,
+                isSubtrip,
+                parentTripId: trip.parentTripId,
+                routeId: trip.routeId,
+                segmentOrigin: trip.segmentOrigin,
+                segmentDestination: trip.segmentDestination,
+                hasRoute: !!trip.route
+              });
+              
+              // Para subviajes, usar directamente segmentOrigin/segmentDestination
+              if (isSubtrip) {
+                origin = trip.segmentOrigin || '';
+                destination = trip.segmentDestination || '';
+                
+                // Para el nombre de la ruta, intentar obtenerlo del viaje principal
+                if (trip.parentTripId) {
+                  const parentTrip = await db.query.trips.findFirst({
+                    where: eq(schema.trips.id, trip.parentTripId),
+                    with: {
+                      route: true
+                    }
+                  });
+                  
+                  if (parentTrip && parentTrip.route) {
+                    routeName = parentTrip.route.name || '';
+                  }
+                }
+              } 
+              // Para viajes regulares, usar la lógica normal de priorización
+              else if (trip.route) {
+                // Verificar si hay segmentos específicos definidos
+                const hasSegmentOrigin = trip.segmentOrigin && trip.segmentOrigin.trim() !== '';
+                const hasSegmentDestination = trip.segmentDestination && trip.segmentDestination.trim() !== '';
+                
+                // Priorizar segmentos específicos si existen
+                origin = hasSegmentOrigin ? trip.segmentOrigin : (trip.route.origin || '');
+                destination = hasSegmentDestination ? trip.segmentDestination : (trip.route.destination || '');
+                routeName = trip.route.name || '';
+              }
+              
+              // Guardar la fecha y hora del viaje
+              item.departureDate = trip.departureDate || '';
+              item.departureTime = trip.departureTime || '';
+            }
+            
+            console.log(`[createCutoff] 🎯 Valores finales obtenidos para ${item.id}:`, {
+              origin,
+              destination,
+              routeName
+            });
+            
+            // Actualizar los valores en el item que se usará para el detailedInfo
+            item.origin = origin;
+            item.destination = destination;
+            item.routeName = routeName;
+            
+          } catch (error) {
+            console.error(`[createCutoff] Error en consulta final para ${item.id}:`, error);
+          }
+        }
+        
         // LOGGING ANTES DE CREAR EL OBJETO FINAL
         console.log(`[createCutoff] 🔍 DATOS DEL ITEM ANTES DE CREAR DETAILEDINFO:`, {
           id: item.id,
           type: isPackage ? 'package' : 'reservation',
           tripId: item.tripId || 0,
           routeName: item.routeName || '',
-          segmentOrigin: item.segmentOrigin || '',
-          segmentDestination: item.segmentDestination || '',
           origin: item.origin || '',
           destination: item.destination || ''
         });
@@ -578,11 +664,11 @@ export class CutoffService {
           
           // Información de ruta/viaje
           tripId: item.tripId || 0,
-          tripName: item.routeName || 'Acapulco de Juárez - Coyoacán',
+          tripName: item.routeName || '',
           
-          // Origen y destino - Usar los valores directamente de la base de datos
-          origin: item.origin || "Acapulco de Juárez, Guerrero - Terminal condesa",
-          destination: item.destination || "Coyoacán, Ciudad de México - Taxqueña",
+          // Origen y destino - Solo usar los valores que hayamos podido obtener
+          origin: item.origin || '',
+          destination: item.destination || '',
           
           // Fecha y hora
           departureDate: formattedDate,
