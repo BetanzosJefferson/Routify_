@@ -192,30 +192,6 @@ export class CutoffService {
         
         // Crear objeto con todos los detalles relevantes para guardar
         
-        // Extraer información del pasajero/remitente
-        let personName = 'No disponible';
-        
-        // Si el ítem tiene detalles específicos (enviados desde el frontend)
-        if (item.details) {
-          try {
-            // Si ya vienen como objeto, usarlos directamente
-            const details = typeof item.details === 'object' ? item.details : JSON.parse(item.details);
-            if (details.passengerName) {
-              personName = details.passengerName;
-              console.log(`[createCutoff] Nombre del pasajero/remitente extraído de los detalles: ${personName}`);
-            }
-          } catch (e) {
-            console.error(`[createCutoff] Error al procesar detalles del ítem:`, e);
-          }
-        } else if (isPackage) {
-          // Si es paquete, usar senderName
-          personName = item.senderName || 'Remitente sin nombre';
-        } else if (item.passengers && Array.isArray(item.passengers) && item.passengers.length > 0) {
-          // Si tiene pasajeros, usar el primero
-          const passenger = item.passengers[0];
-          personName = `${passenger.firstName || ''} ${passenger.lastName || ''}`.trim() || 'Pasajero sin nombre';
-        }
-        
         // Depuración para verificar la estructura de item.trip
         console.log(`[createCutoff] DEPURACIÓN de item.trip para ítem ${item.id}:`, {
           tripExists: !!item.trip,
@@ -226,8 +202,7 @@ export class CutoffService {
           routeOrigin: item.trip?.route?.origin,
           routeDestination: item.trip?.route?.destination,
           originFromItem: item.origin,
-          destinationFromItem: item.destination,
-          passengerName: personName
+          destinationFromItem: item.destination
         });
         
         // Analizar la información de origen/destino correcta
@@ -269,11 +244,6 @@ export class CutoffService {
                   destination: 'Destino pendiente de especificar',
                   isSegment: false
                 };
-                
-        // Extraer nombre del viaje desde tripData o ítem
-        const tripName = item.tripName || 
-                      (tripData && tripData.route && tripData.route.name) || 
-                      (isPackage ? "Paquetería" : "Sin ruta");
         
         console.log(`[createCutoff] Procesando origen/destino para ítem ${item.id}:`, originDestInfo);
         
@@ -282,12 +252,9 @@ export class CutoffService {
           id: item.id,
           type: isPackage ? 'package' : 'reservation',
           
-          // Información del pasajero/remitente
-          passengerName: personName,
-          
           // Información de ruta/viaje
           tripId: item.tripId,
-          tripName: tripName || (item.trip ? `${item.trip.route?.name || 'Ruta'} - ${new Date(item.trip?.departureDate).toLocaleDateString()}` : ''),
+          tripName: item.tripName || (item.trip ? `${item.trip.route?.name || 'Ruta'} - ${new Date(item.trip?.departureDate).toLocaleDateString()}` : ''),
           
           // Almacenamos la información de trip para que podamos procesarla correctamente en el PDF
           tripInfo: {
