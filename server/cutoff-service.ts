@@ -14,37 +14,19 @@ export class CutoffService {
       return 'efectivo'; // Valor por defecto
     }
     
+    // Siempre revisar primero si es transferencia, para dar prioridad a este método
+    // Esto garantiza que cualquier método de pago que incluya 'transferencia' se considere como tal
     const lowerMethod = method.trim().toLowerCase();
-    let normalizedMethod = lowerMethod;
     
-    // Extraer la parte relevante con el método real
-    if (lowerMethod.includes('anticipo:')) {
-      // En formato "Anticipo: efectivo / Resto: efectivo", tomar el método después de "Anticipo:"
-      const parts = lowerMethod.split(':');
-      if (parts.length > 1) {
-        normalizedMethod = parts[1].trim();
-        // Si tiene "/", quedarse solo con la primera parte
-        if (normalizedMethod.includes('/')) {
-          normalizedMethod = normalizedMethod.split('/')[0].trim();
-        }
-      }
-    }
-    
-    // Normalizar a los dos tipos básicos
-    if (normalizedMethod.includes('efectivo') || normalizedMethod === 'cash') {
-      return 'efectivo';
-    } else if (normalizedMethod.includes('transfer') || normalizedMethod === 'bank_transfer') {
+    // Verificar si en CUALQUIER parte de la cadena se menciona transferencia
+    if (lowerMethod.includes('transfer') || lowerMethod.includes('transferencia') || 
+        lowerMethod.includes('bank_transfer') || lowerMethod.includes('tarjeta')) {
+      console.log(`[normalizePaymentMethod] Método '${method}' identificado como TRANSFERENCIA`);
       return 'transferencia';
     }
     
-    // Verificar en la cadena original como respaldo
-    if (lowerMethod.includes('efectivo') || lowerMethod === 'cash') {
-      return 'efectivo';
-    } else if (lowerMethod.includes('transfer') || lowerMethod === 'bank_transfer') {
-      return 'transferencia';
-    }
-    
-    // Valor por defecto si no se detecta un tipo específico
+    // Si llegamos aquí, no es transferencia, probablemente es efectivo
+    console.log(`[normalizePaymentMethod] Método '${method}' identificado como EFECTIVO por defecto`);
     return 'efectivo';
   }
   /**
