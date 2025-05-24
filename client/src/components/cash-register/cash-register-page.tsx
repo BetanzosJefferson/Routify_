@@ -88,6 +88,19 @@ export function CashRegisterPage() {
   const [cutoffHistory, setCutoffHistory] = useState<CutoffHistoryItem[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   
+  // Consulta para obtener el historial de cortes
+  const { data: cutoffsData, isLoading: isLoadingCutoffs } = useQuery({
+    queryKey: ['/api/cutoffs'],
+    queryFn: async () => {
+      const response = await fetch('/api/cutoffs');
+      if (!response.ok) {
+        throw new Error('Error al cargar el historial de cortes');
+      }
+      return response.json();
+    },
+    enabled: !!user // Solo ejecutar la consulta si el usuario está autenticado
+  });
+  
   // Estado para saber si estamos en modo administrador o taquillero
   const isAdminView = user?.role === 'dueño' || user?.role === 'administrador';
   const isTicketOfficeView = user?.role === 'taquilla';
