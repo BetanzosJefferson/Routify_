@@ -1136,7 +1136,11 @@ Total transacciones: ${cutoffData.transactionCount}
                   {cutoffData.transactions.slice(0, 5).map((t: any) => (
                     <div key={t.id} className="border-b pb-2 text-sm">
                       <p><span className="font-medium">ID:</span> {t.id}</p>
-                      <p><span className="font-medium">Ruta:</span> {t.tripName}</p>
+                      <p>
+                        <span className="font-medium">Ruta:</span> {t.origin || t.tripInfo?.processedOrigin || 'Origen no especificado'} 
+                        <span className="mx-1">→</span> 
+                        {t.destination || t.tripInfo?.processedDestination || 'Destino no especificado'}
+                      </p>
                       <p><span className="font-medium">Monto:</span> {formatPrice(t.amount)}</p>
                       <p><span className="font-medium">Método:</span> {t.paymentMethod}</p>
                     </div>
