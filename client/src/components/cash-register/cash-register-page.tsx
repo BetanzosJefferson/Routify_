@@ -523,6 +523,7 @@ export function CashRegisterPage() {
         duration: 3000,
       });
       
+      // Cargar los datos directamente sin usar estados intermedios
       // Refrescar los datos de transacciones para asegurarnos de tener todas las transacciones actualizadas
       await queryClient.invalidateQueries({ queryKey: ["/api/cashbox/transactions"] });
       
@@ -536,7 +537,10 @@ export function CashRegisterPage() {
       const freshTransactions = await response.json();
       console.log("Transacciones actualizadas para el corte:", freshTransactions.length);
       
-      // Calcular totales directamente con los datos frescos (sin depender del estado)
+      // En lugar de intentar actualizar el estado y luego mostrar el modal,
+      // vamos a abrir una nueva página/ventana con los datos de corte
+      
+      // Calcular los totales para incluirlos en la URL
       let calculatedTotalCash = 0;
       let calculatedTotalTransfer = 0;
       
@@ -559,91 +563,38 @@ export function CashRegisterPage() {
         }
       });
       
+      const calculatedTotal = calculatedTotalCash + calculatedTotalTransfer;
+      
       console.log("Totales calculados directamente para corte:", { 
         calculatedTotalCash, 
         calculatedTotalTransfer,
-        total: calculatedTotalCash + calculatedTotalTransfer,
+        total: calculatedTotal,
         transactionCount: freshTransactions.length
       });
       
-      // Separar transacciones por tipo para preparar datos del modal
-      const sortedReservations = freshTransactions
-        .filter((t: any) => t.type === 'reservation')
-        .sort((a: any, b: any) => new Date(b.paidAt || 0).getTime() - new Date(a.paidAt || 0).getTime());
-        
-      const sortedPackages = freshTransactions
-        .filter((t: any) => t.type === 'package')
-        .sort((a: any, b: any) => new Date(b.paidAt || 0).getTime() - new Date(a.paidAt || 0).getTime());
-      
-      // Crear objeto con datos actualizados del corte
-      const updatedCutoffSummary = {
-        cutoff: {
-          operatorId: user?.id || 0,
-          cashboxId: user?.cashboxId || 0,
-          totalIncome: calculatedTotalCash + calculatedTotalTransfer,
-          totalExpenses: 0,
-          finalBalance: calculatedTotalCash + calculatedTotalTransfer,
-          totalCash: calculatedTotalCash,
-          totalTransfer: calculatedTotalTransfer,
-          transactionCount: freshTransactions.length,
-          notes: cutoffNotes,
-          createdAt: new Date().toISOString()
-        },
-        transactions: [
-          // Reservaciones
-          ...sortedReservations.map((r: any) => {
-            // Utilizar la lógica de priorización para origen y destino
-            const tripInfo = r.trip || {};
-            
-            // Extraer origen y destino con priorización
-            const origin = determineRoutePoint(
-              tripInfo.segmentOrigin,
-              tripInfo.routeOrigin,
-              r.origin
-            );
-            
-            const destination = determineRoutePoint(
-              tripInfo.segmentDestination,
-              tripInfo.routeDestination,
-              r.destination
-            );
-            
-            return {
-              id: r.id,
-              type: 'reservation',
-              tripName: r.trip?.route?.name || "Sin ruta",
-              origin,
-              destination,
-              passengerName: r.passengers && r.passengers.length > 0 
-                ? `${r.passengers[0]?.firstName || ''} ${r.passengers[0]?.lastName || ''}`.trim()
-                : "Sin pasajeros",
-              passengers: r.passengers?.map((p: any) => `${p.firstName} ${p.lastName}`).join(", ") || "Sin pasajeros",
-              amount: r.totalAmount || 0,
-              paymentMethod: getCombinedPaymentMethod(r)
-            };
-          }),
-          // Paqueterías
-          ...sortedPackages.map((p: any) => {
-            const origin = p.trip?.segmentOrigin || (p.trip?.route && p.trip.route.origin) || p.origin || "Origen no especificado";
-            const destination = p.trip?.segmentDestination || (p.trip?.route && p.trip.route.destination) || p.destination || "Destino no especificado";
-            
-            return {
-              id: p.id,
-              type: 'package',
-              tripName: p.trip?.route?.name || "Sin ruta",
-              origin,
-              destination,
-              sender: `${p.senderName || ''} ${p.senderLastName || ''}`,
-              recipient: `${p.recipientName || ''} ${p.recipientLastName || ''}`,
-              amount: p.price || 0,
-              paymentMethod: p.paymentMethod || 'efectivo'
-            };
-          })
-        ]
+      // Preparar los datos del corte para el modal
+      const cutoffSummary = {
+        user: `${user.firstName} ${user.lastName}`,
+        date: new Date().toLocaleString('es-MX', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        totalAmount: calculatedTotal,
+        totalCash: calculatedTotalCash,
+        totalTransfer: calculatedTotalTransfer,
+        transactionCount: freshTransactions.length
       };
       
-      // Establecer los datos del corte y mostrar el modal
-      setCutoffData(updatedCutoffSummary);
+      // Guardar los datos calculados en el estado para usarlos en el modal
+      setCutoffData({
+        ...cutoffSummary,
+        transactions: freshTransactions
+      });
+      
+      // Mostrar el modal
       setShowCutoffModal(true);
       
       // Determinar si estamos filtrando los datos
