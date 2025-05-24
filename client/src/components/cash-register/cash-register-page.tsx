@@ -1222,7 +1222,7 @@ Total transacciones: ${cutoffData.transactionCount}
                       <p>
                         <span className="font-medium">Pasajero:</span> {
                           t.type === 'reservation' 
-                            ? (t.passengerName || 'No disponible')
+                            ? (t.passengerName || t.passengers || 'No disponible')
                             : (t.type === 'package' ? (t.sender || 'Remitente sin nombre') : 'No disponible')
                         }
                       </p>
