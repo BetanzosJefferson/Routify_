@@ -504,6 +504,8 @@ export const packages = pgTable("packages", {
   // Estado del pago
   isPaid: boolean("is_paid").default(false).notNull(),
   paymentMethod: text("payment_method"), // efectivo, transferencia, etc.
+  markedAsPaidBy: integer("marked_as_paid_by").references(() => users.id), // ID del usuario que marca como pagado
+  markedAsPaidAt: timestamp("marked_as_paid_at"), // Fecha y hora en que se marcó como pagado
   
   // Metadatos
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -514,13 +516,17 @@ export const packages = pgTable("packages", {
   // Para seguimiento de estado
   deliveryStatus: text("delivery_status").notNull().default("pendiente"), // pendiente, entregado
   deliveredAt: timestamp("delivered_at"),
+  markedAsDeliveredBy: integer("marked_as_delivered_by").references(() => users.id), // ID del usuario que marca como entregado
 });
 
 export const insertPackageSchema = createInsertSchema(packages).omit({ 
   id: true, 
   createdAt: true, 
   updatedAt: true,
-  deliveredAt: true 
+  deliveredAt: true,
+  markedAsPaidBy: true,
+  markedAsPaidAt: true,
+  markedAsDeliveredBy: true
 });
 export type InsertPackage = z.infer<typeof insertPackageSchema>;
 export type Package = typeof packages.$inferSelect;
@@ -538,6 +544,14 @@ export const packageRelations = relations(packages, ({ one }) => ({
   company: one(companies, {
     fields: [packages.companyId],
     references: [companies.identifier]
+  }),
+  markedAsPaidByUser: one(users, {
+    fields: [packages.markedAsPaidBy],
+    references: [users.id]
+  }),
+  markedAsDeliveredByUser: one(users, {
+    fields: [packages.markedAsDeliveredBy],
+    references: [users.id]
   })
 }));
 
