@@ -3279,7 +3279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[POST /public/packages/${packageId}/mark-paid] Marcando paquete como pagado`);
       
       // Obtener información del usuario actual
-      const user = getUserFromSession(req);
+      const { user } = req as any;
       if (!user) {
         return res.status(401).json({ error: "No autenticado" });
       }
@@ -3316,7 +3316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Marcando paquete como entregado`);
       
       // Obtener información del usuario actual
-      const user = getUserFromSession(req);
+      const { user } = req as any;
       if (!user) {
         return res.status(401).json({ error: "No autenticado" });
       }
