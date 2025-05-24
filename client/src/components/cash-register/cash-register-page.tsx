@@ -809,17 +809,91 @@ Total transacciones: ${cutoffData.transactionCount}
           } else {
             // Detalles para reservaciones
             if (t.tripName) {
-              doc.text(`Viaje: ${t.tripName}`, margin + 2, y);
+              // Formatear el nombre del viaje (ruta) para evitar desbordamiento
+              let tripText = `Viaje: ${t.tripName}`;
+              if (tripText.length > 30) {
+                // Si es demasiado largo, truncar y añadir ...
+                tripText = tripText.substring(0, 27) + '...';
+              }
+              doc.text(tripText, margin + 2, y);
               y += 2;
             }
             
-            if (t.passengerCount) {
+            // Mostrar fecha y hora del viaje si están disponibles
+            if (t.departureDate || t.departureTime) {
+              let dateTimeStr = '';
+              
+              if (t.departureDate) {
+                try {
+                  const date = new Date(t.departureDate);
+                  if (!isNaN(date.getTime())) {
+                    dateTimeStr = date.toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: 'numeric'});
+                  } else {
+                    dateTimeStr = t.departureDate;
+                  }
+                } catch (e) {
+                  dateTimeStr = t.departureDate;
+                }
+              }
+              
+              if (t.departureTime) {
+                dateTimeStr += dateTimeStr ? ` - ${t.departureTime}` : t.departureTime;
+              }
+              
+              if (dateTimeStr) {
+                doc.text(`Fecha/Hora: ${dateTimeStr}`, margin + 2, y);
+                y += 2;
+              }
+            }
+            
+            // Información de pasajeros
+            if (t.passengers && t.passengers.length > 0) {
+              if (t.passengers.length === 1) {
+                const passenger = t.passengers[0];
+                let passengerName = '';
+                
+                if (typeof passenger === 'string') {
+                  passengerName = passenger;
+                } else if (passenger && typeof passenger === 'object') {
+                  passengerName = `${passenger.firstName || ''} ${passenger.lastName || ''}`.trim();
+                }
+                
+                if (passengerName) {
+                  // Si el nombre es muy largo, truncarlo
+                  if (passengerName.length > 25) {
+                    passengerName = passengerName.substring(0, 22) + '...';
+                  }
+                  doc.text(`Pasajero: ${passengerName}`, margin + 2, y);
+                  y += 2;
+                }
+              } else {
+                // Si hay múltiples pasajeros, solo mostrar la cantidad
+                doc.text(`Pasajeros: ${t.passengers.length}`, margin + 2, y);
+                y += 2;
+              }
+            } else if (t.passengerCount) {
               doc.text(`Pasajeros: ${t.passengerCount}`, margin + 2, y);
               y += 2;
             }
             
+            // Ruta (origen y destino)
             if (t.origin && t.destination) {
-              doc.text(`Ruta: ${t.origin} → ${t.destination}`, margin + 2, y);
+              // Limitar el largo de la ruta para evitar desbordamiento
+              let originText = t.origin;
+              let destText = t.destination;
+              
+              if ((originText + ' → ' + destText).length > 30) {
+                // Si es demasiado largo, acortar los nombres manteniendo el formato Origen → Destino
+                const maxTextLength = Math.floor((30 - 3) / 2); // 3 es el largo de " → "
+                if (originText.length > maxTextLength) {
+                  originText = originText.substring(0, maxTextLength - 2) + '..';
+                }
+                if (destText.length > maxTextLength) {
+                  destText = destText.substring(0, maxTextLength - 2) + '..';
+                }
+              }
+              
+              doc.text(`Ruta: ${originText} → ${destText}`, margin + 2, y);
               y += 2;
             }
           }
