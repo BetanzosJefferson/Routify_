@@ -907,7 +907,17 @@ Total transacciones: ${cutoffData.transactionCount}
             y += 2;
             
             // Mostrar información del pasajero con indentación
-            const passengerName = t.passengerName || (t.passengers && t.passengers.length > 0 ? t.passengers : 'No disponible');
+            let passengerName = 'No disponible';
+            
+            // Verificar si hay nombre de pasajero y asegurar que sea una cadena de texto
+            if (t.passengerName && typeof t.passengerName === 'string') {
+              passengerName = t.passengerName;
+            } else if (t.passengers && typeof t.passengers === 'string') {
+              passengerName = t.passengers;
+            } else if (t.passengerFullName && typeof t.passengerFullName === 'string') {
+              passengerName = t.passengerFullName;
+            }
+            
             doc.text(`  ${passengerName}`, margin + 2, y);
             y += 2;
             
@@ -935,12 +945,20 @@ Total transacciones: ${cutoffData.transactionCount}
               y += 2;
             });
             
-            // Si hay información adicional de viaje o tripName, mostrarla también
-            if (t.tripName) {
-              doc.text("Viaje:", margin + 2, y);
+            // Solo mostrar información de viaje si es diferente a origen/destino
+            // para evitar redundancia
+            if (t.tripName && 
+                t.tripName !== `${t.origin} - ${t.destination}` && 
+                t.tripName !== `${t.originCity} - ${t.destinationCity}`) {
+              doc.text("Ruta:", margin + 2, y);
               y += 2;
-              doc.text(`  ${t.tripName}`, margin + 2, y);
-              y += 2;
+              
+              // Dividir la información de ruta si es muy larga
+              const routeLines = doc.splitTextToSize(t.tripName, 44);
+              routeLines.forEach((line: string) => {
+                doc.text(`  ${line}`, margin + 2, y);
+                y += 2;
+              });
             }
             
             // Mostrar fecha y hora del viaje si están disponibles
