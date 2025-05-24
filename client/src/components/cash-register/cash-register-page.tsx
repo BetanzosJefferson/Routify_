@@ -172,10 +172,36 @@ export function CashRegisterPage() {
     return { reservations, packages };
   };
   
+  // Función auxiliar para verificar si un elemento ya fue procesado en un corte anterior
+  const isItemProcessed = (itemType: string, itemId: number) => {
+    if (!user) return false;
+    
+    // Cargar elementos procesados desde localStorage
+    const processedItemsKey = `processed_items_${user.id}`;
+    const storedProcessedItems = localStorage.getItem(processedItemsKey);
+    if (!storedProcessedItems) return false;
+
+    try {
+      const processedItems = JSON.parse(storedProcessedItems);
+      // Verificar si este elemento específico ya está en la lista de procesados
+      return processedItems.some((item: any) => 
+        item.type === itemType && item.id === itemId
+      );
+    } catch (e) {
+      console.error("Error al verificar elementos procesados:", e);
+      return false;
+    }
+  };
+  
   // Filtrar las reservaciones
   const filteredReservations = paidReservations?.filter((reservation: ReservationWithCompany) => {
     // No incluir paqueterías en esta lista
     if (reservation.originalPackageId) {
+      return false;
+    }
+    
+    // No incluir elementos ya procesados en cortes anteriores
+    if (isItemProcessed('reservation', reservation.id)) {
       return false;
     }
     
@@ -235,6 +261,11 @@ export function CashRegisterPage() {
   const filteredPackages = paidReservations?.filter((reservation: ReservationWithCompany) => {
     // Solo incluir paqueterías en esta lista
     if (!reservation.originalPackageId) {
+      return false;
+    }
+    
+    // No incluir elementos ya procesados en cortes anteriores
+    if (isItemProcessed('package', reservation.id)) {
       return false;
     }
     
@@ -471,8 +502,9 @@ export function CashRegisterPage() {
     }
   };
   
-  // Cargar historial de cortes desde localStorage
+  // Cargar historial de cortes y elementos procesados desde localStorage
   useEffect(() => {
+    // Cargar historial de cortes
     const storedHistory = localStorage.getItem('cutoffHistory');
     if (storedHistory) {
       try {
@@ -482,6 +514,13 @@ export function CashRegisterPage() {
         setCutoffHistory([]);
       }
     }
+    
+    // También inicializar el estado isInitialLoad a false después de cargar datos
+    const timer = setTimeout(() => {
+      setIsInitialLoad(false);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   // Función para mostrar el historial de cortes
