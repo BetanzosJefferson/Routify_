@@ -173,20 +173,18 @@ export function CashRegisterPage() {
   };
   
   // Función auxiliar para verificar si un elemento ya fue procesado en un corte anterior
-  const isItemProcessed = (itemType: string, itemId: number) => {
+  const isItemProcessed = async (itemType: string, itemId: number) => {
     if (!user) return false;
     
-    // Cargar elementos procesados desde localStorage
-    const processedItemsKey = `processed_items_${user.id}`;
-    const storedProcessedItems = localStorage.getItem(processedItemsKey);
-    if (!storedProcessedItems) return false;
-
     try {
-      const processedItems = JSON.parse(storedProcessedItems);
-      // Verificar si este elemento específico ya está en la lista de procesados
-      return processedItems.some((item: any) => 
-        item.type === itemType && item.id === itemId
-      );
+      // Verificar con el servidor si el elemento ya fue procesado
+      const response = await fetch(`/api/cash-register/check?itemType=${itemType}&itemId=${itemId}`);
+      if (!response.ok) {
+        throw new Error("Error al verificar el estado del elemento");
+      }
+      
+      const result = await response.json();
+      return result.processed;
     } catch (e) {
       console.error("Error al verificar elementos procesados:", e);
       return false;
@@ -536,14 +534,11 @@ export function CashRegisterPage() {
   }, [user]);
 
   // Función para mostrar el historial de cortes
-  const showCutoffHistory = () => {
+  const showCutoffHistory = async () => {
     setIsLoadingHistory(true);
     try {
-      // Actualizar el historial desde localStorage (por si ha cambiado)
-      const storedHistory = localStorage.getItem('cutoffHistory');
-      if (storedHistory) {
-        setCutoffHistory(JSON.parse(storedHistory));
-      }
+      // Cargar el historial desde el servidor
+      await loadCutoffHistory();
       // Mostrar el modal
       setShowHistoryModal(true);
     } catch (error) {
