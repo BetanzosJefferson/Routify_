@@ -66,7 +66,14 @@ export function CashRegisterPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   
   // Variable para almacenar información completa de rutas
-  const [completeRoutes, setCompleteRoutes] = useState<{[key: string]: string}>({});
+  const [completeRoutes, setCompleteRoutes] = useState<{[key: string]: {
+    name: string,
+    origin: string,
+    destination: string,
+    date: string,
+    time: string,
+    fullInfo: string
+  }}>({});
   
   // Estados adicionales para mejorar la UX
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -178,7 +185,14 @@ export function CashRegisterPage() {
   useEffect(() => {
     // Recopilar información completa de rutas de las reservaciones cuando cambian los datos
     if (paidReservations && paidReservations.length > 0 && allTrips && allTrips.length > 0) {
-      const routesInfo: {[key: string]: string} = {};
+      const routesInfo: {[key: string]: {
+        name: string,
+        origin: string,
+        destination: string,
+        date: string,
+        time: string,
+        fullInfo: string
+      }} = {};
       
       paidReservations.forEach((reservation: any) => {
         if (reservation.tripId && reservation.trip?.route?.name) {
@@ -188,9 +202,10 @@ export function CashRegisterPage() {
           // Buscar información adicional como origen y destino específicos
           const tripInfo = allTrips.find((t: any) => t.id === reservation.tripId);
           
-          let fullRouteInfo = routeName;
           let origin = '';
           let destination = '';
+          let date = '';
+          let time = '';
           
           if (tripInfo) {
             // Determinar origen y destino considerando si es un sub-viaje
@@ -205,25 +220,42 @@ export function CashRegisterPage() {
               destination = tripInfo.destination;
             }
             
-            // Construir información completa de la ruta con origen y destino
-            if (origin && destination) {
-              fullRouteInfo = `${routeName} - ${origin} → ${destination}`;
+            // Extraer información de fecha y hora
+            if (tripInfo.departureDate) {
+              try {
+                date = new Date(tripInfo.departureDate).toLocaleDateString('es-MX');
+              } catch (e) {
+                date = '';
+              }
             }
             
-            // Añadir información de horario si está disponible
-            if (tripInfo.departureDate || tripInfo.departureTime) {
-              const formattedDate = tripInfo.departureDate ? 
-                new Date(tripInfo.departureDate).toLocaleDateString('es-MX') : '';
-              const time = tripInfo.departureTime || '';
-              
-              if (formattedDate || time) {
-                fullRouteInfo += ` (${formattedDate} ${time})`;
-              }
+            if (tripInfo.departureTime) {
+              time = tripInfo.departureTime;
             }
           }
           
-          // Guardar la información completa
-          routesInfo[tripId] = fullRouteInfo;
+          // Construir información completa para mostrar
+          let fullRouteInfo = routeName;
+          
+          // Añadir origen y destino
+          if (origin && destination) {
+            fullRouteInfo = `${routeName} - ${origin} → ${destination}`;
+          }
+          
+          // Añadir fecha y hora
+          if (date || time) {
+            fullRouteInfo += ` (${date} ${time})`.trim();
+          }
+          
+          // Guardar todos los componentes de información
+          routesInfo[tripId] = {
+            name: routeName,
+            origin: origin,
+            destination: destination,
+            date: date,
+            time: time,
+            fullInfo: fullRouteInfo
+          };
         }
       });
       
@@ -873,28 +905,65 @@ Total transacciones: ${cutoffData.transactionCount}
           } else {
             // Detalles para reservaciones
             if (t.tripName) {
-              // Usar la información completa de la ruta si está disponible
-              let tripText = `Viaje: ${t.tripName}`;
-              
-              // Buscar información más completa en el estado completeRoutes
+              // Usar la información de la ruta desde completeRoutes si está disponible
+              let routeInfo = null;
               if (t.tripId && completeRoutes[t.tripId]) {
-                tripText = `Viaje: ${completeRoutes[t.tripId]}`;
-                console.log(`Usando información completa de ruta para ${t.tripId}: ${completeRoutes[t.tripId]}`);
+                routeInfo = completeRoutes[t.tripId];
+                console.log(`Usando información completa de ruta para ${t.tripId}:`, routeInfo);
               }
               
-              // Si es demasiado largo, dividir en múltiples líneas
-              if (tripText.length > 30) {
-                // Usar la función splitTextToSize para dividir el texto en líneas
-                const tripLines = doc.splitTextToSize(tripText, 46); // 46mm es el ancho disponible
+              // Mostrar el nombre de la ruta
+              doc.text(`Viaje: ${t.tripName}`, margin + 2, y);
+              y += 2;
+              
+              // Si tenemos información detallada, mostrarla
+              if (routeInfo) {
+                // Mostrar origen específico
+                if (routeInfo.origin) {
+                  const originText = `Origen: ${routeInfo.origin}`;
+                  if (originText.length > 46) {
+                    const originLines = doc.splitTextToSize(originText, 46);
+                    originLines.forEach((line: string, i: number) => {
+                      doc.text(i === 0 ? line : `  ${line}`, margin + 2, y);
+                      y += 2;
+                    });
+                  } else {
+                    doc.text(originText, margin + 2, y);
+                    y += 2;
+                  }
+                }
                 
-                // Mostrar cada línea
-                tripLines.forEach((line: string, i: number) => {
-                  doc.text(i === 0 ? line : `  ${line}`, margin + 2, y);
-                  y += 2;
-                });
-              } else {
-                doc.text(tripText, margin + 2, y);
-                y += 2;
+                // Mostrar destino específico
+                if (routeInfo.destination) {
+                  const destText = `Destino: ${routeInfo.destination}`;
+                  if (destText.length > 46) {
+                    const destLines = doc.splitTextToSize(destText, 46);
+                    destLines.forEach((line: string, i: number) => {
+                      doc.text(i === 0 ? line : `  ${line}`, margin + 2, y);
+                      y += 2;
+                    });
+                  } else {
+                    doc.text(destText, margin + 2, y);
+                    y += 2;
+                  }
+                }
+                
+                // Mostrar fecha y hora juntos
+                if (routeInfo.date || routeInfo.time) {
+                  let dateTimeText = '';
+                  if (routeInfo.date && routeInfo.time) {
+                    dateTimeText = `Fecha/Hora: ${routeInfo.date} ${routeInfo.time}`;
+                  } else if (routeInfo.date) {
+                    dateTimeText = `Fecha: ${routeInfo.date}`;
+                  } else if (routeInfo.time) {
+                    dateTimeText = `Hora: ${routeInfo.time}`;
+                  }
+                  
+                  if (dateTimeText) {
+                    doc.text(dateTimeText, margin + 2, y);
+                    y += 2;
+                  }
+                }
               }
             }
             
