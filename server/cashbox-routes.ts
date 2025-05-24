@@ -19,6 +19,174 @@ export function registerCashboxRoutes(app: Express, storage: any) {
     next();
   }
   
+  // GET /api/cashbox/:id/transactions - Obtener transacciones de una caja específica (para admins y dueños)
+  app.get('/api/cashbox/:id/transactions', isAuthenticated, async (req, res) => {
+    try {
+      const { user } = req as any;
+      const cashboxId = parseInt(req.params.id);
+      
+      // Verificar permisos - solo dueños y admins pueden ver cajas de otros
+      if (user.role !== "dueño" && user.role !== UserRole.OWNER && user.role !== UserRole.ADMIN) {
+        return res.status(403).json({
+          success: false,
+          message: "No tiene permisos para acceder a esta información"
+        });
+      }
+      
+      // Importar el servicio de cortes para verificar elementos procesados
+      const { cutoffService } = await import('./cutoff-service');
+      
+      // Obtener todas las reservaciones
+      const allReservations = await storage.getReservations();
+      
+      // Obtener información de la caja
+      const cashbox = await storage.getCashboxById(cashboxId);
+      if (!cashbox) {
+        return res.status(404).json({
+          success: false,
+          message: "Caja no encontrada"
+        });
+      }
+      
+      // Verificar que la caja pertenezca a la misma compañía que el usuario
+      const userCompanyId = user.companyId || user.company;
+      if (cashbox.companyId !== userCompanyId) {
+        return res.status(403).json({
+          success: false,
+          message: "No tiene permisos para acceder a esta caja"
+        });
+      }
+      
+      // Obtener el operador de la caja
+      const operatorId = cashbox.operatorId;
+      
+      console.log(`[GET /cashbox/${cashboxId}/transactions] Usuario ${user.firstName} ${user.lastName} solicitando datos de la caja ${cashboxId} (operador: ${operatorId})`);
+      
+      // Array para almacenar los ítems de caja (anticipos y restantes)
+      let cashboxItems: any[] = [];
+      
+      // Recorrer todas las reservaciones
+      for (const reservation of allReservations) {
+        // Verificar si esta reservación ya ha sido procesada en algún corte
+        const isProcessed = await cutoffService.isItemProcessed('reservation', reservation.id);
+        
+        // Si ya está procesada, omitirla
+        if (isProcessed) {
+          console.log(`[GET /cashbox/${cashboxId}/transactions] Reserva ${reservation.id} ya procesada en un corte anterior, omitiendo`);
+          continue;
+        }
+        
+        // 1. Anticipos: Si el operador creó la reservación y tiene anticipo
+        if (reservation.createdBy === operatorId && reservation.advanceAmount && reservation.advanceAmount > 0) {
+          console.log(`[GET /cashbox/${cashboxId}/transactions] Anticipo de ${reservation.advanceAmount} de reserva ${reservation.id}`);
+          
+          // Crear un ítem de caja para el anticipo
+          cashboxItems.push({
+            ...reservation,
+            totalAmount: reservation.advanceAmount, // Solo monto del anticipo
+            paymentNote: "Anticipo", // Indicamos que es un anticipo
+            paymentMethod: reservation.advancePaymentMethod,
+            paymentDate: reservation.createdAt,
+            cashItemId: `anticipo-${reservation.id}`,
+            originalReservationId: reservation.id
+          });
+        }
+        
+        // 2. Pagos restantes: Si el operador marcó como pagado el restante
+        if (reservation.paidBy === operatorId) {
+          const restanteAmount = (reservation.totalAmount || 0) - (reservation.advanceAmount || 0);
+          
+          // Solo incluir si hay monto restante
+          if (restanteAmount > 0) {
+            console.log(`[GET /cashbox/${cashboxId}/transactions] Restante de ${restanteAmount} de reserva ${reservation.id}`);
+            
+            // Crear un ítem de caja para el pago restante
+            cashboxItems.push({
+              ...reservation,
+              totalAmount: restanteAmount, // Solo monto del restante
+              paymentNote: "Restante", // Indicamos que es un restante
+              paymentMethod: reservation.paymentMethod,
+              paymentDate: reservation.paidAt,
+              cashItemId: `restante-${reservation.id}`,
+              originalReservationId: reservation.id
+            });
+          }
+        }
+      }
+      
+      // Procesar paqueterías
+      try {
+        const allPackages = await storage.getPackages();
+        
+        for (const packageItem of allPackages) {
+          // Verificar si esta paquetería ya ha sido procesada en algún corte
+          const isProcessed = await cutoffService.isItemProcessed('package', packageItem.id);
+          
+          // Si ya está procesada, omitirla
+          if (isProcessed) {
+            console.log(`[GET /cashbox/${cashboxId}/transactions] Paquetería ${packageItem.id} ya procesada en un corte anterior, omitiendo`);
+            continue;
+          }
+          
+          // Verificar si el paquete fue registrado por el operador de la caja
+          if (packageItem.createdBy === operatorId) {
+            console.log(`[GET /cashbox/${cashboxId}/transactions] Paquetería ${packageItem.id} registrada por operador ${operatorId}`);
+            
+            // Crear un ítem de caja para la paquetería
+            cashboxItems.push({
+              ...packageItem,
+              totalAmount: packageItem.price,
+              paymentNote: "Paquetería", 
+              paymentMethod: packageItem.paymentMethod || "efectivo",
+              paymentDate: packageItem.paidAt || packageItem.createdAt,
+              cashItemId: `paquete-${packageItem.id}`,
+              originalPackageId: packageItem.id
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`[GET /cashbox/${cashboxId}/transactions] Error al procesar paqueterías:`, error);
+      }
+      
+      console.log(`[GET /cashbox/${cashboxId}/transactions] Se encontraron ${cashboxItems.length} ítems para la caja ${cashboxId}`);
+      
+      // Enriquecer con información de compañía
+      const enrichedItems = await Promise.all(
+        cashboxItems.map(async (item) => {
+          // Obtener la compañía del viaje
+          let companyId = null;
+          let companyName = "Desconocida";
+          
+          if (item.trip && item.trip.companyId) {
+            companyId = item.trip.companyId;
+            
+            try {
+              const company = await storage.getCompanyById(companyId);
+              if (company) {
+                companyName = company.name || companyId;
+              }
+            } catch (err) {
+              console.error(`Error al obtener información de la compañía ${companyId}:`, err);
+            }
+          }
+          
+          return {
+            ...item,
+            companyInfo: {
+              id: companyId,
+              name: companyName
+            }
+          };
+        })
+      );
+      
+      res.json(enrichedItems);
+    } catch (error) {
+      console.error(`[GET /cashbox/:id/transactions] Error:`, error);
+      res.status(500).json({ error: "Error al obtener transacciones de la caja" });
+    }
+  });
+  
   // GET /api/cashbox/transactions - Obtener anticipos y pagos restantes registrados por el usuario
   app.get('/api/cashbox/transactions', isAuthenticated, async (req, res) => {
     try {

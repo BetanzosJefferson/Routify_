@@ -3658,6 +3658,29 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
+  // Obtener una caja por su ID
+  async getCashboxById(id: number): Promise<schema.Cashbox | undefined> {
+    try {
+      console.log(`[getCashboxById] Buscando caja con ID ${id}`);
+      
+      const [cashbox] = await db
+        .select()
+        .from(schema.cashboxes)
+        .where(eq(schema.cashboxes.id, id));
+      
+      if (!cashbox) {
+        console.log(`[getCashboxById] No se encontró la caja con ID ${id}`);
+        return undefined;
+      }
+      
+      console.log(`[getCashboxById] Caja encontrada: ${cashbox.name} (ID: ${cashbox.id})`);
+      return cashbox;
+    } catch (error) {
+      console.error(`[getCashboxById] Error al buscar caja con ID ${id}:`, error);
+      return undefined;
+    }
+  }
+  
   // Obtener todas las cajas de una compañía
   async getCashboxes(companyId: string): Promise<schema.Cashbox[]> {
     try {
