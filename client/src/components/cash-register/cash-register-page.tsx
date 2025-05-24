@@ -902,64 +902,7 @@ Total transacciones: ${cutoffData.transactionCount}
             y += 2;
             doc.text(`Destino: ${t.destinationCity || t.destination || ''}`, margin + 2, y);
           } else {
-            // Solo incluir la información principal y no duplicada
-            // Mostrar información del pasajero con formato mejorado
-            let passengerName = 'No disponible';
-            
-            // Verificar si hay nombre de pasajero y asegurar que sea una cadena de texto
-            if (t.passengerName && typeof t.passengerName === 'string') {
-              passengerName = t.passengerName;
-            } else if (t.passengers && typeof t.passengers === 'string') {
-              passengerName = t.passengers;
-            } else if (t.passengerFullName && typeof t.passengerFullName === 'string') {
-              passengerName = t.passengerFullName;
-            }
-            
-            // Solo mostrar la información compacta del pasajero y ruta
-            doc.text(`Pasajero: ${passengerName}`, margin + 2, y);
-            y += 2;
-            
-            // Mostrar ruta en formato compacto
-            doc.text("Ruta:", margin + 2, y);
-            y += 2;
-            
-            // Primera línea: Origen
-            doc.text(`  Origen: ${t.originCity || t.origin || 'No especificado'}`, margin + 2, y);
-            y += 2;
-            
-            // Segunda línea: Destino
-            doc.text(`  Destino: ${t.destinationCity || t.destination || 'No especificado'}`, margin + 2, y);
-            y += 2;
-            
-            // Eliminamos la sección de Ruta por completo para evitar redundancia
-            // ya que el origen y destino ya contienen la información necesaria
-            
-            // Mostrar fecha y hora del viaje si están disponibles
-            if (t.departureDate || t.departureTime) {
-              let dateTimeStr = '';
-              
-              if (t.departureDate) {
-                try {
-                  const date = new Date(t.departureDate);
-                  if (!isNaN(date.getTime())) {
-                    dateTimeStr = date.toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: 'numeric'});
-                  } else {
-                    dateTimeStr = t.departureDate;
-                  }
-                } catch (e) {
-                  dateTimeStr = t.departureDate;
-                }
-              }
-              
-              if (t.departureTime) {
-                dateTimeStr += dateTimeStr ? ` - ${t.departureTime}` : t.departureTime;
-              }
-              
-              if (dateTimeStr) {
-                doc.text(`Fecha/Hora: ${dateTimeStr}`, margin + 2, y);
-                y += 2;
-              }
-            }
+            // Solo conservamos esta sección sobre información de pasajeros
             
             // Información de pasajeros
             if (t.passengers && t.passengers.length > 0) {
