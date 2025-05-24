@@ -104,7 +104,9 @@ export function CajaNuevaPage() {
   } = useQuery({
     queryKey: ["/api/caja/transacciones"],
     queryFn: async () => {
-      const response = await fetch('/api/caja/transacciones');
+      const response = await fetch('/api/caja/transacciones', {
+        credentials: "include" // Incluir cookies de sesión
+      });
       if (!response.ok) {
         throw new Error("Error al cargar transacciones");
       }
@@ -176,7 +178,8 @@ export function CajaNuevaPage() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ notas: notasCorte })
+        body: JSON.stringify({ notas: notasCorte }),
+        credentials: "include" // Incluir cookies de sesión
       });
       
       if (!response.ok) {
@@ -239,7 +242,8 @@ export function CajaNuevaPage() {
         body: JSON.stringify({ 
           monto, 
           descripcion: descripcionGasto 
-        })
+        }),
+        credentials: "include" // Incluir cookies de sesión
       });
       
       if (!response.ok) {
@@ -272,7 +276,8 @@ export function CajaNuevaPage() {
   const handleSincronizar = async () => {
     try {
       const response = await fetch('/api/caja/sincronizar', {
-        method: 'POST'
+        method: 'POST',
+        credentials: "include" // Incluir cookies de sesión
       });
       
       if (!response.ok) {
