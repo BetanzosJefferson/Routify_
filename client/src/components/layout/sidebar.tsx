@@ -20,7 +20,8 @@ import {
   FileTextIcon,
   TagIcon,
   Users,
-  ArrowRightLeft
+  ArrowRightLeft,
+  DollarSign
 } from "lucide-react";
 
 interface SidebarProps {

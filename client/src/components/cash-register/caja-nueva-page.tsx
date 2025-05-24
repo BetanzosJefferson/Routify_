@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { formatPrice } from "@/lib/format";
+import { formatCurrency } from "@/lib/utils";
 
 import {
   Card,
