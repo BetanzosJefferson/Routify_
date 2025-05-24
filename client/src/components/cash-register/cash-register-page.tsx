@@ -6,6 +6,7 @@ import { formatDate, formatPrice } from "@/lib/utils";
 import { ReservationWithDetails } from "@shared/schema";
 import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
+import { PackageList } from "./package-list";
 import { 
   DollarSign, 
   Search, 
