@@ -3285,11 +3285,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Paquete no encontrado" });
       }
       
+      // Obtener el ID del usuario autenticado (si está disponible)
+      const userId = req.user ? (req.user as any).id : null;
+      console.log(`[POST /public/packages/${packageId}/mark-paid] Usuario que marca como pagado:`, userId);
+      
       // Actualizar el estado de pago
       console.log(`[POST /public/packages/${packageId}/mark-paid] Estado actual de pago:`, packageData.isPaid);
       const updatedPackage = await storage.updatePackage(packageId, {
         isPaid: true,
         paymentMethod: packageData.paymentMethod || 'efectivo',
+        paidBy: userId, // Guardar el ID del usuario que marca como pagado
+        paidAt: new Date(), // Registrar cuándo se marcó como pagado
         updatedAt: new Date()
       });
       console.log(`[POST /public/packages/${packageId}/mark-paid] Nuevo estado de pago:`, updatedPackage?.isPaid);
