@@ -61,7 +61,8 @@ import {
 
 // Importar componentes relacionados con paquetes
 import { PackageTicket } from "./package-ticket";
-import { PackageDetailModal } from "./package-detail-modal";
+import PackageDetailModal from "./package-detail-modal";
+import { CheckCircle, Truck } from "lucide-react";
 
 interface PackageListProps {
   onAddPackage: () => void;
