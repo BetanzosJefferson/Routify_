@@ -517,12 +517,12 @@ export function CashRegisterPage() {
         throw new Error("Error al actualizar las transacciones");
       }
       
-      // Obtener los datos frescos
+      // Obtener los datos frescos directamente del servidor
       const freshTransactions = await response.json();
       console.log("Transacciones actualizadas para el corte:", freshTransactions.length);
       
-      // Asegurar que la actualización se refleje en el estado local
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Usar estas transacciones frescas en lugar de las del estado para preparar el corte
+      // Esto garantiza que estamos usando los datos más actualizados
       
       // Determinar si estamos filtrando los datos
       const isFiltered = searchTerm || dateFilter || paymentMethodFilter !== 'todos' || (isTicketOfficeView && companyFilter !== 'todas');
@@ -545,23 +545,62 @@ export function CashRegisterPage() {
         }
       }
       
-      // Preparar los datos para el modal - incluimos tanto reservaciones como paqueterías
+      // Preparar los datos para el modal usando las transacciones frescas obtenidas directamente del servidor
+      // Esto garantiza que estamos usando los datos más actualizados
+      
+      // Procesar los datos frescos de transacciones
+      const freshReservations = freshTransactions.filter(t => t.type === 'reservation');
+      const freshPackages = freshTransactions.filter(t => t.type === 'package');
+      
+      // Calcular nuevos totales basados en los datos frescos
+      const freshReservationTotal = freshReservations.reduce((sum, r) => sum + (r.totalAmount || 0), 0);
+      const freshPackageTotal = freshPackages.reduce((sum, p) => sum + (p.price || 0), 0);
+      const freshTotalAmount = freshReservationTotal + freshPackageTotal;
+      
+      // Calcular efectivo y transferencias con los datos frescos
+      const freshReservationCash = freshReservations
+        .filter(r => r.advancePaymentMethod === 'efectivo' || r.paymentMethod === 'efectivo')
+        .reduce((sum, r) => {
+          let cashAmount = 0;
+          if (r.advancePaymentMethod === 'efectivo') {
+            cashAmount += r.advanceAmount || 0;
+          }
+          if (r.paymentMethod === 'efectivo') {
+            cashAmount += (r.totalAmount || 0) - (r.advanceAmount || 0);
+          }
+          return sum + cashAmount;
+        }, 0);
+      
+      const freshPackageCash = freshPackages
+        .filter(p => p.paymentMethod === 'efectivo')
+        .reduce((sum, p) => sum + (p.price || 0), 0);
+      
+      const freshTotalCash = freshReservationCash + freshPackageCash;
+      const freshTotalTransfer = freshTotalAmount - freshTotalCash;
+      
+      console.log("Totales calculados con datos frescos:", {
+        totalAmount: freshTotalAmount,
+        totalCash: freshTotalCash,
+        totalTransfer: freshTotalTransfer,
+        transactionCount: freshTransactions.length
+      });
+      
+      // Preparar los datos para el modal con los datos frescos
       const cutoffSummary = {
         date: new Date().toLocaleString(),
         user: `${user.firstName} ${user.lastName}`,
-        totalAmount, // El total ya incluye reservaciones y paqueterías
-        totalCash,
-        totalTransfer,
-        transactionCount: sortedReservations.length + sortedPackages.length, // Total de transacciones
-        transactions: [
-          // Reservaciones
-          ...sortedReservations.map(r => {
-            // Usar la misma lógica que usamos en el console.log para origen/destino
+        totalAmount: freshTotalAmount,
+        totalCash: freshTotalCash,
+        totalTransfer: freshTotalTransfer,
+        transactionCount: freshTransactions.length,
+        transactions: freshTransactions.map(item => {
+          if (item.type === 'reservation') {
+            // Procesar reservación
+            const r = item;
             const origin = r.trip?.segmentOrigin || (r.trip?.route && r.trip.route.origin) || r.origin || "Origen no especificado";
             const destination = r.trip?.segmentDestination || (r.trip?.route && r.trip.route.destination) || r.destination || "Destino no especificado";
             
-            // Añadir un console.log para depuración
-            console.log("Ruta:", { 
+            console.log("Procesando reservación fresca para corte:", { 
               id: r.id,
               isSegment: !!r.trip?.segmentOrigin,
               origin,
@@ -572,22 +611,18 @@ export function CashRegisterPage() {
               id: r.id,
               type: 'reservation',
               tripName: r.trip?.route?.name || "Sin ruta",
-              // Añadir origen y destino explícitamente
               origin,
               destination,
-              // Obtener el nombre del primer pasajero para mostrarlo en el modal
               passengerName: r.passengers && r.passengers.length > 0 
                 ? `${r.passengers[0]?.firstName || ''} ${r.passengers[0]?.lastName || ''}`.trim()
                 : "Sin pasajeros",
-              // Mantener la lista completa de pasajeros para otros usos
               passengers: r.passengers?.map(p => `${p.firstName} ${p.lastName}`).join(", ") || "Sin pasajeros",
               amount: r.totalAmount || 0,
               paymentMethod: getCombinedPaymentMethod(r)
             };
-          }),
-          // Paqueterías
-          ...sortedPackages.map(p => {
-            // Usar la misma lógica para paqueterías
+          } else {
+            // Procesar paquetería
+            const p = item;
             const origin = p.trip?.segmentOrigin || (p.trip?.route && p.trip.route.origin) || p.origin || "Origen no especificado";
             const destination = p.trip?.segmentDestination || (p.trip?.route && p.trip.route.destination) || p.destination || "Destino no especificado";
             
@@ -602,8 +637,8 @@ export function CashRegisterPage() {
               amount: p.price || 0,
               paymentMethod: p.paymentMethod || 'efectivo'
             };
-          })
-        ]
+          }
+        })
       };
       
       setCutoffData(cutoffSummary);
