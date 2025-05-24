@@ -422,8 +422,6 @@ export const insertCouponSchema = createInsertSchema(coupons);
 export type InsertCoupon = z.infer<typeof insertCouponSchema>;
 export type Coupon = typeof coupons.$inferSelect;
 
-// Las definiciones de schema para cajas y cortes ya están definidas más abajo en el archivo
-
 // RELACIONES ENTRE TABLAS
 export const routeRelations = relations(routes, ({ many }) => ({
   trips: many(trips),
