@@ -210,6 +210,19 @@ export class CutoffService {
         
         // Crear objeto con todos los detalles relevantes para guardar
         
+        // Depuración para verificar la estructura de item.trip
+        console.log(`[createCutoff] DEPURACIÓN de item.trip para ítem ${item.id}:`, {
+          tripExists: !!item.trip,
+          tripKeys: item.trip ? Object.keys(item.trip) : [],
+          segmentOrigin: item.trip?.segmentOrigin,
+          segmentDestination: item.trip?.segmentDestination,
+          hasRoute: !!item.trip?.route,
+          routeOrigin: item.trip?.route?.origin,
+          routeDestination: item.trip?.route?.destination,
+          originFromItem: item.origin,
+          destinationFromItem: item.destination
+        });
+        
         // Analizar la información de origen/destino correcta
         const tripData = item.trip || null;
         const hasSegments = tripData && tripData.segmentOrigin && tripData.segmentDestination;
