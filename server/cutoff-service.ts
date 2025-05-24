@@ -377,51 +377,119 @@ export class CutoffService {
         if (!isPackage && item.id) {
           console.log(`[createCutoff] Procesando reservación ${item.id}`);
           
-          // Obtener el ID del viaje directamente
-          const tripId = item.tripId || 0;
+          // APROXIMACIÓN COMPLETA: Consultamos la reservación para determinar si pertenece a un sub-viaje
+          const completeReservation = await db
+            .select({
+              reservation: schema.reservations,
+              trip: schema.trips,
+              parentTrip: schema.trips,
+              route: schema.routes
+            })
+            .from(schema.reservations)
+            .where(eq(schema.reservations.id, item.id))
+            .leftJoin(
+              schema.trips, 
+              eq(schema.reservations.tripId, schema.trips.id)
+            )
+            .leftJoin(
+              schema.trips.as('parentTrips'), 
+              eq(schema.trips.parentTripId, schema.trips.as('parentTrips').id)
+            )
+            .leftJoin(
+              schema.routes,
+              eq(schema.trips.routeId, schema.routes.id)
+            )
+            .limit(1);
           
-          if (tripId > 0) {
-            // Obtenemos primero los datos del viaje para poder acceder a segmentOrigin/segmentDestination
-            const trip = await db
-              .select()
-              .from(schema.trips)
-              .where(eq(schema.trips.id, tripId))
-              .limit(1);
+          if (completeReservation.length > 0) {
+            const reservationData = completeReservation[0];
+            console.log(`[createCutoff] Datos completos de reservación cargados para ID ${item.id}:`, {
+              tripId: reservationData.reservation.tripId,
+              isSubtrip: reservationData.trip?.parentTripId ? true : false,
+              parentTripId: reservationData.trip?.parentTripId || null,
+              routeId: reservationData.trip?.routeId || null
+            });
+            
+            // Determinar si es un sub-viaje
+            const isSubtrip = reservationData.trip?.parentTripId ? true : false;
+            const tripId = reservationData.reservation.tripId || 0;
+            
+            if (tripId > 0) {
+              // Variables para almacenar origen y destino final
+              let finalOrigin = '';
+              let finalDestination = '';
+              let routeName = '';
               
-            if (trip.length > 0) {
               // Guardamos la información de fecha/hora
-              item.departureDate = trip[0].departureDate;
-              item.departureTime = trip[0].departureTime;
+              item.departureDate = reservationData.trip?.departureDate || '';
+              item.departureTime = reservationData.trip?.departureTime || '';
               
-              // Comprobamos si hay segmentos específicos definidos
-              const hasSegmentOrigin = trip[0].segmentOrigin && trip[0].segmentOrigin.trim() !== '';
-              const hasSegmentDestination = trip[0].segmentDestination && trip[0].segmentDestination.trim() !== '';
+              // LÓGICA PARA SUB-VIAJES: Priorizar segmentOrigin/segmentDestination
+              if (isSubtrip) {
+                console.log(`[createCutoff] La reservación ${item.id} pertenece a un SUB-VIAJE`);
+                
+                // Para sub-viajes, usamos directamente segmentOrigin/segmentDestination
+                finalOrigin = reservationData.trip?.segmentOrigin || '';
+                finalDestination = reservationData.trip?.segmentDestination || '';
+                
+                // El nombre de la ruta puede ser obtenido del viaje principal
+                if (reservationData.parentTrip) {
+                  // Intentamos obtener el nombre de la ruta del viaje principal
+                  const parentRoute = await db
+                    .select()
+                    .from(schema.routes)
+                    .where(eq(schema.routes.id, reservationData.parentTrip.routeId || 0))
+                    .limit(1);
+                    
+                  if (parentRoute.length > 0) {
+                    routeName = parentRoute[0].name;
+                  } else {
+                    routeName = '';
+                  }
+                } else {
+                  routeName = '';
+                }
+              } 
+              // LÓGICA PARA VIAJES NORMALES
+              else {
+                console.log(`[createCutoff] La reservación ${item.id} pertenece a un VIAJE NORMAL`);
+                
+                // Comprobamos si hay segmentos específicos definidos
+                const hasSegmentOrigin = reservationData.trip?.segmentOrigin && reservationData.trip.segmentOrigin.trim() !== '';
+                const hasSegmentDestination = reservationData.trip?.segmentDestination && reservationData.trip.segmentDestination.trim() !== '';
+                
+                // Si existe la ruta, usamos sus datos
+                if (reservationData.route) {
+                  // Priorizar segmentos si existen, sino usar datos de la ruta
+                  finalOrigin = hasSegmentOrigin 
+                    ? reservationData.trip?.segmentOrigin || ''
+                    : reservationData.route.origin || '';
+                    
+                  finalDestination = hasSegmentDestination 
+                    ? reservationData.trip?.segmentDestination || ''
+                    : reservationData.route.destination || '';
+                    
+                  routeName = reservationData.route.name || '';
+                } 
+                // Si no hay ruta asociada, usamos solo los segmentos
+                else {
+                  finalOrigin = reservationData.trip?.segmentOrigin || '';
+                  finalDestination = reservationData.trip?.segmentDestination || '';
+                  routeName = '';
+                }
+              }
               
-              console.log(`[createCutoff] Información del viaje:`, {
-                id: trip[0].id,
-                routeId: trip[0].routeId,
-                segmentOrigin: trip[0].segmentOrigin,
-                segmentDestination: trip[0].segmentDestination,
-                hasSegmentOrigin,
-                hasSegmentDestination
+              // Finalmente, asignamos los valores calculados al item
+              item.origin = finalOrigin;
+              item.destination = finalDestination;
+              item.routeName = routeName;
+              
+              console.log(`[createCutoff] Valores finales asignados para reservación ${item.id}:`, {
+                origin: item.origin,
+                destination: item.destination,
+                routeName: item.routeName,
+                isSubtrip
               });
-              
-              // Si existe un ID de ruta, vamos a obtener los datos de la ruta
-              if (trip[0].routeId) {
-                const route = await db
-                  .select()
-                  .from(schema.routes)
-                  .where(eq(schema.routes.id, trip[0].routeId))
-                  .limit(1);
-                  
-                if (route.length > 0) {
-                  // Guardamos el nombre de la ruta
-                  item.routeName = route[0].name;
-                  
-                  // IMPORTANTE: Usamos exactamente la misma lógica que en la interfaz de usuario
-                  // Prioridad: segmentOrigin o route.origin (igual que el código frontend)
-                  item.origin = hasSegmentOrigin ? trip[0].segmentOrigin : route[0].origin;
-                  item.destination = hasSegmentDestination ? trip[0].segmentDestination : route[0].destination;
                   
                   console.log(`[createCutoff] DATOS COMPLETOS:`, {
                     routeName: item.routeName,
