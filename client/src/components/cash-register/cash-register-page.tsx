@@ -173,18 +173,21 @@ export function CashRegisterPage() {
   };
   
   // Función auxiliar para verificar si un elemento ya fue procesado en un corte anterior
-  const isItemProcessed = async (itemType: string, itemId: number) => {
+  // Usando localStorage como respaldo mientras se resuelve el problema de base de datos
+  const isItemProcessed = (itemType: string, itemId: number) => {
     if (!user) return false;
     
     try {
-      // Verificar con el servidor si el elemento ya fue procesado
-      const response = await fetch(`/api/cash-register/check?itemType=${itemType}&itemId=${itemId}`);
-      if (!response.ok) {
-        throw new Error("Error al verificar el estado del elemento");
-      }
-      
-      const result = await response.json();
-      return result.processed;
+      // Usamos localStorage como respaldo hasta que la tabla exista en la BD
+      const processedItemsKey = `processed_items_${user.id}`;
+      const storedProcessedItems = localStorage.getItem(processedItemsKey);
+      if (!storedProcessedItems) return false;
+
+      const processedItems = JSON.parse(storedProcessedItems);
+      // Verificar si este elemento específico ya está en la lista de procesados
+      return processedItems.some((item: any) => 
+        item.type === itemType && item.id === itemId
+      );
     } catch (e) {
       console.error("Error al verificar elementos procesados:", e);
       return false;
@@ -500,17 +503,17 @@ export function CashRegisterPage() {
     }
   };
   
-  // Función para cargar el historial de cortes desde el servidor
-  const loadCutoffHistory = async () => {
+  // Función para cargar el historial de cortes 
+  // Usando localStorage como respaldo mientras se resuelve el problema de base de datos
+  const loadCutoffHistory = () => {
     if (!user) return;
     
     try {
-      const response = await fetch('/api/cutoffs');
-      if (response.ok) {
-        const cutoffs = await response.json();
-        setCutoffHistory(cutoffs);
+      // Usar localStorage como respaldo hasta que la API esté disponible
+      const storedHistory = localStorage.getItem('cutoffHistory');
+      if (storedHistory) {
+        setCutoffHistory(JSON.parse(storedHistory));
       } else {
-        console.error("Error al cargar historial de cortes:", await response.text());
         setCutoffHistory([]);
       }
     } catch (error) {
@@ -534,11 +537,11 @@ export function CashRegisterPage() {
   }, [user]);
 
   // Función para mostrar el historial de cortes
-  const showCutoffHistory = async () => {
+  const showCutoffHistory = () => {
     setIsLoadingHistory(true);
     try {
-      // Cargar el historial desde el servidor
-      await loadCutoffHistory();
+      // Cargar el historial desde localStorage
+      loadCutoffHistory();
       // Mostrar el modal
       setShowHistoryModal(true);
     } catch (error) {
