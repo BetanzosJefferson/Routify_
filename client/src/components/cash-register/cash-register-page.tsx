@@ -1565,41 +1565,39 @@ Total transacciones: ${cutoffData.transactionCount}
                       </TableCell>
                       <TableCell>
                         {(() => {
-                          // Console log para debugging
-                          const tripData = reservation.trip;
-                          const hasSegments = tripData && tripData.segmentOrigin && tripData.segmentDestination;
+                          // Importar la función desde el nuevo archivo de utilidades
+                          const { determineRouteEndpoints } = require('@/lib/route-utils');
                           
+                          // Obtener información de ruta
+                          const tripData = reservation.trip;
+                          const routeInfo = determineRouteEndpoints(tripData);
+                          
+                          // Console log para debugging
                           console.log("Información de celda de ruta:", {
                             id: reservation.id,
                             hasTrip: !!reservation.trip,
-                            routeInfo: hasSegments 
-                              ? {
-                                  // Si hay segmentos específicos, solo mostramos esos
-                                  origin: tripData.segmentOrigin,
-                                  destination: tripData.segmentDestination,
-                                  isSegment: true
-                                }
-                              : tripData
-                                ? {
-                                    // Si no hay segmentos, mostramos la ruta general
-                                    origin: tripData.route?.origin,
-                                    destination: tripData.route?.destination,
-                                    isSegment: false
-                                  }
-                                : null,
+                            routeInfo: routeInfo,
                             isPackage: !!reservation.originalPackageId,
                             packageOrigin: reservation.origin,
                             packageDestination: reservation.destination
                           });
                           
-                          // Devuelve el contenido original
+                          // Almacenar la información de origen y destino para la base de datos
+                          // Esto se enviará al backend cuando se guarde la reserva
+                          if (tripData && !reservation.origin && !reservation.destination) {
+                            // Solo actualizar si aún no están establecidos los campos
+                            reservation.origin = routeInfo.origin;
+                            reservation.destination = routeInfo.destination;
+                          }
+                          
+                          // Devuelve el contenido según el tipo de reserva
                           return reservation.trip ? (
                             <>
                               <div className="font-medium">
-                                {reservation.trip.segmentOrigin || (reservation.trip.route && reservation.trip.route.origin) || 'Origen'}
+                                {routeInfo.origin || 'Origen'}
                               </div>
                               <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                <span>→</span> {reservation.trip.segmentDestination || (reservation.trip.route && reservation.trip.route.destination) || 'Destino'}
+                                <span>→</span> {routeInfo.destination || 'Destino'}
                               </div>
                             </>
                           ) : reservation.originalPackageId ? (

@@ -164,6 +164,9 @@ export const reservations = pgTable("reservations", {
   couponCode: text("coupon_code"), // Código del cupón aplicado
   discountAmount: doublePrecision("discount_amount").default(0), // Monto del descuento aplicado
   originalAmount: doublePrecision("original_amount"), // Monto original antes del descuento
+  // Campos para origen y destino específicos
+  origin: text("origin"), // Origen específico de la reservación (segmentOrigin o routeOrigin)
+  destination: text("destination"), // Destino específico de la reservación (segmentDestination o routeDestination)
 });
 
 export const insertReservationSchema = createInsertSchema(reservations);
