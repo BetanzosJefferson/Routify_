@@ -439,31 +439,27 @@ export default function PackageDetailPage() {
           </CardContent>
           
           <CardFooter className="flex flex-wrap gap-3 justify-center pt-2 pb-4">
-            {/* Botones condicionales para marcado de estado - solo visibles si coincide la compañía */}
-            {isSameCompany && (
-              <>
-                {!packageData.isPaid && (
-                  <Button 
-                    variant="default" 
-                    className="bg-green-600 hover:bg-green-700 w-full md:w-auto" 
-                    onClick={handleMarkAsPaid}
-                  >
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Marcar como pagado
-                  </Button>
-                )}
-                
-                {packageData.deliveryStatus !== 'entregado' && (
-                  <Button 
-                    variant="default" 
-                    className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto" 
-                    onClick={handleMarkAsDelivered}
-                  >
-                    <Truck className="mr-2 h-4 w-4" />
-                    Marcar como entregado
-                  </Button>
-                )}
-              </>
+            {/* Botones para marcado de estado (ahora visibles para todos) */}
+            {!packageData.isPaid && (
+              <Button 
+                variant="default" 
+                className="bg-green-600 hover:bg-green-700 w-full md:w-auto" 
+                onClick={handleMarkAsPaid}
+              >
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Marcar como pagado
+              </Button>
+            )}
+            
+            {packageData.deliveryStatus !== 'entregado' && (
+              <Button 
+                variant="default" 
+                className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto" 
+                onClick={handleMarkAsDelivered}
+              >
+                <Truck className="mr-2 h-4 w-4" />
+                Marcar como entregado
+              </Button>
             )}
             
             {/* Botón de impresión de ticket (siempre visible) */}
