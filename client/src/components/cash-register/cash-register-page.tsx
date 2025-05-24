@@ -902,11 +902,8 @@ Total transacciones: ${cutoffData.transactionCount}
             y += 2;
             doc.text(`Destino: ${t.destinationCity || t.destination || ''}`, margin + 2, y);
           } else {
-            // Detalles para reservaciones - Usar formato más limpio y con mejor legibilidad
-            doc.text("Pasajero:", margin + 2, y);
-            y += 2;
-            
-            // Mostrar información del pasajero con indentación
+            // Solo incluir la información principal y no duplicada
+            // Mostrar información del pasajero con formato mejorado
             let passengerName = 'No disponible';
             
             // Verificar si hay nombre de pasajero y asegurar que sea una cadena de texto
@@ -918,32 +915,21 @@ Total transacciones: ${cutoffData.transactionCount}
               passengerName = t.passengerFullName;
             }
             
-            doc.text(`  ${passengerName}`, margin + 2, y);
+            // Solo mostrar la información compacta del pasajero y ruta
+            doc.text(`Pasajero: ${passengerName}`, margin + 2, y);
             y += 2;
             
-            // Mostrar origen y destino en líneas separadas
-            doc.text("Origen:", margin + 2, y);
+            // Mostrar ruta en formato compacto
+            doc.text("Ruta:", margin + 2, y);
             y += 2;
             
-            // Dividir origen si es muy largo
-            const originText = t.origin || 'No especificado';
-            const splitOrigin = doc.splitTextToSize(originText, 44);
-            splitOrigin.forEach((line: string) => {
-              doc.text(`  ${line}`, margin + 2, y);
-              y += 2;
-            });
-            
-            // Mostrar destino
-            doc.text("Destino:", margin + 2, y);
+            // Primera línea: Origen
+            doc.text(`  Origen: ${t.originCity || t.origin || 'No especificado'}`, margin + 2, y);
             y += 2;
             
-            // Dividir destino si es muy largo
-            const destinationText = t.destination || 'No especificado';
-            const splitDestination = doc.splitTextToSize(destinationText, 44);
-            splitDestination.forEach((line: string) => {
-              doc.text(`  ${line}`, margin + 2, y);
-              y += 2;
-            });
+            // Segunda línea: Destino
+            doc.text(`  Destino: ${t.destinationCity || t.destination || 'No especificado'}`, margin + 2, y);
+            y += 2;
             
             // Eliminamos la sección de Ruta por completo para evitar redundancia
             // ya que el origen y destino ya contienen la información necesaria
