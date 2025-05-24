@@ -17,7 +17,8 @@ import {
   ArrowDownUp,
   FilterIcon,
   Printer,
-  XCircle
+  XCircle,
+  Users
 } from "lucide-react";
 
 // Interfaz para las reservaciones con información de compañía
@@ -107,8 +108,32 @@ export function CashRegisterPage() {
   });
   
   // Estado para saber si estamos en modo administrador o taquillero
-  const isAdminView = user?.role === 'dueño' || user?.role === 'administrador';
+  const isAdminView = user?.role === 'dueño' || user?.role === 'administrador' || user?.role === 'admin';
   const isTicketOfficeView = user?.role === 'taquilla';
+  const isOwnerOrAdmin = user?.role === 'dueño' || user?.role === 'admin';
+  
+  // Estado para almacenar la caja seleccionada (para dueños y admins)
+  const [selectedCashbox, setSelectedCashbox] = useState<number | null>(null);
+  
+  // Obtener las cajas de la compañía con transacciones (solo para dueños y admins)
+  const {
+    data: companyCashboxes,
+    isLoading: isLoadingCashboxes
+  } = useQuery({
+    queryKey: ["/api/cashboxes/company/with-transactions"],
+    queryFn: async () => {
+      if (!user || (!isOwnerOrAdmin)) return [];
+      
+      const response = await fetch('/api/cashboxes/company/with-transactions');
+      if (!response.ok) {
+        console.error("Error al obtener cajas de la compañía:", await response.text());
+        return [];
+      }
+      
+      return await response.json();
+    },
+    enabled: !!user && isOwnerOrAdmin
+  });
   
   // Obtener las empresas asociadas para usuarios de taquilla
   const { 
@@ -144,17 +169,23 @@ export function CashRegisterPage() {
     }
   });
 
-  // Obtener las reservaciones marcadas como pagadas por el usuario actual
+  // Obtener las reservaciones marcadas como pagadas por el usuario actual o del cashbox seleccionado
   const { 
     data: paidReservations, 
     isLoading,
-    error
+    error,
+    refetch: refetchCashboxTransactions
   } = useQuery({
-    queryKey: ["/api/cashbox/transactions"],
+    queryKey: ["/api/cashbox/transactions", selectedCashbox],
     queryFn: async () => {
       if (!user) return null;
       
-      const response = await fetch('/api/cashbox/transactions');
+      // Si hay una caja seleccionada (como admin o dueño) usamos un endpoint diferente
+      const url = selectedCashbox 
+        ? `/api/cashbox/${selectedCashbox}/transactions` 
+        : '/api/cashbox/transactions';
+      
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error("Error al cargar los datos de caja");
       }
@@ -263,6 +294,18 @@ export function CashRegisterPage() {
       console.error("Error al verificar elementos procesados:", e);
       return false;
     }
+  };
+  
+  // Manejar el cambio de cashbox seleccionada
+  const handleCashboxChange = (cashboxId: string) => {
+    // Si se selecciona "mi-caja", establece el ID como null
+    const newCashboxId = cashboxId === "mi-caja" ? null : parseInt(cashboxId);
+    setSelectedCashbox(newCashboxId);
+    
+    // Actualizar los datos de la caja seleccionada
+    setTimeout(() => {
+      refetchCashboxTransactions();
+    }, 100);
   };
   
   // Filtrar las reservaciones
