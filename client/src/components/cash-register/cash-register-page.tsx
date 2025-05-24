@@ -304,17 +304,7 @@ export function CashRegisterPage() {
     }
   };
   
-  // Manejar el cambio de cashbox seleccionada
-  const handleCashboxChange = (cashboxId: string) => {
-    // Si se selecciona "mi-caja", establece el ID como null
-    const newCashboxId = cashboxId === "mi-caja" ? null : parseInt(cashboxId);
-    setSelectedCashbox(newCashboxId);
-    
-    // Actualizar los datos de la caja seleccionada
-    setTimeout(() => {
-      refetchCashboxTransactions();
-    }, 100);
-  };
+
   
   // Filtrar las reservaciones
   const filteredReservations = paidReservations?.filter((reservation: ReservationWithCompany) => {
