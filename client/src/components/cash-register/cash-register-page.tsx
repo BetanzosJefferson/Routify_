@@ -1625,12 +1625,22 @@ Total transacciones: ${cutoffData.transactionCount}
                               // Intentar parsear los detalles JSON
                               const details = item.details ? JSON.parse(item.details) : {};
                               
+                              // Normalizar el método de pago para mostrar correctamente
+                              let normalizedPaymentMethod = (item.paymentMethod || '').toLowerCase().trim();
+                              if (normalizedPaymentMethod.includes('efectivo') || normalizedPaymentMethod === 'cash') {
+                                normalizedPaymentMethod = 'efectivo';
+                              } else if (normalizedPaymentMethod.includes('transfer')) {
+                                normalizedPaymentMethod = 'transferencia';
+                              }
+                              
+                              console.log(`Procesando ítem para PDF: ID=${item.itemId}, Método original=${item.paymentMethod}, Método normalizado=${normalizedPaymentMethod}`);
+                              
                               // Combinar los detalles con la información básica del item
                               return {
                                 id: item.itemId,
                                 type: item.itemType,
                                 amount: item.amount,
-                                paymentMethod: item.paymentMethod,
+                                paymentMethod: normalizedPaymentMethod,
                                 paymentNote: item.concept,
                                 
                                 // Información detallada del JSON
