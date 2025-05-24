@@ -1610,6 +1610,61 @@ Total transacciones: ${cutoffData.transactionCount}
                       className="mt-4"
                       onClick={async () => {
                         try {
+                          // Cargar los detalles del corte desde la API
+                          const response = await fetch(`/api/cutoffs/${cutoff.id}`);
+                          if (!response.ok) {
+                            throw new Error('No se pudieron cargar los detalles del corte');
+                          }
+                          
+                          const cutoffDetails = await response.json();
+                          console.log("Detalles del corte cargados:", cutoffDetails);
+                          
+                          // Procesar los ítems para extraer la información detallada almacenada en JSON
+                          const transactionsDetailed = cutoffDetails.items.map((item: any) => {
+                            try {
+                              // Intentar parsear los detalles JSON
+                              const details = item.details ? JSON.parse(item.details) : {};
+                              
+                              // Combinar los detalles con la información básica del item
+                              return {
+                                id: item.itemId,
+                                type: item.itemType,
+                                amount: item.amount,
+                                paymentMethod: item.paymentMethod,
+                                paymentNote: item.concept,
+                                
+                                // Información detallada del JSON
+                                tripName: details.tripName || '',
+                                origin: details.origin || '',
+                                destination: details.destination || '',
+                                passengerCount: details.passengerCount || 0,
+                                advanceAmount: details.advanceAmount || 0,
+                                senderName: details.senderName || '',
+                                senderLastName: details.senderLastName || '',
+                                receiverName: details.receiverName || '',
+                                receiverLastName: details.receiverLastName || '',
+                                
+                                // Fecha y hora
+                                departureDate: details.departureDate || '',
+                                departureTime: details.departureTime || '',
+                                
+                                // Otros detalles útiles
+                                concept: details.concept || item.concept || '',
+                                companyName: details.companyName || '',
+                                passengers: details.passengers || []
+                              };
+                            } catch (e) {
+                              console.error("Error al parsear detalles JSON:", e, item.details);
+                              return {
+                                id: item.itemId,
+                                type: item.itemType,
+                                amount: item.amount,
+                                paymentMethod: item.paymentMethod,
+                                paymentNote: item.concept
+                              };
+                            }
+                          });
+                          
                           // Usar la función de generación de PDF para el ticket
                           await generateCutoffTicketPDF({
                             totalAmount: cutoff.totalAmount,
@@ -1617,8 +1672,8 @@ Total transacciones: ${cutoffData.transactionCount}
                             totalTransfer: cutoff.totalTransfer,
                             transactionCount: cutoff.transactionCount,
                             user: cutoff.user,
-                            // Los tickets históricos no tienen transacciones detalladas
-                            transactions: []
+                            // Ahora incluimos las transacciones detalladas
+                            transactions: transactionsDetailed
                           }, {
                             id: cutoff.id,
                             createdAt: cutoff.date,
