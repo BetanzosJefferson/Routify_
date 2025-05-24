@@ -20,8 +20,7 @@ import {
   FileTextIcon,
   TagIcon,
   Users,
-  ArrowRightLeft,
-  DollarSign
+  ArrowRightLeft
 } from "lucide-react";
 
 interface SidebarProps {
@@ -278,17 +277,6 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   onClick={() => setLocation("/packages")}
                 >
                   Paqueterías
-                </NavItem>
-              )}
-              
-              {/* Acceso a la nueva página de caja */}
-              {canAccess("cash-register") && (
-                <NavItem 
-                  icon={<DollarSign className="h-5 w-5" />} 
-                  active={location === "/caja-nueva"}
-                  onClick={() => setLocation("/caja-nueva")}
-                >
-                  Caja Nueva
                 </NavItem>
               )}
             </NavSection>
