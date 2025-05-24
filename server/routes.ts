@@ -3278,6 +3278,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const packageId = parseInt(req.params.id, 10);
       console.log(`[POST /public/packages/${packageId}/mark-paid] Marcando paquete como pagado`);
       
+      // Obtener información del usuario actual
+      const user = getUserFromSession(req);
+      if (!user) {
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
       // Verificar que el paquete existe
       const packageData = await storage.getPackage(packageId);
       if (!packageData) {
@@ -3290,6 +3296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedPackage = await storage.updatePackage(packageId, {
         isPaid: true,
         paymentMethod: packageData.paymentMethod || 'efectivo',
+        paidBy: user.id, // Guardar el ID del usuario que marca como pagado
         updatedAt: new Date()
       });
       console.log(`[POST /public/packages/${packageId}/mark-paid] Nuevo estado de pago:`, updatedPackage?.isPaid);
@@ -3308,6 +3315,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const packageId = parseInt(req.params.id, 10);
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Marcando paquete como entregado`);
       
+      // Obtener información del usuario actual
+      const user = getUserFromSession(req);
+      if (!user) {
+        return res.status(401).json({ error: "No autenticado" });
+      }
+      
       // Verificar que el paquete existe
       const packageData = await storage.getPackage(packageId);
       if (!packageData) {
@@ -3321,6 +3334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedPackage = await storage.updatePackage(packageId, {
         deliveryStatus: 'entregado',
         deliveredAt: currentDate,
+        deliveredBy: user.id, // Guardar el ID del usuario que marca como entregado
         updatedAt: currentDate
       });
       console.log(`[POST /public/packages/${packageId}/mark-delivered] Nuevo estado de entrega:`, updatedPackage?.deliveryStatus);
