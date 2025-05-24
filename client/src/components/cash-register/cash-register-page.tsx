@@ -307,13 +307,36 @@ export function CashRegisterPage() {
       // Usamos localStorage como respaldo hasta que la tabla exista en la BD
       const processedItemsKey = `processed_items_${user.id}`;
       const storedProcessedItems = localStorage.getItem(processedItemsKey);
-      if (!storedProcessedItems) return false;
+      
+      // Log para depuración
+      console.log(`[isItemProcessed] Verificando si el elemento ${itemType} ${itemId} ya ha sido procesado`);
+      
+      if (!storedProcessedItems) {
+        console.log(`[isItemProcessed] No hay elementos procesados en localStorage para el usuario ${user.id}`);
+        return false;
+      }
 
       const processedItems = JSON.parse(storedProcessedItems);
-      // Verificar si este elemento específico ya está en la lista de procesados
-      return processedItems.some((item: any) => 
-        item.type === itemType && item.id === itemId
-      );
+      
+      // Log para depuración - ver todos los elementos procesados
+      console.log(`[isItemProcessed] Total elementos procesados encontrados: ${processedItems.length}`);
+      
+      // Convertir el ID a string para comparación consistente
+      const itemIdStr = String(itemId);
+      
+      // Verificar si este elemento específico ya está en la lista de procesados (comparando como string para evitar problemas de tipo)
+      const isProcessed = processedItems.some((item: any) => {
+        const storedId = String(item.id);
+        const match = item.type === itemType && storedId === itemIdStr;
+        
+        if (match) {
+          console.log(`[isItemProcessed] Coincidencia encontrada: ${itemType} ${itemIdStr} procesado en corte #${item.cutoffId || 'desconocido'}`);
+        }
+        
+        return match;
+      });
+      
+      return isProcessed;
     } catch (e) {
       console.error("Error al verificar elementos procesados:", e);
       return false;
@@ -397,8 +420,16 @@ export function CashRegisterPage() {
       return false;
     }
     
+    console.log(`Evaluando paquetería #${item.id} para mostrar en caja:`, {
+      isPaid: item.isPaid,
+      paidBy: item.paidBy,
+      userId: user?.id,
+      isAdminView: isAdminView
+    });
+    
     // Verificar que la paquetería está marcada como pagada
     if (!item.isPaid) {
+      console.log(`Paquetería #${item.id} no está marcada como pagada, omitiendo`);
       return false;
     }
     
@@ -407,11 +438,16 @@ export function CashRegisterPage() {
     const userCanViewAll = isAdminView;
     
     if (!userMarkedAsPaid && !userCanViewAll) {
+      console.log(`Paquetería #${item.id} no fue marcada como pagada por el usuario actual (${user?.id}) y no es admin/dueño, omitiendo`);
       return false;
     }
     
     // No incluir elementos ya procesados en cortes anteriores
-    if (isItemProcessed('package', item.id)) {
+    const isProcessed = isItemProcessed('package', item.id);
+    console.log(`Verificando si paquetería #${item.id} ya está procesada: ${isProcessed ? 'SÍ' : 'NO'}`);
+    
+    if (isProcessed) {
+      console.log(`Paquetería #${item.id} ya procesada en un corte anterior, omitiendo`);
       return false;
     }
     
@@ -962,25 +998,52 @@ export function CashRegisterPage() {
           const storedProcessedItems = localStorage.getItem(processedItemsKey);
           let processedItems = storedProcessedItems ? JSON.parse(storedProcessedItems) : [];
           
+          // Crear un array para los logs
+          const processingLogs = [];
+          
           // Agregar elementos de este corte
           cutoffData.transactions.forEach(item => {
             // Determinar el tipo correcto del elemento
             const itemType = item.originalPackageId ? 'package' : 'reservation';
+            const itemId = item.id;
             
-            // Agregar a la lista de procesados
-            processedItems.push({
-              id: item.id,
-              type: itemType,
-              processedAt: new Date().toISOString(),
-              cutoffId: result.id // ID del corte actual
-            });
+            // Log para depuración
+            processingLogs.push(`Procesando ${itemType} con ID ${itemId}`);
+            
+            // Verificar si este elemento ya está marcado como procesado
+            const isAlreadyProcessed = processedItems.some(
+              (p: any) => p.id === itemId && p.type === itemType
+            );
+            
+            // Solo agregar si no está procesado ya
+            if (!isAlreadyProcessed) {
+              // Agregar a la lista de procesados
+              processedItems.push({
+                id: itemId,
+                type: itemType,
+                processedAt: new Date().toISOString(),
+                cutoffId: result.id // ID del corte actual
+              });
+              processingLogs.push(`-> Marcado como procesado`);
+            } else {
+              processingLogs.push(`-> Ya estaba marcado como procesado`);
+            }
           });
           
           // Guardar la lista actualizada
           localStorage.setItem(processedItemsKey, JSON.stringify(processedItems));
-          console.log(`Marcados ${cutoffData.transactions.length} elementos como procesados en el corte #${result.id}`);
+          
+          // Mostrar logs en consola
+          console.log(`--- PROCESAMIENTO DE ELEMENTOS EN CORTE #${result.id || 'nuevo'} ---`);
+          processingLogs.forEach(log => console.log(log));
+          console.log(`Marcados ${cutoffData.transactions.length} elementos como procesados en el corte #${result.id || 'nuevo'}`);
+          console.log(`Total de elementos procesados en localStorage: ${processedItems.length}`);
+          
+          // Para depuración: mostrar lista completa
+          console.log('Lista completa de elementos procesados:', processedItems);
         } catch (e) {
           console.error("Error al marcar elementos como procesados:", e);
+          console.error(e);
         }
       }
       
