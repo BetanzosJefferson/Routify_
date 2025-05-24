@@ -1238,27 +1238,34 @@ Total transacciones: ${cutoffData.transactionCount}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-xs text-muted-foreground">Usuario</p>
-                    <p className="font-medium">{cutoffData.user}</p>
+                    <p className="font-medium">{user ? `${user.firstName} ${user.lastName}` : cutoffData.user}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Fecha</p>
-                    <p className="font-medium">{cutoffData.date}</p>
+                    <p className="font-medium">{new Date().toLocaleString('es-MX', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    })}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Total</p>
-                    <p className="font-medium text-primary">{formatPrice(cutoffData.totalAmount)}</p>
+                    <p className="font-medium text-primary">{formatPrice(totalAmount)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Transacciones</p>
-                    <p className="font-medium">{cutoffData.transactionCount}</p>
+                    <p className="font-medium">{filteredTransactions.length}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Efectivo</p>
-                    <p className="font-medium text-green-600">{formatPrice(cutoffData.totalCash)}</p>
+                    <p className="font-medium text-green-600">{formatPrice(totalCash)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Transferencia</p>
-                    <p className="font-medium text-blue-600">{formatPrice(cutoffData.totalTransfer)}</p>
+                    <p className="font-medium text-blue-600">{formatPrice(totalTransfer)}</p>
                   </div>
                 </div>
               </div>
