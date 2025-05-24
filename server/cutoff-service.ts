@@ -110,168 +110,6 @@ export class CutoffService {
   }
   
   /**
-   * Obtiene detalles completos de un viaje y su ruta asociada
-   */
-  private async getTripInfo(tripId: number): Promise<{
-    id: number;
-    routeId: number;
-    departureDate: string;
-    departureTime: string;
-    segmentOrigin: string;
-    segmentDestination: string;
-    routeName: string;
-    routeOrigin: string;
-    routeDestination: string;
-  } | null> {
-    try {
-      if (!tripId) return null;
-      
-      console.log(`[getTripInfo] Consultando información del viaje ${tripId}`);
-      
-      // Consulta optimizada para obtener el viaje Y la ruta en una sola operación
-      const tripWithRoute = await db
-        .select({
-          trip: schema.trips,
-          route: schema.routes
-        })
-        .from(schema.trips)
-        .leftJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
-        .where(eq(schema.trips.id, tripId))
-        .limit(1);
-      
-      if (tripWithRoute.length === 0) {
-        console.log(`[getTripInfo] No se encontró el viaje ${tripId}`);
-        return null;
-      }
-      
-      const data = tripWithRoute[0];
-      
-      // Extraemos los datos relevantes con valores por defecto para evitar campos nulos
-      const trip = data.trip;
-      const route = data.route;
-      
-      // Mostramos la información exacta que obtenemos de manera segura
-      console.log(`[getTripInfo] Ruta completa:`, JSON.stringify({
-        id: route?.id || 0,
-        name: route?.name || 'Sin nombre',
-        origin: route?.origin || 'Sin origen',
-        destination: route?.destination || 'Sin destino'
-      }));
-      
-      // Creamos un objeto simplificado con toda la información
-      const result = {
-        id: trip.id,
-        routeId: trip.routeId,
-        departureDate: trip.departureDate ? new Date(trip.departureDate).toISOString() : '',
-        departureTime: trip.departureTime || '',
-        segmentOrigin: trip.segmentOrigin || '',
-        segmentDestination: trip.segmentDestination || '',
-        routeName: route.name || '',
-        // Aseguramos que estos campos no sean nulos ni indefinidos
-        routeOrigin: route.origin || 'Sin origen registrado',
-        routeDestination: route.destination || 'Sin destino registrado'
-      };
-      
-      console.log(`[getTripInfo] Información final procesada para viaje ${tripId}:`, JSON.stringify(result));
-      
-      return result;
-    } catch (error) {
-      console.error(`[getTripInfo] Error al obtener detalles del viaje ${tripId}:`, error);
-      return null;
-    }
-  }
-  
-  /**
-   * Obtiene los pasajeros de una reservación
-   */
-  private async getReservationPassengers(reservationId: number): Promise<any[]> {
-    try {
-      if (!reservationId) return [];
-      
-      console.log(`[getReservationPassengers] Obteniendo pasajeros para reservación ${reservationId}`);
-      
-      const passengers = await db
-        .select()
-        .from(schema.passengers)
-        .where(eq(schema.passengers.reservationId, reservationId));
-      
-      // Transformamos a un formato más simple usando exactamente los campos de la tabla
-      const processedPassengers = passengers.map(p => ({
-        id: p.id,
-        firstName: p.firstName,
-        lastName: p.lastName,
-        reservationId: p.reservationId
-      }));
-      
-      console.log(`[getReservationPassengers] ${processedPassengers.length} pasajeros encontrados para reservación ${reservationId}`);
-      console.log(`[getReservationPassengers] Datos de pasajeros:`, JSON.stringify(processedPassengers));
-      
-      return processedPassengers;
-    } catch (error) {
-      console.error(`[getReservationPassengers] Error al obtener pasajeros:`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Función auxiliar para obtener los datos de una ruta directamente
-   */
-  private async getRouteDirectly(routeId: number): Promise<{
-    name: string;
-    origin: string;
-    destination: string;
-  } | null> {
-    try {
-      if (!routeId) return null;
-      
-      const route = await db
-        .select()
-        .from(schema.routes)
-        .where(eq(schema.routes.id, routeId))
-        .limit(1);
-        
-      if (route.length === 0) return null;
-      
-      return {
-        name: route[0].name || '',
-        origin: route[0].origin || '',
-        destination: route[0].destination || ''
-      };
-    } catch (error) {
-      console.error(`[getRouteDirectly] Error obteniendo ruta ${routeId}:`, error);
-      return null;
-    }
-  }
-  
-  /**
-   * Función auxiliar para obtener datos de la ruta asociada a un viaje
-   */
-  private async getRouteByTripId(tripId: number): Promise<{
-    name: string;
-    origin: string;
-    destination: string;
-  } | null> {
-    try {
-      if (!tripId) return null;
-      
-      // Primero obtenemos el ID de la ruta desde el viaje
-      const trip = await db
-        .select()
-        .from(schema.trips)
-        .where(eq(schema.trips.id, tripId))
-        .limit(1);
-        
-      if (trip.length === 0 || !trip[0].routeId) return null;
-      
-      // Con el ID de la ruta, obtenemos sus datos
-      return this.getRouteDirectly(trip[0].routeId);
-    } catch (error) {
-      console.error(`[getRouteByTripId] Error obteniendo ruta para viaje ${tripId}:`, error);
-      return null;
-    }
-  }
-
-  /**
    * Crea un nuevo corte de caja con los elementos especificados
    */
   async createCutoff(operatorId: number, items: any[], notes?: string): Promise<{
@@ -370,234 +208,32 @@ export class CutoffService {
         
         console.log(`[createCutoff] Procesando método de pago - Original: "${item.paymentMethod}", Normalizado: "${simplePaymentMethod}"`);
         
-        // Variable para almacenar pasajeros
-        let passengersList: any[] = [];
-        
-        // Si es una reservación, obtener datos completos
-        if (!isPackage && item.id) {
-          console.log(`[createCutoff] Procesando reservación ${item.id}`);
-          
-          // APROXIMACIÓN COMPLETA: Consultamos la reservación para determinar si pertenece a un sub-viaje
-          const completeReservation = await db
-            .select({
-              reservation: schema.reservations,
-              trip: schema.trips,
-              parentTrip: schema.trips,
-              route: schema.routes
-            })
-            .from(schema.reservations)
-            .where(eq(schema.reservations.id, item.id))
-            .leftJoin(
-              schema.trips, 
-              eq(schema.reservations.tripId, schema.trips.id)
-            )
-            .leftJoin(
-              schema.trips.as('parentTrips'), 
-              eq(schema.trips.parentTripId, schema.trips.as('parentTrips').id)
-            )
-            .leftJoin(
-              schema.routes,
-              eq(schema.trips.routeId, schema.routes.id)
-            )
-            .limit(1);
-          
-          if (completeReservation.length > 0) {
-            const reservationData = completeReservation[0];
-            console.log(`[createCutoff] Datos completos de reservación cargados para ID ${item.id}:`, {
-              tripId: reservationData.reservation.tripId,
-              isSubtrip: reservationData.trip?.parentTripId ? true : false,
-              parentTripId: reservationData.trip?.parentTripId || null,
-              routeId: reservationData.trip?.routeId || null
-            });
-            
-            // Determinar si es un sub-viaje
-            const isSubtrip = reservationData.trip?.parentTripId ? true : false;
-            const tripId = reservationData.reservation.tripId || 0;
-            
-            if (tripId > 0) {
-              // Variables para almacenar origen y destino final
-              let finalOrigin = '';
-              let finalDestination = '';
-              let routeName = '';
-              
-              // Guardamos la información de fecha/hora
-              item.departureDate = reservationData.trip?.departureDate || '';
-              item.departureTime = reservationData.trip?.departureTime || '';
-              
-              // LÓGICA PARA SUB-VIAJES: Priorizar segmentOrigin/segmentDestination
-              if (isSubtrip) {
-                console.log(`[createCutoff] La reservación ${item.id} pertenece a un SUB-VIAJE`);
-                
-                // Para sub-viajes, usamos directamente segmentOrigin/segmentDestination
-                finalOrigin = reservationData.trip?.segmentOrigin || '';
-                finalDestination = reservationData.trip?.segmentDestination || '';
-                
-                // El nombre de la ruta puede ser obtenido del viaje principal
-                if (reservationData.parentTrip) {
-                  // Intentamos obtener el nombre de la ruta del viaje principal
-                  const parentRoute = await db
-                    .select()
-                    .from(schema.routes)
-                    .where(eq(schema.routes.id, reservationData.parentTrip.routeId || 0))
-                    .limit(1);
-                    
-                  if (parentRoute.length > 0) {
-                    routeName = parentRoute[0].name;
-                  } else {
-                    routeName = '';
-                  }
-                } else {
-                  routeName = '';
-                }
-              } 
-              // LÓGICA PARA VIAJES NORMALES
-              else {
-                console.log(`[createCutoff] La reservación ${item.id} pertenece a un VIAJE NORMAL`);
-                
-                // Comprobamos si hay segmentos específicos definidos
-                const hasSegmentOrigin = reservationData.trip?.segmentOrigin && reservationData.trip.segmentOrigin.trim() !== '';
-                const hasSegmentDestination = reservationData.trip?.segmentDestination && reservationData.trip.segmentDestination.trim() !== '';
-                
-                // Si existe la ruta, usamos sus datos
-                if (reservationData.route) {
-                  // Priorizar segmentos si existen, sino usar datos de la ruta
-                  finalOrigin = hasSegmentOrigin 
-                    ? reservationData.trip?.segmentOrigin || ''
-                    : reservationData.route.origin || '';
-                    
-                  finalDestination = hasSegmentDestination 
-                    ? reservationData.trip?.segmentDestination || ''
-                    : reservationData.route.destination || '';
-                    
-                  routeName = reservationData.route.name || '';
-                } 
-                // Si no hay ruta asociada, usamos solo los segmentos
-                else {
-                  finalOrigin = reservationData.trip?.segmentOrigin || '';
-                  finalDestination = reservationData.trip?.segmentDestination || '';
-                  routeName = '';
-                }
-              }
-              
-              // Finalmente, asignamos los valores calculados al item
-              item.origin = finalOrigin;
-              item.destination = finalDestination;
-              item.routeName = routeName;
-              
-              console.log(`[createCutoff] Valores finales asignados para reservación ${item.id}:`, {
-                origin: item.origin,
-                destination: item.destination,
-                routeName: item.routeName,
-                isSubtrip
-              });
-                  
-                  console.log(`[createCutoff] DATOS COMPLETOS:`, {
-                    routeName: item.routeName,
-                    origin: item.origin,
-                    destination: item.destination,
-                    routeOrigin: route[0].origin,
-                    routeDestination: route[0].destination
-                  });
-                } else {
-                  console.warn(`[createCutoff] No se encontró la ruta ${trip[0].routeId}`);
-                }
-              } else {
-                console.warn(`[createCutoff] El viaje ${tripId} no tiene routeId`);
-              }
-            } else {
-              console.warn(`[createCutoff] No se encontró el viaje ${tripId}`);
-            }
-          }
-          
-          // Obtener pasajeros
-          passengersList = await this.getReservationPassengers(item.id);
-          console.log(`[createCutoff] ${passengersList.length} pasajeros encontrados para reservación ${item.id}`);
-        }
-        
-        // Formatear fecha si existe
-        let formattedDate = '';
-        if (item.departureDate) {
-          try {
-            const date = new Date(item.departureDate);
-            formattedDate = date.toISOString().split('T')[0]; // 'YYYY-MM-DD'
-          } catch (e) {
-            console.error(`[createCutoff] Error al formatear fecha:`, e);
-            formattedDate = String(item.departureDate);
-          }
-        }
-        
-        // Antes de crear el objeto detailedInfo, consultamos una última vez la ruta si no tenemos los datos
-        if (item.tripId && (!item.origin || !item.destination)) {
-          console.log(`[createCutoff] Realizando consulta final para trip ${item.tripId} porque los datos no están disponibles`);
-          
-          // Consulta directa a la base de datos (bypass cualquier caché)
-          const routeData = await db
-            .select({
-              route: schema.routes,
-              trip: schema.trips
-            })
-            .from(schema.trips)
-            .where(eq(schema.trips.id, item.tripId))
-            .leftJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
-            .limit(1);
-            
-          if (routeData.length > 0) {
-            const tripData = routeData[0].trip;
-            const routeInfo = routeData[0].route;
-            
-            // Si hay información del segmento en el viaje, la usamos, si no, usamos la información de la ruta
-            item.origin = tripData.segmentOrigin || routeInfo?.origin || "Acapulco de Juárez, Guerrero - Terminal condesa";
-            item.destination = tripData.segmentDestination || routeInfo?.destination || "Coyoacán, Ciudad de México - Taxqueña";
-            item.routeName = routeInfo?.name || "Acapulco de Juárez - Coyoacán";
-            
-            console.log(`[createCutoff] DATOS CONSULTADOS DIRECTAMENTE:`, {
-              origin: item.origin,
-              destination: item.destination,
-              routeName: item.routeName
-            });
-          }
-        }
-        
-        // LOGGING ANTES DE CREAR EL OBJETO FINAL
-        console.log(`[createCutoff] Datos del item:`, {
-          id: item.id,
-          type: isPackage ? 'package' : 'reservation',
-          tripId: item.tripId || 0,
-          routeName: item.routeName || '',
-          origin: item.origin || '',
-          destination: item.destination || ''
-        });
-        
-        // Crear objeto con toda la información necesaria para el ticket
+        // Crear objeto con todos los detalles relevantes para guardar
         const detailedInfo = {
           // Información básica
           id: item.id,
           type: isPackage ? 'package' : 'reservation',
           
           // Información de ruta/viaje
-          tripId: item.tripId || 0,
-          tripName: item.routeName || '',
-          
-          // Origen y destino
-          origin: item.origin || '',
-          destination: item.destination || '',
-          
-          // Fecha y hora
-          departureDate: formattedDate,
-          departureTime: item.departureTime || '',
+          tripId: item.tripId,
+          tripName: item.tripName || (item.trip ? `${item.trip.route?.name || 'Ruta'} - ${new Date(item.trip?.departureDate).toLocaleDateString()}` : ''),
+          origin: item.origin || item.trip?.segmentOrigin || item.trip?.route?.origin || '',
+          destination: item.destination || item.trip?.segmentDestination || item.trip?.route?.destination || '',
+          departureDate: item.trip?.departureDate || '',
+          departureTime: item.trip?.departureTime || '',
           
           // Información de pago
           amount: item.amount || item.totalAmount || 0,
           advanceAmount: item.advanceAmount || 0,
-          paymentMethod: simplePaymentMethod,
-          paymentMethodRaw: item.paymentMethod || '',
+          paymentMethod: simplePaymentMethod, // Usar el método normalizado
+          paymentMethodRaw: item.paymentMethod || '', // Guardar también el original para depuración
           paymentNote: item.paymentNote || (isPackage ? 'Paquetería' : (
             item.advanceAmount && item.totalAmount > item.advanceAmount ? 'Anticipo' : 'Pago completo'
           )),
           concept: isPackage ? 'Paquetería' : 'Reservación',
           
           // Información de pasajeros/paquetes
-          passengerCount: passengersList ? passengersList.length : 0,
+          passengerCount: item.passengerCount || (Array.isArray(item.passengers) ? item.passengers.length : 0),
           seatNumbers: item.seatNumbers || [],
           
           // Para paqueterías
@@ -608,14 +244,17 @@ export class CutoffService {
           weight: isPackage ? (item.weight || '') : '',
           dimensions: isPackage ? (item.dimensions || '') : '',
           
-          // Para reservaciones - usando los pasajeros obtenidos de la BD
-          passengers: passengersList.map((p: any) => ({
-            firstName: p.firstName || '',
-            lastName: p.lastName || ''
-          })),
+          // Para reservaciones
+          passengers: Array.isArray(item.passengers) ? 
+            item.passengers.map((p: any) => ({
+              firstName: p.firstName || '',
+              lastName: p.lastName || '',
+              phone: p.phone || '',
+              email: p.email || ''
+            })) : [],
           
           // Metadatos
-          companyId: item.companyId || '',
+          companyId: item.companyId || item.trip?.companyId || '',
           companyName: item.companyInfo?.name || '',
           createdAt: item.createdAt || new Date().toISOString(),
           paidAt: item.paidAt || item.paymentAt || new Date().toISOString()
