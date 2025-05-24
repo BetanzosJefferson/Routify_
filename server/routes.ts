@@ -4915,6 +4915,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: user.id
       };
       
+      // Si el paquete está marcado como pagado (isPaid=true), 
+      // guardar el ID del usuario que lo está creando en el campo paidBy
+      if (packageData.isPaid === true) {
+        packageData.paidBy = user.id;
+        console.log(`[POST /packages] Paquete marcado como pagado por el usuario: ${user.id}`);
+      }
+      
       // Si hay un tripId, obtener la fecha de salida del viaje
       if (packageData.tripId) {
         try {
