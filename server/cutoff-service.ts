@@ -88,14 +88,33 @@ export class CutoffService {
       // Clasificar por método de pago
       for (const item of items) {
         const amount = item.amount || item.totalAmount || 0;
-        const paymentMethod = item.paymentMethod || 'efectivo';
+        // Normalizar el método de pago para asegurar consistencia
+        let paymentMethod = (item.paymentMethod || '').toLowerCase().trim();
+        
+        // Valores por defecto y corrección de posibles errores
+        if (!paymentMethod || paymentMethod === 'undefined' || paymentMethod === 'null') {
+          paymentMethod = 'efectivo'; // Valor por defecto
+        }
+        
+        // Normalizar variantes
+        if (paymentMethod.includes('efectivo') || paymentMethod === 'cash' || paymentMethod === 'cash_payment') {
+          paymentMethod = 'efectivo';
+        } else if (paymentMethod.includes('transfer') || paymentMethod === 'bank_transfer' || paymentMethod === 'online') {
+          paymentMethod = 'transferencia';
+        }
+        
+        console.log(`[createCutoff] Procesando item: ID=${item.id}, Monto=${amount}, Método=${paymentMethod}`);
         
         totalAmount += amount;
         
         if (paymentMethod === 'efectivo') {
           totalCash += amount;
-        } else {
+        } else if (paymentMethod === 'transferencia') {
           totalTransfer += amount;
+        } else {
+          // Para cualquier otro método no reconocido, asumirlo como efectivo por defecto
+          console.warn(`[createCutoff] Método de pago no reconocido: "${paymentMethod}", asumiendo efectivo`);
+          totalCash += amount;
         }
       }
       
@@ -205,13 +224,26 @@ export class CutoffService {
           paidAt: item.paidAt || item.paymentAt || new Date().toISOString()
         };
         
-        // Guardar en la tabla de elementos procesados
+        // Normalize payment method for the database record
+        let normalizedPaymentMethod = (item.paymentMethod || '').toLowerCase().trim();
+        if (!normalizedPaymentMethod || normalizedPaymentMethod === 'undefined' || normalizedPaymentMethod === 'null') {
+          normalizedPaymentMethod = 'efectivo';
+        }
+        
+        // Normalize variants
+        if (normalizedPaymentMethod.includes('efectivo') || normalizedPaymentMethod === 'cash' || normalizedPaymentMethod === 'cash_payment') {
+          normalizedPaymentMethod = 'efectivo';
+        } else if (normalizedPaymentMethod.includes('transfer') || normalizedPaymentMethod === 'bank_transfer' || normalizedPaymentMethod === 'online') {
+          normalizedPaymentMethod = 'transferencia';
+        }
+        
+        // Guardar en la tabla de elementos procesados con método de pago normalizado
         await this.addProcessedItem({
           cutoffId: cutoff.id,
           itemType: isPackage ? 'package' : 'reservation',
           itemId: isPackage ? (item.originalPackageId || item.id) : item.id,
           amount: item.amount || item.totalAmount || 0,
-          paymentMethod: item.paymentMethod || 'efectivo',
+          paymentMethod: normalizedPaymentMethod,
           concept: item.paymentNote || (isPackage ? 'Paquetería' : 'Reservación'),
           details: JSON.stringify(detailedInfo)
         });
