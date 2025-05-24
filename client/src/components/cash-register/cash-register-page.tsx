@@ -558,6 +558,11 @@ export function CashRegisterPage() {
               // Añadir origen y destino explícitamente
               origin,
               destination,
+              // Obtener el nombre del primer pasajero para mostrarlo en el modal
+              passengerName: r.passengers && r.passengers.length > 0 
+                ? `${r.passengers[0]?.firstName || ''} ${r.passengers[0]?.lastName || ''}`.trim()
+                : "Sin pasajeros",
+              // Mantener la lista completa de pasajeros para otros usos
               passengers: r.passengers?.map(p => `${p.firstName} ${p.lastName}`).join(", ") || "Sin pasajeros",
               amount: r.totalAmount || 0,
               paymentMethod: getCombinedPaymentMethod(r)
@@ -1161,6 +1166,13 @@ Total transacciones: ${cutoffData.transactionCount}
                   {cutoffData.transactions.slice(0, 5).map((t: any) => (
                     <div key={t.id} className="border-b pb-2 text-sm">
                       <p><span className="font-medium">ID:</span> {t.id}</p>
+                      <p>
+                        <span className="font-medium">Pasajero:</span> {
+                          t.type === 'reservation' 
+                            ? (t.passengerName || 'No disponible')
+                            : (t.type === 'package' ? (t.sender || 'Remitente sin nombre') : 'No disponible')
+                        }
+                      </p>
                       <p>
                         <span className="font-medium">Ruta:</span> {t.origin || t.tripInfo?.processedOrigin || 'Origen no especificado'} 
                         <span className="mx-1">→</span> 
