@@ -538,24 +538,49 @@ export function CashRegisterPage() {
         transactionCount: sortedReservations.length + sortedPackages.length, // Total de transacciones
         transactions: [
           // Reservaciones
-          ...sortedReservations.map(r => ({
-            id: r.id,
-            type: 'reservation',
-            tripName: r.trip?.route?.name || "Sin ruta",
-            passengers: r.passengers?.map(p => `${p.firstName} ${p.lastName}`).join(", ") || "Sin pasajeros",
-            amount: r.totalAmount || 0,
-            paymentMethod: getCombinedPaymentMethod(r)
-          })),
+          ...sortedReservations.map(r => {
+            // Usar la misma lógica que usamos en el console.log para origen/destino
+            const origin = r.trip?.segmentOrigin || (r.trip?.route && r.trip.route.origin) || r.origin || "Origen no especificado";
+            const destination = r.trip?.segmentDestination || (r.trip?.route && r.trip.route.destination) || r.destination || "Destino no especificado";
+            
+            // Añadir un console.log para depuración
+            console.log("Ruta:", { 
+              id: r.id,
+              isSegment: !!r.trip?.segmentOrigin,
+              origin,
+              destination
+            });
+            
+            return {
+              id: r.id,
+              type: 'reservation',
+              tripName: r.trip?.route?.name || "Sin ruta",
+              // Añadir origen y destino explícitamente
+              origin,
+              destination,
+              passengers: r.passengers?.map(p => `${p.firstName} ${p.lastName}`).join(", ") || "Sin pasajeros",
+              amount: r.totalAmount || 0,
+              paymentMethod: getCombinedPaymentMethod(r)
+            };
+          }),
           // Paqueterías
-          ...sortedPackages.map(p => ({
-            id: p.id,
-            type: 'package',
-            tripName: p.trip?.route?.name || "Sin ruta",
-            sender: `${p.senderName || ''} ${p.senderLastName || ''}`,
-            recipient: `${p.recipientName || ''} ${p.recipientLastName || ''}`,
-            amount: p.price || 0,
-            paymentMethod: p.paymentMethod || 'efectivo'
-          }))
+          ...sortedPackages.map(p => {
+            // Usar la misma lógica para paqueterías
+            const origin = p.trip?.segmentOrigin || (p.trip?.route && p.trip.route.origin) || p.origin || "Origen no especificado";
+            const destination = p.trip?.segmentDestination || (p.trip?.route && p.trip.route.destination) || p.destination || "Destino no especificado";
+            
+            return {
+              id: p.id,
+              type: 'package',
+              tripName: p.trip?.route?.name || "Sin ruta",
+              origin,
+              destination,
+              sender: `${p.senderName || ''} ${p.senderLastName || ''}`,
+              recipient: `${p.recipientName || ''} ${p.recipientLastName || ''}`,
+              amount: p.price || 0,
+              paymentMethod: p.paymentMethod || 'efectivo'
+            };
+          })
         ]
       };
       
