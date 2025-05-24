@@ -504,8 +504,7 @@ export const packages = pgTable("packages", {
   // Estado del pago
   isPaid: boolean("is_paid").default(false).notNull(),
   paymentMethod: text("payment_method"), // efectivo, transferencia, etc.
-  paidBy: integer("paid_by").references(() => users.id), // ID del usuario que marca como pagado
-  paidAt: timestamp("paid_at"), // Fecha y hora en que se marcó como pagado
+  paidBy: integer("paid_by"), // ID del usuario que marca como pagado
   
   // Metadatos
   createdAt: timestamp("created_at").notNull().defaultNow(),

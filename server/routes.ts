@@ -3295,7 +3295,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPaid: true,
         paymentMethod: packageData.paymentMethod || 'efectivo',
         paidBy: userId, // Guardar el ID del usuario que marca como pagado
-        paidAt: new Date(), // Registrar cuándo se marcó como pagado
         updatedAt: new Date()
       });
       console.log(`[POST /public/packages/${packageId}/mark-paid] Nuevo estado de pago:`, updatedPackage?.isPaid);
