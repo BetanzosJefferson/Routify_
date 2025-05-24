@@ -225,26 +225,43 @@ export class CutoffService {
         
         // Analizar la información de origen/destino correcta
         const tripData = item.trip || null;
+        
+        // PUNTO CRÍTICO: Verificar si la información directa en item (origin/destination) tiene prioridad
+        if (item.origin && item.destination) {
+          console.log(`[createCutoff] Item ${item.id} tiene origen/destino directo:`, item.origin, item.destination);
+        }
+        
+        // Verificar si hay información de segmento disponible (tiene prioridad)
         const hasSegments = tripData && tripData.segmentOrigin && tripData.segmentDestination;
         
-        // Determinar la información de ruta apropiada (similar a la lógica del console.log)
+        // Determinar la información de ruta apropiada con prioridad clara
         const originDestInfo = hasSegments 
           ? {
+              // Prioridad 1: Información de segmento de viaje
               origin: tripData.segmentOrigin,
               destination: tripData.segmentDestination,
               isSegment: true
             }
-          : tripData && tripData.route
+          : tripData && tripData.route && tripData.route.origin && tripData.route.destination
             ? {
+                // Prioridad 2: Información de ruta completa
                 origin: tripData.route.origin,
                 destination: tripData.route.destination,
                 isSegment: false
               }
-            : {
-                origin: item.origin || '',
-                destination: item.destination || '',
-                isSegment: false
-              };
+            : item.origin && item.destination
+              ? {
+                  // Prioridad 3: Información directa del ítem
+                  origin: item.origin,
+                  destination: item.destination,
+                  isSegment: false
+                }
+              : {
+                  // Fallback: Valores por defecto
+                  origin: 'Origen pendiente de especificar',
+                  destination: 'Destino pendiente de especificar',
+                  isSegment: false
+                };
         
         console.log(`[createCutoff] Procesando origen/destino para ítem ${item.id}:`, originDestInfo);
         
@@ -259,11 +276,18 @@ export class CutoffService {
           
           // Almacenamos la información de trip para que podamos procesarla correctamente en el PDF
           tripInfo: {
+            // Datos crudos (pueden ser null)
             segmentOrigin: item.trip?.segmentOrigin || null,
             segmentDestination: item.trip?.segmentDestination || null,
             routeOrigin: item.trip?.route?.origin || null,
             routeDestination: item.trip?.route?.destination || null,
-            // Añadir el resultado procesado para asegurar que se use correctamente
+            
+            // Datos directos del item (pueden ser undefined)
+            itemOrigin: item.origin,
+            itemDestination: item.destination,
+            
+            // IMPORTANTE: Resultado procesado (nunca será null/undefined)
+            // Estos son los valores que deben usarse en el PDF
             processedOrigin: originDestInfo.origin,
             processedDestination: originDestInfo.destination,
             isSegment: originDestInfo.isSegment
