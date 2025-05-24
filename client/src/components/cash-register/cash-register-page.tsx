@@ -1566,16 +1566,27 @@ Total transacciones: ${cutoffData.transactionCount}
                       <TableCell>
                         {(() => {
                           // Console log para debugging
+                          const tripData = reservation.trip;
+                          const hasSegments = tripData && tripData.segmentOrigin && tripData.segmentDestination;
+                          
                           console.log("Información de celda de ruta:", {
                             id: reservation.id,
                             hasTrip: !!reservation.trip,
-                            tripInfo: reservation.trip ? {
-                              id: reservation.trip.id,
-                              segmentOrigin: reservation.trip.segmentOrigin,
-                              segmentDestination: reservation.trip.segmentDestination,
-                              routeOrigin: reservation.trip.route?.origin,
-                              routeDestination: reservation.trip.route?.destination
-                            } : null,
+                            routeInfo: hasSegments 
+                              ? {
+                                  // Si hay segmentos específicos, solo mostramos esos
+                                  origin: tripData.segmentOrigin,
+                                  destination: tripData.segmentDestination,
+                                  isSegment: true
+                                }
+                              : tripData
+                                ? {
+                                    // Si no hay segmentos, mostramos la ruta general
+                                    origin: tripData.route?.origin,
+                                    destination: tripData.route?.destination,
+                                    isSegment: false
+                                  }
+                                : null,
                             isPackage: !!reservation.originalPackageId,
                             packageOrigin: reservation.origin,
                             packageDestination: reservation.destination
