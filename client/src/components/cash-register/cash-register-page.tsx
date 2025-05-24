@@ -208,16 +208,26 @@ export function CashRegisterPage() {
           let time = '';
           
           if (tripInfo) {
-            // Determinar origen y destino considerando si es un sub-viaje
-            if (reservation.segmentOrigin && reservation.segmentDestination) {
-              // Es un sub-viaje, usar los segmentos específicos
-              origin = reservation.segmentOrigin;
-              destination = reservation.segmentDestination;
+            // Primero verificamos si el viaje es un sub-viaje consultando is_sub_trip
+            if (tripInfo.isSubTrip === true) {
+              // Es un sub-viaje, tomamos segment_origin y segment_destination
+              origin = tripInfo.segmentOrigin || '';
+              destination = tripInfo.segmentDestination || '';
               console.log(`Sub-viaje detectado para ${tripId}: ${origin} → ${destination}`);
-            } else if (tripInfo.origin && tripInfo.destination) {
-              // Viaje normal, usar origen y destino del viaje principal
-              origin = tripInfo.origin;
-              destination = tripInfo.destination;
+            } else {
+              // Es un viaje padre, tomamos origen y destino de la ruta
+              if (tripInfo.route) {
+                origin = tripInfo.route.origin || '';
+                destination = tripInfo.route.destination || '';
+                console.log(`Viaje padre detectado para ${tripId}: ${origin} → ${destination}`);
+              }
+            }
+            
+            // Si los valores están vacíos o como respaldo, intentamos usar los datos de la reservación
+            if ((!origin || !destination) && reservation.segmentOrigin && reservation.segmentDestination) {
+              origin = origin || reservation.segmentOrigin;
+              destination = destination || reservation.segmentDestination;
+              console.log(`Usando datos de reservación como respaldo: ${origin} → ${destination}`);
             }
             
             // Extraer información de fecha y hora
