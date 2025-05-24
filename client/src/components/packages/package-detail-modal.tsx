@@ -10,12 +10,6 @@ interface PackageDetailModalProps {
 }
 
 export default function PackageDetailModal({ packageData }: PackageDetailModalProps) {
-  // Función para mostrar información del usuario
-  const formatUserInfo = (user: any) => {
-    if (!user) return "No registrado";
-    return `${user.firstName} ${user.lastName}`;
-  };
-
   return (
     <div className="space-y-6">
       {/* Información principal */}
@@ -33,7 +27,7 @@ export default function PackageDetailModal({ packageData }: PackageDetailModalPr
             <p className="text-sm font-medium text-muted-foreground">Fecha de Creación</p>
             <p className="text-base flex items-center">
               <Calendar className="h-4 w-4 mr-1" />
-              {formatDateTime(new Date(packageData.createdAt))}
+              {formatDate(new Date(packageData.createdAt))}
             </p>
           </div>
           <div>
@@ -230,7 +224,7 @@ export default function PackageDetailModal({ packageData }: PackageDetailModalPr
                 : "Usuario no registrado"}
             </p>
             <p className="text-xs text-muted-foreground">
-              {formatDateTime(new Date(packageData.createdAt))}
+              {formatDate(new Date(packageData.createdAt))}
             </p>
           </div>
           
@@ -247,7 +241,7 @@ export default function PackageDetailModal({ packageData }: PackageDetailModalPr
                 </p>
                 {packageData.markedAsPaidAt && (
                   <p className="text-xs text-muted-foreground">
-                    {formatDateTime(new Date(packageData.markedAsPaidAt))}
+                    {formatDate(new Date(packageData.markedAsPaidAt))}
                   </p>
                 )}
               </>
@@ -269,7 +263,7 @@ export default function PackageDetailModal({ packageData }: PackageDetailModalPr
                 </p>
                 {packageData.markedAsDeliveredAt && (
                   <p className="text-xs text-muted-foreground">
-                    {formatDateTime(new Date(packageData.markedAsDeliveredAt))}
+                    {formatDate(new Date(packageData.markedAsDeliveredAt))}
                   </p>
                 )}
               </>
