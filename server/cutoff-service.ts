@@ -7,6 +7,47 @@ import * as schema from "@shared/schema";
  */
 export class CutoffService {
   /**
+   * Normaliza un método de pago al formato básico (efectivo o transferencia)
+   */
+  normalizePaymentMethod(method: string): string {
+    if (!method || typeof method !== 'string') {
+      return 'efectivo'; // Valor por defecto
+    }
+    
+    const lowerMethod = method.trim().toLowerCase();
+    let normalizedMethod = lowerMethod;
+    
+    // Extraer la parte relevante con el método real
+    if (lowerMethod.includes('anticipo:')) {
+      // En formato "Anticipo: efectivo / Resto: efectivo", tomar el método después de "Anticipo:"
+      const parts = lowerMethod.split(':');
+      if (parts.length > 1) {
+        normalizedMethod = parts[1].trim();
+        // Si tiene "/", quedarse solo con la primera parte
+        if (normalizedMethod.includes('/')) {
+          normalizedMethod = normalizedMethod.split('/')[0].trim();
+        }
+      }
+    }
+    
+    // Normalizar a los dos tipos básicos
+    if (normalizedMethod.includes('efectivo') || normalizedMethod === 'cash') {
+      return 'efectivo';
+    } else if (normalizedMethod.includes('transfer') || normalizedMethod === 'bank_transfer') {
+      return 'transferencia';
+    }
+    
+    // Verificar en la cadena original como respaldo
+    if (lowerMethod.includes('efectivo') || lowerMethod === 'cash') {
+      return 'efectivo';
+    } else if (lowerMethod.includes('transfer') || lowerMethod === 'bank_transfer') {
+      return 'transferencia';
+    }
+    
+    // Valor por defecto si no se detecta un tipo específico
+    return 'efectivo';
+  }
+  /**
    * Registra un elemento como procesado en un corte
    */
   async addProcessedItem(item: schema.InsertProcessedItem): Promise<schema.ProcessedItem> {
@@ -89,46 +130,8 @@ export class CutoffService {
       for (const item of items) {
         const amount = item.amount || item.totalAmount || 0;
         
-        // Extraer y normalizar el método de pago básico (sin formato compuesto)
-        let simplePaymentMethod = '';
-        
-        // Limpiar y normalizar el método de pago, extrayendo solo la parte principal
-        if (typeof item.paymentMethod === 'string') {
-          // Si contiene ":" o "/", extraer solo la primera parte relevante
-          if (item.paymentMethod.includes(':')) {
-            simplePaymentMethod = item.paymentMethod.split(':')[0].trim().toLowerCase();
-          } else if (item.paymentMethod.includes('/')) {
-            simplePaymentMethod = item.paymentMethod.split('/')[0].trim().toLowerCase();
-          } else if (item.paymentMethod.includes('efectivo')) {
-            simplePaymentMethod = 'efectivo';
-          } else if (item.paymentMethod.includes('transfer')) {
-            simplePaymentMethod = 'transferencia';
-          } else {
-            simplePaymentMethod = item.paymentMethod.trim().toLowerCase();
-          }
-        } else {
-          // Valor por defecto si no hay método de pago o no es string
-          simplePaymentMethod = 'efectivo';
-        }
-        
-        // Corrección final para casos específicos
-        if (simplePaymentMethod.includes('anticipo') || simplePaymentMethod.includes('resto')) {
-          // Si contiene anticipo o resto, verificar el método real
-          if (item.advancePaymentMethod) {
-            simplePaymentMethod = item.advancePaymentMethod.toLowerCase().trim();
-          } else {
-            simplePaymentMethod = 'efectivo'; // Valor por defecto
-          }
-        }
-        
-        // Normalización final de métodos
-        if (simplePaymentMethod.includes('efectivo') || simplePaymentMethod === 'cash') {
-          simplePaymentMethod = 'efectivo';
-        } else if (simplePaymentMethod.includes('transfer')) {
-          simplePaymentMethod = 'transferencia';
-        } else if (!simplePaymentMethod || simplePaymentMethod === 'undefined' || simplePaymentMethod === 'null') {
-          simplePaymentMethod = 'efectivo'; // Valor por defecto si no hay método válido
-        }
+        // Usar la función centralizada para normalizar el método de pago
+        const simplePaymentMethod = this.normalizePaymentMethod(item.paymentMethod || '');
         
         console.log(`[createCutoff] Procesando item: ID=${item.id}, Monto=${amount}, Método original=${item.paymentMethod}, Método normalizado=${simplePaymentMethod}`);
         
@@ -200,46 +203,8 @@ export class CutoffService {
                                item.type === 'package' || 
                                (item.senderName !== undefined && item.receiverName !== undefined));
         
-        // Extraer y normalizar el método de pago básico (sin formato compuesto)
-        let simplePaymentMethod = '';
-        
-        // Limpiar y normalizar el método de pago, extrayendo solo la parte principal
-        if (typeof item.paymentMethod === 'string') {
-          // Si contiene ":" o "/", extraer solo la primera parte relevante
-          if (item.paymentMethod.includes(':')) {
-            simplePaymentMethod = item.paymentMethod.split(':')[0].trim().toLowerCase();
-          } else if (item.paymentMethod.includes('/')) {
-            simplePaymentMethod = item.paymentMethod.split('/')[0].trim().toLowerCase();
-          } else if (item.paymentMethod.includes('efectivo')) {
-            simplePaymentMethod = 'efectivo';
-          } else if (item.paymentMethod.includes('transfer')) {
-            simplePaymentMethod = 'transferencia';
-          } else {
-            simplePaymentMethod = item.paymentMethod.trim().toLowerCase();
-          }
-        } else {
-          // Valor por defecto si no hay método de pago o no es string
-          simplePaymentMethod = 'efectivo';
-        }
-        
-        // Corrección final para casos específicos
-        if (simplePaymentMethod.includes('anticipo') || simplePaymentMethod.includes('resto')) {
-          // Si contiene anticipo o resto, verificar el método real
-          if (item.advancePaymentMethod) {
-            simplePaymentMethod = item.advancePaymentMethod.toLowerCase().trim();
-          } else {
-            simplePaymentMethod = 'efectivo'; // Valor por defecto
-          }
-        }
-        
-        // Normalización final de métodos
-        if (simplePaymentMethod.includes('efectivo') || simplePaymentMethod === 'cash') {
-          simplePaymentMethod = 'efectivo';
-        } else if (simplePaymentMethod.includes('transfer')) {
-          simplePaymentMethod = 'transferencia';
-        } else if (!simplePaymentMethod || simplePaymentMethod === 'undefined' || simplePaymentMethod === 'null') {
-          simplePaymentMethod = 'efectivo'; // Valor por defecto si no hay método válido
-        }
+        // Usar el método centralizado de normalización
+        const simplePaymentMethod = this.normalizePaymentMethod(item.paymentMethod || '');
         
         console.log(`[createCutoff] Procesando método de pago - Original: "${item.paymentMethod}", Normalizado: "${simplePaymentMethod}"`);
         
@@ -301,7 +266,7 @@ export class CutoffService {
           itemType: isPackage ? 'package' : 'reservation',
           itemId: isPackage ? (item.originalPackageId || item.id) : item.id,
           amount: item.amount || item.totalAmount || 0,
-          paymentMethod: simplePaymentMethod,
+          paymentMethod: simplePaymentMethod, // Usar el método normalizado, no el original
           concept: item.paymentNote || (isPackage ? 'Paquetería' : 'Reservación'),
           details: JSON.stringify(detailedInfo)
         });
