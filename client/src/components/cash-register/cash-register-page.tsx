@@ -65,6 +65,9 @@ export function CashRegisterPage() {
   const [companyFilter, setCompanyFilter] = useState("todas"); // Filtro por empresa para taquilleros
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   
+  // Variable para almacenar información completa de rutas
+  const [completeRoutes, setCompleteRoutes] = useState<{[key: string]: string}>({});
+  
   // Estados adicionales para mejorar la UX
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showLoadingDelay, setShowLoadingDelay] = useState(false);
@@ -170,6 +173,53 @@ export function CashRegisterPage() {
       setIsInitialLoad(false);
     }
   }, [isLoading]);
+  
+  // Capturar y mostrar información completa de rutas
+  useEffect(() => {
+    // Recopilar información completa de rutas de las reservaciones cuando cambian los datos
+    if (paidReservations && paidReservations.length > 0 && allTrips && allTrips.length > 0) {
+      const routesInfo: {[key: string]: string} = {};
+      
+      paidReservations.forEach((reservation: any) => {
+        if (reservation.tripId && reservation.trip?.route?.name) {
+          const tripId = reservation.tripId.toString();
+          const routeName = reservation.trip.route.name;
+          
+          // Buscar información adicional como origen y destino específicos
+          const tripInfo = allTrips.find((t: any) => t.id === reservation.tripId);
+          
+          let fullRouteInfo = routeName;
+          
+          if (tripInfo) {
+            // Añadir origen y destino específicos si están disponibles
+            if (tripInfo.origin && tripInfo.destination) {
+              fullRouteInfo = `${routeName} - ${tripInfo.origin} → ${tripInfo.destination}`;
+            }
+            
+            // Añadir información de horario si está disponible
+            if (tripInfo.departureDate || tripInfo.departureTime) {
+              const formattedDate = tripInfo.departureDate ? 
+                new Date(tripInfo.departureDate).toLocaleDateString('es-MX') : '';
+              const time = tripInfo.departureTime || '';
+              
+              if (formattedDate || time) {
+                fullRouteInfo += ` (${formattedDate} ${time})`;
+              }
+            }
+          }
+          
+          // Guardar la información completa
+          routesInfo[tripId] = fullRouteInfo;
+        }
+      });
+      
+      // Actualizar el estado con la información recopilada
+      setCompleteRoutes(routesInfo);
+      
+      // Mostrar la información en la consola para depuración
+      console.log("Información completa de rutas:", routesInfo);
+    }
+  }, [paidReservations, allTrips]);
   
   // Separar reservaciones y paqueterías
   const separateReservationsAndPackages = (items: ReservationWithCompany[] = []) => {
@@ -809,8 +859,14 @@ Total transacciones: ${cutoffData.transactionCount}
           } else {
             // Detalles para reservaciones
             if (t.tripName) {
-              // Formatear el nombre del viaje (ruta) para evitar desbordamiento
+              // Usar la información completa de la ruta si está disponible
               let tripText = `Viaje: ${t.tripName}`;
+              
+              // Buscar información más completa en el estado completeRoutes
+              if (t.tripId && completeRoutes[t.tripId]) {
+                tripText = `Viaje: ${completeRoutes[t.tripId]}`;
+                console.log(`Usando información completa de ruta para ${t.tripId}: ${completeRoutes[t.tripId]}`);
+              }
               
               // Si es demasiado largo, dividir en múltiples líneas
               if (tripText.length > 30) {
@@ -972,6 +1028,9 @@ Total transacciones: ${cutoffData.transactionCount}
   // Función para imprimir el ticket de corte
   const printCutoffTicket = async (data: any, cutoffInfo: any) => {
     try {
+      // Mostrar información completa de rutas para depuración
+      console.log("Información de rutas disponible al imprimir:", completeRoutes);
+      
       // Utilizamos la función de generación de PDF en formato 60mm
       await generateCutoffTicketPDF(data, cutoffInfo);
     } catch (error) {
