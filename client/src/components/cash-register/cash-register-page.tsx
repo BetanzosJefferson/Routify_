@@ -70,9 +70,22 @@ export function CashRegisterPage() {
   const [showCutoffModal, setShowCutoffModal] = useState(false);
   const [cutoffData, setCutoffData] = useState<any>(null);
   
+  // Tipo para los elementos del historial de cortes
+  interface CutoffHistoryItem {
+    id: number;
+    date: string;
+    user: string;
+    totalAmount: number;
+    totalCash: number;
+    totalTransfer: number;
+    transactionCount: number;
+    notes?: string;
+  }
+  
   // Estados para el historial de cortes
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [cutoffHistory, setCutoffHistory] = useState<any[]>([]);
+  const [cutoffHistory, setCutoffHistory] = useState<CutoffHistoryItem[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   
   // Estado para saber si estamos en modo administrador o taquillero
   const isAdminView = user?.role === 'dueño' || user?.role === 'administrador';
@@ -472,7 +485,25 @@ export function CashRegisterPage() {
 
   // Función para mostrar el historial de cortes
   const showCutoffHistory = () => {
-    setShowHistoryModal(true);
+    setIsLoadingHistory(true);
+    try {
+      // Actualizar el historial desde localStorage (por si ha cambiado)
+      const storedHistory = localStorage.getItem('cutoffHistory');
+      if (storedHistory) {
+        setCutoffHistory(JSON.parse(storedHistory));
+      }
+      // Mostrar el modal
+      setShowHistoryModal(true);
+    } catch (error) {
+      console.error("Error al cargar el historial de cortes:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo cargar el historial de cortes.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingHistory(false);
+    }
   };
 
   // Función para completar el corte de caja
@@ -932,6 +963,18 @@ Total transacciones: ${cutoffData.transactionCount}
               </Card>
             </div>
           </div>
+          
+          {/* Botón para ver el historial de cortes */}
+          <div className="mt-4">
+            <Button 
+              variant="outline" 
+              className="w-full border border-gray-300 hover:bg-gray-100"
+              onClick={showCutoffHistory}
+            >
+              <Clock className="h-5 w-5 mr-2" />
+              Ver historial de cortes
+            </Button>
+          </div>
         </CardContent>
       </Card>
       
@@ -1294,6 +1337,105 @@ Total transacciones: ${cutoffData.transactionCount}
           )}
         </div>
       </Card>
+      
+      {/* Modal para mostrar el historial de cortes */}
+      <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Historial de Cortes de Caja</DialogTitle>
+            <DialogDescription>
+              Registro de todos los cortes de caja realizados
+            </DialogDescription>
+          </DialogHeader>
+          
+          {cutoffHistory.length === 0 ? (
+            <div className="py-8 text-center">
+              <p className="text-muted-foreground">No hay cortes de caja registrados</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {cutoffHistory.map((cutoff) => (
+                <Card key={cutoff.id} className="bg-muted/20">
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="font-medium">
+                          Corte #{cutoff.id}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(cutoff.date).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">Usuario: {cutoff.user}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {cutoff.transactionCount} transacciones
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                      <div className="p-2 bg-primary/5 rounded">
+                        <p className="text-sm font-medium">Total</p>
+                        <p className="text-xl font-bold">${cutoff.totalAmount.toFixed(2)}</p>
+                      </div>
+                      <div className="p-2 bg-green-50 rounded">
+                        <p className="text-sm font-medium">Efectivo</p>
+                        <p className="text-xl font-bold text-green-700">${cutoff.totalCash.toFixed(2)}</p>
+                      </div>
+                      <div className="p-2 bg-blue-50 rounded">
+                        <p className="text-sm font-medium">Transferencia</p>
+                        <p className="text-xl font-bold text-blue-700">${cutoff.totalTransfer.toFixed(2)}</p>
+                      </div>
+                    </div>
+                    
+                    {cutoff.notes && (
+                      <div className="mt-2 p-2 bg-yellow-50 rounded">
+                        <p className="text-sm font-medium">Notas:</p>
+                        <p className="text-sm">{cutoff.notes}</p>
+                      </div>
+                    )}
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="mt-4"
+                      onClick={() => {
+                        // Mostrar un ticket similar al de impresión
+                        const ticketContent = `
+CORTE DE CAJA #${cutoff.id}
+--------------------------------
+Fecha: ${new Date(cutoff.date).toLocaleString()}
+Usuario: ${cutoff.user}
+--------------------------------
+Total: $${cutoff.totalAmount.toFixed(2)}
+Efectivo: $${cutoff.totalCash.toFixed(2)}
+Transferencia: $${cutoff.totalTransfer.toFixed(2)}
+--------------------------------
+Total transacciones: ${cutoff.transactionCount}
+${cutoff.notes ? `\nNotas: ${cutoff.notes}` : ''}
+                        `;
+                        
+                        alert("Imprimiendo ticket:\n\n" + ticketContent);
+                      }}
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Imprimir ticket
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowHistoryModal(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
