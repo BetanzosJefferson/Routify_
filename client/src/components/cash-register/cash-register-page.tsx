@@ -945,21 +945,8 @@ Total transacciones: ${cutoffData.transactionCount}
               y += 2;
             });
             
-            // Solo mostrar información de viaje si es diferente a origen/destino
-            // para evitar redundancia
-            if (t.tripName && 
-                t.tripName !== `${t.origin} - ${t.destination}` && 
-                t.tripName !== `${t.originCity} - ${t.destinationCity}`) {
-              doc.text("Ruta:", margin + 2, y);
-              y += 2;
-              
-              // Dividir la información de ruta si es muy larga
-              const routeLines = doc.splitTextToSize(t.tripName, 44);
-              routeLines.forEach((line: string) => {
-                doc.text(`  ${line}`, margin + 2, y);
-                y += 2;
-              });
-            }
+            // Eliminamos la sección de Ruta por completo para evitar redundancia
+            // ya que el origen y destino ya contienen la información necesaria
             
             // Mostrar fecha y hora del viaje si están disponibles
             if (t.departureDate || t.departureTime) {
