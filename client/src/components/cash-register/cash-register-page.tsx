@@ -1562,23 +1562,35 @@ Total transacciones: ${cutoffData.transactionCount}
                       variant="outline" 
                       size="sm" 
                       className="mt-4"
-                      onClick={() => {
-                        // Mostrar un ticket similar al de impresión
-                        const ticketContent = `
-CORTE DE CAJA #${cutoff.id}
---------------------------------
-Fecha: ${new Date(cutoff.date).toLocaleString()}
-Usuario: ${cutoff.user}
---------------------------------
-Total: $${cutoff.totalAmount.toFixed(2)}
-Efectivo: $${cutoff.totalCash.toFixed(2)}
-Transferencia: $${cutoff.totalTransfer.toFixed(2)}
---------------------------------
-Total transacciones: ${cutoff.transactionCount}
-${cutoff.notes ? `\nNotas: ${cutoff.notes}` : ''}
-                        `;
-                        
-                        alert("Imprimiendo ticket:\n\n" + ticketContent);
+                      onClick={async () => {
+                        try {
+                          // Usar la función de generación de PDF para el ticket
+                          await generateCutoffTicketPDF({
+                            totalAmount: cutoff.totalAmount,
+                            totalCash: cutoff.totalCash,
+                            totalTransfer: cutoff.totalTransfer,
+                            transactionCount: cutoff.transactionCount,
+                            user: cutoff.user,
+                            // Los tickets históricos no tienen transacciones detalladas
+                            transactions: []
+                          }, {
+                            id: cutoff.id,
+                            createdAt: cutoff.date,
+                            notes: cutoff.notes
+                          });
+                          
+                          toast({
+                            title: "Éxito",
+                            description: "Se ha generado el ticket en formato PDF.",
+                          });
+                        } catch (error) {
+                          console.error("Error al generar el ticket PDF:", error);
+                          toast({
+                            title: "Error",
+                            description: "No se pudo generar el ticket. Intente nuevamente.",
+                            variant: "destructive"
+                          });
+                        }
                       }}
                     >
                       <Printer className="h-4 w-4 mr-2" />
