@@ -66,14 +66,7 @@ export function CashRegisterPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   
   // Variable para almacenar información completa de rutas
-  const [completeRoutes, setCompleteRoutes] = useState<{[key: string]: {
-    name: string,
-    origin: string,
-    destination: string,
-    date: string,
-    time: string,
-    fullInfo: string
-  }}>({});
+  const [completeRoutes, setCompleteRoutes] = useState<{[key: string]: string}>({});
   
   // Estados adicionales para mejorar la UX
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -185,14 +178,7 @@ export function CashRegisterPage() {
   useEffect(() => {
     // Recopilar información completa de rutas de las reservaciones cuando cambian los datos
     if (paidReservations && paidReservations.length > 0 && allTrips && allTrips.length > 0) {
-      const routesInfo: {[key: string]: {
-        name: string,
-        origin: string,
-        destination: string,
-        date: string,
-        time: string,
-        fullInfo: string
-      }} = {};
+      const routesInfo: {[key: string]: string} = {};
       
       paidReservations.forEach((reservation: any) => {
         if (reservation.tripId && reservation.trip?.route?.name) {
@@ -202,60 +188,28 @@ export function CashRegisterPage() {
           // Buscar información adicional como origen y destino específicos
           const tripInfo = allTrips.find((t: any) => t.id === reservation.tripId);
           
-          let origin = '';
-          let destination = '';
-          let date = '';
-          let time = '';
-          
-          if (tripInfo) {
-            // Determinar origen y destino considerando si es un sub-viaje
-            if (reservation.segmentOrigin && reservation.segmentDestination) {
-              // Es un sub-viaje, usar los segmentos específicos
-              origin = reservation.segmentOrigin;
-              destination = reservation.segmentDestination;
-              console.log(`Sub-viaje detectado para ${tripId}: ${origin} → ${destination}`);
-            } else if (tripInfo.origin && tripInfo.destination) {
-              // Viaje normal, usar origen y destino del viaje principal
-              origin = tripInfo.origin;
-              destination = tripInfo.destination;
-            }
-            
-            // Extraer información de fecha y hora
-            if (tripInfo.departureDate) {
-              try {
-                date = new Date(tripInfo.departureDate).toLocaleDateString('es-MX');
-              } catch (e) {
-                date = '';
-              }
-            }
-            
-            if (tripInfo.departureTime) {
-              time = tripInfo.departureTime;
-            }
-          }
-          
-          // Construir información completa para mostrar
           let fullRouteInfo = routeName;
           
-          // Añadir origen y destino
-          if (origin && destination) {
-            fullRouteInfo = `${routeName} - ${origin} → ${destination}`;
+          if (tripInfo) {
+            // Añadir origen y destino específicos si están disponibles
+            if (tripInfo.origin && tripInfo.destination) {
+              fullRouteInfo = `${routeName} - ${tripInfo.origin} → ${tripInfo.destination}`;
+            }
+            
+            // Añadir información de horario si está disponible
+            if (tripInfo.departureDate || tripInfo.departureTime) {
+              const formattedDate = tripInfo.departureDate ? 
+                new Date(tripInfo.departureDate).toLocaleDateString('es-MX') : '';
+              const time = tripInfo.departureTime || '';
+              
+              if (formattedDate || time) {
+                fullRouteInfo += ` (${formattedDate} ${time})`;
+              }
+            }
           }
           
-          // Añadir fecha y hora
-          if (date || time) {
-            fullRouteInfo += ` (${date} ${time})`.trim();
-          }
-          
-          // Guardar todos los componentes de información
-          routesInfo[tripId] = {
-            name: routeName,
-            origin: origin,
-            destination: destination,
-            date: date,
-            time: time,
-            fullInfo: fullRouteInfo
-          };
+          // Guardar la información completa
+          routesInfo[tripId] = fullRouteInfo;
         }
       });
       
@@ -905,65 +859,28 @@ Total transacciones: ${cutoffData.transactionCount}
           } else {
             // Detalles para reservaciones
             if (t.tripName) {
-              // Usar la información de la ruta desde completeRoutes si está disponible
-              let routeInfo = null;
+              // Usar la información completa de la ruta si está disponible
+              let tripText = `Viaje: ${t.tripName}`;
+              
+              // Buscar información más completa en el estado completeRoutes
               if (t.tripId && completeRoutes[t.tripId]) {
-                routeInfo = completeRoutes[t.tripId];
-                console.log(`Usando información completa de ruta para ${t.tripId}:`, routeInfo);
+                tripText = `Viaje: ${completeRoutes[t.tripId]}`;
+                console.log(`Usando información completa de ruta para ${t.tripId}: ${completeRoutes[t.tripId]}`);
               }
               
-              // Mostrar el nombre de la ruta
-              doc.text(`Viaje: ${t.tripName}`, margin + 2, y);
-              y += 2;
-              
-              // Si tenemos información detallada, mostrarla
-              if (routeInfo) {
-                // Mostrar origen específico
-                if (routeInfo.origin) {
-                  const originText = `Origen: ${routeInfo.origin}`;
-                  if (originText.length > 46) {
-                    const originLines = doc.splitTextToSize(originText, 46);
-                    originLines.forEach((line: string, i: number) => {
-                      doc.text(i === 0 ? line : `  ${line}`, margin + 2, y);
-                      y += 2;
-                    });
-                  } else {
-                    doc.text(originText, margin + 2, y);
-                    y += 2;
-                  }
-                }
+              // Si es demasiado largo, dividir en múltiples líneas
+              if (tripText.length > 30) {
+                // Usar la función splitTextToSize para dividir el texto en líneas
+                const tripLines = doc.splitTextToSize(tripText, 46); // 46mm es el ancho disponible
                 
-                // Mostrar destino específico
-                if (routeInfo.destination) {
-                  const destText = `Destino: ${routeInfo.destination}`;
-                  if (destText.length > 46) {
-                    const destLines = doc.splitTextToSize(destText, 46);
-                    destLines.forEach((line: string, i: number) => {
-                      doc.text(i === 0 ? line : `  ${line}`, margin + 2, y);
-                      y += 2;
-                    });
-                  } else {
-                    doc.text(destText, margin + 2, y);
-                    y += 2;
-                  }
-                }
-                
-                // Mostrar fecha y hora juntos
-                if (routeInfo.date || routeInfo.time) {
-                  let dateTimeText = '';
-                  if (routeInfo.date && routeInfo.time) {
-                    dateTimeText = `Fecha/Hora: ${routeInfo.date} ${routeInfo.time}`;
-                  } else if (routeInfo.date) {
-                    dateTimeText = `Fecha: ${routeInfo.date}`;
-                  } else if (routeInfo.time) {
-                    dateTimeText = `Hora: ${routeInfo.time}`;
-                  }
-                  
-                  if (dateTimeText) {
-                    doc.text(dateTimeText, margin + 2, y);
-                    y += 2;
-                  }
-                }
+                // Mostrar cada línea
+                tripLines.forEach((line: string, i: number) => {
+                  doc.text(i === 0 ? line : `  ${line}`, margin + 2, y);
+                  y += 2;
+                });
+              } else {
+                doc.text(tripText, margin + 2, y);
+                y += 2;
               }
             }
             
@@ -1025,19 +942,9 @@ Total transacciones: ${cutoffData.transactionCount}
             }
             
             // Ruta (origen y destino)
-            let origin = t.origin || '';
-            let destination = t.destination || '';
-            
-            // Si hay información de segmentos de sub-viaje, usarla con prioridad
-            if (t.segmentOrigin && t.segmentDestination) {
-              origin = t.segmentOrigin;
-              destination = t.segmentDestination;
-              console.log(`Usando segmentos específicos en PDF: ${origin} → ${destination}`);
-            }
-            
-            if (origin && destination) {
+            if (t.origin && t.destination) {
               // Construir el texto de la ruta
-              const routeText = `Ruta: ${origin} → ${destination}`;
+              const routeText = `Ruta: ${t.origin} → ${t.destination}`;
               
               // Si es demasiado largo, dividir en múltiples líneas
               if (routeText.length > 30) {
@@ -1046,9 +953,9 @@ Total transacciones: ${cutoffData.transactionCount}
                 y += 2;
                 
                 // Luego mostramos Origen y Destino en líneas separadas
-                doc.text(`  Origen: ${origin}`, margin + 2, y);
+                doc.text(`  Origen: ${t.origin}`, margin + 2, y);
                 y += 2;
-                doc.text(`  Destino: ${destination}`, margin + 2, y);
+                doc.text(`  Destino: ${t.destination}`, margin + 2, y);
                 y += 2;
               } else {
                 // Si es corto, mostrar en una sola línea
