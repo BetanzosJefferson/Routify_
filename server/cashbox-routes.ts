@@ -25,6 +25,9 @@ export function registerCashboxRoutes(app: Express, storage: any) {
       const { user } = req as any;
       console.log(`[GET /cashbox/transactions] Usuario ${user.firstName} ${user.lastName} solicitando datos de caja`);
       
+      // Importar el servicio de cortes para verificar elementos procesados
+      const { cutoffService } = await import('./cutoff-service');
+      
       // Obtener todas las reservaciones para procesarlas
       const allReservations = await storage.getReservations();
       console.log(`[GET /cashbox/transactions] Analizando ${allReservations.length} reservaciones para la caja del usuario ${user.id}`);
@@ -34,6 +37,15 @@ export function registerCashboxRoutes(app: Express, storage: any) {
       
       // Recorrer todas las reservaciones
       for (const reservation of allReservations) {
+        // Verificar si esta reservación ya ha sido procesada en algún corte
+        const isProcessed = await cutoffService.isItemProcessed('reservation', reservation.id);
+        
+        // Si ya está procesada, omitirla
+        if (isProcessed) {
+          console.log(`[GET /cashbox/transactions] Reserva ${reservation.id} ya procesada en un corte anterior, omitiendo`);
+          continue;
+        }
+        
         // 1. Anticipos: Si el usuario creó la reservación y tiene anticipo
         if (reservation.createdBy === user.id && reservation.advanceAmount && reservation.advanceAmount > 0) {
           console.log(`[GET /cashbox/transactions] Anticipo de ${reservation.advanceAmount} de reserva ${reservation.id}`);
@@ -78,6 +90,15 @@ export function registerCashboxRoutes(app: Express, storage: any) {
         
         // Recorrer todas las paqueterías
         for (const packageItem of allPackages) {
+          // Verificar si esta paquetería ya ha sido procesada en algún corte
+          const isProcessed = await cutoffService.isItemProcessed('package', packageItem.id);
+          
+          // Si ya está procesada, omitirla
+          if (isProcessed) {
+            console.log(`[GET /cashbox/transactions] Paquetería ${packageItem.id} ya procesada en un corte anterior, omitiendo`);
+            continue;
+          }
+          
           // Si el usuario creó o procesó el pago de la paquetería
           if (packageItem.createdBy === user.id || packageItem.paidBy === user.id) {
             console.log(`[GET /cashbox/transactions] Paquetería ${packageItem.id} registrada por usuario ${user.id}`);
