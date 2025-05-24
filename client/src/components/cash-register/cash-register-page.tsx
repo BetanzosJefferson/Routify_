@@ -118,6 +118,19 @@ export function CashRegisterPage() {
   // Estado para almacenar la caja seleccionada (para dueños y admins)
   const [selectedCashbox, setSelectedCashbox] = useState<number | null>(null);
   
+  // Función para manejar el cambio de caja seleccionada
+  const handleCashboxChange = (value: string) => {
+    if (value === "mi-caja") {
+      setSelectedCashbox(null);
+    } else {
+      setSelectedCashbox(parseInt(value));
+    }
+    // Refrescar los datos cuando se cambia de caja
+    setTimeout(() => {
+      refetchCashboxTransactions();
+    }, 100);
+  };
+  
   // Obtener las cajas de la compañía con transacciones (solo para dueños y admins)
   const {
     data: companyCashboxes,
