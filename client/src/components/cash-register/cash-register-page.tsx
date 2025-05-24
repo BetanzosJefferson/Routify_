@@ -506,6 +506,10 @@ export function CashRegisterPage() {
   const packageTotal = sortedPackages.reduce((sum, packageItem) => sum + (packageItem.price || 0), 0);
   const totalAmount = reservationTotal + packageTotal;
   
+  // Log para ver los datos de paqueterías
+  console.log('Paqueterías disponibles para mostrar:', sortedPackages);
+  console.log('Total de paqueterías:', sortedPackages.length);
+  
   // Calcular efectivo y transferencia basado en los métodos de pago para reservaciones
   const reservationTotalCash = sortedReservations
     .filter(r => r.paymentMethod === 'efectivo')
