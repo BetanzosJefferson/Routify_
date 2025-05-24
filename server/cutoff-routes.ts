@@ -73,7 +73,7 @@ export function registerCutoffRoutes(app: Express) {
     }
   });
   
-  // GET /api/cutoffs/:id - Obtener un corte específico con sus elementos
+  // GET /api/cutoffs/:id - Obtener un corte específico con sus elementos y datos enriquecidos
   app.get('/api/cutoffs/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { user } = req as any;
@@ -88,6 +88,7 @@ export function registerCutoffRoutes(app: Express) {
       
       console.log(`[GET /cutoffs/${cutoffId}] Usuario ${user.firstName} ${user.lastName} solicitando detalles del corte`);
       
+      // Obtener los datos básicos del corte
       const result = await cutoffService.getCutoffDetails(cutoffId);
       
       // Verificar que el corte exista
@@ -106,7 +107,128 @@ export function registerCutoffRoutes(app: Express) {
         });
       }
       
-      res.json(result);
+      // SOLUCIÓN DEFINITIVA: Enriquecer cada elemento del corte con datos actualizados
+      // Este proceso garantiza que siempre tengamos la información más actualizada
+      // para cada reservación o paquete, independientemente de lo que se haya guardado originalmente
+      
+      // Crear una copia profunda del resultado para no modificar los datos originales
+      const enrichedResult = {
+        cutoff: result.cutoff,
+        items: await Promise.all(result.items.map(async (item) => {
+          // Si es una reservación, obtener datos actualizados directamente de la BD
+          if (item.itemType === 'reservation' && item.itemId) {
+            try {
+              // Parsear los detalles guardados originalmente
+              let details = {};
+              try {
+                details = JSON.parse(item.details);
+              } catch (e) {
+                console.error(`[GET /cutoffs/${cutoffId}] Error al parsear detalles:`, e);
+              }
+              
+              // Obtener datos completos y actualizados de la reservación directamente de la BD
+              const reservationData = await db.query.reservations.findFirst({
+                where: eq(schema.reservations.id, item.itemId),
+                with: {
+                  trip: {
+                    with: {
+                      route: true
+                    }
+                  }
+                }
+              });
+              
+              // Si encontramos la reservación y el viaje asociado
+              if (reservationData && reservationData.trip) {
+                // Verificar si es un subviaje
+                const isSubtrip = !!reservationData.trip.parentTripId;
+                let origin = '';
+                let destination = '';
+                let routeName = '';
+                
+                // Procesamiento específico para subviajes
+                if (isSubtrip) {
+                  console.log(`[GET /cutoffs/${cutoffId}] Ítem ${item.itemId}: ES UN SUBVIAJE`);
+                  
+                  // Para subviajes, usar directamente segmentOrigin/segmentDestination
+                  origin = reservationData.trip.segmentOrigin || '';
+                  destination = reservationData.trip.segmentDestination || '';
+                  
+                  // Obtener datos de la ruta desde el viaje principal
+                  if (reservationData.trip.parentTripId) {
+                    const parentTrip = await db.query.trips.findFirst({
+                      where: eq(schema.trips.id, reservationData.trip.parentTripId),
+                      with: {
+                        route: true
+                      }
+                    });
+                    
+                    if (parentTrip && parentTrip.route) {
+                      routeName = parentTrip.route.name || '';
+                    }
+                  }
+                } 
+                // Procesamiento para viajes normales
+                else if (reservationData.trip.route) {
+                  console.log(`[GET /cutoffs/${cutoffId}] Ítem ${item.itemId}: ES UN VIAJE NORMAL`);
+                  
+                  // Verificar si hay segmentos específicos
+                  const hasSegmentOrigin = reservationData.trip.segmentOrigin && reservationData.trip.segmentOrigin.trim() !== '';
+                  const hasSegmentDestination = reservationData.trip.segmentDestination && reservationData.trip.segmentDestination.trim() !== '';
+                  
+                  // Aplicar la misma lógica de priorización que en la UI
+                  origin = hasSegmentOrigin ? reservationData.trip.segmentOrigin : (reservationData.trip.route.origin || '');
+                  destination = hasSegmentDestination ? reservationData.trip.segmentDestination : (reservationData.trip.route.destination || '');
+                  routeName = reservationData.trip.route.name || '';
+                }
+                
+                // Obtener los pasajeros actualizados
+                const passengers = await db
+                  .select({
+                    firstName: schema.passengers.firstName,
+                    lastName: schema.passengers.lastName
+                  })
+                  .from(schema.passengers)
+                  .where(eq(schema.passengers.reservationId, item.itemId));
+                
+                console.log(`[GET /cutoffs/${cutoffId}] Datos actualizados para ítem ${item.itemId}:`, {
+                  origin,
+                  destination,
+                  routeName,
+                  pasajeros: passengers.length
+                });
+                
+                // Crear un objeto con detalles actualizados
+                const updatedDetails = {
+                  ...details,
+                  tripName: routeName,
+                  origin: origin,
+                  destination: destination,
+                  departureDate: reservationData.trip.departureDate || '',
+                  departureTime: reservationData.trip.departureTime || '',
+                  passengers: passengers.map(p => ({
+                    firstName: p.firstName || '',
+                    lastName: p.lastName || ''
+                  }))
+                };
+                
+                // Devolver item enriquecido con datos actualizados
+                return {
+                  ...item,
+                  details: JSON.stringify(updatedDetails)
+                };
+              }
+            } catch (err) {
+              console.error(`[GET /cutoffs/${cutoffId}] Error al obtener datos actualizados:`, err);
+            }
+          }
+          
+          // Si no es una reservación o hubo un error, devolver el item original
+          return item;
+        }))
+      };
+      
+      res.json(enrichedResult);
     } catch (error) {
       console.error(`[GET /cutoffs/:id] Error:`, error);
       res.status(500).json({
