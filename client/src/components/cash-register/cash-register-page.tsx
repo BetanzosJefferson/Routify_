@@ -501,11 +501,28 @@ export function CashRegisterPage() {
     try {
       setIsLoadingCutoff(true);
       
+      // Mostrar mensaje de carga mientras obtenemos los datos actualizados
+      toast({
+        title: "Actualizando datos",
+        description: "Obteniendo las transacciones más recientes...",
+      });
+      
       // Refrescar los datos para asegurarnos de tener todas las transacciones actualizadas
       await queryClient.invalidateQueries({ queryKey: ["/api/cashbox/transactions"] });
       
-      // Esperar un momento para que la consulta se complete
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Esperar a que la consulta se complete haciendo una nueva consulta directa
+      // para asegurar que tenemos los datos más recientes
+      const response = await fetch('/api/cashbox/transactions');
+      if (!response.ok) {
+        throw new Error("Error al actualizar las transacciones");
+      }
+      
+      // Obtener los datos frescos
+      const freshTransactions = await response.json();
+      console.log("Transacciones actualizadas para el corte:", freshTransactions.length);
+      
+      // Asegurar que la actualización se refleje en el estado local
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       // Determinar si estamos filtrando los datos
       const isFiltered = searchTerm || dateFilter || paymentMethodFilter !== 'todos' || (isTicketOfficeView && companyFilter !== 'todas');
