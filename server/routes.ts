@@ -5805,48 +5805,59 @@ function setupPackageRoutes(app: Express) {
       
       // Si se solicitan detalles adicionales, obtener información de los usuarios relacionados
       if (includeDetails && packages.length > 0) {
-        const db = storage.getDatabaseClient();
-        
-        // Obtener IDs de los usuarios relacionados con los paquetes
-        const userIds = new Set<number>();
-        for (const pkg of packages) {
-          if (pkg.createdBy) userIds.add(pkg.createdBy);
-          if (pkg.markedAsPaidBy) userIds.add(pkg.markedAsPaidBy);
-          if (pkg.markedAsDeliveredBy) userIds.add(pkg.markedAsDeliveredBy);
-        }
-        
-        const userIdsArray = Array.from(userIds);
-        if (userIdsArray.length > 0) {
-          // Consultar información de los usuarios
-          const usersData = await db.query.users.findMany({
-            where: inArray(users.id, userIdsArray),
-            columns: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              role: true
-            }
-          });
+        try {
+          console.log("Incluyendo detalles de usuarios para paquetes");
           
-          // Crear un mapa para acceso rápido a los datos de usuario por ID
-          const usersMap = new Map();
-          for (const user of usersData) {
-            usersMap.set(user.id, user);
-          }
-          
-          // Añadir información de usuarios a los paquetes
+          // Obtener IDs de los usuarios relacionados con los paquetes
+          const userIds = new Set<number>();
           for (const pkg of packages) {
-            if (pkg.createdBy && usersMap.has(pkg.createdBy)) {
-              pkg.createdByUser = usersMap.get(pkg.createdBy);
+            console.log(`Paquete ID ${pkg.id} creado por: ${pkg.createdBy}, pagado por: ${pkg.markedAsPaidBy}, entregado por: ${pkg.markedAsDeliveredBy}`);
+            if (pkg.createdBy) userIds.add(pkg.createdBy);
+            if (pkg.markedAsPaidBy) userIds.add(pkg.markedAsPaidBy);
+            if (pkg.markedAsDeliveredBy) userIds.add(pkg.markedAsDeliveredBy);
+          }
+          
+          const userIdsArray = Array.from(userIds);
+          console.log("IDs de usuarios a consultar:", userIdsArray);
+          
+          if (userIdsArray.length > 0) {
+            // Consultar información de los usuarios directamente
+            const userResults = await storage.getUsers();
+            const filteredUsers = userResults.filter(user => userIdsArray.includes(user.id));
+            console.log(`Encontrados ${filteredUsers.length} usuarios de ${userResults.length} totales`);
+            
+            // Crear un mapa para acceso rápido a los datos de usuario por ID
+            const usersMap = new Map();
+            for (const user of filteredUsers) {
+              usersMap.set(user.id, {
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                role: user.role
+              });
             }
-            if (pkg.markedAsPaidBy && usersMap.has(pkg.markedAsPaidBy)) {
-              pkg.markedAsPaidByUser = usersMap.get(pkg.markedAsPaidBy);
-            }
-            if (pkg.markedAsDeliveredBy && usersMap.has(pkg.markedAsDeliveredBy)) {
-              pkg.markedAsDeliveredByUser = usersMap.get(pkg.markedAsDeliveredBy);
+            
+            // Añadir información de usuarios a los paquetes
+            for (const pkg of packages) {
+              if (pkg.createdBy && usersMap.has(pkg.createdBy)) {
+                pkg.createdByUser = usersMap.get(pkg.createdBy);
+                console.log(`Paquete ${pkg.id}: creado por ${pkg.createdByUser.firstName} ${pkg.createdByUser.lastName}`);
+              }
+              
+              if (pkg.markedAsPaidBy && usersMap.has(pkg.markedAsPaidBy)) {
+                pkg.markedAsPaidByUser = usersMap.get(pkg.markedAsPaidBy);
+                console.log(`Paquete ${pkg.id}: pagado por ${pkg.markedAsPaidByUser.firstName} ${pkg.markedAsPaidByUser.lastName}`);
+              }
+              
+              if (pkg.markedAsDeliveredBy && usersMap.has(pkg.markedAsDeliveredBy)) {
+                pkg.markedAsDeliveredByUser = usersMap.get(pkg.markedAsDeliveredBy);
+                console.log(`Paquete ${pkg.id}: entregado por ${pkg.markedAsDeliveredByUser.firstName} ${pkg.markedAsDeliveredByUser.lastName}`);
+              }
             }
           }
+        } catch (err) {
+          console.error("Error al incluir detalles de usuarios para paquetes:", err);
         }
       }
       
