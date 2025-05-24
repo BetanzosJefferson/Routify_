@@ -540,16 +540,38 @@ export function CashRegisterPage() {
   useEffect(() => {
     if (cutoffsData && Array.isArray(cutoffsData) && cutoffsData.length > 0) {
       // Transformar los datos de la API al formato esperado por la interfaz
-      const formattedHistory = cutoffsData.map(cutoff => ({
-        id: cutoff.id,
-        date: new Date(cutoff.createdAt).toLocaleString(),
-        user: `Usuario ID: ${cutoff.operatorId}`,
-        totalAmount: cutoff.totalIncome,
-        totalCash: cutoff.totalCash || 0,
-        totalTransfer: cutoff.totalTransfer || 0,
-        transactionCount: cutoff.transactionCount || 0,
-        notes: cutoff.notes || ''
-      }));
+      const formattedHistory = cutoffsData.map(cutoff => {
+        // Asegurar que la fecha se formatea correctamente
+        let dateStr = '';
+        try {
+          // Solo si es una fecha válida la formateamos
+          const date = new Date(cutoff.createdAt);
+          if (!isNaN(date.getTime())) {
+            dateStr = date.toLocaleString('es-MX', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+          }
+        } catch(e) {
+          dateStr = 'Fecha no disponible';
+        }
+        
+        return {
+          id: cutoff.id,
+          date: dateStr,
+          // Eliminamos el "Usuario ID: " del operador
+          user: `${cutoff.operatorId}`,
+          totalAmount: cutoff.totalIncome,
+          totalCash: cutoff.totalCash || 0,
+          totalTransfer: cutoff.totalTransfer || 0,
+          transactionCount: cutoff.transactionCount || 0,
+          // Limpiamos las notas para evitar mostrar texto vacío
+          notes: cutoff.notes && cutoff.notes.trim() ? cutoff.notes : null
+        };
+      });
       
       setCutoffHistory(formattedHistory);
     }
