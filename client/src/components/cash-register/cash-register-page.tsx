@@ -934,26 +934,44 @@ Total transacciones: ${cutoffData.transactionCount}
               y += 2;
             }
             
-            // Ruta (origen y destino)
-            if (t.origin && t.destination) {
-              // Construir el texto de la ruta
-              const routeText = `Ruta: ${t.origin} → ${t.destination}`;
+            // Origen y destino directamente sin etiqueta "Ruta:"
+            if (t.origin || t.destination) {
+              // Mostrar origen
+              if (t.origin) {
+                const origenText = t.origin;
+                // Si es muy largo, dividirlo con saltos de línea
+                if (origenText.length > 30) {
+                  doc.text("Origen:", margin + 2, y);
+                  y += 2;
+                  // Dividir el texto en líneas para mejor legibilidad
+                  const splitOrigen = doc.splitTextToSize(origenText, 44);
+                  splitOrigen.forEach((line: string) => {
+                    doc.text(`  ${line}`, margin + 2, y);
+                    y += 2;
+                  });
+                } else {
+                  doc.text(`Origen: ${origenText}`, margin + 2, y);
+                  y += 2;
+                }
+              }
               
-              // Si es demasiado largo, dividir en múltiples líneas
-              if (routeText.length > 30) {
-                // Mostramos "Ruta:" en la primera línea
-                doc.text("Ruta:", margin + 2, y);
-                y += 2;
-                
-                // Luego mostramos Origen y Destino en líneas separadas
-                doc.text(`  Origen: ${t.origin}`, margin + 2, y);
-                y += 2;
-                doc.text(`  Destino: ${t.destination}`, margin + 2, y);
-                y += 2;
-              } else {
-                // Si es corto, mostrar en una sola línea
-                doc.text(routeText, margin + 2, y);
-                y += 2;
+              // Mostrar destino
+              if (t.destination) {
+                const destinoText = t.destination;
+                // Si es muy largo, dividirlo con saltos de línea
+                if (destinoText.length > 30) {
+                  doc.text("Destino:", margin + 2, y);
+                  y += 2;
+                  // Dividir el texto en líneas para mejor legibilidad
+                  const splitDestino = doc.splitTextToSize(destinoText, 44);
+                  splitDestino.forEach((line: string) => {
+                    doc.text(`  ${line}`, margin + 2, y);
+                    y += 2;
+                  });
+                } else {
+                  doc.text(`Destino: ${destinoText}`, margin + 2, y);
+                  y += 2;
+                }
               }
             }
           }
