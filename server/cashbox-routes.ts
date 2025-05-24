@@ -335,6 +335,41 @@ export function registerCashboxRoutes(app: Express, storage: any) {
     }
   });
 
+  // GET /api/cashboxes/company/with-transactions - Obtener cajas de la compañía que tienen transacciones
+  app.get("/api/cashboxes/company/with-transactions", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      // Solo permitir acceso a usuarios con rol DUEÑO o ADMIN
+      if (user.role !== "dueño" && user.role !== UserRole.OWNER && user.role !== UserRole.ADMIN) {
+        return res.status(403).json({
+          success: false,
+          message: "No tiene permisos para acceder a esta información"
+        });
+      }
+      
+      const companyId = user.companyId || user.company;
+      
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: "No se pudo determinar la compañía del usuario"
+        });
+      }
+      
+      // Obtener cajas con transacciones
+      const cashboxes = await storage.getCashboxesWithTransactions(companyId);
+      
+      res.json(cashboxes);
+    } catch (error) {
+      console.error("Error al obtener cajas con transacciones:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener cajas con transacciones"
+      });
+    }
+  });
+  
   // GET /api/cashboxes/user - Obtener caja del usuario actual
   app.get("/api/cashboxes/user", isAuthenticated, async (req: Request, res: Response) => {
     try {

@@ -4242,4 +4242,58 @@ export class DatabaseStorage implements IStorage {
       return false;
     }
   }
+  
+  // Obtener cajas de la compañía que tienen transacciones
+  async getCashboxesWithTransactions(companyId: string): Promise<any[]> {
+    try {
+      console.log(`[getCashboxesWithTransactions] Buscando cajas con transacciones para la compañía ${companyId}`);
+      
+      // Primero obtenemos todas las cajas de la compañía
+      const cashboxes = await db
+        .select()
+        .from(schema.cashboxes)
+        .where(eq(schema.cashboxes.companyId, companyId));
+      
+      // Resultado final: cajas con información adicional y solo las que tienen transacciones
+      const result = [];
+      
+      // Para cada caja, verificamos si tiene transacciones
+      for (const cashbox of cashboxes) {
+        // Obtener transacciones de la caja
+        const transactions = await db
+          .select()
+          .from(schema.cashboxTransactions)
+          .where(eq(schema.cashboxTransactions.cashboxId, cashbox.id));
+        
+        // Solo incluimos las cajas que tienen transacciones
+        if (transactions.length > 0) {
+          // Obtenemos información del operador de la caja
+          const [operator] = await db
+            .select()
+            .from(schema.users)
+            .where(eq(schema.users.id, cashbox.operatorId));
+          
+          // Agregar la caja al resultado con información adicional
+          result.push({
+            ...cashbox,
+            operator: operator ? {
+              id: operator.id,
+              name: `${operator.firstName} ${operator.lastName}`,
+              role: operator.role
+            } : null,
+            transactionCount: transactions.length,
+            lastTransaction: transactions.sort((a, b) => 
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            )[0]
+          });
+        }
+      }
+      
+      console.log(`[getCashboxesWithTransactions] Se encontraron ${result.length} cajas con transacciones`);
+      return result;
+    } catch (error) {
+      console.error(`[getCashboxesWithTransactions] Error:`, error);
+      return [];
+    }
+  }
 }
