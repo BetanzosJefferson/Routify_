@@ -68,6 +68,12 @@ export function CashRegisterPage() {
   // Variable para almacenar información completa de rutas
   const [completeRoutes, setCompleteRoutes] = useState<{[key: string]: string}>({});
   
+  // Hook para obtener cajas con transacciones pendientes (solo para rol dueño)
+  const { data: pendingCashboxes, isLoading: isLoadingPendingCashboxes } = useQuery({
+    queryKey: ['/api/cashboxes/company/pending'],
+    enabled: user?.role === 'dueño' || user?.role === 'OWNER'
+  });
+  
   // Estados adicionales para mejorar la UX
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showLoadingDelay, setShowLoadingDelay] = useState(false);
