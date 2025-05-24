@@ -209,6 +209,32 @@ export class CutoffService {
         console.log(`[createCutoff] Procesando método de pago - Original: "${item.paymentMethod}", Normalizado: "${simplePaymentMethod}"`);
         
         // Crear objeto con todos los detalles relevantes para guardar
+        
+        // Analizar la información de origen/destino correcta
+        const tripData = item.trip || null;
+        const hasSegments = tripData && tripData.segmentOrigin && tripData.segmentDestination;
+        
+        // Determinar la información de ruta apropiada (similar a la lógica del console.log)
+        const originDestInfo = hasSegments 
+          ? {
+              origin: tripData.segmentOrigin,
+              destination: tripData.segmentDestination,
+              isSegment: true
+            }
+          : tripData && tripData.route
+            ? {
+                origin: tripData.route.origin,
+                destination: tripData.route.destination,
+                isSegment: false
+              }
+            : {
+                origin: item.origin || '',
+                destination: item.destination || '',
+                isSegment: false
+              };
+        
+        console.log(`[createCutoff] Procesando origen/destino para ítem ${item.id}:`, originDestInfo);
+        
         const detailedInfo = {
           // Información básica
           id: item.id,
@@ -223,12 +249,16 @@ export class CutoffService {
             segmentOrigin: item.trip?.segmentOrigin || null,
             segmentDestination: item.trip?.segmentDestination || null,
             routeOrigin: item.trip?.route?.origin || null,
-            routeDestination: item.trip?.route?.destination || null
+            routeDestination: item.trip?.route?.destination || null,
+            // Añadir el resultado procesado para asegurar que se use correctamente
+            processedOrigin: originDestInfo.origin,
+            processedDestination: originDestInfo.destination,
+            isSegment: originDestInfo.isSegment
           },
           
-          // Mantenemos los campos antiguos para compatibilidad
-          origin: item.origin || item.trip?.segmentOrigin || item.trip?.route?.origin || '',
-          destination: item.destination || item.trip?.segmentDestination || item.trip?.route?.destination || '',
+          // Actualizamos los campos principales con la información procesada
+          origin: originDestInfo.origin,
+          destination: originDestInfo.destination,
           departureDate: item.trip?.departureDate || '',
           departureTime: item.trip?.departureTime || '',
           
@@ -254,14 +284,22 @@ export class CutoffService {
           weight: isPackage ? (item.weight || '') : '',
           dimensions: isPackage ? (item.dimensions || '') : '',
           
-          // Para reservaciones
+          // Para reservaciones - capturar información de pasajeros correctamente
           passengers: Array.isArray(item.passengers) ? 
             item.passengers.map((p: any) => ({
               firstName: p.firstName || '',
               lastName: p.lastName || '',
               phone: p.phone || '',
               email: p.email || ''
-            })) : [],
+            })) : 
+            // Si no hay una lista de pasajeros explícita pero hay un contacto principal, usarlo
+            (item.passengerName || item.firstName) ? 
+              [{
+                firstName: item.passengerName || item.firstName || '',
+                lastName: item.passengerLastName || item.lastName || '',
+                phone: item.phone || item.passengerPhone || '',
+                email: item.email || item.passengerEmail || ''
+              }] : [],
           
           // Metadatos
           companyId: item.companyId || item.trip?.companyId || '',
