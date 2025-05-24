@@ -94,9 +94,8 @@ export function CashRegisterPage() {
   const [cutoffHistory, setCutoffHistory] = useState<CutoffHistoryItem[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   
-  // Estados para la selección de cajas (para administradores y dueños)
-  const [selectedCashbox, setSelectedCashbox] = useState<number | null>(null);
-  const [companyCashboxes, setCompanyCashboxes] = useState<any[]>([]);
+  
+
   
   // Consulta para obtener el historial de cortes
   const { data: cutoffsData, isLoading: isLoadingCutoffs } = useQuery({
@@ -173,22 +172,7 @@ export function CashRegisterPage() {
     }
   });
   
-  // Obtener cajas de la compañía que tienen transacciones (solo para dueños y administradores)
-  const { data: companyCashboxesData, isLoading: isLoadingCashboxes } = useQuery({
-    queryKey: ["/api/cashboxes/company/with-transactions"],
-    queryFn: async () => {
-      const response = await fetch('/api/cashboxes/company/with-transactions');
-      if (!response.ok) {
-        console.error("Error al obtener cajas de la compañía:", await response.text());
-        return [];
-      }
-      return await response.json();
-    },
-    enabled: !!user && (user.role === 'dueño' || user.role === 'OWNER' || user.role === 'ADMIN'),
-    onSuccess: (data) => {
-      setCompanyCashboxes(data || []);
-    }
-  });
+
 
   // Obtener las reservaciones marcadas como pagadas por el usuario actual o del cashbox seleccionado
   const { 
