@@ -795,11 +795,33 @@ export function CashRegisterPage() {
       // Preparar los datos para enviar al servidor
       const requestData = {
         notes: cutoffNotes || `Corte realizado por ${user.firstName} ${user.lastName}`,
-        items: cutoffData.transactions.map(item => ({
-          ...item,
-          // Asegurarse de que cada elemento tenga el tipo correcto
-          type: item.originalPackageId ? 'package' : 'reservation'
-        }))
+        items: cutoffData.transactions.map(item => {
+          // Asegurarse de que el pasajero/remitente se incluya en los detalles
+          const itemDetails = {
+            passengerName: item.type === 'reservation' 
+              ? (item.passengerName || item.passengers || 'No disponible')
+              : (item.type === 'package' ? (item.sender || 'Remitente sin nombre') : 'No disponible'),
+            origin: item.origin || 'Origen no especificado',
+            destination: item.destination || 'Destino no especificado',
+            amount: item.amount || 0,
+            totalAmount: item.totalAmount || 0,
+            tripName: item.tripName || ''
+          };
+          
+          console.log("Enviando información al servidor:", {
+            id: item.id,
+            type: item.type,
+            passengerName: itemDetails.passengerName
+          });
+          
+          return {
+            ...item,
+            // Asegurarse de que cada elemento tenga el tipo correcto
+            type: item.originalPackageId ? 'package' : 'reservation',
+            // Incluir los detalles importantes que queremos guardar
+            details: itemDetails
+          };
+        })
       };
       
       // Enviar datos al servidor para crear el corte en la base de datos
