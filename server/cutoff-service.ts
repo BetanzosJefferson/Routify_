@@ -120,6 +120,7 @@ export class CutoffService {
             name: `Caja de Operador ${operatorId}`,
             description: 'Caja creada automáticamente',
             operatorId,
+            companyId: 'bamo-936622', // Valor por defecto para la compañía
             balance: 0,
             isActive: true
           })
@@ -148,8 +149,10 @@ export class CutoffService {
       
       // Registrar cada elemento como procesado
       for (const item of items) {
-        // Determinar si es una reservación o un paquete
-        const isPackage = item.originalPackageId || item.type === 'package';
+        // Determinar si es una reservación o un paquete de forma segura
+        const isPackage = Boolean(item.originalPackageId !== undefined || 
+                               item.type === 'package' || 
+                               (item.senderName !== undefined && item.receiverName !== undefined));
         
         // Guardar en la tabla de elementos procesados
         await this.addProcessedItem({
@@ -164,7 +167,7 @@ export class CutoffService {
             passenger: isPackage ? 
               (item.sender || item.senderName || item.receiverName || 'Sin remitente') : 
               (Array.isArray(item.passengers) ? 
-                item.passengers.map(p => `${p.firstName || ''} ${p.lastName || ''}`).join(', ') : 
+                item.passengers.map(p => `${String(p.firstName || '')} ${String(p.lastName || '')}`).join(', ') : 
                 (item.name || item.passengerName || 'Sin pasajeros'))
           })
         });
