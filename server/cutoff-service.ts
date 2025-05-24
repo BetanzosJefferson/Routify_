@@ -1,0 +1,208 @@
+import { eq, and, desc } from "drizzle-orm";
+import { db } from "./db";
+import * as schema from "@shared/schema";
+
+/**
+ * Servicio para manejar operaciones de corte de caja y elementos procesados
+ */
+export class CutoffService {
+  /**
+   * Registra un elemento como procesado en un corte
+   */
+  async addProcessedItem(item: schema.InsertProcessedItem): Promise<schema.ProcessedItem> {
+    try {
+      console.log(`[addProcessedItem] Agregando elemento procesado al corte ${item.cutoffId}`);
+      
+      const [newItem] = await db
+        .insert(schema.processedItems)
+        .values(item)
+        .returning();
+      
+      console.log(`[addProcessedItem] Elemento procesado creado con ID ${newItem.id}`);
+      return newItem;
+    } catch (error) {
+      console.error(`[addProcessedItem] Error:`, error);
+      throw new Error(`Error al agregar elemento procesado: ${error}`);
+    }
+  }
+  
+  /**
+   * Verifica si un elemento ya ha sido procesado en algún corte
+   */
+  async isItemProcessed(itemType: string, itemId: number): Promise<boolean> {
+    try {
+      console.log(`[isItemProcessed] Verificando si el elemento ${itemType} ${itemId} ya ha sido procesado`);
+      
+      const items = await db
+        .select()
+        .from(schema.processedItems)
+        .where(and(
+          eq(schema.processedItems.itemType, itemType),
+          eq(schema.processedItems.itemId, itemId)
+        ));
+      
+      return items.length > 0;
+    } catch (error) {
+      console.error(`[isItemProcessed] Error:`, error);
+      return false;
+    }
+  }
+  
+  /**
+   * Obtiene los elementos procesados en un corte específico
+   */
+  async getProcessedItems(cutoffId: number): Promise<schema.ProcessedItem[]> {
+    try {
+      console.log(`[getProcessedItems] Obteniendo elementos procesados para el corte ${cutoffId}`);
+      
+      const items = await db
+        .select()
+        .from(schema.processedItems)
+        .where(eq(schema.processedItems.cutoffId, cutoffId))
+        .orderBy(desc(schema.processedItems.createdAt));
+      
+      return items;
+    } catch (error) {
+      console.error(`[getProcessedItems] Error:`, error);
+      return [];
+    }
+  }
+  
+  /**
+   * Crea un nuevo corte de caja con los elementos especificados
+   */
+  async createCutoff(operatorId: number, items: any[], notes?: string): Promise<{
+    success: boolean;
+    message?: string;
+    cutoffId?: number;
+  }> {
+    try {
+      console.log(`[createCutoff] Creando corte de caja para el operador ${operatorId} con ${items.length} elementos`);
+      
+      // Calcular totales
+      let totalAmount = 0;
+      let totalCash = 0;
+      let totalTransfer = 0;
+      const transactionCount = items.length;
+      
+      // Clasificar por método de pago
+      for (const item of items) {
+        const amount = item.amount || item.totalAmount || 0;
+        const paymentMethod = item.paymentMethod || 'efectivo';
+        
+        totalAmount += amount;
+        
+        if (paymentMethod === 'efectivo') {
+          totalCash += amount;
+        } else {
+          totalTransfer += amount;
+        }
+      }
+      
+      // Crear el registro del corte
+      const [cutoff] = await db
+        .insert(schema.cashboxCutoffs)
+        .values({
+          cashboxId: 1, // Valor por defecto, se actualizará cuando exista integración con cajas
+          operatorId,
+          previousBalance: 0, // Se actualizará cuando exista integración con cajas
+          totalIncome: totalAmount,
+          totalExpenses: 0,
+          finalBalance: totalAmount,
+          totalCash,
+          totalTransfer,
+          transactionCount,
+          notes: notes || null
+        })
+        .returning();
+      
+      // Registrar cada elemento como procesado
+      for (const item of items) {
+        // Determinar si es una reservación o un paquete
+        const isPackage = item.originalPackageId || item.type === 'package';
+        
+        // Guardar en la tabla de elementos procesados
+        await this.addProcessedItem({
+          cutoffId: cutoff.id,
+          itemType: isPackage ? 'package' : 'reservation',
+          itemId: isPackage ? (item.originalPackageId || item.id) : item.id,
+          amount: item.amount || item.totalAmount || 0,
+          paymentMethod: item.paymentMethod || 'efectivo',
+          concept: item.paymentNote || (isPackage ? 'Paquetería' : 'Reservación'),
+          details: JSON.stringify({
+            route: item.tripName || 'Sin ruta',
+            passenger: isPackage ? 
+              (item.sender || item.senderName || 'Sin remitente') : 
+              (item.passengers?.map(p => `${p.firstName} ${p.lastName}`).join(', ') || 'Sin pasajeros')
+          })
+        });
+      }
+      
+      console.log(`[createCutoff] Corte creado exitosamente: ${cutoff.id}`);
+      
+      return {
+        success: true,
+        cutoffId: cutoff.id
+      };
+    } catch (error) {
+      console.error(`[createCutoff] Error:`, error);
+      return {
+        success: false,
+        message: `Error al crear el corte: ${error}`
+      };
+    }
+  }
+  
+  /**
+   * Obtiene todos los cortes de caja de un operador
+   */
+  async getCutoffsByOperator(operatorId: number): Promise<schema.CashboxCutoff[]> {
+    try {
+      console.log(`[getCutoffsByOperator] Obteniendo cortes para el operador ${operatorId}`);
+      
+      const cutoffs = await db
+        .select()
+        .from(schema.cashboxCutoffs)
+        .where(eq(schema.cashboxCutoffs.operatorId, operatorId))
+        .orderBy(desc(schema.cashboxCutoffs.createdAt));
+      
+      return cutoffs;
+    } catch (error) {
+      console.error(`[getCutoffsByOperator] Error:`, error);
+      return [];
+    }
+  }
+  
+  /**
+   * Obtiene el detalle completo de un corte
+   */
+  async getCutoffDetails(cutoffId: number): Promise<{
+    cutoff: schema.CashboxCutoff | null;
+    items: schema.ProcessedItem[];
+  }> {
+    try {
+      console.log(`[getCutoffDetails] Obteniendo detalles del corte ${cutoffId}`);
+      
+      const [cutoff] = await db
+        .select()
+        .from(schema.cashboxCutoffs)
+        .where(eq(schema.cashboxCutoffs.id, cutoffId));
+      
+      const items = await this.getProcessedItems(cutoffId);
+      
+      return {
+        cutoff: cutoff || null,
+        items
+      };
+    } catch (error) {
+      console.error(`[getCutoffDetails] Error:`, error);
+      return {
+        cutoff: null,
+        items: []
+      };
+    }
+  }
+}
+
+// Exportar una instancia del servicio para usar en las rutas
+export const cutoffService = new CutoffService();
