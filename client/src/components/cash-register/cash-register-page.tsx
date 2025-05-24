@@ -1822,7 +1822,39 @@ Total transacciones: ${cutoffData.transactionCount}
                                 normalizedPaymentMethod = 'transferencia';
                               }
                               
+                              // Obtener información de viaje o paquetería
+                              const tripInfo = details.tripInfo || {};
+                              
+                              // Aplicar la misma lógica que usamos en el console.log para determinar el origen/destino
+                              let originDestInfo = {
+                                origin: '',
+                                destination: ''
+                              };
+                              
+                              // Si hay información de segmentos específicos, la usamos
+                              if (tripInfo.segmentOrigin && tripInfo.segmentDestination) {
+                                originDestInfo = {
+                                  origin: tripInfo.segmentOrigin,
+                                  destination: tripInfo.segmentDestination
+                                };
+                              } 
+                              // Si no hay segmentos pero hay información de ruta, usamos esa
+                              else if (tripInfo.routeOrigin && tripInfo.routeDestination) {
+                                originDestInfo = {
+                                  origin: tripInfo.routeOrigin,
+                                  destination: tripInfo.routeDestination
+                                };
+                              }
+                              // Si no hay información de viaje pero sí de paquetería
+                              else if (details.origin || details.destination) {
+                                originDestInfo = {
+                                  origin: details.origin || 'Origen no disponible',
+                                  destination: details.destination || 'Destino no disponible'
+                                };
+                              }
+                              
                               console.log(`Procesando ítem para PDF: ID=${item.itemId}, Método original=${item.paymentMethod}, Método normalizado=${normalizedPaymentMethod}`);
+                              console.log(`Información de ruta procesada para PDF: Origen=${originDestInfo.origin}, Destino=${originDestInfo.destination}`);
                               
                               // Combinar los detalles con la información básica del item
                               return {
@@ -1832,10 +1864,10 @@ Total transacciones: ${cutoffData.transactionCount}
                                 paymentMethod: normalizedPaymentMethod,
                                 paymentNote: item.concept,
                                 
-                                // Información detallada del JSON
+                                // Información detallada del JSON con origen/destino mejorados
                                 tripName: details.tripName || '',
-                                origin: details.origin || '',
-                                destination: details.destination || '',
+                                origin: originDestInfo.origin || details.origin || '',
+                                destination: originDestInfo.destination || details.destination || '',
                                 passengerCount: details.passengerCount || 0,
                                 advanceAmount: details.advanceAmount || 0,
                                 senderName: details.senderName || '',

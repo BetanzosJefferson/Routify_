@@ -217,6 +217,16 @@ export class CutoffService {
           // Información de ruta/viaje
           tripId: item.tripId,
           tripName: item.tripName || (item.trip ? `${item.trip.route?.name || 'Ruta'} - ${new Date(item.trip?.departureDate).toLocaleDateString()}` : ''),
+          
+          // Almacenamos la información de trip para que podamos procesarla correctamente en el PDF
+          tripInfo: {
+            segmentOrigin: item.trip?.segmentOrigin || null,
+            segmentDestination: item.trip?.segmentDestination || null,
+            routeOrigin: item.trip?.route?.origin || null,
+            routeDestination: item.trip?.route?.destination || null
+          },
+          
+          // Mantenemos los campos antiguos para compatibilidad
           origin: item.origin || item.trip?.segmentOrigin || item.trip?.route?.origin || '',
           destination: item.destination || item.trip?.segmentDestination || item.trip?.route?.destination || '',
           departureDate: item.trip?.departureDate || '',
