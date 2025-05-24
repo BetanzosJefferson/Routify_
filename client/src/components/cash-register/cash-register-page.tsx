@@ -180,36 +180,42 @@ export function CashRegisterPage() {
     if (paidReservations && paidReservations.length > 0 && allTrips && allTrips.length > 0) {
       const routesInfo: {[key: string]: string} = {};
       
-      paidReservations.forEach((reservation: any) => {
-        if (reservation.tripId && reservation.trip?.route?.name) {
-          const tripId = reservation.tripId.toString();
-          const routeName = reservation.trip.route.name;
+      // Primero obtenemos todas las rutas disponibles
+      const allRoutes = allTrips.reduce((acc: {[key: string]: any}, trip: any) => {
+        if (trip.route && trip.route.id) {
+          if (!acc[trip.route.id]) {
+            acc[trip.route.id] = trip.route;
+          }
+        }
+        return acc;
+      }, {});
+      
+      // Para cada viaje, guardamos el formato exacto que se muestra en la columna Ruta
+      allTrips.forEach((trip: any) => {
+        if (trip.id) {
+          const tripId = trip.id.toString();
+          let routeDisplay = '';
           
-          // Buscar información adicional como origen y destino específicos
-          const tripInfo = allTrips.find((t: any) => t.id === reservation.tripId);
-          
-          let fullRouteInfo = routeName;
-          
-          if (tripInfo) {
-            // Añadir origen y destino específicos si están disponibles
-            if (tripInfo.origin && tripInfo.destination) {
-              fullRouteInfo = `${routeName} - ${tripInfo.origin} → ${tripInfo.destination}`;
+          // Formato similar al que se muestra en la columna de Ruta
+          if (trip.route) {
+            // Primera línea: Origen completo con ciudad y terminal
+            if (trip.route.origin) {
+              routeDisplay = trip.route.origin;
             }
             
-            // Añadir información de horario si está disponible
-            if (tripInfo.departureDate || tripInfo.departureTime) {
-              const formattedDate = tripInfo.departureDate ? 
-                new Date(tripInfo.departureDate).toLocaleDateString('es-MX') : '';
-              const time = tripInfo.departureTime || '';
-              
-              if (formattedDate || time) {
-                fullRouteInfo += ` (${formattedDate} ${time})`;
-              }
+            // Segunda línea: Flecha + Destino completo con ciudad y terminal
+            if (trip.route.destination) {
+              routeDisplay += `\n→ ${trip.route.destination}`;
             }
           }
           
-          // Guardar la información completa
-          routesInfo[tripId] = fullRouteInfo;
+          // Si no hay información de ruta específica, usar el nombre del viaje
+          if (!routeDisplay && trip.route?.name) {
+            routeDisplay = trip.route.name;
+          }
+          
+          // Guardar la información en el formato correcto
+          routesInfo[tripId] = routeDisplay;
         }
       });
       
@@ -859,29 +865,38 @@ Total transacciones: ${cutoffData.transactionCount}
           } else {
             // Detalles para reservaciones
             if (t.tripName) {
-              // Usar la información completa de la ruta si está disponible
-              let tripText = `Viaje: ${t.tripName}`;
+              // Primero ponemos la etiqueta "Viaje:"
+              doc.text("Viaje:", margin + 2, y);
+              y += 2;
               
-              // Buscar información más completa en el estado completeRoutes
+              // Buscar información completa de la ruta en completeRoutes
+              let routeInfo = t.tripName;
               if (t.tripId && completeRoutes[t.tripId]) {
-                tripText = `Viaje: ${completeRoutes[t.tripId]}`;
+                routeInfo = completeRoutes[t.tripId];
                 console.log(`Usando información completa de ruta para ${t.tripId}: ${completeRoutes[t.tripId]}`);
               }
               
-              // Si es demasiado largo, dividir en múltiples líneas
-              if (tripText.length > 30) {
-                // Usar la función splitTextToSize para dividir el texto en líneas
-                const tripLines = doc.splitTextToSize(tripText, 46); // 46mm es el ancho disponible
-                
-                // Mostrar cada línea
-                tripLines.forEach((line: string, i: number) => {
-                  doc.text(i === 0 ? line : `  ${line}`, margin + 2, y);
+              // Dividir el texto por saltos de línea explícitos
+              const routeLines = routeInfo.split('\n');
+              
+              // Procesar cada línea por separado
+              routeLines.forEach((line: string) => {
+                // Si la línea es demasiado larga, dividirla para ajustarla al ancho
+                if (line.length > 38) { // reducimos el ancho para mejor legibilidad
+                  // Usar splitTextToSize para manejar líneas largas
+                  const splitLines = doc.splitTextToSize(line, 44); // 44mm es el ancho disponible
+                  
+                  // Mostrar cada línea dividida
+                  splitLines.forEach((splitLine: string) => {
+                    doc.text(`  ${splitLine}`, margin + 2, y);
+                    y += 2;
+                  });
+                } else {
+                  // Si no es demasiado larga, mostrarla directamente
+                  doc.text(`  ${line}`, margin + 2, y);
                   y += 2;
-                });
-              } else {
-                doc.text(tripText, margin + 2, y);
-                y += 2;
-              }
+                }
+              });
             }
             
             // Mostrar fecha y hora del viaje si están disponibles
