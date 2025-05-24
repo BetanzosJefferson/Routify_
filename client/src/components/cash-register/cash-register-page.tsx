@@ -1564,27 +1564,46 @@ Total transacciones: ${cutoffData.transactionCount}
                         </div>
                       </TableCell>
                       <TableCell>
-                        {reservation.trip ? (
-                          <>
-                            <div className="font-medium">
-                              {reservation.trip.segmentOrigin || (reservation.trip.route && reservation.trip.route.origin) || 'Origen'}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                              <span>→</span> {reservation.trip.segmentDestination || (reservation.trip.route && reservation.trip.route.destination) || 'Destino'}
-                            </div>
-                          </>
-                        ) : reservation.originalPackageId ? (
-                          <>
-                            <div className="font-medium">
-                              {reservation.origin || 'Origen paquetería'}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                              <span>→</span> {reservation.destination || 'Destino paquetería'}
-                            </div>
-                          </>
-                        ) : (
-                          <span>No disponible</span>
-                        )}
+                        {(() => {
+                          // Console log para debugging
+                          console.log("Información de celda de ruta:", {
+                            id: reservation.id,
+                            hasTrip: !!reservation.trip,
+                            tripInfo: reservation.trip ? {
+                              id: reservation.trip.id,
+                              segmentOrigin: reservation.trip.segmentOrigin,
+                              segmentDestination: reservation.trip.segmentDestination,
+                              routeOrigin: reservation.trip.route?.origin,
+                              routeDestination: reservation.trip.route?.destination
+                            } : null,
+                            isPackage: !!reservation.originalPackageId,
+                            packageOrigin: reservation.origin,
+                            packageDestination: reservation.destination
+                          });
+                          
+                          // Devuelve el contenido original
+                          return reservation.trip ? (
+                            <>
+                              <div className="font-medium">
+                                {reservation.trip.segmentOrigin || (reservation.trip.route && reservation.trip.route.origin) || 'Origen'}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                <span>→</span> {reservation.trip.segmentDestination || (reservation.trip.route && reservation.trip.route.destination) || 'Destino'}
+                              </div>
+                            </>
+                          ) : reservation.originalPackageId ? (
+                            <>
+                              <div className="font-medium">
+                                {reservation.origin || 'Origen paquetería'}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                <span>→</span> {reservation.destination || 'Destino paquetería'}
+                              </div>
+                            </>
+                          ) : (
+                            <span>No disponible</span>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         <Badge className={reservation.paymentMethod === 'efectivo' 
