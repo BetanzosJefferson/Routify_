@@ -1209,7 +1209,7 @@ Total transacciones: ${cutoffData.transactionCount}
                         <span className="mx-1">→</span> 
                         {t.destination || t.tripInfo?.processedDestination || 'Destino no especificado'}
                       </p>
-                      <p><span className="font-medium">Monto:</span> {formatPrice(t.amount)}</p>
+                      <p><span className="font-medium">Monto:</span> {formatPrice(t.amount || t.advanceAmount || t.totalAmount || 0)}</p>
                       <p><span className="font-medium">Método:</span> {t.paymentMethod}</p>
                     </div>
                   ))}
