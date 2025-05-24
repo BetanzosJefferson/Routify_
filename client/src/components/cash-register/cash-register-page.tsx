@@ -385,15 +385,24 @@ export function CashRegisterPage() {
     return matchesSearch && matchesDate && matchesPaymentMethod && matchesCompany;
   }) || [];
   
+  // Obtener las paqueterías directamente de los datos cargados
+  // Extraer paqueterías del array de datos cargados
+  console.log("Transacciones de caja cargadas:", cashboxData?.length || 0);
+  
   // Filtrar y enriquecer paqueterías
-  const filteredPackages = packages?.filter((packageItem: any) => {
-    // Verificar que es una paquetería y que está marcada como pagada
-    if (!packageItem.isPaid) {
+  const filteredPackages = cashboxData?.filter((item: any) => {
+    // Solo incluir items que sean paqueterías
+    if (!item.originalPackageId && !item.packageDescription) {
+      return false;
+    }
+    
+    // Verificar que la paquetería está marcada como pagada
+    if (!item.isPaid) {
       return false;
     }
     
     // Si el usuario actual marcó esta paquetería como pagada o es admin/dueño
-    const userMarkedAsPaid = packageItem.paidBy === user?.id;
+    const userMarkedAsPaid = item.paidBy === user?.id;
     const userCanViewAll = isAdminView;
     
     if (!userMarkedAsPaid && !userCanViewAll) {
@@ -401,7 +410,7 @@ export function CashRegisterPage() {
     }
     
     // No incluir elementos ya procesados en cortes anteriores
-    if (isItemProcessed('package', packageItem.id)) {
+    if (isItemProcessed('package', item.id)) {
       return false;
     }
     
