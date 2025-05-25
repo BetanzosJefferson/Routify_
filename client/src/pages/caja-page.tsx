@@ -49,13 +49,28 @@ export function CashboxPage() {
     console.log("Datos de transacciones:", transactions);
   }, [transactions, isLoading, isError, error]);
 
-  // Filtrar transacciones por tipo
+  // Filtrar transacciones por tipo y añadir validación adicional
   const filteredTransactions = Array.isArray(transactions) ? transactions.filter((transaction: Transaction) => {
+    // Verificar que la transacción existe y tiene los campos necesarios
     if (!transaction) return false;
+    
+    console.log("Verificando transacción:", transaction);
+    
+    // Si se seleccionaron todas las transacciones
     if (activeTab === "all") return true;
-    if (!transaction.type) return false;
+    
+    // Verificar si la transacción tiene un tipo
+    if (!transaction.type) {
+      console.log("Transacción sin tipo:", transaction.id);
+      return false;
+    }
+    
     return transaction.type === activeTab;
   }) : [];
+  
+  // Log más detallado para debugging
+  console.log(`Transacciones filtradas (${filteredTransactions.length}):`, 
+    filteredTransactions.length > 0 ? filteredTransactions.slice(0, 2) : []);
 
   // Log para debugging
   console.log("Transacciones recibidas:", transactions);

@@ -5443,43 +5443,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let details = {};
         try {
           if (transaction.detalles) {
-            details = typeof transaction.detalles === 'string' 
-              ? JSON.parse(transaction.detalles) 
-              : transaction.detalles;
+            // Verificar el tipo de datos antes de intentar parsear
+            console.log(`[GET /transactions] Tipo de detalles:`, typeof transaction.detalles);
             
-            console.log(`[GET /transactions] Detalles parseados:`, details);
+            if (typeof transaction.detalles === 'string') {
+              details = JSON.parse(transaction.detalles);
+            } else if (typeof transaction.detalles === 'object') {
+              details = transaction.detalles;
+            }
+            
+            console.log(`[GET /transactions] Detalles parseados para ID ${transaction.id}:`, details);
           } else {
             console.log(`[GET /transactions] No hay detalles para la transacción ${transaction.id}`);
           }
         } catch (e) {
-          console.error('[GET /transactions] Error al parsear detalles:', e);
-          console.error('[GET /transactions] Detalles raw:', transaction.detalles);
+          console.error(`[GET /transactions] Error al parsear detalles para ID ${transaction.id}:`, e);
+          console.error('[GET /transactions] Detalles raw:', 
+            typeof transaction.detalles === 'string' 
+              ? transaction.detalles.substring(0, 100) + '...' 
+              : String(transaction.detalles));
         }
         
         // Determinar el tipo de transacción
         let type = 'other'; // valor por defecto
         
-        if (details.type) {
-          type = details.type;
-        } else if (details.details && details.details.packageId) {
-          type = 'package';
-        } else if (details.details && details.details.reservationId) {
-          type = 'reservation';
+        try {
+          if (details.type) {
+            type = details.type;
+          } else if (details.details && details.details.packageId) {
+            type = 'package';
+          } else if (details.details && details.details.reservationId) {
+            type = 'reservation';
+          } else if (details.details && details.details.id) {
+            // Determinar por otros indicadores
+            if (details.details.pasajeros || details.details.origen) {
+              type = 'reservation';
+            } else {
+              type = 'package';
+            }
+          }
+          
+          console.log(`[GET /transactions] Tipo determinado: ${type}`);
+        } catch (e) {
+          console.error('[GET /transactions] Error al determinar el tipo:', e);
         }
-        
-        console.log(`[GET /transactions] Tipo determinado: ${type}`);
         
         // Determinar el monto (buscando en diferentes lugares posibles)
         let amount = 0;
         
-        if (details.amount) {
-          amount = details.amount;
-        } else if (details.price) {
-          amount = details.price;
-        } else if (details.details && details.details.monto) {
-          amount = details.details.monto;
-        } else if (details.details && details.details.details && details.details.details.monto) {
-          amount = details.details.details.monto;
+        try {
+          if (details.amount) {
+            amount = Number(details.amount);
+          } else if (details.price) {
+            amount = Number(details.price);
+          } else if (details.details && details.details.monto) {
+            amount = Number(details.details.monto);
+          } else if (details.details && details.details.details && details.details.details.monto) {
+            amount = Number(details.details.details.monto);
+          }
+          
+          console.log(`[GET /transactions] Monto determinado: ${amount}`);
+        } catch (e) {
+          console.error('[GET /transactions] Error al determinar el monto:', e);
         }
         
         console.log(`[GET /transactions] Monto determinado: ${amount}`);
@@ -5487,19 +5512,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Determinar el método de pago
         let paymentMethod = null;
         
-        if (details.paymentMethod) {
-          paymentMethod = details.paymentMethod;
-        } else if (details.details && details.details.metodoPago) {
-          paymentMethod = details.details.metodoPago;
-        } else if (details.details && details.details.details && details.details.details.metodoPago) {
-          paymentMethod = details.details.details.metodoPago;
+        try {
+          if (details.paymentMethod) {
+            paymentMethod = details.paymentMethod;
+          } else if (details.metodoPago) {
+            paymentMethod = details.metodoPago;
+          } else if (details.details && details.details.metodoPago) {
+            paymentMethod = details.details.metodoPago;
+          } else if (details.details && details.details.details && details.details.details.metodoPago) {
+            paymentMethod = details.details.details.metodoPago;
+          }
+          
+          // Normalizar el método de pago
+          if (paymentMethod) {
+            if (typeof paymentMethod === 'string') {
+              paymentMethod = paymentMethod.toLowerCase();
+              
+              // Mapear variaciones comunes
+              if (paymentMethod.includes('efectivo')) {
+                paymentMethod = 'efectivo';
+              } else if (paymentMethod.includes('transferencia')) {
+                paymentMethod = 'transferencia';
+              } else if (paymentMethod.includes('tarjeta')) {
+                paymentMethod = 'tarjeta';
+              }
+            }
+          }
+          
+          console.log(`[GET /transactions] Método de pago determinado: ${paymentMethod || 'No especificado'}`);
+        } catch (e) {
+          console.error('[GET /transactions] Error al determinar método de pago:', e);
         }
-        
-        console.log(`[GET /transactions] Método de pago determinado: ${paymentMethod}`);
         
         console.log(`[Transaction ${transaction.id}] Tipo: ${type}, Monto: ${amount}, Método: ${paymentMethod}`);
         
-        return {
+        // Crear objeto de transacción formateado
+        const formattedTransaction = {
           id: transaction.id,
           type,
           amount: Number(amount) || 0, // Asegurarnos que el monto sea un número
@@ -5508,6 +5556,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentMethod: paymentMethod || 'No especificado',
           details: details || {}
         };
+        
+        console.log(`[GET /transactions] Transacción formateada ID ${transaction.id}:`, 
+          JSON.stringify({
+            id: formattedTransaction.id,
+            type: formattedTransaction.type,
+            amount: formattedTransaction.amount,
+            paymentMethod: formattedTransaction.paymentMethod
+          }));
+        
+        return formattedTransaction;
       });
       
       console.log(`[GET /transactions] Enviando ${formattedTransactions.length} transacciones formateadas`);
