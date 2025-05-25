@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+// Componentes eliminados: Card, CardContent, CardHeader, CardTitle, CardDescription
 
 interface PackageListProps {
   packages: any[];
@@ -33,20 +33,20 @@ export function PackageList({ packages, routeInfoMap, isLoading, sortDirection, 
   });
 
   return (
-    <Card>
-      <CardHeader>
+    <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+      <div className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Package className="h-5 w-5 text-primary" />
-            <CardTitle className="text-md">Paqueterías registradas</CardTitle>
+            <h3 className="text-md font-semibold leading-none tracking-tight">Paqueterías registradas</h3>
           </div>
         </div>
-        <CardDescription className="mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Mostrando {sortedPackages.length} paqueterías registradas por {userName}
-        </CardDescription>
-      </CardHeader>
+        </p>
+      </div>
       
-      <CardContent>
+      <div className="p-6 pt-0">
         {sortedPackages.length === 0 ? (
           <div className="text-center p-10 bg-gray-50 rounded-lg">
             <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
@@ -108,7 +108,7 @@ export function PackageList({ packages, routeInfoMap, isLoading, sortDirection, 
             </Table>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
