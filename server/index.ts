@@ -41,8 +41,7 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
   
-  // Registrar rutas de cortes de caja
-  registerCutoffRoutes(app);
+  // Rutas de cortes de caja eliminadas
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
