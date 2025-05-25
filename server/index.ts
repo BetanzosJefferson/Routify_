@@ -1,7 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { setupCutoffRoutes } from "./cutoff-routes";
 
 const app = express();
 // Aumentar el límite para permitir imágenes más grandes (50MB)
@@ -40,9 +39,6 @@ app.use((req, res, next) => {
 
 (async () => {
   const server = await registerRoutes(app);
-  
-  // Configurar rutas de cortes de caja
-  setupCutoffRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
