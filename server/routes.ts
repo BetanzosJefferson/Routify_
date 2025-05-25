@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import { WebSocketServer, WebSocket } from 'ws';
 import { 
@@ -5422,15 +5422,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verificamos si es superadmin o está filtrando por su compañía
       let companyId = req.query.companyId || (user.role !== UserRole.SUPER_ADMIN ? (user.company || null) : null);
-      
-      // Verificación directa con SQL para debug
-      try {
-        console.log('[GET /transactions] Realizando consulta SQL directa para verificar...');
-        const testResult = await db.execute(schema.sql`SELECT COUNT(*) FROM transactions`);
-        console.log('[GET /transactions] Resultado de consulta SQL directa:', testResult.rows[0]);
-      } catch (sqlError) {
-        console.error('[GET /transactions] Error en consulta SQL directa:', sqlError);
-      }
       
       console.log(`[GET /transactions] Solicitando transacciones para compañía: ${companyId || 'todas'}`);
       
