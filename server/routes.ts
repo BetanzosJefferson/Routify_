@@ -5236,7 +5236,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 .select({
                   isSubTrip: schema.trips.isSubTrip,
                   segmentOrigin: schema.trips.segmentOrigin,
-                  segmentDestination: schema.trips.segmentDestination
+                  segmentDestination: schema.trips.segmentDestination,
+                  companyId: schema.trips.companyId // Incluir explícitamente el campo companyId
                 })
                 .from(schema.trips)
                 .where(eq(schema.trips.id, packageData.tripId || 0))
@@ -5294,6 +5295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               descripcion: newPackage.packageDescription || "",
               usaAsientos: newPackage.usesSeats || false,
               asientos: newPackage.seatsQuantity || 0,
+              companyId: userCompanyId // Añadir el ID de la compañía en los detalles
             }
           };
           
@@ -5303,7 +5305,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Crear la transacción en la base de datos
           const transaccion = await storage.createTransaccion({
             detalles: detallesTransaccion,
-            usuario_id: user.id
+            usuario_id: user.id,
+            companyId: userCompanyId // Incluir el ID de la compañía para el aislamiento de datos
             // id_corte se asignará posteriormente cuando se haga un corte de caja
           });
           
