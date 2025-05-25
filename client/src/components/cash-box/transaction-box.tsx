@@ -60,8 +60,27 @@ interface PackageDetails extends TransactionDetails {
 interface Transaction {
   id: number;
   detalles: {
-    type: "reservation" | "package";
-    details: ReservationDetails | PackageDetails;
+    type: "reservation" | "package" | "reservation-final-payment" | "package-final-payment";
+    id: number;
+    monto: number;
+    notas: string | null;
+    origen: string;
+    tripId?: number;
+    destino: string;
+    isSubTrip?: boolean;
+    pasajeros?: string;
+    contacto?: {
+      email: string;
+      telefono: string;
+    };
+    remitente?: string;
+    destinatario?: string;
+    descripcion?: string;
+    usaAsientos?: boolean;
+    asientos?: number;
+    metodoPago: string;
+    companyId?: string;
+    dateCreated?: string;
   };
   usuario_id: number;
   id_corte: number | null;
@@ -87,13 +106,18 @@ const TransactionBox: React.FC = () => {
       const reservations: Transaction[] = [];
       const packages: Transaction[] = [];
 
-      data.forEach((transaction: Transaction) => {
-        if (transaction.detalles.type === "reservation") {
-          reservations.push(transaction);
-        } else if (transaction.detalles.type === "package") {
-          packages.push(transaction);
-        }
-      });
+      if (Array.isArray(data)) {
+        data.forEach((transaction: Transaction) => {
+          // Incluir también las transacciones de tipo 'reservation-final-payment'
+          if (transaction.detalles.type === "reservation" || transaction.detalles.type === "reservation-final-payment") {
+            reservations.push(transaction);
+          } else if (transaction.detalles.type === "package" || transaction.detalles.type === "package-final-payment") {
+            packages.push(transaction);
+          }
+        });
+      } else {
+        console.error("Los datos recibidos no son un array:", data);
+      }
 
       setReservationTransactions(reservations);
       setPackageTransactions(packages);
@@ -175,7 +199,7 @@ const TransactionBox: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {reservationTransactions.map((transaction) => {
-                  const details = transaction.detalles.details as ReservationDetails;
+                  const details = transaction.detalles;
                   return (
                     <TableRow key={transaction.id}>
                       <TableCell>
@@ -183,7 +207,7 @@ const TransactionBox: React.FC = () => {
                       </TableCell>
                       <TableCell>{details.id}</TableCell>
                       <TableCell>
-                        {details.tripId}
+                        {details.tripId || 'N/A'}
                         {details.isSubTrip && (
                           <Badge variant="outline" className="ml-1">
                             Sub
@@ -196,7 +220,7 @@ const TransactionBox: React.FC = () => {
                           <div className="mt-1">{details.destino}</div>
                         </div>
                       </TableCell>
-                      <TableCell>{details.pasajeros}</TableCell>
+                      <TableCell>{details.pasajeros || 'N/A'}</TableCell>
                       <TableCell>{formatCurrency(details.monto)}</TableCell>
                       <TableCell>
                         <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
@@ -235,7 +259,7 @@ const TransactionBox: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {packageTransactions.map((transaction) => {
-                  const details = transaction.detalles.details as PackageDetails;
+                  const details = transaction.detalles;
                   return (
                     <TableRow key={transaction.id}>
                       <TableCell>
@@ -250,8 +274,8 @@ const TransactionBox: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <div className="text-xs">
-                          <div className="font-medium">De: {details.remitente}</div>
-                          <div className="mt-1">Para: {details.destinatario}</div>
+                          <div className="font-medium">De: {details.remitente || 'No especificado'}</div>
+                          <div className="mt-1">Para: {details.destinatario || 'No especificado'}</div>
                         </div>
                       </TableCell>
                       <TableCell>
