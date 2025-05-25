@@ -12,7 +12,7 @@ export function registerTransactionRoutes(app: Express, storage: IStorage) {
   const apiRouter = (path: string) => `/api${path}`;
   
   // Obtenemos el middleware de autenticación
-  const { isAuthenticated } = setupAuthentication(app);
+  const isAuthenticated = getAuthMiddleware();
   
   // GET /api/transactions/pending - Obtener transacciones pendientes del usuario actual
   app.get(

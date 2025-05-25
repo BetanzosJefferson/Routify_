@@ -37,6 +37,9 @@ export interface IStorage {
   updateRoute(id: number, route: Partial<Route>): Promise<Route | undefined>;
   deleteRoute(id: number): Promise<boolean>;
   getRouteWithSegments(id: number): Promise<RouteWithSegments | undefined>;
+  
+  // Transaction methods
+  getPendingTransactionsByUserId(userId: number): Promise<any[]>;
 
   // Presupuestos de operadores
   getTripBudget(tripId: number): Promise<TripBudget | undefined>;
