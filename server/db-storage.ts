@@ -4438,13 +4438,20 @@ export class DatabaseStorage implements IStorage {
       // Usamos directamente el schema.transacciones con los nombres de campos correctos
       console.log(`[createTransaccion] CompanyId de la transacción: ${transaccionData.companyId || 'No especificado'}`);
       console.log(`[createTransaccion] Tipo de companyId: ${typeof transaccionData.companyId}, Valor: `, transaccionData.companyId);
+      // Asegurarnos de que companyId sea string y no undefined o null
+      const companyId = typeof transaccionData.companyId === 'string' && transaccionData.companyId.trim() !== '' 
+        ? transaccionData.companyId 
+        : 'default-company'; // Valor predeterminado si no hay companyId válido
+        
+      console.log(`[createTransaccion] CompanyId final a guardar: ${companyId}`);
+      
       const [newTransaccion] = await db
         .insert(schema.transacciones)
         .values({
           detalles: transaccionData.detalles,
           usuario_id: transaccionData.usuario_id,
           id_corte: transaccionData.id_corte,
-          companyId: transaccionData.companyId, // Incluir el ID de la compañía
+          companyId: companyId, // Usar el valor asegurado
           createdAt: new Date(),
           updatedAt: new Date()
         })
