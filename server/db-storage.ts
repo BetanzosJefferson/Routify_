@@ -4442,6 +4442,7 @@ export class DatabaseStorage implements IStorage {
           detalles: transaccionData.detalles,
           usuario_id: transaccionData.usuario_id,
           id_corte: transaccionData.id_corte,
+          company_id: transaccionData.company_id, // Guardar el ID de la compañía
           createdAt: new Date(),
           updatedAt: new Date()
         })
