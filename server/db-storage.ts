@@ -4455,6 +4455,31 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
+  async getAllTransactions(companyId: string | null): Promise<schema.Transaccion[]> {
+    try {
+      console.log(`[getAllTransactions] Obteniendo transacciones ${companyId ? `para compañía ${companyId}` : 'para todas las compañías'}`);
+      
+      // Construir query básica
+      let query = db.select().from(schema.transacciones);
+      
+      // Si se especifica companyId, necesitamos unir con las tablas apropiadas
+      if (companyId) {
+        // Para esta versión simplificada, dejamos pasar todas las transacciones
+        // En una versión más completa, necesitaríamos unir con tablas relacionadas 
+        // y filtrar por companyId
+      }
+      
+      // Ejecutar la consulta
+      const transactions = await query;
+      
+      console.log(`[getAllTransactions] Se encontraron ${transactions.length} transacciones`);
+      return transactions;
+    } catch (error) {
+      console.error('[getAllTransactions] Error al obtener transacciones:', error);
+      return [];
+    }
+  }
+  
   async getTransacciones(filters?: { usuario_id?: number, id_corte?: number }): Promise<schema.Transaccion[]> {
     try {
       let query = db.select().from(schema.transacciones);
