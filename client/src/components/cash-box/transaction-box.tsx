@@ -79,6 +79,27 @@ const TransactionBox: React.FC = () => {
   const { data, isLoading, error } = useQuery({
     queryKey: ["/api/transactions/current"],
     staleTime: 30000, // 30 segundos
+    queryFn: async () => {
+      console.log("Ejecutando consulta a /api/transactions/current");
+      const response = await fetch("/api/transactions/current", {
+        credentials: "include", // Importante para enviar las cookies de autenticación
+      });
+      
+      if (!response.ok) {
+        console.error(`Error de respuesta: ${response.status} ${response.statusText}`);
+        try {
+          const errorData = await response.json();
+          console.error("Detalles del error:", errorData);
+        } catch (e) {
+          console.error("No se pudo obtener detalles del error");
+        }
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      const jsonData = await response.json();
+      console.log("Respuesta exitosa:", jsonData);
+      return jsonData;
+    }
   });
 
   useEffect(() => {
