@@ -6685,6 +6685,33 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
+  // Ruta para obtener el historial de cortes de caja del usuario actual
+  app.get(apiRouter("/transactions/cutoff-history"), async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "Usuario no autenticado" });
+      }
+      
+      console.log(`[GET /transactions/cutoff-history] Solicitando historial de cortes para usuario ${user.id}`);
+      
+      // Obtener el historial de cortes del usuario actual
+      const cutoffHistory = await db
+        .select()
+        .from(schema.boxCutoff)
+        .where(eq(schema.boxCutoff.user_id, user.id))
+        .orderBy(desc(schema.boxCutoff.fecha_fin));
+      
+      console.log(`[GET /transactions/cutoff-history] Encontrados ${cutoffHistory.length} cortes para usuario ${user.id}`);
+      
+      res.json(cutoffHistory);
+    } catch (error) {
+      console.error("[GET /transactions/cutoff-history] Error:", error);
+      res.status(500).json({ error: "Error al obtener historial de cortes" });
+    }
+  });
+  
   // Ruta para obtener el historial de cortes de caja
   app.get(apiRouter("/transactions/cutoff-history"), async (req: Request, res: Response) => {
     try {
