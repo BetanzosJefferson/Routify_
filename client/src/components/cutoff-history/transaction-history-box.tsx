@@ -1,0 +1,471 @@
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { Loader2, Receipt, DollarSign, ArrowRight, CreditCard, Calendar } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
+import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { apiRequest } from "@/lib/queryClient";
+
+// Tipos para las transacciones
+interface TransactionDetails {
+  id: number;
+  monto: number;
+  notas: string | null;
+  origen: string;
+  tripId: number | string;
+  destino: string;
+  isSubTrip?: boolean;
+  metodoPago: string;
+  companyId?: string;
+  dateCreated?: string;
+}
+
+interface ReservationDetails extends TransactionDetails {
+  pasajeros: string;
+  contacto: {
+    email: string;
+    telefono: string;
+  };
+}
+
+interface PackageDetails extends TransactionDetails {
+  remitente: string;
+  destinatario: string;
+  descripcion: string;
+  usaAsientos: boolean;
+  asientos: number;
+}
+
+interface TransactionDetails {
+  id: number;
+  monto: number;
+  notas: string | null;
+  origen: string;
+  tripId?: number;
+  destino: string;
+  isSubTrip?: boolean;
+  pasajeros?: string;
+  contacto?: {
+    email: string;
+    telefono: string;
+  };
+  remitente?: string;
+  destinatario?: string;
+  descripcion?: string;
+  usaAsientos?: boolean;
+  asientos?: number;
+  metodoPago: string;
+  companyId?: string;
+  dateCreated?: string;
+}
+
+interface Transaction {
+  id: number;
+  detalles: {
+    type: "reservation" | "package" | "reservation-final-payment" | "package-final-payment";
+    details: TransactionDetails;
+  };
+  usuario_id: number; // Nombre en español que viene del cliente
+  user_id: number; // Nombre en inglés que viene de la BD
+  id_corte: number | null;
+  cutoff_id: number | null; // Nombre en inglés que viene de la BD
+  createdAt: string;
+  updatedAt: string;
+  companyId?: string;
+}
+
+const TransactionHistoryBox: React.FC = () => {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [reservationTransactions, setReservationTransactions] = useState<Transaction[]>([]);
+  const [packageTransactions, setPackageTransactions] = useState<Transaction[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
+  
+  // Consultar el historial de transacciones
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["/api/transactions/cutoff-history", selectedPeriod],
+    staleTime: 30000, // 30 segundos
+    queryFn: async () => {
+      const url = `/api/transactions/cutoff-history${selectedPeriod !== "all" ? `?period=${selectedPeriod}` : ""}`;
+      const response = await fetch(url, {
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
+    },
+  });
+
+  useEffect(() => {
+    if (data && user) {
+      // Separar las transacciones por tipo
+      const reservations: Transaction[] = [];
+      const packages: Transaction[] = [];
+
+      if (Array.isArray(data)) {
+        console.log("Transacciones recibidas:", data.length);
+        
+        data.forEach((transaction: any) => {
+          try {
+            // Verificar que la transacción y sus datos son válidos
+            if (transaction && typeof transaction === 'object' && transaction.detalles && typeof transaction.detalles === 'object') {
+              const transactionType = transaction.detalles.type;
+              
+              // Verificar que detalles.details existe
+              if (!transaction.detalles.details) {
+                console.warn("La transacción no tiene detalles.details:", transaction);
+                return;
+              }
+              
+              // Validar y mostrar todos los tipos de transacciones
+              if (transactionType === "reservation" || transactionType === "reservation-final-payment") {
+                console.log("Añadiendo transacción de reservación:", transaction.id);
+                reservations.push(transaction as Transaction);
+              } else if (transactionType === "package" || transactionType === "package-final-payment") {
+                console.log("Añadiendo transacción de paquetería:", transaction.id);
+                packages.push(transaction as Transaction);
+              } else {
+                console.warn("Tipo de transacción desconocido:", transactionType, transaction);
+              }
+            } else {
+              console.warn("Transacción inválida o sin tipo definido:", transaction);
+            }
+          } catch (error) {
+            console.error("Error al procesar transacción:", error, transaction);
+          }
+        });
+        
+        console.log("Transacciones procesadas - Reservaciones:", reservations.length, "Paquetes:", packages.length);
+      } else {
+        console.error("Los datos recibidos no son un array:", data);
+        toast({
+          title: "Error al cargar transacciones",
+          description: "El formato de datos recibido no es correcto.",
+          variant: "destructive",
+        });
+      }
+
+      setReservationTransactions(reservations);
+      setPackageTransactions(packages);
+    }
+  }, [data, toast, user]);
+
+  // Formatear fecha
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString("es-MX", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Mostrar mensaje de carga
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Cargando historial de transacciones...</span>
+      </div>
+    );
+  }
+  
+  // Mostrar mensaje de error
+  if (error) {
+    return (
+      <div className="flex flex-col justify-center items-center p-8 text-red-500">
+        <span className="font-bold">Error al cargar historial de transacciones:</span>
+        <span className="mt-2">{error instanceof Error ? error.message : "Error desconocido"}</span>
+        <button 
+          className="mt-4 px-4 py-2 bg-primary text-white rounded-md"
+          onClick={() => window.location.reload()}
+        >
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
+  // Calcular totales para el resumen
+  let totalAmount = 0;
+  let cashAmount = 0;
+  let transferAmount = 0;
+
+  // Sumar montos de reservaciones
+  reservationTransactions.forEach(transaction => {
+    const details = transaction.detalles?.details || {};
+    const amount = details.monto || 0;
+    totalAmount += amount;
+    
+    if (details.metodoPago === "efectivo") {
+      cashAmount += amount;
+    } else if (details.metodoPago === "transferencia") {
+      transferAmount += amount;
+    }
+  });
+
+  // Sumar montos de paqueterías
+  packageTransactions.forEach(transaction => {
+    const details = transaction.detalles?.details || {};
+    const amount = details.monto || 0;
+    totalAmount += amount;
+    
+    if (details.metodoPago === "efectivo") {
+      cashAmount += amount;
+    } else if (details.metodoPago === "transferencia") {
+      transferAmount += amount;
+    }
+  });
+  
+  // Total de transacciones
+  const totalTransactions = reservationTransactions.length + packageTransactions.length;
+
+  const totals = {
+    total: totalAmount,
+    efectivo: cashAmount,
+    transferencia: transferAmount
+  };
+
+  const handlePeriodChange = (period: string) => {
+    setSelectedPeriod(period);
+  };
+
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+          <div>
+            <CardTitle className="flex items-center">
+              <Receipt className="mr-2 h-6 w-6" />
+              Historial de Transacciones
+            </CardTitle>
+            <CardDescription>
+              Transacciones históricas que ya han sido incluidas en cortes
+            </CardDescription>
+          </div>
+          <div className="mt-4 md:mt-0 flex gap-2">
+            <Button 
+              variant={selectedPeriod === "all" ? "default" : "outline"} 
+              onClick={() => handlePeriodChange("all")}
+            >
+              Todos
+            </Button>
+            <Button 
+              variant={selectedPeriod === "week" ? "default" : "outline"} 
+              onClick={() => handlePeriodChange("week")}
+            >
+              Última semana
+            </Button>
+            <Button 
+              variant={selectedPeriod === "month" ? "default" : "outline"} 
+              onClick={() => handlePeriodChange("month")}
+            >
+              Último mes
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {/* Resumen de totales */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
+          <div className="flex items-center justify-between md:justify-center">
+            <div className="flex items-center">
+              <DollarSign className="h-6 w-6 mr-2 text-primary" />
+              <div>
+                <p className="text-sm font-medium">Total</p>
+                <p className="text-xl font-bold">{formatCurrency(totals.total)}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-between md:justify-center">
+            <div className="flex items-center">
+              <ArrowRight className="h-6 w-6 mr-2 text-green-500" />
+              <div>
+                <p className="text-sm font-medium">Efectivo</p>
+                <p className="text-xl font-bold">{formatCurrency(totals.efectivo)}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-between md:justify-center">
+            <div className="flex items-center">
+              <CreditCard className="h-6 w-6 mr-2 text-blue-500" />
+              <div>
+                <p className="text-sm font-medium">Transferencia</p>
+                <p className="text-xl font-bold">{formatCurrency(totals.transferencia)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sección de Reservaciones */}
+        <div className="mb-8">
+          <div className="flex items-center mb-4">
+            <h3 className="text-lg font-semibold">Reservaciones ({reservationTransactions.length})</h3>
+          </div>
+          
+          <Table>
+            <TableCaption>
+              {reservationTransactions.length === 0
+                ? "No hay transacciones de reservaciones en el período seleccionado"
+                : "Lista de transacciones de reservaciones"}
+            </TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Origen-Destino</TableHead>
+                <TableHead>Pasajeros</TableHead>
+                <TableHead>Método</TableHead>
+                <TableHead>Monto</TableHead>
+                <TableHead>Corte</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reservationTransactions.map((transaction) => {
+                try {
+                  const details = transaction.detalles?.details || {};
+                  return (
+                    <TableRow key={transaction.id}>
+                      <TableCell>{transaction.id}</TableCell>
+                      <TableCell>
+                        {formatDate(details.dateCreated || transaction.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs">
+                          <div className="font-medium">{details.origen}</div>
+                          <div className="mt-1">{details.destino}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{details.pasajeros || 'N/A'}</TableCell>
+                      <TableCell>
+                        <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
+                          {details.metodoPago || "N/A"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          #{transaction.cutoff_id || transaction.id_corte || 'N/A'}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                } catch (error) {
+                  console.error("Error al renderizar transacción:", error, transaction);
+                  return null;
+                }
+              })}
+            </TableBody>
+          </Table>
+        </div>
+
+        <Separator className="my-6" />
+
+        {/* Sección de Paqueterías */}
+        <div>
+          <div className="flex items-center mb-4">
+            <h3 className="text-lg font-semibold">Paqueterías ({packageTransactions.length})</h3>
+          </div>
+          
+          <Table>
+            <TableCaption>
+              {packageTransactions.length === 0
+                ? "No hay transacciones de paqueterías en el período seleccionado"
+                : "Lista de transacciones de paqueterías"}
+            </TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Origen-Destino</TableHead>
+                <TableHead>Remitente/Destinatario</TableHead>
+                <TableHead>Descripción</TableHead>
+                <TableHead>Método</TableHead>
+                <TableHead>Monto</TableHead>
+                <TableHead>Corte</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {packageTransactions.map((transaction) => {
+                try {
+                  const details = transaction.detalles?.details || {};
+                  return (
+                    <TableRow key={transaction.id}>
+                      <TableCell>{transaction.id}</TableCell>
+                      <TableCell>
+                        {formatDate(details.dateCreated || transaction.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs">
+                          <div className="font-medium">{details.origen}</div>
+                          <div className="mt-1">{details.destino}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs">
+                          <div className="font-medium">De: {details.remitente || 'No especificado'}</div>
+                          <div className="mt-1">Para: {details.destinatario || 'No especificado'}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs max-w-[150px] truncate">
+                          {details.descripcion || "Sin descripción"}
+                          {details.usaAsientos && (
+                            <Badge variant="outline" className="ml-1">
+                              {details.asientos} asiento{details.asientos !== 1 && "s"}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
+                          {details.metodoPago || "N/A"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          #{transaction.cutoff_id || transaction.id_corte || 'N/A'}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                } catch (error) {
+                  console.error("Error al renderizar transacción de paquete:", error, transaction);
+                  return null;
+                }
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default TransactionHistoryBox;

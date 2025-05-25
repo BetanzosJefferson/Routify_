@@ -6694,43 +6694,47 @@ function setupPackageRoutes(app: Express) {
         return res.status(401).json({ error: "Usuario no autenticado" });
       }
       
-      console.log(`[GET /transactions/cutoff-history] Solicitando historial de cortes para usuario ${user.id}, compañía: ${user.companyId || user.company || 'no definida'}`);
+      const { period } = req.query;
       
-      // Verificar estructura de la tabla
-      try {
-        const tablasExistentes = await db.execute(sql`
-          SELECT table_name 
-          FROM information_schema.tables 
-          WHERE table_schema='public' 
-          ORDER BY table_name;
-        `);
-        console.log('[GET /transactions/cutoff-history] Tablas disponibles:', tablasExistentes.rows.map((r: any) => r.table_name));
+      console.log(`[GET /transactions/cutoff-history] Solicitando historial de transacciones para usuario ${user.id}, período: ${period || 'todos'}, compañía: ${user.companyId || user.company || 'no definida'}`);
+      
+      // Preparar filtros
+      const filters: any = {
+        usuario_id: user.id,
+        // Solo queremos transacciones que YA están asociadas a un corte (cutoff_id NO es NULL)
+        id_corte_not_null: true
+      };
+      
+      // Aplicar filtro de período si se especifica
+      if (period) {
+        const now = new Date();
+        let startDate: Date | undefined;
         
-        // Verificar si la tabla box_cutoff existe
-        const estructuraTabla = await db.execute(sql`
-          SELECT column_name, data_type 
-          FROM information_schema.columns 
-          WHERE table_name = 'box_cutoff';
-        `);
-        console.log('[GET /transactions/cutoff-history] Estructura de box_cutoff:', estructuraTabla.rows);
-      } catch (err) {
-        console.error('[GET /transactions/cutoff-history] Error al verificar tablas:', err);
+        // Calcular la fecha de inicio según el período
+        if (period === 'week') {
+          // Última semana
+          startDate = new Date(now);
+          startDate.setDate(now.getDate() - 7);
+          console.log(`[GET /transactions/cutoff-history] Filtrando por última semana desde ${startDate.toISOString()}`);
+          filters.startDate = startDate;
+        } else if (period === 'month') {
+          // Último mes
+          startDate = new Date(now);
+          startDate.setMonth(now.getMonth() - 1);
+          console.log(`[GET /transactions/cutoff-history] Filtrando por último mes desde ${startDate.toISOString()}`);
+          filters.startDate = startDate;
+        }
       }
       
-      // Obtener el historial de cortes del usuario actual
-      const cutoffHistory = await db
-        .select()
-        .from(schema.boxCutoff)
-        .where(eq(schema.boxCutoff.user_id, user.id))
-        .orderBy(desc(schema.boxCutoff.fecha_fin));
+      // Obtener transacciones del historial
+      const transacciones = await storage.getTransacciones(filters);
       
-      console.log(`[GET /transactions/cutoff-history] Encontrados ${cutoffHistory.length} cortes para usuario ${user.id}`);
-      console.log('[GET /transactions/cutoff-history] Datos obtenidos:', JSON.stringify(cutoffHistory, null, 2));
+      console.log(`[GET /transactions/cutoff-history] Encontradas ${transacciones.length} transacciones históricas para usuario ${user.id}`);
       
-      res.json(cutoffHistory);
+      res.json(transacciones);
     } catch (error) {
       console.error("[GET /transactions/cutoff-history] Error:", error);
-      res.status(500).json({ error: "Error al obtener historial de cortes" });
+      res.status(500).json({ error: "Error al obtener historial de transacciones" });
     }
   });
 
