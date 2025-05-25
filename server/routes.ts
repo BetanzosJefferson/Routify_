@@ -6637,4 +6637,56 @@ function setupPackageRoutes(app: Express) {
       return res.status(500).json({ message: 'Error al obtener lista de empresas' });
     }
   });
+
+  // Endpoint para obtener transacciones por empresa
+  app.get(apiRouter('/transactions/company'), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      if (!user) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+
+      // Verificar que el usuario tenga permisos adecuados
+      const permittedRoles = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.OWNER, UserRole.TICKET_SELLER];
+      if (!permittedRoles.includes(user.role)) {
+        return res.status(403).json({ 
+          message: "No tienes permisos para acceder a las transacciones" 
+        });
+      }
+
+      // Obtener la compañía del usuario
+      const companyId = user.company;
+      if (!companyId) {
+        return res.status(400).json({ 
+          message: "El usuario no está asociado a ninguna empresa" 
+        });
+      }
+
+      // Obtener transacciones filtradas por la empresa del usuario
+      const transacciones = await storage.getTransaccionesByCompany(companyId);
+      
+      console.log(`[GET /transactions/company] Se encontraron ${transacciones.length} transacciones para la empresa ${companyId}`);
+      
+      // Filtrar por tipo de transacción si se proporciona en la consulta
+      const { type } = req.query;
+      let filteredTransactions = transacciones;
+      
+      if (type && (type === 'reservation' || type === 'package')) {
+        filteredTransactions = transacciones.filter(transaccion => {
+          // Verificar si el campo detalles (details) tiene la propiedad 'type' y coincide con el tipo solicitado
+          const details = transaccion.detalles;
+          return details && details.type === type;
+        });
+        
+        console.log(`[GET /transactions/company] Filtrado por tipo '${type}': ${filteredTransactions.length} transacciones`);
+      }
+      
+      return res.json(filteredTransactions);
+    } catch (error) {
+      console.error('[GET /transactions/company] Error:', error);
+      return res.status(500).json({ 
+        message: 'Error al obtener las transacciones de la empresa' 
+      });
+    }
+  });
 }
