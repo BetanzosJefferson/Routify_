@@ -6656,4 +6656,29 @@ function setupPackageRoutes(app: Express) {
       return res.status(500).json({ message: 'Error al obtener lista de empresas' });
     }
   });
+
+  // Ruta para obtener transacciones del usuario actual que no están en un corte
+  app.get(apiRouter("/transactions/current"), async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "Usuario no autenticado" });
+      }
+      
+      // Filtrar transacciones del usuario actual que no están en un corte de caja
+      const filters = {
+        usuario_id: user.id,
+        id_corte: null // Solo transacciones que no están en un corte
+      };
+      
+      const transacciones = await storage.getTransacciones(filters);
+      console.log(`[GET /transactions/current] Encontradas ${transacciones.length} transacciones para usuario ${user.id}`);
+      
+      res.json(transacciones);
+    } catch (error) {
+      console.error("Error al obtener transacciones actuales:", error);
+      res.status(500).json({ error: "Error al obtener transacciones actuales" });
+    }
+  });
 }
