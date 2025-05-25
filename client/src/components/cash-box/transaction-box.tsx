@@ -18,12 +18,21 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { Loader2, Receipt, DollarSign, ArrowRight, CreditCard, Scissors } from "lucide-react";
+import { Loader2, Receipt, DollarSign, ArrowRight, CreditCard, Scissors, FileText, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
+import { generateTicket } from "./ticket-generator";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // Tipos para las transacciones
 interface TransactionDetails {
@@ -100,10 +109,53 @@ const TransactionBox: React.FC = () => {
   const [reservationTransactions, setReservationTransactions] = useState<Transaction[]>([]);
   const [packageTransactions, setPackageTransactions] = useState<Transaction[]>([]);
   const [isCreatingCutoff, setIsCreatingCutoff] = useState(false);
+  const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [lastCutoff, setLastCutoff] = useState<any>(null);
   
+  // Función para generar el PDF del ticket
+  const generateTicketPDF = async (cutoff: any, transactions: Transaction[]) => {
+    try {
+      // Preparar la configuración para el ticket
+      const ticketConfig = {
+        title: "CORTE DE CAJA",
+        date: new Date().toLocaleString("es-MX"),
+        user: user?.firstName + " " + user?.lastName || "Usuario",
+        company: user?.companyId || "Empresa",
+        transactions: transactions,
+        totals: {
+          totalIngresos: totals.total,
+          totalEfectivo: totals.efectivo,
+          totalTransferencias: totals.transferencia,
+        },
+        cutoffId: cutoff.id,
+        startDate: new Date(cutoff.fecha_inicio).toLocaleString("es-MX"),
+        endDate: new Date(cutoff.fecha_fin).toLocaleString("es-MX"),
+      };
+      
+      // Generar el PDF
+      const pdfBase64 = await generateTicket(ticketConfig);
+      setPdfUrl(pdfBase64);
+      setPdfDialogOpen(true);
+      
+      return pdfBase64;
+    } catch (error) {
+      console.error("Error al generar el ticket PDF:", error);
+      toast({
+        title: "Error al generar el ticket",
+        description: "No se pudo generar el PDF del ticket. Inténtalo nuevamente.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
   // Mutación para crear un nuevo corte de caja
   const createCutoffMutation = useMutation({
     mutationFn: async () => {
+      // Combinar todas las transacciones para el PDF
+      const allTransactions = [...reservationTransactions, ...packageTransactions];
+      
       const response = await fetch('/api/box/cutoff', {
         method: 'POST',
         credentials: 'include',
@@ -117,7 +169,14 @@ const TransactionBox: React.FC = () => {
         throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
       }
       
-      return response.json();
+      const data = await response.json();
+      // Guardar el corte y las transacciones para generar el PDF
+      setLastCutoff({
+        cutoff: data.cutoff,
+        transactions: allTransactions
+      });
+      
+      return data;
     },
     onMutate: () => {
       setIsCreatingCutoff(true);
@@ -128,6 +187,11 @@ const TransactionBox: React.FC = () => {
         description: `Se han procesado ${data.transactionCount} transacciones en el corte #${data.cutoff.id}`,
         variant: "default",
       });
+      
+      // Generar el PDF con las transacciones que teníamos antes de hacer el corte
+      if (lastCutoff) {
+        generateTicketPDF(data.cutoff, lastCutoff.transactions);
+      }
       
       // Invalidar consulta para recargar las transacciones
       queryClient.invalidateQueries({ queryKey: ['/api/transactions/current'] });
@@ -316,38 +380,57 @@ const TransactionBox: React.FC = () => {
     transferencia: transferAmount
   };
 
+  // Función para descargar el PDF
+  const handleDownloadPdf = () => {
+    if (pdfUrl) {
+      // Crear un enlace temporal para descargar el PDF
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = `corte-caja-${lastCutoff?.cutoff.id || 'ticket'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  // Función para cerrar el diálogo del PDF
+  const handleClosePdfDialog = () => {
+    setPdfDialogOpen(false);
+  };
+
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center">
-          <div>
-            <CardTitle className="flex items-center">
-              <Receipt className="mr-2 h-6 w-6" />
-              Transacciones en Caja
-            </CardTitle>
-            <CardDescription>
-              Transacciones pendientes que no han sido incluidas en un corte
-            </CardDescription>
+    <>
+      <Card className="w-full">
+        <CardHeader>
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+            <div>
+              <CardTitle className="flex items-center">
+                <Receipt className="mr-2 h-6 w-6" />
+                Transacciones en Caja
+              </CardTitle>
+              <CardDescription>
+                Transacciones pendientes que no han sido incluidas en un corte
+              </CardDescription>
+            </div>
+            <Button
+              className="mt-4 md:mt-0"
+              onClick={handleCreateCutoff}
+              disabled={isCreatingCutoff || totalTransactions === 0}
+            >
+              {isCreatingCutoff ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Procesando...
+                </>
+              ) : (
+                <>
+                  <Scissors className="mr-2 h-4 w-4" />
+                  Hacer corte
+                </>
+              )}
+            </Button>
           </div>
-          <Button
-            className="mt-4 md:mt-0"
-            onClick={handleCreateCutoff}
-            disabled={isCreatingCutoff || totalTransactions === 0}
-          >
-            {isCreatingCutoff ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Procesando...
-              </>
-            ) : (
-              <>
-                <Scissors className="mr-2 h-4 w-4" />
-                Hacer corte
-              </>
-            )}
-          </Button>
-        </div>
-      </CardHeader>
+        </CardHeader>
       <CardContent>
         {/* Resumen de totales */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
@@ -511,6 +594,52 @@ const TransactionBox: React.FC = () => {
         </div>
       </CardContent>
     </Card>
+
+    {/* Diálogo para mostrar el PDF */}
+    <Dialog open={pdfDialogOpen} onOpenChange={handleClosePdfDialog}>
+      <DialogContent className="max-w-screen-md w-full">
+        <DialogHeader>
+          <DialogTitle className="flex items-center">
+            <FileText className="mr-2 h-5 w-5" />
+            Ticket de corte de caja
+          </DialogTitle>
+          <DialogDescription>
+            Se ha generado un ticket para este corte de caja. Puedes visualizarlo y descargarlo.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="mt-4 border rounded-md overflow-hidden">
+          {pdfUrl ? (
+            <iframe 
+              src={pdfUrl} 
+              className="w-full h-[70vh]" 
+              title="Ticket de corte" 
+            />
+          ) : (
+            <div className="flex items-center justify-center p-10">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2">Generando PDF...</span>
+            </div>
+          )}
+        </div>
+        
+        <DialogFooter className="mt-4">
+          <Button
+            variant="outline"
+            onClick={handleClosePdfDialog}
+          >
+            Cerrar
+          </Button>
+          <Button 
+            onClick={handleDownloadPdf}
+            disabled={!pdfUrl}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Descargar PDF
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
