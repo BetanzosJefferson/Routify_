@@ -40,7 +40,7 @@ export function CashboxPage() {
   const { data: transactions, isLoading, isError, error } = useQuery({
     queryKey: ['/api/transactions'],
     retry: 3,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: false
   });
   
   // Debugging
