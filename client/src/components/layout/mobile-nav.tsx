@@ -98,28 +98,6 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
                 Bitácora
               </NavLink>
             )}
-            {canAccess("reservations") && (
-              <NavLink 
-                active={window.location.pathname === "/cash-box"}
-                onClick={() => {
-                  setLocation("/cash-box");
-                  setOpen(false);
-                }}
-              >
-                Caja
-              </NavLink>
-            )}
-            {canAccess("reservations") && (
-              <NavLink 
-                active={window.location.pathname === "/cutoff-history"}
-                onClick={() => {
-                  setLocation("/cutoff-history");
-                  setOpen(false);
-                }}
-              >
-                Historial de Cortes
-              </NavLink>
-            )}
             {canAccess("boarding-list") && (
               <NavLink 
                 active={window.location.pathname === "/boarding-list"}
