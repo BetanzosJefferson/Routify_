@@ -88,47 +88,69 @@ function ReservationDetails({ details }: { details: any }) {
 
 // Componente para mostrar detalles de paquetería
 function PackageDetails({ details }: { details: any }) {
+  // Extraer los detalles de la estructura anidada si es necesario
+  const packageDetails = details.details || details;
+  
+  // Intentar obtener información del remitente y destinatario
+  const sender = packageDetails.remitente || packageDetails.sender || {};
+  const senderName = sender.nombre || sender.name || "No disponible";
+  
+  const recipient = packageDetails.destinatario || packageDetails.recipient || {};
+  const recipientName = recipient.nombre || recipient.name || "No disponible";
+  
+  // Intentar obtener el monto de la transacción
+  const monto = packageDetails.monto || details.amount || 0;
+  const amount = typeof monto === 'string' ? parseInt(monto, 10) : monto;
+  
+  // Información de origen y destino
+  const origin = packageDetails.origen || details.origin || "";
+  const destination = packageDetails.destino || details.destination || "";
+  
+  // Descripción y método de pago
+  const description = packageDetails.descripcion || packageDetails.description || "";
+  const paymentMethod = packageDetails.metodoPago || details.paymentMethod || "";
+  
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <User className="w-4 h-4 text-primary" />
         <span className="font-medium">
-          De: {details.sender?.name || "No disponible"}
+          De: {senderName}
         </span>
       </div>
       
       <div className="flex items-center gap-2">
         <User className="w-4 h-4 text-primary" />
         <span className="font-medium">
-          Para: {details.recipient?.name || "No disponible"}
+          Para: {recipientName}
         </span>
       </div>
       
-      {details.origin && details.destination && (
+      {origin && destination && (
         <div className="flex items-center gap-2">
           <MapPin className="w-4 h-4 text-primary" />
-          <span>{details.origin} → {details.destination}</span>
+          <span>{origin} → {destination}</span>
         </div>
       )}
       
-      {details.description && (
+      {description && (
         <div className="flex items-center gap-2">
           <Info className="w-4 h-4 text-primary" />
-          <span>{details.description}</span>
+          <span>{description}</span>
         </div>
       )}
       
-      {details.paymentMethod && (
+      {paymentMethod && (
         <div className="flex items-center gap-2">
           <CreditCard className="w-4 h-4 text-primary" />
-          <span>Pago: {details.paymentMethod}</span>
+          <span>Pago: {paymentMethod}</span>
         </div>
       )}
       
-      {details.amount && (
+      {amount > 0 && (
         <div className="mt-2">
           <Badge variant="secondary" className="text-lg">
-            {formatCurrency(details.amount)}
+            {formatCurrency(amount)}
           </Badge>
         </div>
       )}
