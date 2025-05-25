@@ -31,13 +31,15 @@ import {
   ChevronDown,
   ChevronUp,
   Eye,
-  EyeOff
+  EyeOff,
+  Printer
 } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
+import { jsPDF } from "jspdf";
 
 // Tipos para las transacciones
 interface TransactionDetails {
@@ -105,6 +107,152 @@ interface Transaction {
   createdAt: string;
   updatedAt: string;
   companyId?: string;
+}
+
+// Función para generar el PDF de un corte de caja con dimensiones de ticket térmico
+async function generateCutoffTicketPDF(
+  cutoffGroup: {
+    cutoffId: number;
+    cutoffCode: string;
+    transactions: Transaction[];
+    totalAmount: number;
+    cashAmount: number;
+    transferAmount: number;
+    reservationCount: number;
+    packageCount: number;
+  },
+  companyName: string
+) {
+  try {
+    // Calcular altura del documento basado en la cantidad de transacciones
+    // Altura base + altura por transacción
+    const transactionCount = cutoffGroup.transactions.length;
+    const docHeight = 80 + (transactionCount * 8); // Altura base (80mm) + 8mm por transacción
+    
+    console.log(`Generando PDF con altura calculada: ${docHeight}mm para ${transactionCount} transacciones`);
+    
+    // Crear un documento PDF con las dimensiones de un ticket térmico
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: [58, docHeight], // 58mm de ancho (formato estándar para tickets térmicos)
+    });
+
+    // Configuración de fuentes
+    doc.setFont("courier", "normal");
+    doc.setFontSize(10);
+
+    // Margen superior
+    let y = 10;
+
+    // Encabezado
+    doc.setFontSize(12);
+    doc.setFont("courier", "bold");
+    const companyNameWidth = doc.getStringUnitWidth(companyName) * 12 / doc.internal.scaleFactor;
+    const companyNameX = (58 - companyNameWidth) / 2;
+    doc.text(companyName, companyNameX, y);
+    
+    y += 5;
+    doc.setFontSize(8);
+    doc.setFont("courier", "normal");
+    doc.text("Corte de Caja", 29, y, { align: "center" });
+    
+    // Línea separadora
+    y += 3;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(5, y, 53, y);
+    
+    // ID del corte
+    y += 5;
+    doc.setFontSize(10);
+    doc.setFont("courier", "bold");
+    doc.text(`CORTE #${cutoffGroup.cutoffCode}`, 29, y, { align: "center" });
+    
+    // Fecha actual
+    y += 4;
+    doc.setFontSize(8);
+    const currentDate = new Date();
+    doc.text(formatDate(currentDate), 29, y, { align: "center" });
+    
+    // Resumen de transacciones
+    y += 6;
+    doc.setFontSize(9);
+    doc.setFont("courier", "bold");
+    doc.text("Resumen de Transacciones", 5, y);
+    
+    y += 4;
+    doc.setFontSize(8);
+    doc.setFont("courier", "normal");
+    doc.text(`Total transacciones: ${transactionCount}`, 5, y);
+    
+    y += 4;
+    doc.text(`Reservaciones: ${cutoffGroup.reservationCount}`, 5, y);
+    
+    y += 4;
+    doc.text(`Paquetes: ${cutoffGroup.packageCount}`, 5, y);
+    
+    // Resumen de montos
+    y += 6;
+    doc.setFontSize(9);
+    doc.setFont("courier", "bold");
+    doc.text("Resumen de Ingresos", 5, y);
+    
+    y += 4;
+    doc.setFontSize(8);
+    doc.setFont("courier", "normal");
+    doc.text(`Total: ${formatCurrency(cutoffGroup.totalAmount)}`, 5, y);
+    
+    y += 4;
+    doc.text(`Efectivo: ${formatCurrency(cutoffGroup.cashAmount)}`, 5, y);
+    
+    y += 4;
+    doc.text(`Transferencia: ${formatCurrency(cutoffGroup.transferAmount)}`, 5, y);
+    
+    // Línea separadora
+    y += 6;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(5, y, 53, y);
+    
+    // Listado de transacciones
+    y += 6;
+    doc.setFontSize(9);
+    doc.setFont("courier", "bold");
+    doc.text("Detalle de Transacciones", 5, y);
+    
+    // Listar transacciones
+    for (const transaction of cutoffGroup.transactions) {
+      y += 5;
+      doc.setFontSize(7);
+      doc.setFont("courier", "normal");
+      
+      // ID y tipo de transacción
+      const type = transaction.detalles.type.includes("reservation") ? "RESERVA" : "PAQUETE";
+      doc.text(`#${transaction.id} - ${type}`, 5, y);
+      
+      // Monto y método de pago
+      y += 3;
+      const monto = transaction.detalles.details.monto || 0;
+      const metodoPago = transaction.detalles.details.metodoPago === "efectivo" ? "EFE" : "TRA";
+      doc.text(`${formatCurrency(monto)} - ${metodoPago}`, 5, y);
+    }
+    
+    // Pie de página
+    y += 8;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(5, y, 53, y);
+    
+    y += 5;
+    doc.setFontSize(7);
+    doc.text("GRACIAS POR SU PREFERENCIA", 29, y, { align: "center" });
+    
+    // Abrir en una nueva ventana e imprimir automáticamente
+    window.open(URL.createObjectURL(doc.output('blob')));
+    
+    return doc;
+  } catch (error) {
+    console.error("Error al generar el ticket de corte:", error);
+    throw error;
+  }
 }
 
 const TransactionHistoryBox: React.FC = () => {
@@ -351,6 +499,26 @@ const TransactionHistoryBox: React.FC = () => {
       return updatedGroups;
     });
   };
+  
+  // Función para imprimir un ticket de corte
+  const handlePrintCutoffTicket = async (cutoffGroup: any) => {
+    try {
+      toast({
+        title: "Generando ticket",
+        description: "Por favor espere mientras se genera el ticket...",
+      });
+      
+      // Generar el ticket en formato térmico
+      await generateCutoffTicketPDF(cutoffGroup, user?.company || "TransRoute");
+    } catch (error) {
+      console.error("Error al generar el ticket del corte:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo generar el ticket del corte. Intente nuevamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <Card className="w-full">
@@ -453,6 +621,19 @@ const TransactionHistoryBox: React.FC = () => {
                           <p className="text-sm font-bold">{formatCurrency(group.transferAmount)}</p>
                         </div>
                       </div>
+                    </div>
+                    
+                    {/* Botón para imprimir ticket de corte */}
+                    <div className="mt-3 col-span-1 md:col-span-4">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="w-full flex items-center justify-center bg-white border border-blue-100"
+                        onClick={() => handlePrintCutoffTicket(group)}
+                      >
+                        <Printer className="h-4 w-4 mr-2" />
+                        Imprimir Ticket
+                      </Button>
                     </div>
                   </div>
                   
