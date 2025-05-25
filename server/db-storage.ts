@@ -4479,4 +4479,33 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
   }
+
+  async getTransaccionesByCompany(companyId: string): Promise<schema.Transaccion[]> {
+    try {
+      // Realizamos un join con la tabla de usuarios para obtener las transacciones
+      // donde el usuario pertenece a la compañía especificada
+      const query = db.select({
+        transaccion: schema.transacciones,
+        usuario: schema.users
+      })
+      .from(schema.transacciones)
+      .innerJoin(
+        schema.users,
+        eq(schema.transacciones.usuario_id, schema.users.id)
+      )
+      .where(eq(schema.users.company_id, companyId))
+      .orderBy(desc(schema.transacciones.createdAt));
+      
+      const result = await query;
+      
+      // Mapear los resultados para devolver solo las transacciones
+      const transacciones = result.map(row => row.transaccion);
+      
+      console.log(`[getTransaccionesByCompany] Se encontraron ${transacciones.length} transacciones para la compañía ${companyId}`);
+      return transacciones;
+    } catch (error) {
+      console.error('[getTransaccionesByCompany] Error al obtener transacciones por compañía:', error);
+      return [];
+    }
+  }
 }
