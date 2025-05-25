@@ -3454,6 +3454,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       console.log(`[POST /public/packages/${packageId}/mark-paid] Nuevo estado de pago:`, updatedPackage?.isPaid);
       
+      // Obtener información adicional del viaje si está disponible
+      let tripInfo = null;
+      if (packageData.tripId) {
+        tripInfo = await storage.getTripWithRouteInfo(packageData.tripId);
+      }
+      
+      // Crear una transacción cuando el paquete es marcado como pagado
+      if (userId && updatedPackage) {
+        try {
+          // Crear los detalles de la transacción en formato JSON
+          const detallesTransaccion = {
+            type: "package",
+            details: {
+              id: packageData.id,
+              monto: packageData.price,
+              notas: "Pago de paquetería",
+              origen: packageData.segmentOrigin || tripInfo?.route?.origin || "",
+              tripId: packageData.tripId || "",
+              destino: packageData.segmentDestination || tripInfo?.route?.destination || "",
+              isSubTrip: tripInfo?.isSubTrip || false,
+              metodoPago: packageData.paymentMethod || "efectivo",
+              remitente: `${packageData.senderName} ${packageData.senderLastName}`,
+              destinatario: `${packageData.recipientName} ${packageData.recipientLastName}`,
+              descripcion: packageData.packageDescription || "",
+              usaAsientos: packageData.usesSeats || false,
+              asientos: packageData.seatsQuantity || 0,
+            }
+          };
+          
+          console.log(`[POST /public/packages/${packageId}/mark-paid] Creando transacción con detalles:`, 
+                      JSON.stringify(detallesTransaccion, null, 2));
+          
+          // Crear la transacción en la base de datos
+          const transaccion = await storage.createTransaccion({
+            detalles: detallesTransaccion,
+            usuario_id: userId
+            // id_corte se asignará posteriormente cuando se haga un corte de caja
+          });
+          
+          console.log(`[POST /public/packages/${packageId}/mark-paid] Transacción creada con ID:`, transaccion.id);
+        } catch (transactionError) {
+          console.error(`[POST /public/packages/${packageId}/mark-paid] Error al crear la transacción:`, transactionError);
+          // Continuamos aunque haya error en la creación de la transacción, ya que el paquete ya fue marcado como pagado
+        }
+      }
+      
       console.log(`[POST /public/packages/${packageId}/mark-paid] Paquete actualizado con éxito`);
       res.json(updatedPackage);
     } catch (error) {
