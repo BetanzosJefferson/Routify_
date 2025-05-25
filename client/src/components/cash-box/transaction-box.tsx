@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Receipt } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
 // Tipos para las transacciones
 interface TransactionDetails {
@@ -86,8 +87,10 @@ interface Transaction {
     type: "reservation" | "package" | "reservation-final-payment" | "package-final-payment";
     details: TransactionDetails;
   };
-  usuario_id: number;
+  usuario_id: number; // Nombre en español que viene del cliente
+  user_id: number; // Nombre en inglés que viene de la BD
   id_corte: number | null;
+  cutoff_id: number | null; // Nombre en inglés que viene de la BD
   createdAt: string;
   updatedAt: string;
   companyId?: string;
@@ -95,6 +98,7 @@ interface Transaction {
 
 const TransactionBox: React.FC = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [reservationTransactions, setReservationTransactions] = useState<Transaction[]>([]);
   const [packageTransactions, setPackageTransactions] = useState<Transaction[]>([]);
 
@@ -116,7 +120,7 @@ const TransactionBox: React.FC = () => {
   });
 
   useEffect(() => {
-    if (data) {
+    if (data && user) {
       // Separar las transacciones por tipo
       const reservations: Transaction[] = [];
       const packages: Transaction[] = [];
@@ -128,6 +132,16 @@ const TransactionBox: React.FC = () => {
           try {
             // Verificar que la transacción y sus datos son válidos
             if (transaction && typeof transaction === 'object' && transaction.detalles && typeof transaction.detalles === 'object') {
+              // Verificación CRÍTICA: Filtrar por user_id (nombre en inglés que usa la BD)
+              // O usuario_id (nombre en español que podría estar en los datos)
+              const transactionUserId = transaction.user_id || transaction.usuario_id;
+              
+              // Solo procesar transacciones del usuario actual
+              if (transactionUserId !== user.id) {
+                console.log(`Omitiendo transacción ${transaction.id} porque pertenece a otro usuario (${transactionUserId}), usuario actual: ${user.id}`);
+                return;
+              }
+              
               const transactionType = transaction.detalles.type;
               
               // Verificar que detalles.details existe
@@ -167,7 +181,7 @@ const TransactionBox: React.FC = () => {
       setReservationTransactions(reservations);
       setPackageTransactions(packages);
     }
-  }, [data, toast]);
+  }, [data, toast, user]);
 
   // Formatear fecha
   const formatDate = (dateString: string) => {
