@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { jsPDF } from "jspdf";
 import {
   Card,
   CardContent,
@@ -29,7 +28,6 @@ import {
   BarChart, 
   Hash,
   ArrowUpRight,
-  Printer,
   ChevronDown,
   ChevronUp,
   Eye,
