@@ -5414,6 +5414,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Configurar rutas para presupuestos y gastos
   setupFinancialRoutes(app, isAuthenticated);
   
+  // API para obtener todas las transacciones
+  app.get(apiRouter("/transactions"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      console.log(`[GET /transactions] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
+      
+      // Verificamos si es superadmin o está filtrando por su compañía
+      let companyId = req.query.companyId || (user.role !== UserRole.SUPER_ADMIN ? (user.company || null) : null);
+      
+      // Obtener todas las transacciones
+      const transactions = await storage.getAllTransactions(companyId ? String(companyId) : null);
+      
+      // Transformar datos para el frontend
+      const formattedTransactions = transactions.map(transaction => {
+        // Parsear el campo de detalles si existe
+        let details = {};
+        try {
+          details = typeof transaction.detalles === 'string' 
+            ? JSON.parse(transaction.detalles) 
+            : transaction.detalles || {};
+        } catch (e) {
+          console.error('Error al parsear detalles de transacción:', e);
+        }
+        
+        // Determinar el tipo de transacción
+        const type = details.type || (details.packageId ? 'package' : 'reservation');
+        
+        // Determinar el monto
+        const amount = details.amount || details.price || 0;
+        
+        return {
+          id: transaction.id,
+          type,
+          amount,
+          createdAt: transaction.createdAt,
+          updatedAt: transaction.updatedAt,
+          paymentMethod: details.paymentMethod,
+          details
+        };
+      });
+      
+      res.json(formattedTransactions);
+    } catch (error: any) {
+      console.error('[GET /transactions] Error:', error);
+      res.status(500).json({ message: error.message || "Error al obtener transacciones" });
+    }
+  });
+  
   // Configurar rutas para el sistema de cajas
 
   
