@@ -601,6 +601,8 @@ const TransactionHistoryBox: React.FC = () => {
                       </div>
                     </div>
                   )}
+                  </>
+                )}
                 </CardContent>
               </Card>
             ))}
