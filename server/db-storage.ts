@@ -4442,12 +4442,13 @@ export class DatabaseStorage implements IStorage {
           detalles: transaccionData.detalles,
           usuario_id: transaccionData.usuario_id,
           id_corte: transaccionData.id_corte,
+          companyId: transaccionData.companyId, // Añadimos el ID de la compañía
           createdAt: new Date(),
           updatedAt: new Date()
         })
         .returning();
       
-      console.log(`[createTransaccion] Transacción creada con ID: ${newTransaccion.id}`);
+      console.log(`[createTransaccion] Transacción creada con ID: ${newTransaccion.id}, CompanyId: ${transaccionData.companyId || 'No especificado'}`);
       return newTransaccion;
     } catch (error) {
       console.error('[createTransaccion] Error al crear transacción:', error);
