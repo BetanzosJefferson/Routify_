@@ -4435,13 +4435,13 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Guardar la transacción en la base de datos
-      // Usamos directamente el schema.transacciones con los nombres de campos correctos
+      // Convertimos los nombres de los campos en español a los nombres en inglés que espera la BD
       const [newTransaccion] = await db
         .insert(schema.transacciones)
         .values({
           detalles: transaccionData.detalles,
-          usuario_id: transaccionData.usuario_id,
-          id_corte: transaccionData.id_corte,
+          user_id: transaccionData.usuario_id, // Mapear usuario_id a user_id
+          cutoff_id: transaccionData.id_corte, // Mapear id_corte a cutoff_id
           companyId: transaccionData.companyId, // Añadimos el ID de la compañía
           createdAt: new Date(),
           updatedAt: new Date()
@@ -4460,9 +4460,10 @@ export class DatabaseStorage implements IStorage {
     try {
       let query = db.select().from(schema.transacciones);
       
-      // Filtrar por user_id (nombre correcto de la columna) para mostrar solo las transacciones del usuario actual
+      // Mapear usuario_id a user_id (nombre correcto en la BD)
       if (filters?.usuario_id) {
         query = query.where(eq(schema.transacciones.user_id, filters.usuario_id));
+        console.log(`[getTransacciones] Filtrando por user_id: ${filters.usuario_id}`);
       }
       
       // Manejar el filtro de id_corte de manera especial para valores null
