@@ -4512,7 +4512,7 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log(`[createBoxCutoff] Creando nuevo corte de caja para usuario ${data.user_id}`);
       
-      // Omitir createdAt y updatedAt ya que parece que no existen en la tabla real
+      // Incluir todos los campos del esquema
       const [newCutoff] = await db
         .insert(schema.boxCutoff)
         .values({
@@ -4522,8 +4522,9 @@ export class DatabaseStorage implements IStorage {
           total_efectivo: data.total_efectivo,
           total_transferencias: data.total_transferencias,
           user_id: data.user_id,
-          companyId: data.companyId
-          // Eliminamos createdAt y updatedAt ya que parecen no existir en la tabla
+          companyId: data.companyId,
+          createdAt: new Date(),
+          updatedAt: new Date()
         })
         .returning();
       
