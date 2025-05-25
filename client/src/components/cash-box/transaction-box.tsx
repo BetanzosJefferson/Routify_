@@ -102,9 +102,9 @@ interface BoxCutoff {
   total_efectivo: number;
   total_transferencias: number;
   user_id: number;
-  createdAt: string;
-  updatedAt: string;
-  companyId?: string;
+  created_at: string;
+  updated_at: string;
+  company_id?: string;
 }
 
 const TransactionBox: React.FC = () => {
@@ -580,7 +580,7 @@ const TransactionBox: React.FC = () => {
                   <TableRow key={cutoff.id}>
                     <TableCell>{cutoff.id}</TableCell>
                     <TableCell>
-                      {formatDate(new Date(cutoff.createdAt))}
+                      {formatDate(new Date(cutoff.created_at))}
                     </TableCell>
                     <TableCell>{formatCurrency(cutoff.total_ingresos)}</TableCell>
                     <TableCell className="text-emerald-600">{formatCurrency(cutoff.total_efectivo)}</TableCell>
