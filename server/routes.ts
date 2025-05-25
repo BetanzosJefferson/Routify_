@@ -73,8 +73,6 @@ import { populateLocationData } from "./populate-locations";
 import { db } from "./db";
 import { setupFinancialRoutes } from "./financial-routes";
 
-import { registerTransactionRoutes } from "./routes-transactions";
-
 export async function registerRoutes(app: Express): Promise<Server> {
   // prefix all routes with /api
   const apiRouter = (path: string) => `/api${path}`;
