@@ -27,7 +27,11 @@ import {
   Calendar, 
   BarChart, 
   Hash,
-  ArrowUpRight
+  ArrowUpRight,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -122,6 +126,7 @@ const TransactionHistoryBox: React.FC = () => {
       transferAmount: number;
       reservationCount: number;
       packageCount: number;
+      isExpanded: boolean; // Para controlar si se muestran las transacciones
     }
   }>({});
 
@@ -196,7 +201,8 @@ const TransactionHistoryBox: React.FC = () => {
                   cashAmount: 0,
                   transferAmount: 0,
                   reservationCount: 0,
-                  packageCount: 0
+                  packageCount: 0,
+                  isExpanded: false // Inicialmente todas las transacciones están ocultas
                 };
               }
               
@@ -330,6 +336,20 @@ const TransactionHistoryBox: React.FC = () => {
 
   const handlePeriodChange = (period: string) => {
     setSelectedPeriod(period);
+  };
+  
+  // Función para expandir/contraer un grupo de transacciones
+  const toggleGroupExpansion = (cutoffId: number) => {
+    setCutoffGroups(prevGroups => {
+      const updatedGroups = { ...prevGroups };
+      if (updatedGroups[cutoffId]) {
+        updatedGroups[cutoffId] = {
+          ...updatedGroups[cutoffId],
+          isExpanded: !updatedGroups[cutoffId].isExpanded
+        };
+      }
+      return updatedGroups;
+    });
   };
 
   return (
