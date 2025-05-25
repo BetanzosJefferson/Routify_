@@ -970,11 +970,11 @@ export const processedItemsRelations = relations(processedItems, ({ one }) => ({
 }));
 
 // TABLA DE TRANSACCIONES
-export const transacciones = pgTable("transacciones", {
+export const transacciones = pgTable("transactions", { // Cambiado de "transacciones" a "transactions"
   id: serial("id").primaryKey(),
-  detalles: jsonb("detalles").notNull(), // JSON que guarda los detalles de la transacción
-  usuario_id: integer("usuario_id").notNull().references(() => users.id), // ID del usuario que creó la transacción
-  id_corte: integer("id_corte").references(() => cashboxCutoffs.id), // ID del corte (puede ser NULL)
+  detalles: jsonb("details").notNull(), // Cambiado de "detalles" a "details"
+  usuario_id: integer("user_id").notNull().references(() => users.id), // Cambiado de "usuario_id" a "user_id"
+  id_corte: integer("cutoff_id").references(() => cashboxCutoffs.id), // Cambiado de "id_corte" a "cutoff_id"
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -983,7 +983,7 @@ export const insertTransaccionSchema = createInsertSchema(transacciones, {
   id: z.number().optional(),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
-  id_corte: z.number().optional().nullable()
+  id_corte: z.number().optional().nullable() // Mantenemos el nombre original en el esquema de inserción
 });
 
 export type Transaccion = typeof transacciones.$inferSelect;
