@@ -47,13 +47,25 @@ export function CashboxPage() {
     return transaction.type === activeTab;
   }) || [];
 
+  // Log para debugging
+  console.log("Transacciones recibidas:", transactions);
+
   // Calcular totales
   const getTotalAmount = (type: string | null = null) => {
     if (!transactions) return 0;
     
-    return transactions
+    const amount = transactions
       .filter((t: Transaction) => type ? t.type === type : true)
-      .reduce((sum: number, transaction: Transaction) => sum + transaction.amount, 0);
+      .reduce((sum: number, transaction: Transaction) => {
+        // Asegurar que amount es un número
+        const transactionAmount = typeof transaction.amount === 'number' 
+          ? transaction.amount 
+          : parseFloat(String(transaction.amount)) || 0;
+        
+        return sum + transactionAmount;
+      }, 0);
+    
+    return amount;
   };
 
   // Renderizar fecha en formato legible

@@ -5439,10 +5439,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Determinar el tipo de transacción
-        const type = details.type || (details.packageId ? 'package' : 'reservation');
+        const type = details.type || (details.details?.packageId ? 'package' : 'reservation');
         
-        // Determinar el monto
-        const amount = details.amount || details.price || 0;
+        // Determinar el monto (buscando en diferentes lugares posibles)
+        const amount = details.amount || 
+                      details.price || 
+                      details.details?.monto || 
+                      (details.details?.details?.monto) || 
+                      0;
+        
+        // Determinar el método de pago
+        const paymentMethod = details.paymentMethod || 
+                             details.details?.metodoPago || 
+                             details.details?.details?.metodoPago || 
+                             null;
+        
+        console.log(`[Transaction ${transaction.id}] Tipo: ${type}, Monto: ${amount}, Método: ${paymentMethod}`);
         
         return {
           id: transaction.id,
@@ -5450,7 +5462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount,
           createdAt: transaction.createdAt,
           updatedAt: transaction.updatedAt,
-          paymentMethod: details.paymentMethod,
+          paymentMethod,
           details
         };
       });
