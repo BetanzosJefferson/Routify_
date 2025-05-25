@@ -93,20 +93,6 @@ interface Transaction {
   companyId?: string;
 }
 
-// Interfaz para los cortes de caja
-interface BoxCutoff {
-  id: number;
-  fecha_inicio: string;
-  fecha_fin: string;
-  total_ingresos: number;
-  total_efectivo: number;
-  total_transferencias: number;
-  user_id: number;
-  created_at: string;
-  updated_at: string;
-  company_id?: string;
-}
-
 const TransactionBox: React.FC = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -114,7 +100,6 @@ const TransactionBox: React.FC = () => {
   const [reservationTransactions, setReservationTransactions] = useState<Transaction[]>([]);
   const [packageTransactions, setPackageTransactions] = useState<Transaction[]>([]);
   const [isCreatingCutoff, setIsCreatingCutoff] = useState(false);
-  const [cutoffHistory, setCutoffHistory] = useState<BoxCutoff[]>([]);
   
   // Mutación para crear un nuevo corte de caja
   const createCutoffMutation = useMutation({
@@ -171,27 +156,6 @@ const TransactionBox: React.FC = () => {
     
     createCutoffMutation.mutate();
   };
-
-  // Consultar el historial de cortes del usuario
-  const { data: cutoffsData, isLoading: isLoadingCutoffs } = useQuery({
-    queryKey: ["/api/box/cutoff/history"],
-    staleTime: 60000, // 1 minuto
-    queryFn: async () => {
-      const response = await fetch("/api/box/cutoff/history", {
-        credentials: "include",
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-      
-      return response.json();
-    },
-    onSuccess: (data) => {
-      console.log("Historial de cortes recibido:", data);
-      setCutoffHistory(data);
-    }
-  });
 
   // Consultar las transacciones del usuario actual
   const { data, isLoading, error } = useQuery({
@@ -398,19 +362,19 @@ const TransactionBox: React.FC = () => {
           </div>
           <div className="flex items-center justify-between md:justify-center">
             <div className="flex items-center">
-              <ArrowRight className="h-6 w-6 mr-2 text-emerald-500" />
+              <ArrowRight className="h-6 w-6 mr-2 text-green-500" />
               <div>
-                <p className="text-sm font-medium text-emerald-700">Efectivo</p>
-                <p className="text-xl font-bold text-emerald-600">{formatCurrency(totals.efectivo)}</p>
+                <p className="text-sm font-medium">Efectivo</p>
+                <p className="text-xl font-bold">{formatCurrency(totals.efectivo)}</p>
               </div>
             </div>
           </div>
           <div className="flex items-center justify-between md:justify-center">
             <div className="flex items-center">
-              <CreditCard className="h-6 w-6 mr-2 text-blue-600" />
+              <CreditCard className="h-6 w-6 mr-2 text-blue-500" />
               <div>
-                <p className="text-sm font-medium text-blue-700">Transferencia</p>
-                <p className="text-xl font-bold text-blue-600">{formatCurrency(totals.transferencia)}</p>
+                <p className="text-sm font-medium">Transferencia</p>
+                <p className="text-xl font-bold">{formatCurrency(totals.transferencia)}</p>
               </div>
             </div>
           </div>
@@ -544,52 +508,6 @@ const TransactionBox: React.FC = () => {
               })}
             </TableBody>
           </Table>
-        </div>
-
-        <Separator className="my-6" />
-
-        {/* Sección de Historial de Cortes */}
-        <div className="mt-8">
-          <div className="flex items-center mb-4">
-            <h3 className="text-lg font-semibold">Historial de Cortes</h3>
-          </div>
-          
-          {isLoadingCutoffs ? (
-            <div className="flex justify-center items-center p-4">
-              <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
-              <span>Cargando historial...</span>
-            </div>
-          ) : cutoffHistory.length === 0 ? (
-            <div className="text-center p-6 bg-muted/30 rounded-lg">
-              <p className="text-muted-foreground">No hay cortes de caja registrados</p>
-            </div>
-          ) : (
-            <Table>
-              <TableCaption>Historial de cortes de caja realizados</TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Efectivo</TableHead>
-                  <TableHead>Transferencia</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cutoffHistory.map((cutoff) => (
-                  <TableRow key={cutoff.id}>
-                    <TableCell>{cutoff.id}</TableCell>
-                    <TableCell>
-                      {formatDate(new Date(cutoff.created_at))}
-                    </TableCell>
-                    <TableCell>{formatCurrency(cutoff.total_ingresos)}</TableCell>
-                    <TableCell className="text-emerald-600">{formatCurrency(cutoff.total_efectivo)}</TableCell>
-                    <TableCell className="text-blue-600">{formatCurrency(cutoff.total_transferencias)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
         </div>
       </CardContent>
     </Card>
