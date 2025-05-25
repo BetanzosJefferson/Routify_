@@ -4459,35 +4459,58 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log(`[getAllTransactions] Obteniendo transacciones ${companyId ? `para compañía ${companyId}` : 'para todas las compañías'}`);
       
-      // Realizar la consulta directamente con SQL para evitar problemas de mapeo
-      console.log('[getAllTransactions] Ejecutando consulta SQL directa');
-      const result = await db.execute(sql`
-        SELECT * FROM transactions
-        ORDER BY created_at DESC
-      `);
-      
-      // Log para debug
-      console.log('[getAllTransactions] Resultado de la consulta:', result.rows.length, 'filas');
-      if (result.rows.length > 0) {
-        console.log('[getAllTransactions] Primera fila ejemplo:', result.rows[0]);
+      // Verificar si la tabla de transacciones existe
+      try {
+        const tableCheck = await db.execute(sql`
+          SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_name = 'transactions'
+          );
+        `);
+        console.log('[getAllTransactions] Verificación de tabla transactions:', tableCheck.rows[0]);
+      } catch (e) {
+        console.error('[getAllTransactions] Error al verificar tabla:', e);
       }
       
-      // Mapear los resultados al formato esperado
-      const transactions = result.rows.map(row => {
-        const transaccion = {
-          id: row.id,
-          detalles: row.details,
-          usuario_id: row.user_id,
-          id_corte: row.cutoff_id,
-          createdAt: row.created_at,
-          updatedAt: row.updated_at
-        };
-        console.log(`[getAllTransactions] Transacción mapeada ID ${row.id}:`, transaccion);
-        return transaccion;
-      });
-      
-      console.log(`[getAllTransactions] Se encontraron ${transactions.length} transacciones`);
-      return transactions;
+      // Realizar la consulta directamente con SQL para evitar problemas de mapeo
+      console.log('[getAllTransactions] Ejecutando consulta SQL directa');
+      try {
+        const result = await db.execute(sql`
+          SELECT * FROM transactions
+          ORDER BY created_at DESC
+        `);
+        
+        // Log para debug
+        console.log('[getAllTransactions] Resultado de la consulta:', result.rows.length, 'filas');
+        if (result.rows.length > 0) {
+          console.log('[getAllTransactions] Primera fila ejemplo:', JSON.stringify(result.rows[0]));
+        }
+        
+        // Mapear los resultados al formato esperado
+        const transactions = result.rows.map(row => {
+          try {
+            const transaccion = {
+              id: row.id,
+              detalles: row.details,
+              usuario_id: row.user_id,
+              id_corte: row.cutoff_id,
+              createdAt: row.created_at,
+              updatedAt: row.updated_at
+            };
+            console.log(`[getAllTransactions] Transacción mapeada ID ${row.id}`);
+            return transaccion;
+          } catch (mapError) {
+            console.error(`[getAllTransactions] Error al mapear fila:`, mapError, row);
+            return null;
+          }
+        }).filter(t => t !== null);
+        
+        console.log(`[getAllTransactions] Se encontraron ${transactions.length} transacciones`);
+        return transactions;
+      } catch (queryError) {
+        console.error('[getAllTransactions] Error en consulta SQL:', queryError);
+        throw queryError;
+      }
     } catch (error) {
       console.error('[getAllTransactions] Error al obtener transacciones:', error);
       console.error('[getAllTransactions] Detalle del error:', error instanceof Error ? error.message : String(error));
