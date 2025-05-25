@@ -23,7 +23,7 @@ import CouponsPage from "@/pages/coupons-page";
 import PackagesPage from "@/pages/packages-page";
 import PackageDetailPage from "@/pages/package-detail-page";
 import EditTripPage from "@/pages/edit-trip-page";
-// Componente de caja registradora eliminado
+import TransactionsPage from "@/pages/transactions-page";
 // Temporalmente deshabilitado
 // import PassengerTransferPageRoute from "@/pages/passenger-transfer-page";
 import BoardingListPageRoute from "@/pages/boarding-list-page";
