@@ -2710,7 +2710,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const transaccionData = {
               detalles: detallesTransaccion, // Se mapeará a "details" en la BD
               usuario_id: createdByUserId || (user ? user.id : null), // Se mapeará a "user_id" en la BD
-              id_corte: null // Se mapeará a "cutoff_id" en la BD - Inicialmente NULL, se actualizará cuando se haga un corte de caja
+              id_corte: null, // Se mapeará a "cutoff_id" en la BD - Inicialmente NULL, se actualizará cuando se haga un corte de caja
+              company_id: companyId || (user ? (user.companyId || user.company) : null) // Guardar el ID de la compañía
             };
             
             console.log(`[POST /reservations] DEPURACIÓN - Datos para crear transacción:`, JSON.stringify(transaccionData, null, 2));
@@ -2830,7 +2831,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   const transaccionData = {
                     detalles: detallesTransaccion,
                     usuario_id: user?.id || null,
-                    id_corte: null // Inicialmente NULL, se actualizará cuando se haga un corte de caja
+                    id_corte: null, // Inicialmente NULL, se actualizará cuando se haga un corte de caja
+                    company_id: user?.companyId || user?.company || originalReservation.companyId || trip.companyId || null // Guardar el ID de la compañía
                   };
                   
                   const transaccion = await storage.createTransaccion(transaccionData);
