@@ -5209,60 +5209,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newPackage = await storage.createPackage(packageData);
       
       // Si el paquete está marcado como pagado, crear una transacción en la base de datos
-      if (packageData.isPaid === true && tripWithRouteInfo) {
+      if (packageData.isPaid === true) {
         try {
-          // Determinar origen y destino basado en si es un sub-viaje o no
+          // Determinar el origen y destino correctos basados en si es un sub-viaje
           let origen = "";
           let destino = "";
           
-          if (tripWithRouteInfo.isSubTrip && tripWithRouteInfo.segmentOrigin && tripWithRouteInfo.segmentDestination) {
-            // Si es un sub-viaje, usar los segmentos como origen y destino
-            origen = tripWithRouteInfo.segmentOrigin;
-            destino = tripWithRouteInfo.segmentDestination;
-          } else if (tripWithRouteInfo.route) {
-            // Si no es un sub-viaje, usar la ruta completa
-            origen = tripWithRouteInfo.route.origin;
-            destino = tripWithRouteInfo.route.destination;
+          // Primero consultamos directamente en la base de datos los segmentos del viaje
+          try {
+            if (packageData.tripId) {
+              const tripDetails = await db
+                .select({
+                  isSubTrip: schema.trips.isSubTrip,
+                  segmentOrigin: schema.trips.segmentOrigin,
+                  segmentDestination: schema.trips.segmentDestination
+                })
+                .from(schema.trips)
+                .where(eq(schema.trips.id, packageData.tripId || 0))
+                .limit(1);
+
+              if (tripDetails && tripDetails.length > 0) {
+                const tripData = tripDetails[0];
+                
+                if (tripData.isSubTrip && tripData.segmentOrigin && tripData.segmentDestination) {
+                  // Si es un sub-viaje y tiene segmentos específicos en la base de datos, usar esos
+                  origen = tripData.segmentOrigin;
+                  destino = tripData.segmentDestination;
+                  console.log(`[POST /packages] Usando origen y destino directamente de la BD (sub-viaje):`, origen, destino);
+                } else if (tripWithRouteInfo?.route) {
+                  // Si no hay segmentos, usar la ruta completa
+                  origen = tripWithRouteInfo.route.origin;
+                  destino = tripWithRouteInfo.route.destination;
+                  console.log(`[POST /packages] Usando origen y destino de ruta completa:`, origen, destino);
+                }
+              } else if (tripWithRouteInfo?.route) {
+                // Si no se encuentra el viaje, usar los datos disponibles en el paquete
+                origen = tripWithRouteInfo.route.origin;
+                destino = tripWithRouteInfo.route.destination;
+                console.log(`[POST /packages] Viaje no encontrado en DB, usando datos disponibles:`, origen, destino);
+              }
+            }
+          } catch (dbError) {
+            console.error(`[POST /packages] Error al consultar detalles del viaje:`, dbError);
+            
+            // En caso de error, usar la lógica anterior como fallback
+            if (tripWithRouteInfo?.isSubTrip && tripWithRouteInfo?.segmentOrigin && tripWithRouteInfo?.segmentDestination) {
+              origen = tripWithRouteInfo.segmentOrigin;
+              destino = tripWithRouteInfo.segmentDestination;
+            } else if (tripWithRouteInfo?.route) {
+              origen = tripWithRouteInfo.route.origin;
+              destino = tripWithRouteInfo.route.destination;
+            }
+            console.log(`[POST /packages] Usando origen y destino fallback:`, origen, destino);
           }
           
-          // Crear los detalles de la transacción en formato JSON
+          // Crear los detalles de la transacción en formato JSON (usando el mismo formato que en "marcar como pagado")
           const detallesTransaccion = {
             type: "package",
             details: {
               id: newPackage.id,
-              tripId: newPackage.tripId,
-              isSubTrip: tripWithRouteInfo.isSubTrip || false,
+              monto: newPackage.price,
+              notas: "Pago de paquetería",
+              origen: origen,
+              tripId: newPackage.tripId || "",
+              destino: destino,
+              isSubTrip: tripWithRouteInfo?.isSubTrip || false,
+              metodoPago: newPackage.paymentMethod || "efectivo",
               remitente: `${newPackage.senderName} ${newPackage.senderLastName}`,
               destinatario: `${newPackage.recipientName} ${newPackage.recipientLastName}`,
-              contacto: {
-                telefonoRemitente: newPackage.senderPhone,
-                telefonoDestinatario: newPackage.recipientPhone
-              },
-              descripcion: newPackage.packageDescription,
-              origen: origen,
-              destino: destino,
-              monto: newPackage.price,
-              metodoPago: newPackage.paymentMethod || "efectivo",
-              usaAsientos: newPackage.usesSeats,
-              cantidadAsientos: newPackage.seatsQuantity || 0,
-              horarioEnvio: tripWithRouteInfo.departureTime
+              descripcion: newPackage.packageDescription || "",
+              usaAsientos: newPackage.usesSeats || false,
+              asientos: newPackage.seatsQuantity || 0,
             }
           };
           
-          console.log(`[POST /packages] DEPURACIÓN - Detalles de la transacción a crear:`, JSON.stringify(detallesTransaccion, null, 2));
+          console.log(`[POST /packages] Creando transacción con detalles:`, 
+                      JSON.stringify(detallesTransaccion, null, 2));
           
           // Crear la transacción en la base de datos
-          await storage.createTransaction({
-            amount: newPackage.price,
-            description: `Pago por paquetería #${newPackage.id}`,
-            type: "ingreso",
-            details: detallesTransaccion,
-            companyId: userCompanyId,
-            userId: user.id,
-            createdAt: new Date()
+          const transaccion = await storage.createTransaccion({
+            detalles: detallesTransaccion,
+            usuario_id: user.id
+            // id_corte se asignará posteriormente cuando se haga un corte de caja
           });
           
-          console.log(`[POST /packages] Transacción creada para el paquete pagado ID: ${newPackage.id}`);
+          console.log(`[POST /packages] Transacción creada con ID:`, transaccion.id);
         } catch (transactionError: any) {
           console.error(`[POST /packages] Error al crear transacción:`, transactionError);
           // No detener el proceso si falla la creación de la transacción
