@@ -111,6 +111,20 @@ const TransactionHistoryBox: React.FC = () => {
   const [packageTransactions, setPackageTransactions] = useState<Transaction[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
   
+  // Nuevo estado para almacenar transacciones agrupadas por corte
+  const [cutoffGroups, setCutoffGroups] = useState<{
+    [key: string]: {
+      cutoffId: number;
+      cutoffCode: string;
+      transactions: Transaction[];
+      totalAmount: number;
+      cashAmount: number;
+      transferAmount: number;
+      reservationCount: number;
+      packageCount: number;
+    }
+  }>({});
+
   // Consultar el historial de transacciones
   const { data, isLoading, error } = useQuery({
     queryKey: ["/api/transactions/cutoff-history", selectedPeriod],
@@ -128,20 +142,6 @@ const TransactionHistoryBox: React.FC = () => {
       return response.json();
     },
   });
-
-  // Nuevo estado para almacenar transacciones agrupadas por corte
-  const [cutoffGroups, setCutoffGroups] = useState<{
-    [key: string]: {
-      cutoffId: number;
-      cutoffCode: string;
-      transactions: Transaction[];
-      totalAmount: number;
-      cashAmount: number;
-      transferAmount: number;
-      reservationCount: number;
-      packageCount: number;
-    }
-  }>({});
 
   useEffect(() => {
     if (data && user) {
@@ -368,178 +368,197 @@ const TransactionHistoryBox: React.FC = () => {
         </div>
       </CardHeader>
       <CardContent>
-        {/* Resumen de totales */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
-          <div className="flex items-center justify-between md:justify-center">
-            <div className="flex items-center">
-              <DollarSign className="h-6 w-6 mr-2 text-primary" />
-              <div>
-                <p className="text-sm font-medium">Total</p>
-                <p className="text-xl font-bold">{formatCurrency(totals.total)}</p>
-              </div>
-            </div>
+        {/* Mostrar un mensaje cuando no hay datos */}
+        {!data || Object.keys(cutoffGroups).length === 0 ? (
+          <div className="text-center p-8 bg-muted/20 rounded-lg">
+            <h3 className="text-lg font-medium mb-2">No hay transacciones en el historial</h3>
+            <p className="text-muted-foreground">
+              No se encontraron transacciones con cortes asociados en el período seleccionado.
+            </p>
           </div>
-          <div className="flex items-center justify-between md:justify-center">
-            <div className="flex items-center">
-              <ArrowRight className="h-6 w-6 mr-2 text-green-500" />
-              <div>
-                <p className="text-sm font-medium">Efectivo</p>
-                <p className="text-xl font-bold">{formatCurrency(totals.efectivo)}</p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center justify-between md:justify-center">
-            <div className="flex items-center">
-              <CreditCard className="h-6 w-6 mr-2 text-blue-500" />
-              <div>
-                <p className="text-sm font-medium">Transferencia</p>
-                <p className="text-xl font-bold">{formatCurrency(totals.transferencia)}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Tarjetas de cortes */}
+            {Object.values(cutoffGroups).map((group) => (
+              <Card key={group.cutoffId} className="bg-blue-50 border-blue-200 overflow-hidden">
+                <CardHeader className="bg-blue-100 pb-2">
+                  <div className="flex flex-col space-y-2">
+                    <CardTitle className="text-lg flex items-center">
+                      <BarChart className="h-5 w-5 mr-2 text-primary" />
+                      Resumen de Transacciones
+                    </CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                    <div className="bg-white rounded-md p-3 flex items-center justify-between border border-blue-100">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Transacciones</p>
+                        <p className="text-xl font-bold">{group.transactions.length}</p>
+                      </div>
+                      <BarChart className="h-8 w-8 text-primary opacity-70" />
+                    </div>
+                    
+                    <div className="bg-white rounded-md p-3 flex items-center justify-between border border-blue-100">
+                      <div>
+                        <p className="text-sm text-muted-foreground">ID del Corte</p>
+                        <p className="text-xl font-bold flex items-center">
+                          <Hash className="h-4 w-4 mr-1 text-primary" />
+                          {group.cutoffCode}
+                        </p>
+                      </div>
+                      <Hash className="h-8 w-8 text-primary opacity-70" />
+                    </div>
+                    
+                    <div className="bg-white rounded-md p-3 flex items-center justify-between border border-blue-100">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Ingreso</p>
+                        <p className="text-xl font-bold">{formatCurrency(group.totalAmount)}</p>
+                      </div>
+                      <DollarSign className="h-8 w-8 text-primary opacity-70" />
+                    </div>
+                    
+                    <div className="bg-white rounded-md p-3 grid grid-cols-2 gap-2 border border-blue-100">
+                      <div className="flex items-center">
+                        <ArrowRight className="h-5 w-5 mr-2 text-green-500" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Efectivo</p>
+                          <p className="text-sm font-bold">{formatCurrency(group.cashAmount)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center">
+                        <ArrowUpRight className="h-5 w-5 mr-2 text-blue-500" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Transferencia</p>
+                          <p className="text-sm font-bold">{formatCurrency(group.transferAmount)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Sección de Reservaciones */}
+                  {group.reservationCount > 0 && (
+                    <div className="mb-4">
+                      <div className="flex items-center mb-2">
+                        <h3 className="text-sm font-semibold">Reservaciones ({group.reservationCount})</h3>
+                      </div>
+                      
+                      <div className="bg-white rounded-md overflow-hidden border border-blue-100">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[60px]">ID</TableHead>
+                              <TableHead>Fecha</TableHead>
+                              <TableHead>Origen-Destino</TableHead>
+                              <TableHead>Pasajeros</TableHead>
+                              <TableHead>Método</TableHead>
+                              <TableHead>Monto</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {group.transactions.filter(t => 
+                              t.detalles?.type === "reservation" || t.detalles?.type === "reservation-final-payment"
+                            ).map((transaction) => {
+                              try {
+                                const details = transaction.detalles?.details || {};
+                                return (
+                                  <TableRow key={transaction.id}>
+                                    <TableCell>{transaction.id}</TableCell>
+                                    <TableCell>
+                                      {formatDate(details.dateCreated || transaction.createdAt)}
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="text-xs">
+                                        <div className="font-medium">{details.origen}</div>
+                                        <div className="mt-1">{details.destino}</div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>{details.pasajeros || 'N/A'}</TableCell>
+                                    <TableCell>
+                                      <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
+                                        {details.metodoPago || "N/A"}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
+                                  </TableRow>
+                                );
+                              } catch (error) {
+                                console.error("Error al renderizar transacción:", error, transaction);
+                                return null;
+                              }
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
 
-        {/* Sección de Reservaciones */}
-        <div className="mb-8">
-          <div className="flex items-center mb-4">
-            <h3 className="text-lg font-semibold">Reservaciones ({reservationTransactions.length})</h3>
+                  {/* Sección de Paqueterías */}
+                  {group.packageCount > 0 && (
+                    <div>
+                      <div className="flex items-center mb-2">
+                        <h3 className="text-sm font-semibold">Paqueterías ({group.packageCount})</h3>
+                      </div>
+                      
+                      <div className="bg-white rounded-md overflow-hidden border border-blue-100">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[60px]">ID</TableHead>
+                              <TableHead>Fecha</TableHead>
+                              <TableHead>Origen-Destino</TableHead>
+                              <TableHead>Remitente/Destinatario</TableHead>
+                              <TableHead>Método</TableHead>
+                              <TableHead>Monto</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {group.transactions.filter(t => 
+                              t.detalles?.type === "package" || t.detalles?.type === "package-final-payment"
+                            ).map((transaction) => {
+                              try {
+                                const details = transaction.detalles?.details || {};
+                                return (
+                                  <TableRow key={transaction.id}>
+                                    <TableCell>{transaction.id}</TableCell>
+                                    <TableCell>
+                                      {formatDate(details.dateCreated || transaction.createdAt)}
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="text-xs">
+                                        <div className="font-medium">{details.origen}</div>
+                                        <div className="mt-1">{details.destino}</div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="text-xs">
+                                        <div className="font-medium">De: {details.remitente || 'No especificado'}</div>
+                                        <div className="mt-1">Para: {details.destinatario || 'No especificado'}</div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
+                                        {details.metodoPago || "N/A"}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
+                                  </TableRow>
+                                );
+                              } catch (error) {
+                                console.error("Error al renderizar transacción:", error, transaction);
+                                return null;
+                              }
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
           </div>
-          
-          <Table>
-            <TableCaption>
-              {reservationTransactions.length === 0
-                ? "No hay transacciones de reservaciones en el período seleccionado"
-                : "Lista de transacciones de reservaciones"}
-            </TableCaption>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Origen-Destino</TableHead>
-                <TableHead>Pasajeros</TableHead>
-                <TableHead>Método</TableHead>
-                <TableHead>Monto</TableHead>
-                <TableHead>Corte</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {reservationTransactions.map((transaction) => {
-                try {
-                  const details = transaction.detalles?.details || {};
-                  return (
-                    <TableRow key={transaction.id}>
-                      <TableCell>{transaction.id}</TableCell>
-                      <TableCell>
-                        {formatDate(details.dateCreated || transaction.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-xs">
-                          <div className="font-medium">{details.origen}</div>
-                          <div className="mt-1">{details.destino}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{details.pasajeros || 'N/A'}</TableCell>
-                      <TableCell>
-                        <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
-                          {details.metodoPago || "N/A"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          #{transaction.cutoff_id || transaction.id_corte || 'N/A'}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                } catch (error) {
-                  console.error("Error al renderizar transacción:", error, transaction);
-                  return null;
-                }
-              })}
-            </TableBody>
-          </Table>
-        </div>
-
-        <Separator className="my-6" />
-
-        {/* Sección de Paqueterías */}
-        <div>
-          <div className="flex items-center mb-4">
-            <h3 className="text-lg font-semibold">Paqueterías ({packageTransactions.length})</h3>
-          </div>
-          
-          <Table>
-            <TableCaption>
-              {packageTransactions.length === 0
-                ? "No hay transacciones de paqueterías en el período seleccionado"
-                : "Lista de transacciones de paqueterías"}
-            </TableCaption>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Origen-Destino</TableHead>
-                <TableHead>Remitente/Destinatario</TableHead>
-                <TableHead>Descripción</TableHead>
-                <TableHead>Método</TableHead>
-                <TableHead>Monto</TableHead>
-                <TableHead>Corte</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {packageTransactions.map((transaction) => {
-                try {
-                  const details = transaction.detalles?.details || {};
-                  return (
-                    <TableRow key={transaction.id}>
-                      <TableCell>{transaction.id}</TableCell>
-                      <TableCell>
-                        {formatDate(details.dateCreated || transaction.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-xs">
-                          <div className="font-medium">{details.origen}</div>
-                          <div className="mt-1">{details.destino}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-xs">
-                          <div className="font-medium">De: {details.remitente || 'No especificado'}</div>
-                          <div className="mt-1">Para: {details.destinatario || 'No especificado'}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-xs max-w-[150px] truncate">
-                          {details.descripcion || "Sin descripción"}
-                          {details.usaAsientos && (
-                            <Badge variant="outline" className="ml-1">
-                              {details.asientos} asiento{details.asientos !== 1 && "s"}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
-                          {details.metodoPago || "N/A"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          #{transaction.cutoff_id || transaction.id_corte || 'N/A'}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                } catch (error) {
-                  console.error("Error al renderizar transacción de paquete:", error, transaction);
-                  return null;
-                }
-              })}
-            </TableBody>
-          </Table>
-        </div>
+        )}
       </CardContent>
     </Card>
   );
