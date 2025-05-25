@@ -196,8 +196,8 @@ export function registerCashboxRoutes(app: Express, storage: any) {
       // Importar el servicio de cortes para verificar elementos procesados
       const { cutoffService } = await import('./cutoff-service');
       
-      // Obtener todas las reservaciones para procesarlas
-      const allReservations = await storage.getReservations();
+      // Obtener todas las reservaciones para procesarlas (incluyendo las del usuario actual)
+      const allReservations = await storage.getReservations(undefined, undefined, user.id);
       console.log(`[GET /cashbox/transactions] Analizando ${allReservations.length} reservaciones para la caja del usuario ${user.id}`);
       
       // Array para almacenar los ítems de caja (anticipos y restantes)
