@@ -4455,8 +4455,9 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getTransacciones(filters?: { usuario_id?: number, id_corte?: number }): Promise<schema.Transaccion[]> {
+  async getTransacciones(filters?: { usuario_id?: number, id_corte?: number, companyId?: string }): Promise<schema.Transaccion[]> {
     try {
+      console.log(`[getTransacciones] Obteniendo transacciones con filtros:`, filters);
       let query = db.select().from(schema.transacciones);
       
       // Aplicar filtros
@@ -4466,6 +4467,15 @@ export class DatabaseStorage implements IStorage {
       
       if (filters?.id_corte) {
         query = query.where(eq(schema.transacciones.id_corte, filters.id_corte));
+      }
+      
+      // Filtro por compañía
+      if (filters?.companyId) {
+        // El companyId está en el campo detalles, que es un JSONB
+        // Usamos la sintaxis de PostgreSQL para buscar en un campo JSONB
+        query = query.where(
+          sql`${schema.transacciones.detalles}->>'companyId' = ${filters.companyId}`
+        );
       }
       
       // Ordenar por fecha de creación descendente (más recientes primero)
