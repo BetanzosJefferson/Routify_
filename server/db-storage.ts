@@ -4456,7 +4456,13 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getTransacciones(filters?: { usuario_id?: number, id_corte?: number | null }): Promise<schema.Transaccion[]> {
+  async getTransacciones(filters?: { 
+    usuario_id?: number, 
+    id_corte?: number | null,
+    id_corte_not_null?: boolean,
+    startDate?: Date,
+    endDate?: Date 
+  }): Promise<schema.Transaccion[]> {
     try {
       let query = db.select().from(schema.transacciones);
       
@@ -4475,6 +4481,22 @@ export class DatabaseStorage implements IStorage {
         // Filtro normal para valores no nulos
         query = query.where(eq(schema.transacciones.cutoff_id, filters.id_corte));
         console.log(`[getTransacciones] Filtrando transacciones con cutoff_id: ${filters.id_corte}`);
+      } else if (filters?.id_corte_not_null) {
+        // Filtro especial para transacciones que YA están en cortes (cutoff_id NO es NULL)
+        query = query.where(isNotNull(schema.transacciones.cutoff_id));
+        console.log(`[getTransacciones] Filtrando transacciones con cutoff_id NO NULL (historial)`);
+      }
+      
+      // Filtrar por fecha de inicio si se especifica
+      if (filters?.startDate) {
+        query = query.where(gte(schema.transacciones.createdAt, filters.startDate));
+        console.log(`[getTransacciones] Filtrando transacciones desde: ${filters.startDate.toISOString()}`);
+      }
+      
+      // Filtrar por fecha de fin si se especifica
+      if (filters?.endDate) {
+        query = query.where(lte(schema.transacciones.createdAt, filters.endDate));
+        console.log(`[getTransacciones] Filtrando transacciones hasta: ${filters.endDate.toISOString()}`);
       }
       
       // Ordenar por fecha de creación descendente (más recientes primero)
