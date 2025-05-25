@@ -6803,20 +6803,20 @@ function setupPackageRoutes(app: Express) {
       console.log(`[POST /box/cutoff] Corte creado con ID: ${cutoff.id}`);
       
       // Actualizar las transacciones con el ID del corte
-      // IMPORTANTE: Solo actualizar transacciones que pertenezcan al usuario actual
+      // IMPORTANTE: Usando el método mejorado que verifica el usuario
+      let actualizacionesExitosas = 0;
       for (const transaction of transacciones) {
-        if (transaction.user_id === user.id) {
-          await storage.updateTransaccion(transaction.id, {
-            cutoff_id: cutoff.id
-          });
-        } else {
-          console.warn(`[POST /box/cutoff] Omitiendo transacción ${transaction.id} porque pertenece a otro usuario (${transaction.user_id}), usuario actual: ${user.id}`);
+        const actualizada = await storage.updateTransaccion(transaction.id, {
+          cutoff_id: cutoff.id
+        }, user.id); // Pasamos el user.id para asegurar que solo se actualicen transacciones del usuario actual
+        
+        if (actualizada) {
+          actualizacionesExitosas++;
         }
       }
       
-      // Contar cuántas transacciones se actualizaron realmente (solo las del usuario actual)
-      const transaccionesActualizadas = transacciones.filter(t => t.user_id === user.id).length;
-      console.log(`[POST /box/cutoff] Actualizadas ${transaccionesActualizadas} transacciones con ID de corte ${cutoff.id}`);
+      // Usar la variable de actualizacionesExitosas para reportar las transacciones realmente actualizadas
+      console.log(`[POST /box/cutoff] Actualizadas ${actualizacionesExitosas} transacciones con ID de corte ${cutoff.id}`);
       
       return res.json({ 
         message: "Corte realizado con éxito", 

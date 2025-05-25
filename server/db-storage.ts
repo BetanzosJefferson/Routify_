@@ -4512,16 +4512,29 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async updateTransaccion(id: number, data: Partial<schema.Transaccion>): Promise<schema.Transaccion | null> {
+  async updateTransaccion(id: number, data: Partial<schema.Transaccion>, userId?: number): Promise<schema.Transaccion | null> {
     try {
+      // Construir la condición de filtrado
+      let condition = eq(schema.transacciones.id, id);
+      
+      // Si se proporciona un userId, añadir filtro para asegurarnos de que solo se actualicen las transacciones del usuario
+      if (userId !== undefined) {
+        condition = and(condition, eq(schema.transacciones.user_id, userId));
+        console.log(`[updateTransaccion] Aplicando filtro adicional por user_id: ${userId}`);
+      }
+      
       const [updated] = await db
         .update(schema.transacciones)
         .set({
           ...data,
           updatedAt: new Date()
         })
-        .where(eq(schema.transacciones.id, id))
+        .where(condition)
         .returning();
+      
+      if (!updated) {
+        console.warn(`[updateTransaccion] No se actualizó la transacción ${id} porque no cumple con los criterios (posiblemente no pertenece al usuario ${userId})`);
+      }
       
       return updated || null;
     } catch (error) {
