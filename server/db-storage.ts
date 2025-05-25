@@ -4428,8 +4428,6 @@ export class DatabaseStorage implements IStorage {
   async createTransaccion(transaccionData: schema.InsertTransaccion): Promise<schema.Transaccion> {
     try {
       console.log(`[createTransaccion] Creando nueva transacción para usuario ${transaccionData.usuario_id}`);
-      console.log(`[createTransaccion] Datos de la transacción:`, JSON.stringify(transaccionData, null, 2));
-      console.log(`[createTransaccion] Company ID de la transacción: ${transaccionData.company_id || 'NO PROPORCIONADO'}`);
       
       if (!transaccionData.detalles) {
         console.error('[createTransaccion] Error: detalles es requerido');
@@ -4438,29 +4436,16 @@ export class DatabaseStorage implements IStorage {
       
       // Guardar la transacción en la base de datos
       // Usamos directamente el schema.transacciones con los nombres de campos correctos
-      console.log(`[createTransaccion] Iniciando inserción en la base de datos`);
-      
-      // Construir el objeto para insertar en la BD con todos los datos
-      // IMPORTANTE: Los nombres de campo deben coincidir con las columnas en la BD
-      const dataToInsert = {
-        details: transaccionData.detalles, // Mapear detalles -> details
-        user_id: transaccionData.usuario_id, // Mapear usuario_id -> user_id
-        cutoff_id: transaccionData.id_corte, // Mapear id_corte -> cutoff_id
-        company_id: transaccionData.company_id, // Guardar el ID de la compañía
-        created_at: new Date(),
-        updated_at: new Date()
-      };
-      
-      console.log(`[createTransaccion] Valores a insertar:`, JSON.stringify(dataToInsert, null, 2));
-      
-      // Usamos los nombres de columnas en inglés como están en la base de datos
       const [newTransaccion] = await db
         .insert(schema.transacciones)
-        .values(dataToInsert)
+        .values({
+          detalles: transaccionData.detalles,
+          usuario_id: transaccionData.usuario_id,
+          id_corte: transaccionData.id_corte,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
         .returning();
-        
-      // Registro detallado del resultado para debug
-      console.log(`[createTransaccion] Resultado de la inserción:`, JSON.stringify(newTransaccion, null, 2));
       
       console.log(`[createTransaccion] Transacción creada con ID: ${newTransaccion.id}`);
       return newTransaccion;
