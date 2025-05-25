@@ -394,14 +394,12 @@ const TransactionBox: React.FC = () => {
             </TableCaption>
             <TableHeader>
               <TableRow>
-                <TableHead>Fecha</TableHead>
                 <TableHead>ID</TableHead>
-                <TableHead>Viaje</TableHead>
+                <TableHead>Fecha</TableHead>
                 <TableHead>Origen-Destino</TableHead>
                 <TableHead>Pasajeros</TableHead>
-                <TableHead>Monto</TableHead>
                 <TableHead>Método</TableHead>
-                <TableHead>Compañía</TableHead>
+                <TableHead>Monto</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -410,17 +408,9 @@ const TransactionBox: React.FC = () => {
                   const details = transaction.detalles?.details || {};
                   return (
                     <TableRow key={transaction.id}>
-                      <TableCell>
-                        {formatDate(details.dateCreated || transaction.createdAt)}
-                      </TableCell>
                       <TableCell>{transaction.id}</TableCell>
                       <TableCell>
-                        {details.tripId || 'N/A'}
-                        {details.isSubTrip && (
-                          <Badge variant="outline" className="ml-1">
-                            Sub
-                          </Badge>
-                        )}
+                        {formatDate(details.dateCreated || transaction.createdAt)}
                       </TableCell>
                       <TableCell>
                         <div className="text-xs">
@@ -429,15 +419,12 @@ const TransactionBox: React.FC = () => {
                         </div>
                       </TableCell>
                       <TableCell>{details.pasajeros || 'N/A'}</TableCell>
-                      <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
                       <TableCell>
                         <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
                           {details.metodoPago || "N/A"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        {details.companyId || transaction.companyId || "N/A"}
-                      </TableCell>
+                      <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
                     </TableRow>
                   );
                 } catch (error) {
