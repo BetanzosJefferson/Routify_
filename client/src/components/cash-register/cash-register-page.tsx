@@ -1387,6 +1387,7 @@ Total transacciones: ${cutoffData.transactionCount}
                       </p>
                       <p><span className="font-medium">Monto:</span> {formatPrice(t.amount || t.advanceAmount || t.totalAmount || 0)}</p>
                       <p><span className="font-medium">Método:</span> {t.paymentMethod}</p>
+                      <p><span className="font-medium">Tipo:</span> {t.type === 'package' ? 'Paquetería' : 'Reservación'}</p>
                     </div>
                   ))}
                   {cutoffData.transactions.length > 5 && (

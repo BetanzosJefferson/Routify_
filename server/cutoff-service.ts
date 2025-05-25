@@ -182,17 +182,40 @@ export class CutoffService {
       for (const item of items) {
         // Determinar si es una reservación o un paquete de forma más robusta
         // Utilizamos múltiples criterios para una identificación más confiable
-        const isPackage = Boolean(
-          // Identificadores directos
-          item.originalPackageId !== undefined ||
-          item.type === 'package' || 
-          item.itemType === 'package' ||
-          
+        // IMPORTANTE: Priorizar los identificadores más explícitos y directos
+        
+        // 1. Verificar si ya tenemos una identificación explícita
+        let isExplicitlyIdentified = false;
+        let isExplicitlyPackage = false;
+        
+        // Verificaciones explícitas de tipo
+        if (item.type === 'package' || 
+            item.itemType === 'package' || 
+            item.originalPackageId !== undefined ||
+            (typeof item.cashItemId === 'string' && item.cashItemId.startsWith('paquete-'))) {
+          isExplicitlyIdentified = true;
+          isExplicitlyPackage = true;
+          console.log(`[createCutoff] Item #${item.id} EXPLÍCITAMENTE identificado como paquetería por tipo directo`);
+        }
+        
+        // Si aún no está identificado explícitamente, buscar campos clave de paqueterías
+        if (!isExplicitlyIdentified) {
+          // Si tiene campos específicos de paqueterías Y NO tiene campos exclusivos de reservaciones
+          if ((item.senderName || item.recipientName || item.packageDescription) && 
+              !(item.passengerCount > 0 || (item.passengers && item.passengers.length > 0))) {
+            isExplicitlyIdentified = true;
+            isExplicitlyPackage = true;
+            console.log(`[createCutoff] Item #${item.id} EXPLÍCITAMENTE identificado como paquetería por campos específicos`);
+          }
+        }
+        
+        // Si aún no está identificado explícitamente, usar identificación secundaria
+        const isPackage = isExplicitlyIdentified ? isExplicitlyPackage : Boolean(
           // Criterios basados en conceptos
           item.concept === 'Paquetería' ||
           item.paymentNote === 'Paquetería' ||
           
-          // Campos específicos de paqueterías
+          // Campos específicos de paqueterías (menos confiables si están solos)
           (item.senderName !== undefined && item.senderName !== null) ||
           (item.receiverName !== undefined && item.receiverName !== null) ||
           (item.recipientName !== undefined && item.recipientName !== null) ||
@@ -201,11 +224,11 @@ export class CutoffService {
           // Estados propios de paqueterías
           item.deliveryStatus !== undefined ||
           item.deliveredBy !== undefined ||
-          item.deliveredAt !== undefined ||
-          
-          // Identificación por ID - los IDs pueden tener prefijos o patrones específicos
-          (typeof item.cashItemId === 'string' && item.cashItemId.startsWith('paquete-'))
+          item.deliveredAt !== undefined
         );
+        
+        console.log(`[createCutoff] DECISIÓN FINAL para Item #${item.id}: ${isPackage ? 'PAQUETERÍA' : 'RESERVACIÓN'} (Identificación explícita: ${isExplicitlyIdentified ? 'SÍ' : 'NO'})`);
+        
         
         // Registrar información de depuración sobre la identificación del tipo
         console.log(`[createCutoff] Identificación de ítem #${item.id}: ${isPackage ? 'PAQUETERÍA' : 'RESERVACIÓN'}`);
