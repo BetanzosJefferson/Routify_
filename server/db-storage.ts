@@ -4456,7 +4456,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getTransacciones(filters?: { usuario_id?: number, id_corte?: number | null }): Promise<schema.Transaccion[]> {
+  async getTransacciones(filters?: { usuario_id?: number, id_corte?: number }): Promise<schema.Transaccion[]> {
     try {
       let query = db.select().from(schema.transacciones);
       
@@ -4465,12 +4465,7 @@ export class DatabaseStorage implements IStorage {
         query = query.where(eq(schema.transacciones.usuario_id, filters.usuario_id));
       }
       
-      // Manejar específicamente el caso donde id_corte es null
-      if (filters?.id_corte === null) {
-        console.log('[getTransacciones] Filtrando por id_corte NULL (transacciones sin corte)');
-        query = query.where(isNull(schema.transacciones.id_corte));
-      } else if (filters?.id_corte !== undefined) {
-        console.log(`[getTransacciones] Filtrando por id_corte = ${filters.id_corte}`);
+      if (filters?.id_corte) {
         query = query.where(eq(schema.transacciones.id_corte, filters.id_corte));
       }
       

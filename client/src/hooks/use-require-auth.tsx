@@ -1,34 +1,17 @@
-import { useEffect, useState } from 'react';
-import { useAuth } from './use-auth';
-import { useToast } from './use-toast';
-import { useLocation } from 'wouter';
+import { useEffect } from "react";
+import { useLocation } from "wouter";
+import { useAuth } from "./use-auth";
 
-/**
- * Hook personalizado para requerir autenticación en una página
- * Redirige al usuario a la página de inicio de sesión si no está autenticado
- */
-export const useRequireAuth = () => {
-  const { user, loading } = useAuth();
-  const { toast } = useToast();
+export function useRequireAuth() {
+  const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        // Mostrar notificación
-        toast({
-          title: "Acceso restringido",
-          description: "Debes iniciar sesión para acceder a esta página",
-          variant: "destructive",
-        });
-        
-        // Redirigir a la página de inicio de sesión
-        setLocation('/login');
-      }
-      setIsChecking(false);
+    if (!isLoading && !user) {
+      // Redirigir al usuario a la página de inicio de sesión si no está autenticado
+      setLocation("/auth");
     }
-  }, [user, loading, setLocation, toast]);
+  }, [user, isLoading, setLocation]);
 
-  return { user, loading: loading || isChecking };
-};
+  return { user, loading: isLoading };
+}

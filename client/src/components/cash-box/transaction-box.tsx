@@ -77,67 +77,24 @@ const TransactionBox: React.FC = () => {
 
   // Consultar las transacciones del usuario actual
   const { data, isLoading, error } = useQuery({
-    queryKey: ["/api/transactions"],  // Cambiado a la nueva ruta sin restricciones
+    queryKey: ["/api/transactions/current"],
     staleTime: 30000, // 30 segundos
-    queryFn: async () => {
-      console.log("Ejecutando consulta a /api/transactions");
-      const response = await fetch("/api/transactions", {
-        credentials: "include", // Importante para enviar las cookies de autenticación
-      });
-      
-      if (!response.ok) {
-        console.error(`Error de respuesta: ${response.status} ${response.statusText}`);
-        try {
-          const errorData = await response.json();
-          console.error("Detalles del error:", errorData);
-        } catch (e) {
-          console.error("No se pudo obtener detalles del error");
-        }
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-      
-      const jsonData = await response.json();
-      console.log("Respuesta exitosa:", jsonData);
-      return jsonData;
-    }
   });
 
   useEffect(() => {
-    console.log("Datos recibidos del endpoint:", data);
-    
     if (data) {
-      console.log("Tipo de datos recibidos:", typeof data);
-      console.log("¿Es un array?", Array.isArray(data));
-      console.log("Longitud de los datos:", data.length);
-      
       // Separar las transacciones por tipo
       const reservations: Transaction[] = [];
       const packages: Transaction[] = [];
 
-      try {
-        if (Array.isArray(data)) {
-          data.forEach((transaction: Transaction) => {
-            console.log("Procesando transacción:", transaction);
-            console.log("Detalles de la transacción:", transaction.detalles);
-            
-            if (transaction.detalles && transaction.detalles.type === "reservation") {
-              reservations.push(transaction);
-            } else if (transaction.detalles && transaction.detalles.type === "package") {
-              packages.push(transaction);
-            } else {
-              console.log("Transacción con formato desconocido:", transaction);
-            }
-          });
-        } else {
-          console.error("Los datos recibidos no son un array:", data);
+      data.forEach((transaction: Transaction) => {
+        if (transaction.detalles.type === "reservation") {
+          reservations.push(transaction);
+        } else if (transaction.detalles.type === "package") {
+          packages.push(transaction);
         }
-      } catch (err) {
-        console.error("Error al procesar las transacciones:", err);
-      }
+      });
 
-      console.log("Transacciones de reservaciones encontradas:", reservations.length);
-      console.log("Transacciones de paqueterías encontradas:", packages.length);
-      
       setReservationTransactions(reservations);
       setPackageTransactions(packages);
     }
