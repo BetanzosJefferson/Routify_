@@ -23,7 +23,12 @@ const CutoffHistoryPage: React.FC = () => {
   // Consultar historial de cortes
   const { data: cutoffs, isLoading: isLoadingCutoffs } = useQuery({
     queryKey: ['/api/transactions/cutoff-history'],
-    enabled: !!user
+    enabled: !!user,
+    select: (data) => {
+      // El endpoint ya filtra por usuario actual en el backend, pero podemos aplicar filtros adicionales aquí
+      console.log('Cortes recibidos:', data);
+      return data;
+    }
   });
 
   if (loading) {
@@ -99,35 +104,34 @@ const CutoffHistoryPage: React.FC = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {/* Este es un placeholder, cuando tengamos datos reales, lo actualizaremos */}
-                      {Array(3).fill(0).map((_, index) => (
-                        <TableRow key={index}>
+                      {cutoffs.map((corte) => (
+                        <TableRow key={corte.id}>
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               <CalendarIcon className="h-4 w-4 text-gray-500" />
-                              {format(new Date(Date.now() - index * 86400000), "PPP", { locale: es })}
+                              {format(new Date(corte.fecha_fin), "PPP", { locale: es })}
                             </div>
                             <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
                               <ClockIcon className="h-3 w-3" />
-                              {format(new Date(Date.now() - index * 86400000), "p", { locale: es })}
+                              {format(new Date(corte.fecha_fin), "p", { locale: es })}
                             </div>
                           </TableCell>
                           <TableCell>
-                            {format(new Date(Date.now() - (index + 1) * 86400000), "PPP", { locale: es })}
+                            {format(new Date(corte.fecha_inicio), "PPP", { locale: es })}
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="bg-gray-50 font-semibold">
-                              $1,{(850 - index * 125).toLocaleString('es-MX')}
+                              ${Number(corte.total_ingresos).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="bg-green-50 text-green-700 font-semibold">
-                              $1,{(200 - index * 75).toLocaleString('es-MX')}
+                              ${Number(corte.total_efectivo).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="bg-blue-50 text-blue-700 font-semibold">
-                              ${(650 - index * 50).toLocaleString('es-MX')}
+                              ${Number(corte.total_transferencias).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
@@ -154,44 +158,71 @@ const CutoffHistoryPage: React.FC = () => {
           </TabsContent>
           
           <TabsContent value="summary" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Recaudado (Mes)</CardTitle>
-                  <DollarSignIcon className="h-4 w-4 text-gray-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">$4,550</div>
-                  <p className="text-xs text-gray-500">
-                    +20.1% respecto al mes anterior
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Promedio por Corte</CardTitle>
-                  <DollarSignIcon className="h-4 w-4 text-gray-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">$758.33</div>
-                  <p className="text-xs text-gray-500">
-                    6 cortes este mes
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Mayor Corte</CardTitle>
-                  <CalendarIcon className="h-4 w-4 text-gray-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">$1,250</div>
-                  <p className="text-xs text-gray-500">
-                    {format(new Date(Date.now() - 2 * 86400000), "PP", { locale: es })}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+            {isLoadingCutoffs ? (
+              <div className="space-y-4">
+                <Skeleton className="h-32 w-full" />
+              </div>
+            ) : cutoffs && cutoffs.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Recaudado</CardTitle>
+                    <DollarSignIcon className="h-4 w-4 text-gray-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      ${cutoffs.reduce((sum, corte) => sum + Number(corte.total_ingresos), 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {cutoffs.length} cortes en total
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Promedio por Corte</CardTitle>
+                    <DollarSignIcon className="h-4 w-4 text-gray-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      ${(cutoffs.reduce((sum, corte) => sum + Number(corte.total_ingresos), 0) / cutoffs.length).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Calculado sobre {cutoffs.length} cortes
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Mayor Corte</CardTitle>
+                    <CalendarIcon className="h-4 w-4 text-gray-500" />
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      const mayorCorte = [...cutoffs].sort((a, b) => Number(b.total_ingresos) - Number(a.total_ingresos))[0];
+                      return (
+                        <>
+                          <div className="text-2xl font-bold">
+                            ${Number(mayorCorte.total_ingresos).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            {format(new Date(mayorCorte.fecha_fin), "PP", { locale: es })}
+                          </p>
+                        </>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <DollarSignIcon className="h-12 w-12 mx-auto text-gray-300" />
+                <h3 className="mt-2 text-lg font-medium">No hay datos de resumen disponibles</h3>
+                <p className="mt-1 text-gray-500">
+                  No se encontraron cortes de caja para generar el resumen financiero.
+                </p>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
