@@ -1005,20 +1005,29 @@ export function CashRegisterPage() {
           cutoffData.transactions.forEach(item => {
             // Determinar el tipo correcto del elemento
             // Verificar con múltiples propiedades si es una paquetería
-            const isPackage = item.originalPackageId || 
-                             item.packageDescription || 
-                             (item.cashItemId && item.cashItemId.startsWith('paquete-'));
+            const isPackage = !!item.originalPackageId || 
+                             !!item.packageDescription || 
+                             (item.cashItemId && typeof item.cashItemId === 'string' && item.cashItemId.startsWith('paquete-')) ||
+                             (typeof item.id === 'string' && item.id.toString().startsWith('paquete-'));
+            
+            // IMPORTANTE: El tipo debe ser 'package' para paqueterías
             const itemType = isPackage ? 'package' : 'reservation';
             const itemId = item.id;
             
             // Log adicional para asegurar la detección correcta
-            console.log(`Determinando tipo de elemento:`, {
+            console.log(`[IMPORTANTE] Determinando tipo de elemento:`, {
               id: itemId,
               originalPackageId: item.originalPackageId,
               packageDescription: item.packageDescription,
               cashItemId: item.cashItemId,
+              esPackage: isPackage,
               tipoDetectado: itemType
             });
+            
+            // CRÍTICO: Verificar que las paqueterías siempre se guarden como "package"
+            if (isPackage && itemType !== 'package') {
+              console.error('ERROR CRÍTICO: Paquetería detectada pero no marcada como "package"');
+            }
             
             // Log para depuración
             processingLogs.push(`Procesando ${itemType} con ID ${itemId}`);
