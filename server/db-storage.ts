@@ -4479,4 +4479,26 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
   }
+
+  async getPendingTransactionsByUserId(userId: number): Promise<schema.Transaccion[]> {
+    try {
+      // Consulta: transacciones donde createdBy = userId y cutoffId = NULL
+      let query = db.select()
+        .from(schema.transacciones)
+        .where(and(
+          eq(schema.transacciones.createdBy, userId),
+          isNull(schema.transacciones.cutoffId)
+        ));
+      
+      // Ordenar por fecha de creación descendente (más recientes primero)
+      query = query.orderBy(desc(schema.transacciones.createdAt));
+      
+      const transacciones = await query;
+      console.log(`[getPendingTransactionsByUserId] Se encontraron ${transacciones.length} transacciones pendientes para el usuario ${userId}`);
+      return transacciones;
+    } catch (error) {
+      console.error('[getPendingTransactionsByUserId] Error al obtener transacciones pendientes:', error);
+      return [];
+    }
+  }
 }
