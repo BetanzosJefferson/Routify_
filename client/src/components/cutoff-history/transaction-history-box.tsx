@@ -124,11 +124,25 @@ async function generateCutoffTicketPDF(
   companyName: string
 ) {
   try {
-    // Calcular altura del documento basado en la cantidad de transacciones
-    // Altura base + altura por transacción
+    // Calcular altura del documento basado en la cantidad de transacciones y sus detalles
     const transactionCount = cutoffGroup.transactions.length;
-    const docHeight = 80 + (transactionCount * 8); // Altura base (80mm) + 8mm por transacción
+    // Altura base (80mm) + altura variable por transacción con detalles adicionales
+    let extraHeight = 0;
     
+    // Calcular altura adicional según el tipo de transacciones
+    cutoffGroup.transactions.forEach(transaction => {
+      if (transaction.detalles.type.includes("package")) {
+        // Paquetes tienen más detalles: origen-destino, remitente, destinatario, descripción
+        extraHeight += 20; // 20mm adicionales por paquete
+      } else if (transaction.detalles.type.includes("reservation")) {
+        // Reservas tienen: origen-destino, pasajeros
+        extraHeight += 12; // 12mm adicionales por reserva
+      } else {
+        extraHeight += 8; // Altura mínima por transacción básica
+      }
+    });
+    
+    const docHeight = 80 + extraHeight; // Altura base + altura dinámica
     console.log(`Generando PDF con altura calculada: ${docHeight}mm para ${transactionCount} transacciones`);
     
     // Crear un documento PDF con las dimensiones de un ticket térmico
@@ -219,7 +233,7 @@ async function generateCutoffTicketPDF(
     doc.setFont("courier", "bold");
     doc.text("Detalle de Transacciones", 5, y);
     
-    // Listar transacciones
+    // Listar transacciones con detalles
     for (const transaction of cutoffGroup.transactions) {
       y += 5;
       doc.setFontSize(7);
@@ -234,6 +248,59 @@ async function generateCutoffTicketPDF(
       const monto = transaction.detalles.details.monto || 0;
       const metodoPago = transaction.detalles.details.metodoPago === "efectivo" ? "EFE" : "TRA";
       doc.text(`${formatCurrency(monto)} - ${metodoPago}`, 5, y);
+      
+      // Detalles específicos según el tipo
+      const details = transaction.detalles.details;
+      
+      if (transaction.detalles.type.includes("package")) {
+        // Para paquetes: origen-destino, remitente/destinatario, descripción
+        if (details.origen && details.destino) {
+          y += 3;
+          // Acortar nombres de lugares si son muy largos
+          const origenCorto = details.origen.length > 20 ? details.origen.substring(0, 20) + "..." : details.origen;
+          const destinoCorto = details.destino.length > 20 ? details.destino.substring(0, 20) + "..." : details.destino;
+          doc.text(`${origenCorto} -> ${destinoCorto}`, 5, y);
+        }
+        
+        if (details.remitente && details.destinatario) {
+          y += 3;
+          // Mostrar solo nombres si son muy largos
+          const remitenteCorto = details.remitente.length > 25 ? details.remitente.substring(0, 25) + "..." : details.remitente;
+          doc.text(`De: ${remitenteCorto}`, 5, y);
+          
+          y += 3;
+          const destinatarioCorto = details.destinatario.length > 25 ? details.destinatario.substring(0, 25) + "..." : details.destinatario;
+          doc.text(`Para: ${destinatarioCorto}`, 5, y);
+        }
+        
+        if (details.descripcion) {
+          y += 3;
+          const descripcionCorta = details.descripcion.length > 30 ? details.descripcion.substring(0, 30) + "..." : details.descripcion;
+          doc.text(`Desc: ${descripcionCorta}`, 5, y);
+        }
+        
+      } else if (transaction.detalles.type.includes("reservation")) {
+        // Para reservas: origen-destino, pasajeros
+        if (details.origen && details.destino) {
+          y += 3;
+          // Acortar nombres de lugares si son muy largos
+          const origenCorto = details.origen.length > 20 ? details.origen.substring(0, 20) + "..." : details.origen;
+          const destinoCorto = details.destino.length > 20 ? details.destino.substring(0, 20) + "..." : details.destino;
+          doc.text(`${origenCorto} -> ${destinoCorto}`, 5, y);
+        }
+        
+        if (details.pasajeros) {
+          y += 3;
+          // Mostrar lista de pasajeros, acortada si es muy larga
+          const pasajerosCorto = details.pasajeros.length > 30 ? details.pasajeros.substring(0, 30) + "..." : details.pasajeros;
+          doc.text(`Pasajeros: ${pasajerosCorto}`, 5, y);
+        }
+      }
+      
+      // Línea separadora entre transacciones
+      y += 2;
+      doc.setDrawColor(220, 220, 220);
+      doc.line(5, y, 53, y);
     }
     
     // Pie de página
