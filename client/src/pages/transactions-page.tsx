@@ -1,23 +1,18 @@
-import React, { useState } from "react";
-import { useLocation } from "wouter";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
-
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertCircle } from "lucide-react";
-
-import { Sidebar } from "../components/layout/sidebar";
-import { MobileNav } from "../components/layout/mobile-nav";
-import { Topbar } from "../components/layout/topbar";
-import { useAuth } from "../hooks/use-auth";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { formatCurrency } from "@/lib/utils";
+import { hasAccessToSection } from "@/lib/role-based-permissions";
+import { useAuth } from "@/lib/auth";
 
-type TabType = "create-route" | "publish-trip" | "trips";
+type TabType = "reservations" | "packages";
 
 interface Transaction {
   id: number;
@@ -31,17 +26,43 @@ interface Transaction {
 }
 
 export default function TransactionsPage() {
-  const [location] = useLocation();
-  const [activeTab, setActiveTab] = useState<TabType>("create-route");
+  const [activeTab, setActiveTab] = useState<TabType>("reservations");
   const { user } = useAuth();
 
-  // Consulta para obtener las transacciones pendientes del usuario actual
+  // Verificar que el usuario tiene acceso a esta página
+  useEffect(() => {
+    if (user && !hasAccessToSection(user.role, "transactions")) {
+      window.location.href = "/dashboard";
+    }
+  }, [user]);
+
+  // Consultar transacciones pendientes del usuario actual
   const { data: transactions, isLoading, error } = useQuery({
     queryKey: ["/api/transactions/pending"],
-    enabled: !!user
+    enabled: !!user,
   });
 
-  // Separar las transacciones por tipo
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-lg">Cargando transacciones...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-lg text-red-500">Error al cargar las transacciones</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Filtrar transacciones por tipo
   const reservationTransactions = transactions?.filter(
     (transaction: Transaction) => transaction.type === "reservation"
   ) || [];
@@ -50,131 +71,16 @@ export default function TransactionsPage() {
     (transaction: Transaction) => transaction.type === "package"
   ) || [];
 
-  // Función para verificar si el usuario tiene acceso a esta sección
-  const canAccess = (sectionId: string): boolean => {
-    if (!user) return false;
-    return sectionId === "transactions"; // Simplificado para este componente
-  };
-
-  // Si el usuario no tiene acceso, mostrar mensaje de acceso denegado
-  if (!canAccess("transactions")) {
-    return (
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-        
-        <div className="flex flex-col flex-1 w-0 overflow-hidden">
-          <MobileNav activeTab={activeTab} onTabChange={setActiveTab} />
-          <Topbar />
-          
-          <div className="flex-1 overflow-auto focus:outline-none">
-            <main className="relative z-0 flex-1 overflow-y-auto py-6 px-4 sm:px-6 lg:px-8">
-              <Alert variant="destructive" className="mb-6">
-                <AlertCircle className="h-4 w-4 mr-2" />
-                <AlertTitle>Acceso Denegado</AlertTitle>
-                <AlertDescription>
-                  No tienes permisos para acceder a esta sección. Contacta al administrador si crees que deberías tener acceso.
-                </AlertDescription>
-              </Alert>
-            </main>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Función para formatear la fecha
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return format(date, "dd/MM/yyyy HH:mm", { locale: es });
-    } catch (error) {
-      return dateString;
-    }
-  };
-
-  // Función para formatear el monto en pesos mexicanos
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(amount);
-  };
-
-  // Contenido de carga
-  if (isLoading) {
-    return (
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-        
-        <div className="flex flex-col flex-1 w-0 overflow-hidden">
-          <MobileNav activeTab={activeTab} onTabChange={setActiveTab} />
-          <Topbar />
-          
-          <div className="flex-1 overflow-auto focus:outline-none">
-            <main className="relative z-0 flex-1 overflow-y-auto py-6 px-4 sm:px-6 lg:px-8">
-              <h1 className="text-2xl font-bold mb-6">Caja</h1>
-              
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle>Cargando transacciones...</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                </CardContent>
-              </Card>
-            </main>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Si hay error en la consulta
-  if (error) {
-    return (
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-        
-        <div className="flex flex-col flex-1 w-0 overflow-hidden">
-          <MobileNav activeTab={activeTab} onTabChange={setActiveTab} />
-          <Topbar />
-          
-          <div className="flex-1 overflow-auto focus:outline-none">
-            <main className="relative z-0 flex-1 overflow-y-auto py-6 px-4 sm:px-6 lg:px-8">
-              <h1 className="text-2xl font-bold mb-6">Caja</h1>
-              
-              <Alert variant="destructive" className="mb-6">
-                <AlertCircle className="h-4 w-4 mr-2" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>
-                  No se pudieron cargar las transacciones. Por favor, intenta de nuevo más tarde.
-                </AlertDescription>
-              </Alert>
-            </main>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      <div className="flex flex-col flex-1 w-0 overflow-hidden">
-        <MobileNav activeTab={activeTab} onTabChange={setActiveTab} />
-        <Topbar />
-        
-        <div className="flex-1 overflow-auto focus:outline-none">
-          <main className="relative z-0 flex-1 overflow-y-auto py-6 px-4 sm:px-6 lg:px-8">
-            <h1 className="text-2xl font-bold mb-6">Caja</h1>
-            
-            <Tabs defaultValue="reservations" className="w-full">
-              <TabsList className="mb-4">
+    <DashboardLayout>
+      <div className="container mx-auto py-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-2xl font-bold">Transacciones Pendientes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="reservations" value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)}>
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="reservations">
                   Reservaciones ({reservationTransactions.length})
                 </TabsTrigger>
@@ -182,47 +88,53 @@ export default function TransactionsPage() {
                   Paqueterías ({packageTransactions.length})
                 </TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="reservations">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Transacciones de Reservaciones</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                <Card className="border-0 shadow-none">
+                  <CardContent className="p-0 pt-6">
                     {reservationTransactions.length === 0 ? (
-                      <p className="text-muted-foreground">No hay transacciones pendientes de reservaciones.</p>
+                      <div className="flex items-center justify-center py-6">
+                        <p className="text-muted-foreground">No hay transacciones pendientes de reservaciones</p>
+                      </div>
                     ) : (
-                      <div className="overflow-x-auto">
+                      <div className="rounded-md border">
                         <Table>
                           <TableHeader>
                             <TableRow>
                               <TableHead>ID</TableHead>
                               <TableHead>Fecha</TableHead>
+                              <TableHead>Pasajero</TableHead>
+                              <TableHead>Ruta</TableHead>
                               <TableHead>Monto</TableHead>
                               <TableHead>Método de Pago</TableHead>
-                              <TableHead>Detalles</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {reservationTransactions.map((transaction: Transaction) => (
                               <TableRow key={transaction.id}>
                                 <TableCell>{transaction.id}</TableCell>
-                                <TableCell>{formatDate(transaction.createdAt)}</TableCell>
+                                <TableCell>
+                                  {format(new Date(transaction.createdAt), "dd/MM/yyyy HH:mm", { locale: es })}
+                                </TableCell>
+                                <TableCell>
+                                  {transaction.details.passengerName || "N/A"}
+                                </TableCell>
+                                <TableCell>
+                                  {transaction.details.route ? (
+                                    <div>
+                                      <div>{transaction.details.route.origin}</div>
+                                      <div className="text-xs text-muted-foreground">a</div>
+                                      <div>{transaction.details.route.destination}</div>
+                                    </div>
+                                  ) : (
+                                    "N/A"
+                                  )}
+                                </TableCell>
                                 <TableCell>{formatCurrency(transaction.amount)}</TableCell>
                                 <TableCell>
                                   <Badge variant="outline">
                                     {transaction.paymentMethod || "Efectivo"}
                                   </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="max-w-xs truncate">
-                                    {transaction.details?.reservationId && (
-                                      <span>Reservación #{transaction.details.reservationId}</span>
-                                    )}
-                                    {transaction.details?.passengerName && (
-                                      <span> - {transaction.details.passengerName}</span>
-                                    )}
-                                  </div>
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -233,47 +145,53 @@ export default function TransactionsPage() {
                   </CardContent>
                 </Card>
               </TabsContent>
-              
+
               <TabsContent value="packages">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Transacciones de Paqueterías</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                <Card className="border-0 shadow-none">
+                  <CardContent className="p-0 pt-6">
                     {packageTransactions.length === 0 ? (
-                      <p className="text-muted-foreground">No hay transacciones pendientes de paqueterías.</p>
+                      <div className="flex items-center justify-center py-6">
+                        <p className="text-muted-foreground">No hay transacciones pendientes de paqueterías</p>
+                      </div>
                     ) : (
-                      <div className="overflow-x-auto">
+                      <div className="rounded-md border">
                         <Table>
                           <TableHeader>
                             <TableRow>
                               <TableHead>ID</TableHead>
                               <TableHead>Fecha</TableHead>
+                              <TableHead>Paquete</TableHead>
+                              <TableHead>Origen - Destino</TableHead>
                               <TableHead>Monto</TableHead>
                               <TableHead>Método de Pago</TableHead>
-                              <TableHead>Detalles</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {packageTransactions.map((transaction: Transaction) => (
                               <TableRow key={transaction.id}>
                                 <TableCell>{transaction.id}</TableCell>
-                                <TableCell>{formatDate(transaction.createdAt)}</TableCell>
+                                <TableCell>
+                                  {format(new Date(transaction.createdAt), "dd/MM/yyyy HH:mm", { locale: es })}
+                                </TableCell>
+                                <TableCell>
+                                  {transaction.details.packageDescription || "Sin descripción"}
+                                </TableCell>
+                                <TableCell>
+                                  {transaction.details.segmentOrigin && transaction.details.segmentDestination ? (
+                                    <div>
+                                      <div>{transaction.details.segmentOrigin}</div>
+                                      <div className="text-xs text-muted-foreground">a</div>
+                                      <div>{transaction.details.segmentDestination}</div>
+                                    </div>
+                                  ) : (
+                                    "N/A"
+                                  )}
+                                </TableCell>
                                 <TableCell>{formatCurrency(transaction.amount)}</TableCell>
                                 <TableCell>
                                   <Badge variant="outline">
                                     {transaction.paymentMethod || "Efectivo"}
                                   </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="max-w-xs truncate">
-                                    {transaction.details?.packageId && (
-                                      <span>Paquete #{transaction.details.packageId}</span>
-                                    )}
-                                    {transaction.details?.origin && transaction.details?.destination && (
-                                      <span> - {transaction.details.origin} a {transaction.details.destination}</span>
-                                    )}
-                                  </div>
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -285,9 +203,9 @@ export default function TransactionsPage() {
                 </Card>
               </TabsContent>
             </Tabs>
-          </main>
-        </div>
+          </CardContent>
+        </Card>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

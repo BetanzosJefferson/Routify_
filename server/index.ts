@@ -1,7 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-// Referencia a rutas de cortes de caja eliminada
+import { registerTransactionRoutes } from "./routes-transactions";
+import { storage } from "./storage";
 
 const app = express();
 // Aumentar el límite para permitir imágenes más grandes (50MB)
@@ -42,8 +43,6 @@ app.use((req, res, next) => {
   const server = await registerRoutes(app);
   
   // Registrar rutas de transacciones
-  import { registerTransactionRoutes } from "./routes-transactions";
-  import { storage } from "./storage";
   registerTransactionRoutes(app, storage);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
