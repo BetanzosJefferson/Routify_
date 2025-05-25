@@ -20,7 +20,8 @@ import {
   FileTextIcon,
   TagIcon,
   Users,
-  ArrowRightLeft
+  ArrowRightLeft,
+  ReceiptIcon
 } from "lucide-react";
 
 interface SidebarProps {
@@ -171,7 +172,15 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   Bitácora
                 </NavItem>
               )}
-              {/* Elemento de caja registradora eliminado */}
+              {canAccess("reservations") && (
+                <NavItem 
+                  icon={<ReceiptIcon className="h-5 w-5" />} 
+                  active={location === "/cash-box"}
+                  onClick={() => setLocation("/cash-box")}
+                >
+                  Caja
+                </NavItem>
+              )}
               {canAccess("boarding-list") && (
                 <NavItem 
                   icon={<UsersIcon className="h-5 w-5" />} 
