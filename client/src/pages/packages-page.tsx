@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { hasRoleAccess } from "@/lib/role-based-permissions";
 import { UserRole } from "@shared/schema";
-import { DefaultLayout } from "@/components/layout/default-layout";
+import DefaultLayout from "@/components/layout/default-layout";
 import { TabType } from "@/hooks/use-active-tab";
 
 // UI Components
