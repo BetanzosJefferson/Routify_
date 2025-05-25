@@ -2677,21 +2677,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
               destino = tripWithRouteInfo.segmentDestination;
             }
             
+            // La estructura correcta: el objeto completo se asigna a "detalles" en el esquema
+            // que luego se mapea a "details" en la BD
             const detallesTransaccion = {
               type: "reservation",
-              details: {
-                id: reservation.id,
-                pasajeros: passengers.map(p => `${p.firstName} ${p.lastName}`).join(", "),
-                contacto: {
-                  email: reservation.email,
-                  telefono: reservation.phone
-                },
-                origen: origen,
-                destino: destino,
-                monto: reservationData.advanceAmount,
-                metodoPago: reservationData.advancePaymentMethod || "efectivo",
-                notas: reservation.notes
-              }
+              id: reservation.id,
+              pasajeros: passengers.map(p => `${p.firstName} ${p.lastName}`).join(", "),
+              contacto: {
+                email: reservation.email,
+                telefono: reservation.phone
+              },
+              origen: origen,
+              destino: destino,
+              monto: reservationData.advanceAmount,
+              metodoPago: reservationData.advancePaymentMethod || "efectivo",
+              notas: reservation.notes
             };
             
             // Crear la transacción en la base de datos
