@@ -5209,20 +5209,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newPackage = await storage.createPackage(packageData);
       
       // Si el paquete está marcado como pagado, crear una transacción en la base de datos
-      if (packageData.isPaid === true && tripWithRouteInfo) {
+      if (packageData.isPaid === true && packageData.tripId) {
         try {
-          // Determinar origen y destino basado en si es un sub-viaje o no
+          // Determinar origen y destino correctos basados en si es un sub-viaje
           let origen = "";
           let destino = "";
           
-          if (tripWithRouteInfo.isSubTrip && tripWithRouteInfo.segmentOrigin && tripWithRouteInfo.segmentDestination) {
-            // Si es un sub-viaje, usar los segmentos como origen y destino
-            origen = tripWithRouteInfo.segmentOrigin;
-            destino = tripWithRouteInfo.segmentDestination;
-          } else if (tripWithRouteInfo.route) {
-            // Si no es un sub-viaje, usar la ruta completa
-            origen = tripWithRouteInfo.route.origin;
-            destino = tripWithRouteInfo.route.destination;
+          // Primero consultamos directamente en la base de datos los segmentos del viaje
+          try {
+            const tripDetails = await db
+              .select({
+                isSubTrip: schema.trips.isSubTrip,
+                segmentOrigin: schema.trips.segmentOrigin,
+                segmentDestination: schema.trips.segmentDestination
+              })
+              .from(schema.trips)
+              .where(eq(schema.trips.id, packageData.tripId))
+              .limit(1);
+            
+            if (tripDetails && tripDetails.length > 0) {
+              const tripData = tripDetails[0];
+              
+              if (tripData.isSubTrip && tripData.segmentOrigin && tripData.segmentDestination) {
+                // Si es un sub-viaje y tiene segmentos específicos en la base de datos, usar esos
+                origen = tripData.segmentOrigin;
+                destino = tripData.segmentDestination;
+                console.log(`[POST /packages] Usando origen y destino directamente de la BD (sub-viaje):`, origen, destino);
+              } else if (tripWithRouteInfo && tripWithRouteInfo.route) {
+                // Si no hay segmentos específicos, usar la ruta completa
+                origen = tripWithRouteInfo.route.origin;
+                destino = tripWithRouteInfo.route.destination;
+                console.log(`[POST /packages] Usando origen y destino de ruta completa:`, origen, destino);
+              }
+            } else if (tripWithRouteInfo) {
+              // Si no se encuentra el viaje en la consulta directa, usar los datos disponibles
+              if (tripWithRouteInfo.isSubTrip && tripWithRouteInfo.segmentOrigin && tripWithRouteInfo.segmentDestination) {
+                origen = tripWithRouteInfo.segmentOrigin;
+                destino = tripWithRouteInfo.segmentDestination;
+              } else if (tripWithRouteInfo.route) {
+                origen = tripWithRouteInfo.route.origin;
+                destino = tripWithRouteInfo.route.destination;
+              }
+              console.log(`[POST /packages] Viaje no encontrado en consulta directa, usando datos disponibles:`, origen, destino);
+            }
+          } catch (dbError) {
+            console.error(`[POST /packages] Error al consultar detalles del viaje:`, dbError);
+            
+            // En caso de error, usar los datos del tripWithRouteInfo como fallback
+            if (tripWithRouteInfo) {
+              if (tripWithRouteInfo.isSubTrip && tripWithRouteInfo.segmentOrigin && tripWithRouteInfo.segmentDestination) {
+                origen = tripWithRouteInfo.segmentOrigin;
+                destino = tripWithRouteInfo.segmentDestination;
+              } else if (tripWithRouteInfo.route) {
+                origen = tripWithRouteInfo.route.origin;
+                destino = tripWithRouteInfo.route.destination;
+              }
+              console.log(`[POST /packages] Usando origen y destino fallback:`, origen, destino);
+            }
           }
           
           // Crear los detalles de la transacción en formato JSON
