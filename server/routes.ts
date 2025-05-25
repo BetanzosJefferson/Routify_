@@ -3446,6 +3446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as any;
       const userId = user?.id || null;
       console.log(`[POST /public/packages/${packageId}/mark-paid] Usuario que marca como pagado:`, userId);
+      console.log(`[POST /public/packages/${packageId}/mark-paid] Datos de usuario:`, JSON.stringify(user || {}, null, 2));
       
       // Actualizar el estado de pago
       console.log(`[POST /public/packages/${packageId}/mark-paid] Estado actual de pago:`, packageData.isPaid);
@@ -3458,18 +3459,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[POST /public/packages/${packageId}/mark-paid] Nuevo estado de pago:`, updatedPackage?.isPaid);
       
       // Crear una transacción para el pago del paquete
+      console.log(`[POST /public/packages/${packageId}/mark-paid] INICIANDO creación de transacción para paquete ${packageId}`);
       try {
         // Obtener información del viaje para los detalles de la transacción
+        console.log(`[POST /public/packages/${packageId}/mark-paid] Obteniendo información del viaje ${packageData.tripId}`);
         const trip = await storage.getTrip(packageData.tripId);
         if (!trip) {
           console.log(`[POST /public/packages/${packageId}/mark-paid] No se encontró el viaje ${packageData.tripId}`);
           // Continuamos con la actualización aunque no se pueda crear la transacción
         } else {
+          console.log(`[POST /public/packages/${packageId}/mark-paid] Viaje encontrado, obteniendo información de ruta`);
           const tripWithRouteInfo = await storage.getTripWithRouteInfo(trip.id);
+          console.log(`[POST /public/packages/${packageId}/mark-paid] Información de ruta obtenida`);
           
           // Determinar origen y destino
           const origen = packageData.segmentOrigin || tripWithRouteInfo.segmentOrigin || tripWithRouteInfo.route.origin;
           const destino = packageData.segmentDestination || tripWithRouteInfo.segmentDestination || tripWithRouteInfo.route.destination;
+          console.log(`[POST /public/packages/${packageId}/mark-paid] Origen: ${origen}, Destino: ${destino}`);
           
           // Crear detalles de la transacción
           const detallesTransaccion = {
@@ -3504,11 +3510,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             company_id: user?.companyId || user?.company || packageData.companyId || trip.companyId || null // Guardar el ID de la compañía
           };
           
+          console.log(`[POST /public/packages/${packageId}/mark-paid] Datos de transacción preparados:`, JSON.stringify(transaccionData, null, 2));
+          console.log(`[POST /public/packages/${packageId}/mark-paid] Llamando a storage.createTransaccion()`);
+          
           const transaccion = await storage.createTransaccion(transaccionData);
           console.log(`[POST /public/packages/${packageId}/mark-paid] Transacción creada con ID: ${transaccion.id}`);
         }
       } catch (transactionError) {
         console.error(`[POST /public/packages/${packageId}/mark-paid] Error al crear transacción:`, transactionError);
+        console.error(`[POST /public/packages/${packageId}/mark-paid] DEPURACIÓN - Stack de error:`, transactionError instanceof Error ? transactionError.stack : 'No stack trace disponible');
         // Continuamos con la respuesta aunque haya fallado la creación de la transacción
       }
       
@@ -3516,6 +3526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedPackage);
     } catch (error) {
       console.error(`[POST /public/packages/:id/mark-paid] Error: ${error}`);
+      console.error(`[POST /public/packages/:id/mark-paid] DEPURACIÓN - Stack de error:`, error instanceof Error ? error.stack : 'No stack trace disponible');
       res.status(500).json({ error: "Error al actualizar el estado de pago del paquete" });
     }
   });
