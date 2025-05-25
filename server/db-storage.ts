@@ -26,9 +26,7 @@ import {
   TripBudget,
   InsertTripBudget,
   TripExpense,
-  InsertTripExpense,
-  Transaction,
-  InsertTransaction
+  InsertTripExpense
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db } from "./db";
@@ -1628,34 +1626,6 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`[createReservation] Reservación ${newReservation.id} creada con ${passengerCount} pasajeros`);
     
-    // Crear transacción si hay anticipo
-    if (reservationData.advanceAmount && reservationData.advanceAmount > 0 && reservationData.createdBy) {
-      try {
-        // Preparar los detalles de la transacción
-        const detalles = {
-          tipo: "anticipo_reservacion",
-          reservacionId: newReservation.id,
-          monto: reservationData.advanceAmount,
-          metodoPago: reservationData.advancePaymentMethod || 'efectivo',
-          fecha: new Date(),
-          totalReservacion: reservationData.totalAmount,
-          descripcion: "Anticipo de reservación"
-        };
-        
-        // Crear la transacción
-        await this.createTransaction({
-          details: detalles,
-          usuarioId: reservationData.createdBy,
-          createdAt: new Date()
-        });
-        
-        console.log(`[createReservation] Transacción creada para el anticipo de la reservación #${newReservation.id}`);
-      } catch (transactionError) {
-        console.error(`[createReservation] Error al crear transacción para anticipo:`, transactionError);
-        // No lanzamos el error para no interrumpir el flujo principal
-      }
-    }
-    
     // Actualizar la disponibilidad de asientos en el viaje
     if (passengerCount > 0) {
       try {
@@ -1771,38 +1741,6 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(schema.reservations.id, id))
         .returning();
-      
-      // Calcular el monto restante (totalAmount - advanceAmount)
-      const restanteAmount = (reservation.totalAmount || 0) - (reservation.advanceAmount || 0);
-      
-      // Crear una transacción para el pago de la reservación
-      if (restanteAmount > 0) {
-        try {
-          // Preparar los detalles de la transacción
-          const detalles = {
-            tipo: "pago_reservacion",
-            reservacionId: reservation.id,
-            monto: restanteAmount,
-            metodoPago: reservation.paymentMethod,
-            fecha: now,
-            totalReservacion: reservation.totalAmount,
-            montoAnticipo: reservation.advanceAmount || 0,
-            descripcion: "Pago restante de reservación"
-          };
-          
-          // Crear la transacción
-          await this.createTransaction({
-            details: detalles,
-            usuarioId: userId,
-            createdAt: now
-          });
-          
-          console.log(`[markAsPaid] Transacción creada para el pago restante de la reservación #${id}`);
-        } catch (transactionError) {
-          console.error(`[markAsPaid] Error al crear transacción para reservación:`, transactionError);
-          // No lanzamos el error para no interrumpir el flujo principal
-        }
-      }
         
       return updatedReservation;
     } catch (error) {
@@ -3532,45 +3470,13 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log(`[createPackage] Creando nueva paquetería:`, packageData);
       
-      const now = new Date();
-      
       // Insertar la paquetería en la base de datos
       const [newPackage] = await db
         .insert(schema.packages)
-        .values({
-          ...packageData,
-          createdAt: now
-        })
+        .values(packageData)
         .returning();
         
       console.log(`[createPackage] Paquetería creada con ID: ${newPackage.id}`);
-      
-      // Si el paquete ya se marca como pagado, creamos una transacción
-      if (packageData.paymentStatus === 'pagado' && packageData.createdBy) {
-        try {
-          // Preparar los detalles de la transacción
-          const detalles = {
-            tipo: "registro_paqueteria",
-            paqueteriaId: newPackage.id,
-            monto: packageData.price,
-            metodoPago: packageData.paymentMethod || 'efectivo',
-            fecha: now,
-            descripcion: "Registro de paquetería como pagada"
-          };
-          
-          // Crear la transacción
-          await this.createTransaction({
-            details: detalles,
-            usuarioId: packageData.createdBy,
-            createdAt: now
-          });
-          
-          console.log(`[createPackage] Transacción creada para la paquetería #${newPackage.id}`);
-        } catch (transactionError) {
-          console.error(`[createPackage] Error al crear transacción para paquetería:`, transactionError);
-          // No lanzamos el error para no interrumpir el flujo principal
-        }
-      }
       
       // Si el paquete ocupa asientos, actualizar la disponibilidad del viaje
       if (newPackage.usesSeats && newPackage.seatsQuantity > 0 && newPackage.tripId) {
@@ -3624,35 +3530,6 @@ export class DatabaseStorage implements IStorage {
       }
       
       console.log(`[updatePackage] Paquetería actualizada: ${updatedPackage.id}`);
-      
-      // Verificar si el paquete fue marcado como pagado
-      if (packageData.paymentStatus === 'pagado' && 
-          originalPackage.paymentStatus !== 'pagado' && 
-          packageData.paidBy) {
-        try {
-          // Preparar los detalles de la transacción
-          const detalles = {
-            tipo: "pago_paqueteria",
-            paqueteriaId: updatedPackage.id,
-            monto: updatedPackage.price,
-            metodoPago: packageData.paymentMethod || updatedPackage.paymentMethod || 'efectivo',
-            fecha: new Date(),
-            descripcion: "Pago de paquetería"
-          };
-          
-          // Crear la transacción
-          await this.createTransaction({
-            details: detalles,
-            usuarioId: packageData.paidBy,
-            createdAt: new Date()
-          });
-          
-          console.log(`[updatePackage] Transacción creada para el pago de paquetería #${updatedPackage.id}`);
-        } catch (transactionError) {
-          console.error(`[updatePackage] Error al crear transacción para paquetería:`, transactionError);
-          // No lanzamos el error para no interrumpir el flujo principal
-        }
-      }
       
       // Verificar si hubo cambios en el uso de asientos
       const originalSeatsUsed = originalPackage.usesSeats ? (originalPackage.seatsQuantity || 0) : 0;
@@ -3731,55 +3608,6 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error(`[deletePackage] Error al eliminar paquetería ID ${id}:`, error);
       return false;
-    }
-  }
-  
-  // Transaction methods
-  async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
-    try {
-      console.log(`[createTransaction] Creando nueva transacción para el usuario ${transaction.usuarioId}`);
-      
-      const [newTransaction] = await db
-        .insert(schema.transactions)
-        .values({
-          ...transaction,
-          createdAt: transaction.createdAt || new Date()
-        })
-        .returning();
-      
-      console.log(`[createTransaction] Transacción creada con ID ${newTransaction.id}`);
-      return newTransaction;
-    } catch (error) {
-      console.error(`[createTransaction] Error al crear transacción:`, error);
-      throw new Error(`Error al crear transacción: ${error}`);
-    }
-  }
-  
-  async getTransactions(filters?: { usuarioId?: number, idCorte?: number }): Promise<Transaction[]> {
-    try {
-      console.log(`[getTransactions] Buscando transacciones con filtros:`, filters);
-      
-      // Construir la consulta base
-      let query = db.select().from(schema.transactions);
-      
-      // Aplicar filtros si existen
-      if (filters) {
-        if (filters.usuarioId) {
-          query = query.where(eq(schema.transactions.usuarioId, filters.usuarioId));
-        }
-        if (filters.idCorte) {
-          query = query.where(eq(schema.transactions.idCorte, filters.idCorte));
-        }
-      }
-      
-      // Ejecutar la consulta ordenando por fecha de creación descendente
-      const transactions = await query.orderBy(desc(schema.transactions.createdAt));
-      console.log(`[getTransactions] Encontradas ${transactions.length} transacciones`);
-      
-      return transactions;
-    } catch (error) {
-      console.error(`[getTransactions] Error al obtener transacciones:`, error);
-      return [];
     }
   }
 
