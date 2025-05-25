@@ -4455,69 +4455,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getAllTransactions(companyId: string | null): Promise<schema.Transaccion[]> {
-    try {
-      console.log(`[getAllTransactions] Obteniendo transacciones ${companyId ? `para compañía ${companyId}` : 'para todas las compañías'}`);
-      
-      // Verificar si la tabla de transacciones existe
-      try {
-        const tableCheck = await db.execute(sql`
-          SELECT EXISTS (
-            SELECT FROM information_schema.tables 
-            WHERE table_name = 'transactions'
-          );
-        `);
-        console.log('[getAllTransactions] Verificación de tabla transactions:', tableCheck.rows[0]);
-      } catch (e) {
-        console.error('[getAllTransactions] Error al verificar tabla:', e);
-      }
-      
-      // Realizar la consulta directamente con SQL para evitar problemas de mapeo
-      console.log('[getAllTransactions] Ejecutando consulta SQL directa');
-      try {
-        const result = await db.execute(sql`
-          SELECT * FROM transactions
-          ORDER BY created_at DESC
-        `);
-        
-        // Log para debug
-        console.log('[getAllTransactions] Resultado de la consulta:', result.rows.length, 'filas');
-        if (result.rows.length > 0) {
-          console.log('[getAllTransactions] Primera fila ejemplo:', JSON.stringify(result.rows[0]));
-        }
-        
-        // Mapear los resultados al formato esperado
-        const transactions = result.rows.map(row => {
-          try {
-            const transaccion = {
-              id: row.id,
-              detalles: row.details,
-              usuario_id: row.user_id,
-              id_corte: row.cutoff_id,
-              createdAt: row.created_at,
-              updatedAt: row.updated_at
-            };
-            console.log(`[getAllTransactions] Transacción mapeada ID ${row.id}`);
-            return transaccion;
-          } catch (mapError) {
-            console.error(`[getAllTransactions] Error al mapear fila:`, mapError, row);
-            return null;
-          }
-        }).filter(t => t !== null);
-        
-        console.log(`[getAllTransactions] Se encontraron ${transactions.length} transacciones`);
-        return transactions;
-      } catch (queryError) {
-        console.error('[getAllTransactions] Error en consulta SQL:', queryError);
-        throw queryError;
-      }
-    } catch (error) {
-      console.error('[getAllTransactions] Error al obtener transacciones:', error);
-      console.error('[getAllTransactions] Detalle del error:', error instanceof Error ? error.message : String(error));
-      return [];
-    }
-  }
-  
   async getTransacciones(filters?: { usuario_id?: number, id_corte?: number }): Promise<schema.Transaccion[]> {
     try {
       let query = db.select().from(schema.transacciones);
@@ -4539,42 +4476,6 @@ export class DatabaseStorage implements IStorage {
       return transacciones;
     } catch (error) {
       console.error('[getTransacciones] Error al obtener transacciones:', error);
-      return [];
-    }
-  }
-  
-  // Implementación de getAllTransactions para el sistema de Caja
-  async getAllTransactions(companyId: string | null): Promise<schema.Transaccion[]> {
-    try {
-      console.log(`[getAllTransactions] Buscando transacciones para compañía: ${companyId || 'todas'}`);
-      
-      // Crear una consulta SQL directa para obtener los datos de transacciones
-      const result = await db.execute(
-        'SELECT id, details, user_id, cutoff_id, created_at as "createdAt", updated_at as "updatedAt" FROM transactions ORDER BY created_at DESC LIMIT 100'
-      );
-      
-      console.log(`[getAllTransactions] Se encontraron ${result.length} transacciones en la base de datos`);
-      
-      if (result.length > 0) {
-        console.log(`[getAllTransactions] Muestra de la primera transacción:`, JSON.stringify(result[0]).substring(0, 200));
-      }
-      
-      // Mapear los resultados al formato que espera la aplicación
-      const transactions = result.map(row => {
-        return {
-          id: row.id,
-          detalles: row.details, // Aunque en la DB se llama 'details', nuestro modelo espera 'detalles'
-          usuario_id: row.user_id,
-          id_corte: row.cutoff_id,
-          createdAt: row.createdAt,
-          updatedAt: row.updatedAt
-        };
-      });
-      
-      return transactions;
-    } catch (error) {
-      console.error('[getAllTransactions] Error al obtener transacciones:', error);
-      console.error('[getAllTransactions] Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
       return [];
     }
   }
