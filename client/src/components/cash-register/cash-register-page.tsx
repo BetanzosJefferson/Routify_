@@ -771,14 +771,17 @@ export function CashRegisterPage() {
               calculatedAmount: packageAmount
             });
             
+            // Crear un objeto para paquetería que incluya tanto el sender como recipient
+            // y NO incluya passengerName para evitar confusiones
             return {
               id: p.id,
               type: 'package',
               tripName: p.trip?.route?.name || "Sin ruta",
               origin,
               destination,
-              sender: `${p.senderName || ''} ${p.senderLastName || ''}`,
-              recipient: `${p.recipientName || ''} ${p.recipientLastName || ''}`,
+              sender: `${p.senderName || ''} ${p.senderLastName || ''}`.trim(),
+              recipient: `${p.recipientName || ''} ${p.recipientLastName || ''}`.trim(),
+              // Importante: NO incluir passengerName para paqueterías
               amount: packageAmount,
               paymentMethod: p.paymentMethod || 'efectivo'
             };
