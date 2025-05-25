@@ -53,6 +53,7 @@ const packageFormSchema = z.object({
     .default(0),
   isPaid: z.boolean().default(false),
   paymentMethod: z.string().optional(),
+  defaultPaymentMethod: z.string().default("efectivo"),
   deliveryStatus: z.string().default("pendiente"),
 });
 
@@ -87,6 +88,7 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
     seatsQuantity: 0,
     isPaid: false,
     paymentMethod: "efectivo",
+    defaultPaymentMethod: "efectivo",
     deliveryStatus: "pendiente",
   };
   
@@ -174,6 +176,7 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
           seatsQuantity: packageData.seatsQuantity || 0,
           isPaid: packageData.isPaid,
           paymentMethod: packageData.paymentMethod || "efectivo",
+          defaultPaymentMethod: packageData.paymentMethod || "efectivo",
           deliveryStatus: packageData.deliveryStatus || "pendiente",
         });
         
@@ -212,6 +215,19 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
   // Obtener valores para condicionar campos
   const isPaid = form.watch("isPaid");
   const usesSeats = form.watch("usesSeats");
+  const defaultPaymentMethod = form.watch("defaultPaymentMethod");
+  
+  // Escuchar cambios en el estado de pago para actualizar el método de pago
+  useEffect(() => {
+    if (isPaid) {
+      // Si se marca como pagado, asegurarnos que se mantiene el método seleccionado en el campo específico
+      console.log("Paquete marcado como pagado, método de pago por defecto deshabilitado");
+    } else {
+      // Si se desmarca como pagado, actualizar el método de pago principal desde el predeterminado
+      form.setValue("paymentMethod", defaultPaymentMethod || "efectivo");
+      console.log(`Paquete no marcado como pagado, usando método por defecto: ${defaultPaymentMethod}`);
+    }
+  }, [isPaid, defaultPaymentMethod, form]);
   
   // Mutación para guardar el paquete
   const saveMutation = useMutation({
@@ -274,8 +290,17 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
       }
     }
     
+    // Si no está marcado como pagado, usar el método de pago predeterminado
+    if (!data.isPaid) {
+      data.paymentMethod = data.defaultPaymentMethod;
+      console.log(`Usando método de pago predeterminado: ${data.defaultPaymentMethod}`);
+    }
+    
+    // Eliminar el campo defaultPaymentMethod antes de enviar, ya que no existe en el esquema del backend
+    const { defaultPaymentMethod, ...packageData } = data;
+    
     setIsSubmitting(true);
-    saveMutation.mutate(data);
+    saveMutation.mutate(packageData as PackageFormValues);
   };
   
   // Si está cargando los datos del paquete, mostrar un indicador
@@ -441,6 +466,43 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
                         min="0"
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="defaultPaymentMethod"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Método de Pago</FormLabel>
+                    <Select 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Si no está marcado como pagado, actualizamos también el método de pago principal
+                        if (!isPaid) {
+                          form.setValue("paymentMethod", value);
+                        }
+                      }} 
+                      defaultValue={field.value || "efectivo"}
+                      disabled={isPaid}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccione un método de pago" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="efectivo">Efectivo</SelectItem>
+                        <SelectItem value="transferencia">Transferencia</SelectItem>
+                        <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      {isPaid ? "Este campo está deshabilitado porque el paquete ya está marcado como pagado." : 
+                      "Seleccione el método de pago para este envío."}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
