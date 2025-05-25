@@ -818,9 +818,7 @@ export const TransactionSource = {
 
 export type TransactionSourceType = typeof TransactionSource[keyof typeof TransactionSource];
 
-// Las tablas de caja han sido eliminadas
-
-// Las relaciones y tablas relacionadas con la caja han sido eliminadas
+// Las tablas y funcionalidades de caja registradora han sido completamente eliminadas del sistema
 
 // TABLA DE TRANSACCIONES
 export const transacciones = pgTable("transactions", { // Cambiado de "transacciones" a "transactions"
@@ -850,8 +848,5 @@ export const transaccionesRelations = relations(transacciones, ({ one }) => ({
     fields: [transacciones.usuario_id],
     references: [users.id]
   }),
-  corte: one(cashboxCutoffs, {
-    fields: [transacciones.id_corte],
-    references: [cashboxCutoffs.id]
-  })
+  // Relación con corte de caja eliminada
 }));

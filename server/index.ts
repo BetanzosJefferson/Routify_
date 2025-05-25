@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { registerCutoffRoutes } from "./cutoff-routes";
+// Referencia a rutas de cortes de caja eliminada
 
 const app = express();
 // Aumentar el límite para permitir imágenes más grandes (50MB)
