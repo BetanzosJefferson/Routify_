@@ -4429,19 +4429,22 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log(`[createTransaccion] Creando nueva transacción para usuario ${transaccionData.usuario_id}`);
       
-      // Preparar los datos para mapear a los nombres de columnas correctos en la base de datos
-      const dataToInsert = {
-        details: transaccionData.detalles,
-        user_id: transaccionData.usuario_id,
-        cutoff_id: transaccionData.id_corte
-      };
-      
-      console.log(`[createTransaccion] Datos a insertar:`, dataToInsert);
+      if (!transaccionData.detalles) {
+        console.error('[createTransaccion] Error: detalles es requerido');
+        throw new Error('Error al crear transacción: detalles (details) es requerido');
+      }
       
       // Guardar la transacción en la base de datos
+      // Usamos directamente el schema.transacciones con los nombres de campos correctos
       const [newTransaccion] = await db
         .insert(schema.transacciones)
-        .values(dataToInsert as any)
+        .values({
+          detalles: transaccionData.detalles,
+          usuario_id: transaccionData.usuario_id,
+          id_corte: transaccionData.id_corte,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
         .returning();
       
       console.log(`[createTransaccion] Transacción creada con ID: ${newTransaccion.id}`);

@@ -983,7 +983,9 @@ export const insertTransaccionSchema = createInsertSchema(transacciones, {
   id: z.number().optional(),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
-  id_corte: z.number().optional().nullable() // Mantenemos el nombre original en el esquema de inserción
+  id_corte: z.number().optional().nullable(), // Mantenemos el nombre original en el esquema de inserción
+  detalles: z.any().optional(), // Campo para mapear a "details"
+  usuario_id: z.number().optional() // Campo para mapear a "user_id"
 });
 
 export type Transaccion = typeof transacciones.$inferSelect;
