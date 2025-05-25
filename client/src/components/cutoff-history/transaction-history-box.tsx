@@ -376,15 +376,15 @@ const TransactionHistoryBox: React.FC = () => {
       // Guardar transacciones para el PDF
       console.log("Guardando transacciones para PDF:", group.transactions.length);
       
-      // Calcular una altura aproximada basada en el número de transacciones
-      // Estimamos unos 20mm por transacción más 60mm para el encabezado y pie de página
-      const estimatedHeight = Math.max(150, 60 + (group.transactions.length * 30));
+      // Usar un tamaño fijo de 60mm de ancho y calcular altura en función de contenido
+      // El tamaño inicial es solo una estimación, la altura real se ajustará automáticamente
+      const paperWidth = 60; // Ancho fijo de 60mm (ticketera estándar)
       
-      // Crear el documento PDF con ancho de 60mm y altura estimada
+      // Crear el documento PDF con ancho fijo
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "mm",
-        format: [60, estimatedHeight] // 60mm de ancho, altura dinámica
+        format: [paperWidth, 500] // Altura inicial grande, se ajustará automáticamente
       });
       
       // Configurar fuente y tamaño
@@ -488,35 +488,63 @@ const TransactionHistoryBox: React.FC = () => {
         // Información específica según el tipo de transacción
         if (isReservation) {
           // Para reservaciones: origen-destino y pasajeros
-          doc.text(`Ruta: ${details.origen} → ${details.destino}`, margin, y);
+          doc.text("Ruta:", margin, y);
           y += 3;
+          
+          // Dividir origen en múltiples líneas si es necesario
+          const maxWidth = paperWidth - (margin * 2); // Ancho disponible para texto
+          const origen = details.origen || "";
+          doc.text(origen, margin, y, { maxWidth: maxWidth });
+          y += origen.length > 30 ? 6 : 3; // Ajustar espacio según longitud
+          
+          // Añadir flecha de dirección
+          doc.text("→", margin, y);
+          y += 3;
+          
+          // Dividir destino en múltiples líneas
+          const destino = details.destino || "";
+          doc.text(destino, margin, y, { maxWidth: maxWidth });
+          y += destino.length > 30 ? 6 : 3; // Ajustar espacio según longitud
           
           // Verificar si hay información de pasajeros
           if (details.pasajeros) {
-            doc.text(`Pasajeros: ${details.pasajeros}`, margin, y);
+            doc.text(`Pasajeros: ${details.pasajeros}`, margin, y, { maxWidth: maxWidth });
             y += 3;
           }
         } else {
           // Para paqueterías: origen-destino, remitente/destinatario y descripcion
-          doc.text(`Ruta: ${details.origen} → ${details.destino}`, margin, y);
+          doc.text("Ruta:", margin, y);
           y += 3;
           
+          // Dividir origen en múltiples líneas si es necesario
+          const maxWidth = paperWidth - (margin * 2); // Ancho disponible para texto
+          const origen = details.origen || "";
+          doc.text(origen, margin, y, { maxWidth: maxWidth });
+          y += origen.length > 30 ? 6 : 3; // Ajustar espacio según longitud
+          
+          // Añadir flecha de dirección
+          doc.text("→", margin, y);
+          y += 3;
+          
+          // Dividir destino en múltiples líneas
+          const destino = details.destino || "";
+          doc.text(destino, margin, y, { maxWidth: maxWidth });
+          y += destino.length > 30 ? 6 : 3; // Ajustar espacio según longitud
+          
           if (details.remitente) {
-            doc.text(`Remitente: ${details.remitente}`, margin, y);
+            doc.text(`Remitente: ${details.remitente}`, margin, y, { maxWidth: maxWidth });
             y += 3;
           }
           
           if (details.destinatario) {
-            doc.text(`Destinatario: ${details.destinatario}`, margin, y);
+            doc.text(`Destinatario: ${details.destinatario}`, margin, y, { maxWidth: maxWidth });
             y += 3;
           }
           
           if (details.descripcion) {
-            // Limitamos la descripción a 20 caracteres para evitar desbordamiento
-            const descripcion = details.descripcion.length > 20 
-              ? details.descripcion.substring(0, 20) + "..." 
-              : details.descripcion;
-            doc.text(`Desc: ${descripcion}`, margin, y);
+            doc.text("Desc:", margin, y);
+            y += 3;
+            doc.text(details.descripcion, margin, y, { maxWidth: maxWidth });
             y += 3;
           }
         }
