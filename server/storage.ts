@@ -198,6 +198,17 @@ export interface IStorage {
     message?: string;
   }>;
   
+  // Transactions methods
+  getTransactions(filters?: {
+    dateRange?: { start: Date, end: Date },
+    usuarioId?: number,
+    tipo?: string,
+    corteId?: number | null
+  }): Promise<Transaction[]>;
+  getTransaction(id: number): Promise<Transaction | undefined>;
+  createTransaction(transaction: InsertTransaction): Promise<Transaction>;
+  updateTransaction(id: number, data: Partial<Transaction>): Promise<Transaction | undefined>;
+  
   // Package methods
   getPackages(filters?: { companyId?: string, tripId?: number }): Promise<schema.Package[]>;
   getPackage(id: number): Promise<schema.Package | undefined>;

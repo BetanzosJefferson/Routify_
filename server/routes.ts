@@ -74,6 +74,7 @@ function isSameCity(location1: string, location2: string): boolean {
 import { populateLocationData } from "./populate-locations";
 import { db } from "./db";
 import { setupFinancialRoutes } from "./financial-routes";
+import { registerTransactionsRoutes } from "./transactions-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // prefix all routes with /api
@@ -88,6 +89,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Registrar las rutas del sistema de caja
   registerCashboxRoutes(app, storage);
+  
+  // Registrar las rutas para transacciones
+  registerTransactionsRoutes(app, storage);
 
   // Populate location data on server start
   try {

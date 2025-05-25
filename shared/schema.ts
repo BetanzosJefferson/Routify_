@@ -986,3 +986,32 @@ export const processedItemsRelations = relations(processedItems, ({ one }) => ({
     references: [cashboxCutoffs.id]
   })
 }));
+
+// Tabla para registro de transacciones generales
+export const transactions = pgTable("transactions", {
+  id: serial("id").primaryKey(),
+  details: jsonb("details").notNull(), // JSON con detalles específicos de la transacción
+  usuarioId: integer("usuario_id").references(() => users.id).notNull(),
+  corteId: integer("corte_id").references(() => cashboxCutoffs.id),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const insertTransactionSchema = createInsertSchema(transactions, {
+  id: z.number().optional(),
+  createdAt: z.date().optional()
+});
+
+export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
+export type Transaction = typeof transactions.$inferSelect;
+
+// Relaciones para transacciones
+export const transactionRelations = relations(transactions, ({ one }) => ({
+  usuario: one(users, {
+    fields: [transactions.usuarioId],
+    references: [users.id]
+  }),
+  corte: one(cashboxCutoffs, {
+    fields: [transactions.corteId],
+    references: [cashboxCutoffs.id]
+  })
+}));
