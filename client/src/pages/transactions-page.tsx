@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { DefaultLayout } from "@/components/layout/default-layout";
 import { formatCurrency } from "@/lib/utils";
 import { hasAccessToSection } from "@/lib/role-based-permissions";
 import { useAuth } from "@/lib/auth";
@@ -44,21 +44,21 @@ export default function TransactionsPage() {
 
   if (isLoading) {
     return (
-      <DashboardLayout>
+      <DefaultLayout activeTab="transactions">
         <div className="flex items-center justify-center min-h-screen">
           <p className="text-lg">Cargando transacciones...</p>
         </div>
-      </DashboardLayout>
+      </DefaultLayout>
     );
   }
 
   if (error) {
     return (
-      <DashboardLayout>
+      <DefaultLayout activeTab="transactions">
         <div className="flex items-center justify-center min-h-screen">
           <p className="text-lg text-red-500">Error al cargar las transacciones</p>
         </div>
-      </DashboardLayout>
+      </DefaultLayout>
     );
   }
 
@@ -72,7 +72,7 @@ export default function TransactionsPage() {
   ) || [];
 
   return (
-    <DashboardLayout>
+    <DefaultLayout activeTab="transactions">
       <div className="container mx-auto py-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
