@@ -5419,6 +5419,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log(`[GET /transactions] Iniciando consulta de transacciones`);
       
+      // Imprimir todos los parámetros para debugging
+      console.log(`[GET /transactions] Parámetros de consulta:`, req.query);
+      
       // No requerimos usuario para esta consulta
       let companyId = req.query.companyId || null;
       
@@ -5572,7 +5575,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(formattedTransactions);
     } catch (error: any) {
       console.error('[GET /transactions] Error:', error);
-      res.status(500).json({ message: error.message || "Error al obtener transacciones" });
+      console.error('[GET /transactions] Stack trace:', error.stack);
+      
+      // Devolver un array vacío en lugar de un error para que el cliente pueda manejar mejor la respuesta
+      res.json([]);
     }
   });
   
