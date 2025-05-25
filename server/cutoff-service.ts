@@ -180,10 +180,47 @@ export class CutoffService {
       
       // Registrar cada elemento como procesado
       for (const item of items) {
-        // Determinar si es una reservación o un paquete de forma segura
-        const isPackage = Boolean(item.originalPackageId !== undefined || 
-                               item.type === 'package' || 
-                               (item.senderName !== undefined && item.receiverName !== undefined));
+        // Determinar si es una reservación o un paquete de forma más robusta
+        // Utilizamos múltiples criterios para una identificación más confiable
+        const isPackage = Boolean(
+          // Identificadores directos
+          item.originalPackageId !== undefined ||
+          item.type === 'package' || 
+          item.itemType === 'package' ||
+          
+          // Criterios basados en conceptos
+          item.concept === 'Paquetería' ||
+          item.paymentNote === 'Paquetería' ||
+          
+          // Campos específicos de paqueterías
+          (item.senderName !== undefined && item.senderName !== null) ||
+          (item.receiverName !== undefined && item.receiverName !== null) ||
+          (item.recipientName !== undefined && item.recipientName !== null) ||
+          (item.packageDescription !== undefined && item.packageDescription !== null) ||
+          
+          // Estados propios de paqueterías
+          item.deliveryStatus !== undefined ||
+          item.deliveredBy !== undefined ||
+          item.deliveredAt !== undefined ||
+          
+          // Identificación por ID - los IDs pueden tener prefijos o patrones específicos
+          (typeof item.cashItemId === 'string' && item.cashItemId.startsWith('paquete-'))
+        );
+        
+        // Registrar información de depuración sobre la identificación del tipo
+        console.log(`[createCutoff] Identificación de ítem #${item.id}: ${isPackage ? 'PAQUETERÍA' : 'RESERVACIÓN'}`);
+        console.log(`[createCutoff] Criterios de identificación para ítem #${item.id}:`, {
+          originalPackageId: item.originalPackageId,
+          type: item.type,
+          itemType: item.itemType,
+          concept: item.concept,
+          paymentNote: item.paymentNote,
+          hasSenderInfo: Boolean(item.senderName),
+          hasReceiverInfo: Boolean(item.receiverName || item.recipientName),
+          hasPackageDesc: Boolean(item.packageDescription),
+          hasDeliveryStatus: Boolean(item.deliveryStatus),
+          cashItemId: item.cashItemId
+        });
         
         // Usar el método centralizado de normalización
         const simplePaymentMethod = this.normalizePaymentMethod(item.paymentMethod || '');
