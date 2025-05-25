@@ -2674,6 +2674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               type: "reservation",
               details: {
                 id: reservation.id,
+                tripId: reservation.tripId, // Añadimos el ID del viaje
                 pasajeros: passengers.map(p => `${p.firstName} ${p.lastName}`).join(", "),
                 contacto: {
                   email: reservation.email,
