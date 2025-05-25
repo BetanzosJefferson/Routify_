@@ -36,46 +36,13 @@ interface Transaction {
 export function CashboxPage() {
   const [activeTab, setActiveTab] = useState("all");
   
-  // Datos de ejemplo para probar la interfaz
-  const exampleTransactions = [
-    {
-      id: 1,
-      type: "reservation",
-      amount: 200,
-      paymentMethod: "efectivo",
-      createdAt: new Date().toISOString(),
-      details: { 
-        reservationId: 192,
-        origen: "Acapulco de Juárez, Guerrero - Terminal condesa",
-        destino: "Coyoacán, Ciudad de México - Taxqueña"
-      }
-    },
-    {
-      id: 2,
-      type: "package",
-      amount: 150,
-      paymentMethod: "transferencia",
-      createdAt: new Date().toISOString(),
-      details: { 
-        packageId: 45,
-        origen: "Acapulco de Juárez, Guerrero - Terminal condesa",
-        destino: "Chilpancingo de los Bravo, Guerrero - Terminal Chilpancingo"
-      }
-    }
-  ];
-  
-  // Consultar transacciones con mejor manejo de errores
-  const { data: apiTransactions, isLoading, isError, error } = useQuery({
+  // Consultar transacciones desde la API
+  const { data: transactions = [], isLoading, isError, error } = useQuery({
     queryKey: ['/api/transactions'],
     retry: 3,
     refetchOnWindowFocus: false,
     staleTime: 30000
   });
-  
-  // Usar los datos de la API si están disponibles, de lo contrario usar el ejemplo
-  const transactions = (Array.isArray(apiTransactions) && apiTransactions.length > 0) 
-    ? apiTransactions 
-    : exampleTransactions;
   
   // Debugging
   useEffect(() => {
