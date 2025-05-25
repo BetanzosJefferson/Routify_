@@ -2827,7 +2827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     detalles: detallesTransaccion,
                     usuario_id: user?.id || null,
                     id_corte: null, // Inicialmente NULL, se actualizará cuando se haga un corte de caja
-                    companyId: existingReservation.companyId || tripInfo.companyId // Incluir el ID de la compañía
+                    companyId: trip.companyId // Incluir el ID de la compañía del viaje asociado a la reservación
                   };
                   
                   const transaccion = await storage.createTransaccion(transaccionData);
