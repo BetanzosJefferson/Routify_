@@ -57,30 +57,34 @@ interface PackageDetails extends TransactionDetails {
   asientos: number;
 }
 
+interface TransactionDetails {
+  id: number;
+  monto: number;
+  notas: string | null;
+  origen: string;
+  tripId?: number;
+  destino: string;
+  isSubTrip?: boolean;
+  pasajeros?: string;
+  contacto?: {
+    email: string;
+    telefono: string;
+  };
+  remitente?: string;
+  destinatario?: string;
+  descripcion?: string;
+  usaAsientos?: boolean;
+  asientos?: number;
+  metodoPago: string;
+  companyId?: string;
+  dateCreated?: string;
+}
+
 interface Transaction {
   id: number;
   detalles: {
     type: "reservation" | "package" | "reservation-final-payment" | "package-final-payment";
-    id: number;
-    monto: number;
-    notas: string | null;
-    origen: string;
-    tripId?: number;
-    destino: string;
-    isSubTrip?: boolean;
-    pasajeros?: string;
-    contacto?: {
-      email: string;
-      telefono: string;
-    };
-    remitente?: string;
-    destinatario?: string;
-    descripcion?: string;
-    usaAsientos?: boolean;
-    asientos?: number;
-    metodoPago: string;
-    companyId?: string;
-    dateCreated?: string;
+    details: TransactionDetails;
   };
   usuario_id: number;
   id_corte: number | null;
@@ -108,11 +112,20 @@ const TransactionBox: React.FC = () => {
 
       if (Array.isArray(data)) {
         data.forEach((transaction: Transaction) => {
-          // Incluir también las transacciones de tipo 'reservation-final-payment'
-          if (transaction.detalles.type === "reservation" || transaction.detalles.type === "reservation-final-payment") {
-            reservations.push(transaction);
-          } else if (transaction.detalles.type === "package" || transaction.detalles.type === "package-final-payment") {
-            packages.push(transaction);
+          console.log("Procesando transacción:", transaction);
+          try {
+            // Incluir también las transacciones de tipo 'reservation-final-payment'
+            if (transaction.detalles && transaction.detalles.type) {
+              if (transaction.detalles.type === "reservation" || transaction.detalles.type === "reservation-final-payment") {
+                reservations.push(transaction);
+              } else if (transaction.detalles.type === "package" || transaction.detalles.type === "package-final-payment") {
+                packages.push(transaction);
+              }
+            } else {
+              console.warn("Transacción sin tipo definido:", transaction);
+            }
+          } catch (error) {
+            console.error("Error al procesar transacción:", error, transaction);
           }
         });
       } else {
@@ -199,7 +212,7 @@ const TransactionBox: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {reservationTransactions.map((transaction) => {
-                  const details = transaction.detalles;
+                  const details = transaction.detalles.details;
                   return (
                     <TableRow key={transaction.id}>
                       <TableCell>
@@ -259,7 +272,7 @@ const TransactionBox: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {packageTransactions.map((transaction) => {
-                  const details = transaction.detalles;
+                  const details = transaction.detalles.details;
                   return (
                     <TableRow key={transaction.id}>
                       <TableCell>
