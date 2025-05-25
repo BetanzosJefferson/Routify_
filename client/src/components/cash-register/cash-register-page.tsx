@@ -1117,12 +1117,16 @@ Total transacciones: ${cutoffData.transactionCount}
         data.transactions.forEach((t: any, index: number) => {
           // Sección principal de la transacción
           doc.setFont("courier", "bold");
-          doc.text(`${index + 1}. ${t.type === 'package' ? 'PAQUETERÍA' : 'RESERVACIÓN'} #${t.id}`, margin, y);
+          
+          // Determinar si es una paquetería usando isPackage o type (más confiable)
+          const isPackage = t.isPackage === true || t.type === 'package' || t.concept === 'Paquetería';
+          
+          doc.text(`${index + 1}. ${isPackage ? 'PAQUETERÍA' : 'RESERVACIÓN'} #${t.id}`, margin, y);
           y += 2.5;
           
           // Detalles específicos según el tipo
           doc.setFont("courier", "normal");
-          if (t.type === 'package') {
+          if (isPackage) {
             // Detalles para paqueterías
             doc.text(`Remitente: ${t.senderName || ''} ${t.senderLastName || ''}`, margin + 2, y);
             y += 2;
@@ -2127,6 +2131,14 @@ Total transacciones: ${cutoffData.transactionCount}
                                 amount: item.amount,
                                 paymentMethod: normalizedPaymentMethod,
                                 paymentNote: item.concept,
+                                // Añadir el campo para facilitar la identificación de paqueterías en el PDF
+                                isPackage: item.itemType === 'package',
+                                
+                                // Información de remitente/destinatario para paqueterías
+                                senderName: details.senderName || '',
+                                senderLastName: details.senderLastName || '',
+                                receiverName: details.receiverName || '',
+                                receiverLastName: details.receiverLastName || '',
                                 
                                 // Información detallada del JSON con origen/destino mejorados
                                 tripName: details.tripName || '',
@@ -2134,9 +2146,6 @@ Total transacciones: ${cutoffData.transactionCount}
                                 destination: originDestInfo.destination || details.destination || '',
                                 passengerCount: details.passengerCount || 0,
                                 advanceAmount: details.advanceAmount || 0,
-                                senderName: details.senderName || '',
-                                senderLastName: details.senderLastName || '',
-                                receiverName: details.receiverName || '',
                                 receiverLastName: details.receiverLastName || '',
                                 
                                 // Fecha y hora
