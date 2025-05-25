@@ -26,10 +26,7 @@ import {
   TripBudget,
   InsertTripBudget,
   TripExpense,
-  InsertTripExpense,
-  BoxCutoff,
-  InsertBoxCutoff,
-  Transaccion
+  InsertTripExpense
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db } from "./db";
@@ -4489,112 +4486,6 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('[getTransacciones] Error al obtener transacciones:', error);
       return [];
-    }
-  }
-  
-  // Implementación de métodos para Box Cutoff (Cortes de caja)
-  async createBoxCutoff(cutoffData: schema.InsertBoxCutoff): Promise<schema.BoxCutoff> {
-    try {
-      console.log(`[createBoxCutoff] Creando nuevo corte de caja para usuario ${cutoffData.user_id}`);
-      
-      // Crear el registro de corte de caja
-      const [newBoxCutoff] = await db
-        .insert(schema.boxCutoff)
-        .values({
-          fecha_inicio: cutoffData.fecha_inicio,
-          fecha_fin: cutoffData.fecha_fin,
-          total_ingresos: cutoffData.total_ingresos,
-          total_efectivo: cutoffData.total_efectivo,
-          total_transferencias: cutoffData.total_transferencias,
-          user_id: cutoffData.user_id
-        })
-        .returning();
-      
-      console.log(`[createBoxCutoff] Corte de caja creado con ID: ${newBoxCutoff.id}`);
-      
-      // Actualizar las transacciones pendientes asignándoles este corte
-      await this.updateTransactionsCutoff(cutoffData.user_id, newBoxCutoff.id);
-      
-      return newBoxCutoff;
-    } catch (error) {
-      console.error('[createBoxCutoff] Error al crear corte de caja:', error);
-      throw new Error(`Error al crear corte de caja: ${error}`);
-    }
-  }
-  
-  async getBoxCutoffs(userId?: number): Promise<schema.BoxCutoff[]> {
-    try {
-      let query = db.select().from(schema.boxCutoff);
-      
-      // Filtrar por usuario si se proporciona
-      if (userId) {
-        query = query.where(eq(schema.boxCutoff.user_id, userId));
-        console.log(`[getBoxCutoffs] Filtrando por user_id: ${userId}`);
-      }
-      
-      // Ordenar por fecha descendente (más reciente primero)
-      query = query.orderBy(desc(schema.boxCutoff.fecha_fin));
-      
-      const boxCutoffs = await query;
-      console.log(`[getBoxCutoffs] Se encontraron ${boxCutoffs.length} cortes de caja`);
-      return boxCutoffs;
-    } catch (error) {
-      console.error('[getBoxCutoffs] Error al obtener cortes de caja:', error);
-      return [];
-    }
-  }
-  
-  async getBoxCutoff(id: number): Promise<schema.BoxCutoff | undefined> {
-    try {
-      const [boxCutoff] = await db
-        .select()
-        .from(schema.boxCutoff)
-        .where(eq(schema.boxCutoff.id, id));
-      
-      return boxCutoff;
-    } catch (error) {
-      console.error(`[getBoxCutoff] Error al obtener corte de caja ${id}:`, error);
-      return undefined;
-    }
-  }
-  
-  async updateTransactionsCutoff(userId: number, cutoffId: number): Promise<number> {
-    try {
-      console.log(`[updateTransactionsCutoff] Asignando cutoff_id ${cutoffId} a transacciones del usuario ${userId}`);
-      
-      // Obtener transacciones sin corte asignado para este usuario
-      const transaccionesSinCorte = await db
-        .select()
-        .from(schema.transacciones)
-        .where(
-          and(
-            eq(schema.transacciones.user_id, userId),
-            isNull(schema.transacciones.cutoff_id)
-          )
-        );
-      
-      console.log(`[updateTransactionsCutoff] Encontradas ${transaccionesSinCorte.length} transacciones sin corte`);
-      
-      if (transaccionesSinCorte.length === 0) {
-        return 0;
-      }
-      
-      // Actualizar todas las transacciones encontradas
-      const { rowCount } = await db
-        .update(schema.transacciones)
-        .set({ cutoff_id: cutoffId })
-        .where(
-          and(
-            eq(schema.transacciones.user_id, userId),
-            isNull(schema.transacciones.cutoff_id)
-          )
-        );
-      
-      console.log(`[updateTransactionsCutoff] Actualizadas ${rowCount} transacciones con cutoff_id ${cutoffId}`);
-      return rowCount || transaccionesSinCorte.length;
-    } catch (error) {
-      console.error('[updateTransactionsCutoff] Error al actualizar transacciones:', error);
-      return 0;
     }
   }
 }
