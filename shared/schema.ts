@@ -746,7 +746,24 @@ export type InsertReservationRequest = z.infer<typeof insertReservationRequestSc
 export type ReservationRequest = typeof reservationRequests.$inferSelect;
 
 // ESQUEMA PARA NOTIFICACIONES
-// Nota: Se removió el esquema duplicado de cashboxCutoffs y cutoffItems para evitar conflictos.
+// SCHEMA DE CORTES DE CAJA
+export const boxCutoff = pgTable("box_cutoff", {
+  id: serial("id").primaryKey(),
+  fecha_inicio: timestamp("fecha_inicio").notNull(),
+  fecha_fin: timestamp("fecha_fin").notNull(),
+  total_ingresos: doublePrecision("total_ingresos").notNull().default(0),
+  total_efectivo: doublePrecision("total_efectivo").notNull().default(0),
+  total_transferencias: doublePrecision("total_transferencias").notNull().default(0),
+  user_id: integer("user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  // Campo para aislamiento de datos por compañía
+  companyId: text("company_id"),
+});
+
+export const insertBoxCutoffSchema = createInsertSchema(boxCutoff);
+export type InsertBoxCutoff = z.infer<typeof insertBoxCutoffSchema>;
+export type BoxCutoff = typeof boxCutoff.$inferSelect;
 // El sistema ya cuenta con una implementación existente de estas tablas.
 // La implementación del historial de cortes de caja se manejará usando las tablas existentes.
 
@@ -825,7 +842,7 @@ export const transacciones = pgTable("transactions", { // Cambiado de "transacci
   id: serial("id").primaryKey(),
   detalles: jsonb("details").notNull(), // Cambiado de "detalles" a "details"
   user_id: integer("user_id").notNull().references(() => users.id), // Nombre correcto en la BD
-  cutoff_id: integer("cutoff_id"), // Nombre correcto en la BD
+  cutoff_id: integer("cutoff_id").references(() => boxCutoff.id), // Referencia a la tabla box_cutoff
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   companyId: text("company_id"), // Campo para aislamiento de datos por compañía
