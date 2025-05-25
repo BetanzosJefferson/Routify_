@@ -5,6 +5,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import {
   Table,
@@ -22,9 +23,10 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
-import { Loader2, Receipt } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Loader2, Receipt, DollarSign, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -221,12 +223,137 @@ const TransactionBox: React.FC = () => {
     );
   }
 
+  // Calcular totales para mostrar en el resumen
+  const calculateTotals = () => {
+    let totalIngresos = 0;
+    let totalEfectivo = 0;
+    let totalTransferencias = 0;
+
+    // Procesar transacciones de reservaciones
+    reservationTransactions.forEach(transaction => {
+      const details = transaction.detalles?.details || {};
+      const monto = details.monto || 0;
+      const metodoPago = details.metodoPago || "efectivo";
+      
+      totalIngresos += monto;
+      
+      if (metodoPago === "efectivo") {
+        totalEfectivo += monto;
+      } else if (metodoPago === "transferencia") {
+        totalTransferencias += monto;
+      }
+    });
+
+    // Procesar transacciones de paqueterías
+    packageTransactions.forEach(transaction => {
+      const details = transaction.detalles?.details || {};
+      const monto = details.monto || 0;
+      const metodoPago = details.metodoPago || "efectivo";
+      
+      totalIngresos += monto;
+      
+      if (metodoPago === "efectivo") {
+        totalEfectivo += monto;
+      } else if (metodoPago === "transferencia") {
+        totalTransferencias += monto;
+      }
+    });
+
+    return {
+      totalIngresos,
+      totalEfectivo,
+      totalTransferencias,
+    };
+  };
+
+  const totals = calculateTotals();
+  
+  // Función para crear un corte de caja
+  const queryClient = useQueryClient();
+  const [isCreatingCutoff, setIsCreatingCutoff] = useState(false);
+  
+  const createCutoffMutation = useMutation({
+    mutationFn: async () => {
+      setIsCreatingCutoff(true);
+      const response = await fetch("/api/transactions/cutoff", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          total_ingresos: totals.totalIngresos,
+          total_efectivo: totals.totalEfectivo,
+          total_transferencias: totals.totalTransferencias
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Corte de caja exitoso",
+        description: "Se ha realizado el corte de caja correctamente.",
+        variant: "default",
+      });
+      
+      // Invalidar la caché para recargar las transacciones
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions/current"] });
+      setIsCreatingCutoff(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error al crear corte de caja",
+        description: error instanceof Error ? error.message : "Error desconocido",
+        variant: "destructive",
+      });
+      setIsCreatingCutoff(false);
+    },
+  });
+  
+  const handleCreateCutoff = () => {
+    if (reservationTransactions.length === 0 && packageTransactions.length === 0) {
+      toast({
+        title: "No hay transacciones para corte",
+        description: "No hay transacciones pendientes para realizar un corte de caja.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    createCutoffMutation.mutate();
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <Receipt className="mr-2 h-6 w-6" />
-          Transacciones en Caja
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Receipt className="mr-2 h-6 w-6" />
+            Transacciones en Caja
+          </div>
+          <Button 
+            variant="default" 
+            className="ml-auto" 
+            onClick={handleCreateCutoff}
+            disabled={isCreatingCutoff || (reservationTransactions.length === 0 && packageTransactions.length === 0)}
+          >
+            {isCreatingCutoff ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Procesando...
+              </>
+            ) : (
+              <>
+                <DollarSign className="mr-2 h-4 w-4" />
+                Hacer Corte
+              </>
+            )}
+          </Button>
         </CardTitle>
         <CardDescription>
           Transacciones pendientes que no han sido incluidas en un corte
@@ -384,6 +511,29 @@ const TransactionBox: React.FC = () => {
           </TabsContent>
         </Tabs>
       </CardContent>
+      
+      {/* Resumen del corte */}
+      {(reservationTransactions.length > 0 || packageTransactions.length > 0) && (
+        <CardFooter className="flex flex-col space-y-2 bg-gray-50 p-4 rounded-b-lg">
+          <div className="w-full flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Resumen de transacciones</h3>
+          </div>
+          <div className="w-full grid grid-cols-3 gap-4">
+            <div className="p-3 bg-white rounded-md shadow-sm">
+              <div className="text-sm text-gray-500">Total Ingresos</div>
+              <div className="text-xl font-bold text-green-600">{formatCurrency(totals.totalIngresos)}</div>
+            </div>
+            <div className="p-3 bg-white rounded-md shadow-sm">
+              <div className="text-sm text-gray-500">Total Efectivo</div>
+              <div className="text-xl font-bold text-blue-600">{formatCurrency(totals.totalEfectivo)}</div>
+            </div>
+            <div className="p-3 bg-white rounded-md shadow-sm">
+              <div className="text-sm text-gray-500">Total Transferencias</div>
+              <div className="text-xl font-bold text-purple-600">{formatCurrency(totals.totalTransferencias)}</div>
+            </div>
+          </div>
+        </CardFooter>
+      )}
     </Card>
   );
 };

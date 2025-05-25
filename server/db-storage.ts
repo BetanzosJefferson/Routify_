@@ -26,7 +26,10 @@ import {
   TripBudget,
   InsertTripBudget,
   TripExpense,
-  InsertTripExpense
+  InsertTripExpense,
+  BoxCutoff,
+  InsertBoxCutoff,
+  Transaccion
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db } from "./db";
