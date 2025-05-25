@@ -28,8 +28,9 @@ interface Transaction {
   type: string;
   amount: number;
   createdAt: string;
+  updatedAt?: string;
   paymentMethod: string | null;
-  details: any;
+  details: Record<string, any>;
 }
 
 export function CashboxPage() {

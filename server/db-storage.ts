@@ -4460,14 +4460,21 @@ export class DatabaseStorage implements IStorage {
       console.log(`[getAllTransactions] Obteniendo transacciones ${companyId ? `para compañía ${companyId}` : 'para todas las compañías'}`);
       
       // Realizar la consulta directamente con SQL para evitar problemas de mapeo
+      console.log('[getAllTransactions] Ejecutando consulta SQL directa');
       const result = await db.execute(sql`
         SELECT * FROM transactions
         ORDER BY created_at DESC
       `);
       
+      // Log para debug
+      console.log('[getAllTransactions] Resultado de la consulta:', result.rows.length, 'filas');
+      if (result.rows.length > 0) {
+        console.log('[getAllTransactions] Primera fila ejemplo:', result.rows[0]);
+      }
+      
       // Mapear los resultados al formato esperado
       const transactions = result.rows.map(row => {
-        return {
+        const transaccion = {
           id: row.id,
           detalles: row.details,
           usuario_id: row.user_id,
@@ -4475,12 +4482,15 @@ export class DatabaseStorage implements IStorage {
           createdAt: row.created_at,
           updatedAt: row.updated_at
         };
+        console.log(`[getAllTransactions] Transacción mapeada ID ${row.id}:`, transaccion);
+        return transaccion;
       });
       
       console.log(`[getAllTransactions] Se encontraron ${transactions.length} transacciones`);
       return transactions;
     } catch (error) {
       console.error('[getAllTransactions] Error al obtener transacciones:', error);
+      console.error('[getAllTransactions] Detalle del error:', error instanceof Error ? error.message : String(error));
       return [];
     }
   }
