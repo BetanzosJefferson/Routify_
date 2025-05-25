@@ -6670,66 +6670,97 @@ function setupPackageRoutes(app: Express) {
       
       console.log(`[GET /transactions] Usuario: ${user.firstName} ${user.lastName}, ID: ${user.id}, Rol: ${user.role}`);
       
-      // Generar datos de prueba para desarrollo
-      const mockData = [
-        {
-          id: 1001,
-          detalles: {
-            type: "reservation",
-            details: {
-              id: 501,
-              monto: 350.50,
-              notas: "Reservación de prueba",
-              origen: "Mérida",
-              destino: "Cancún",
-              tripId: 3166,
-              metodoPago: "efectivo",
-              companyId: "bamo-936622",
-              dateCreated: new Date().toISOString(),
-              pasajeros: "2",
-              contacto: {
-                email: "cliente@ejemplo.com",
-                telefono: "9991234567"
+      try {
+        // Consulta directa a la tabla transactions
+        console.log('[GET /transactions] Consultando tabla transactions directamente');
+        
+        // Obtenemos todas las transacciones sin filtrar usando SQL directo
+        const transactions = await db.execute(
+          `SELECT * FROM transactions ORDER BY created_at DESC LIMIT 100`
+        );
+        
+        // El resultado de db.execute es un objeto con propiedades especiales, no un array
+        // La estructura real debe extraerse del objeto result.rows
+        const transactionRows = transactions?.rows || [];
+        
+        console.log(`[GET /transactions] Se encontraron ${transactionRows.length} transacciones en total`);
+        
+        if (transactionRows.length > 0) {
+          console.log('[GET /transactions] Primera transacción encontrada:', JSON.stringify(transactionRows[0]));
+        } else {
+          console.log('[GET /transactions] No se encontraron transacciones en la base de datos');
+          
+          // Si no hay transacciones y estamos en desarrollo, generamos datos de prueba
+          if (process.env.NODE_ENV !== 'production') {
+            const mockData = [
+              {
+                id: 1001,
+                detalles: {
+                  type: "reservation",
+                  details: {
+                    id: 501,
+                    monto: 350.50,
+                    notas: "Reservación de prueba",
+                    origen: "Mérida",
+                    destino: "Cancún",
+                    tripId: 3166,
+                    metodoPago: "efectivo",
+                    companyId: "bamo-936622",
+                    dateCreated: new Date().toISOString(),
+                    pasajeros: "2",
+                    contacto: {
+                      email: "cliente@ejemplo.com",
+                      telefono: "9991234567"
+                    }
+                  }
+                },
+                usuario_id: user.id,
+                id_corte: null,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                companyId: "bamo-936622"
+              },
+              {
+                id: 1002,
+                detalles: {
+                  type: "package",
+                  details: {
+                    id: 502,
+                    monto: 120.00,
+                    notas: "Paquete de prueba",
+                    origen: "Mérida",
+                    destino: "Valladolid",
+                    tripId: 3167,
+                    metodoPago: "transferencia",
+                    companyId: "bamo-936622",
+                    dateCreated: new Date().toISOString(),
+                    remitente: "Juan Pérez",
+                    destinatario: "María López",
+                    descripcion: "Documento importante",
+                    usaAsientos: false,
+                    asientos: 0
+                  }
+                },
+                usuario_id: user.id,
+                id_corte: null,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                companyId: "bamo-936622"
               }
-            }
-          },
-          usuario_id: user.id,
-          id_corte: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          companyId: "bamo-936622"
-        },
-        {
-          id: 1002,
-          detalles: {
-            type: "package",
-            details: {
-              id: 502,
-              monto: 120.00,
-              notas: "Paquete de prueba",
-              origen: "Mérida",
-              destino: "Valladolid",
-              tripId: 3167,
-              metodoPago: "transferencia",
-              companyId: "bamo-936622",
-              dateCreated: new Date().toISOString(),
-              remitente: "Juan Pérez",
-              destinatario: "María López",
-              descripcion: "Documento importante",
-              usaAsientos: false,
-              asientos: 0
-            }
-          },
-          usuario_id: user.id,
-          id_corte: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          companyId: "bamo-936622"
+            ];
+            
+            console.log(`[GET /transactions] Devolviendo ${mockData.length} transacciones de ejemplo para desarrollo`);
+            return res.json(mockData);
+          }
         }
-      ];
-      
-      console.log(`[GET /transactions] Devolviendo ${mockData.length} transacciones de ejemplo`);
-      return res.json(mockData);
+        
+        // Devolvemos las transacciones de la base de datos
+        return res.json(transactionRows);
+        
+      } catch (dbError) {
+        console.error('[GET /transactions] Error al consultar la base de datos:', dbError);
+        return res.status(500).json({ error: "Error al consultar la base de datos de transacciones" });
+      }
       
     } catch (error) {
       console.error("[GET /transactions] Error general:", error);
