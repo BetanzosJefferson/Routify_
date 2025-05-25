@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import { eq, inArray } from "drizzle-orm";
+import * as schema from "@shared/schema";
 import { WebSocketServer, WebSocket } from 'ws';
 import { 
   insertRouteSchema, 
@@ -3464,21 +3465,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let origen = "";
       let destino = "";
       
-      if (tripInfo?.isSubTrip && packageData.segmentOrigin && packageData.segmentDestination) {
-        // Si es un sub-viaje y tiene segmentos específicos, usar esos
-        origen = packageData.segmentOrigin;
-        destino = packageData.segmentDestination;
-        console.log(`[POST /public/packages/${packageId}/mark-paid] Usando origen y destino de segmento (sub-viaje):`, origen, destino);
-      } else if (packageData.segmentOrigin && packageData.segmentDestination) {
-        // Si tiene segmentos específicos aunque no sea sub-viaje
-        origen = packageData.segmentOrigin;
-        destino = packageData.segmentDestination;
-        console.log(`[POST /public/packages/${packageId}/mark-paid] Usando origen y destino de segmento:`, origen, destino);
-      } else if (tripInfo?.route) {
-        // Si no hay segmentos, usar la ruta completa
-        origen = tripInfo.route.origin;
-        destino = tripInfo.route.destination;
-        console.log(`[POST /public/packages/${packageId}/mark-paid] Usando origen y destino de ruta completa:`, origen, destino);
+      // Primero consultamos directamente en la base de datos los segmentos del viaje
+      try {
+        const tripDetails = await db
+          .select({
+            isSubTrip: schema.trips.isSubTrip,
+            segmentOrigin: schema.trips.segmentOrigin,
+            segmentDestination: schema.trips.segmentDestination
+          })
+          .from(schema.trips)
+          .where(eq(schema.trips.id, packageData.tripId || 0))
+          .limit(1);
+
+        if (tripDetails && tripDetails.length > 0) {
+          const tripData = tripDetails[0];
+          
+          if (tripData.isSubTrip && tripData.segmentOrigin && tripData.segmentDestination) {
+            // Si es un sub-viaje y tiene segmentos específicos en la base de datos, usar esos
+            origen = tripData.segmentOrigin;
+            destino = tripData.segmentDestination;
+            console.log(`[POST /public/packages/${packageId}/mark-paid] Usando origen y destino directamente de la BD (sub-viaje):`, origen, destino);
+          } else if (packageData.segmentOrigin && packageData.segmentDestination) {
+            // Si tiene segmentos específicos en el paquete
+            origen = packageData.segmentOrigin;
+            destino = packageData.segmentDestination;
+            console.log(`[POST /public/packages/${packageId}/mark-paid] Usando origen y destino de segmento del paquete:`, origen, destino);
+          } else if (tripInfo?.route) {
+            // Si no hay segmentos, usar la ruta completa
+            origen = tripInfo.route.origin;
+            destino = tripInfo.route.destination;
+            console.log(`[POST /public/packages/${packageId}/mark-paid] Usando origen y destino de ruta completa:`, origen, destino);
+          }
+        } else {
+          // Si no se encuentra el viaje, usar los datos disponibles en el paquete
+          if (packageData.segmentOrigin && packageData.segmentDestination) {
+            origen = packageData.segmentOrigin;
+            destino = packageData.segmentDestination;
+          } else if (tripInfo?.route) {
+            origen = tripInfo.route.origin;
+            destino = tripInfo.route.destination;
+          }
+          console.log(`[POST /public/packages/${packageId}/mark-paid] Viaje no encontrado, usando datos disponibles:`, origen, destino);
+        }
+      } catch (dbError) {
+        console.error(`[POST /public/packages/${packageId}/mark-paid] Error al consultar detalles del viaje:`, dbError);
+        
+        // En caso de error, usar la lógica anterior como fallback
+        if (tripInfo?.isSubTrip && packageData.segmentOrigin && packageData.segmentDestination) {
+          origen = packageData.segmentOrigin;
+          destino = packageData.segmentDestination;
+        } else if (packageData.segmentOrigin && packageData.segmentDestination) {
+          origen = packageData.segmentOrigin;
+          destino = packageData.segmentDestination;
+        } else if (tripInfo?.route) {
+          origen = tripInfo.route.origin;
+          destino = tripInfo.route.destination;
+        }
+        console.log(`[POST /public/packages/${packageId}/mark-paid] Usando origen y destino fallback:`, origen, destino);
       }
       
       // Crear una transacción cuando el paquete es marcado como pagado
