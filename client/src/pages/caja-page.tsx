@@ -36,10 +36,14 @@ export function CashboxPage() {
   const [activeTab, setActiveTab] = useState("all");
   
   // Consultar transacciones
-  const { data: transactions, isLoading } = useQuery({
+  const { data: transactions, isLoading, isError, error } = useQuery({
     queryKey: ['/api/transactions'],
-    retry: 1,
+    retry: 2,
   });
+  
+  // Debugging
+  console.log("Estado de la consulta:", { isLoading, isError, errorMessage: error });
+  console.log("Datos de transacciones:", transactions);
 
   // Filtrar transacciones por tipo
   const filteredTransactions = transactions?.filter((transaction: Transaction) => {

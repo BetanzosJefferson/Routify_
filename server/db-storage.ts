@@ -4459,18 +4459,23 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log(`[getAllTransactions] Obteniendo transacciones ${companyId ? `para compañía ${companyId}` : 'para todas las compañías'}`);
       
-      // Construir query básica
-      let query = db.select().from(schema.transacciones);
+      // Realizar la consulta directamente con SQL para evitar problemas de mapeo
+      const result = await db.execute(sql`
+        SELECT * FROM transactions
+        ORDER BY created_at DESC
+      `);
       
-      // Si se especifica companyId, necesitamos unir con las tablas apropiadas
-      if (companyId) {
-        // Para esta versión simplificada, dejamos pasar todas las transacciones
-        // En una versión más completa, necesitaríamos unir con tablas relacionadas 
-        // y filtrar por companyId
-      }
-      
-      // Ejecutar la consulta
-      const transactions = await query;
+      // Mapear los resultados al formato esperado
+      const transactions = result.rows.map(row => {
+        return {
+          id: row.id,
+          detalles: row.details,
+          usuario_id: row.user_id,
+          id_corte: row.cutoff_id,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at
+        };
+      });
       
       console.log(`[getAllTransactions] Se encontraron ${transactions.length} transacciones`);
       return transactions;
