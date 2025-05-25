@@ -223,6 +223,24 @@ const TransactionBox: React.FC = () => {
     );
   }
 
+  // Consulta para obtener historial de cortes de caja
+  const { data: cutoffsData, isLoading: isCutoffsLoading } = useQuery({
+    queryKey: ["/api/transactions/cutoffs"],
+    enabled: true,
+  });
+  
+  // Convertir fecha ISO a formato legible
+  const formatDate = (isoDate: string) => {
+    const date = new Date(isoDate);
+    return date.toLocaleString('es-MX', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+  
   // Calcular totales para mostrar en el resumen
   const calculateTotals = () => {
     let totalIngresos = 0;
@@ -361,12 +379,15 @@ const TransactionBox: React.FC = () => {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="reservations">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="reservations">
               Reservaciones ({reservationTransactions.length})
             </TabsTrigger>
             <TabsTrigger value="packages">
               Paqueterías ({packageTransactions.length})
+            </TabsTrigger>
+            <TabsTrigger value="cutoffs">
+              Historial de Cortes
             </TabsTrigger>
           </TabsList>
 
@@ -506,6 +527,53 @@ const TransactionBox: React.FC = () => {
                     return null;
                   }
                 })}
+              </TableBody>
+            </Table>
+          </TabsContent>
+
+          {/* Tabla de Historial de Cortes */}
+          <TabsContent value="cutoffs">
+            <Table>
+              <TableCaption>
+                {isCutoffsLoading ? "Cargando historial de cortes..." : 
+                  cutoffsData?.length === 0 ? "No hay cortes de caja registrados" :
+                  "Historial de cortes de caja realizados"}
+              </TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Total Ingresos</TableHead>
+                  <TableHead>Efectivo</TableHead>
+                  <TableHead>Transferencias</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isCutoffsLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center">
+                      <Loader2 className="h-6 w-6 animate-spin inline-block mr-2" />
+                      Cargando...
+                    </TableCell>
+                  </TableRow>
+                ) : cutoffsData?.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center">
+                      <AlertCircle className="h-6 w-6 text-yellow-500 inline-block mr-2" />
+                      No hay cortes de caja registrados
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  cutoffsData?.map((cutoff) => (
+                    <TableRow key={cutoff.id}>
+                      <TableCell>{cutoff.id}</TableCell>
+                      <TableCell>{formatDate(cutoff.fecha_fin)}</TableCell>
+                      <TableCell>{formatCurrency(cutoff.total_ingresos)}</TableCell>
+                      <TableCell>{formatCurrency(cutoff.total_efectivo)}</TableCell>
+                      <TableCell>{formatCurrency(cutoff.total_transferencias)}</TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </TabsContent>
