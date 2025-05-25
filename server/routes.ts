@@ -5423,19 +5423,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verificamos si es superadmin o está filtrando por su compañía
       let companyId = req.query.companyId || (user.role !== UserRole.SUPER_ADMIN ? (user.company || null) : null);
       
+      // Verificación directa con SQL para debug
+      try {
+        console.log('[GET /transactions] Realizando consulta SQL directa para verificar...');
+        const testResult = await db.execute(schema.sql`SELECT COUNT(*) FROM transactions`);
+        console.log('[GET /transactions] Resultado de consulta SQL directa:', testResult.rows[0]);
+      } catch (sqlError) {
+        console.error('[GET /transactions] Error en consulta SQL directa:', sqlError);
+      }
+      
+      console.log(`[GET /transactions] Solicitando transacciones para compañía: ${companyId || 'todas'}`);
+      
       // Obtener todas las transacciones
       const transactions = await storage.getAllTransactions(companyId ? String(companyId) : null);
+      console.log(`[GET /transactions] Obtenidas ${transactions.length} transacciones desde el storage`);
+      
+      // Si no hay transacciones, responder con array vacío
+      if (!transactions || transactions.length === 0) {
+        console.log('[GET /transactions] No se encontraron transacciones, devolviendo array vacío');
+        return res.json([]);
+      }
       
       // Transformar datos para el frontend
+      console.log('[GET /transactions] Procesando transacciones para el frontend');
       const formattedTransactions = transactions.map(transaction => {
+        console.log(`[GET /transactions] Procesando transacción ID: ${transaction.id}`);
+        
         // Parsear el campo de detalles si existe
         let details = {};
         try {
           details = typeof transaction.detalles === 'string' 
             ? JSON.parse(transaction.detalles) 
             : transaction.detalles || {};
+            
+          console.log(`[GET /transactions] Detalles parseados:`, details);
         } catch (e) {
-          console.error('Error al parsear detalles de transacción:', e);
+          console.error('[GET /transactions] Error al parsear detalles:', e);
         }
         
         // Determinar el tipo de transacción
@@ -5467,6 +5490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
       
+      console.log(`[GET /transactions] Enviando ${formattedTransactions.length} transacciones formateadas`);
       res.json(formattedTransactions);
     } catch (error: any) {
       console.error('[GET /transactions] Error:', error);
