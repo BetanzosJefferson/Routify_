@@ -3460,6 +3460,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tripInfo = await storage.getTripWithRouteInfo(packageData.tripId);
       }
       
+      // Determinar el origen y destino correctos basados en si es un sub-viaje
+      let origen = "";
+      let destino = "";
+      
+      if (tripInfo?.isSubTrip && packageData.segmentOrigin && packageData.segmentDestination) {
+        // Si es un sub-viaje y tiene segmentos específicos, usar esos
+        origen = packageData.segmentOrigin;
+        destino = packageData.segmentDestination;
+        console.log(`[POST /public/packages/${packageId}/mark-paid] Usando origen y destino de segmento (sub-viaje):`, origen, destino);
+      } else if (packageData.segmentOrigin && packageData.segmentDestination) {
+        // Si tiene segmentos específicos aunque no sea sub-viaje
+        origen = packageData.segmentOrigin;
+        destino = packageData.segmentDestination;
+        console.log(`[POST /public/packages/${packageId}/mark-paid] Usando origen y destino de segmento:`, origen, destino);
+      } else if (tripInfo?.route) {
+        // Si no hay segmentos, usar la ruta completa
+        origen = tripInfo.route.origin;
+        destino = tripInfo.route.destination;
+        console.log(`[POST /public/packages/${packageId}/mark-paid] Usando origen y destino de ruta completa:`, origen, destino);
+      }
+      
       // Crear una transacción cuando el paquete es marcado como pagado
       if (userId && updatedPackage) {
         try {
@@ -3470,9 +3491,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               id: packageData.id,
               monto: packageData.price,
               notas: "Pago de paquetería",
-              origen: packageData.segmentOrigin || tripInfo?.route?.origin || "",
+              origen: origen,
               tripId: packageData.tripId || "",
-              destino: packageData.segmentDestination || tripInfo?.route?.destination || "",
+              destino: destino,
               isSubTrip: tripInfo?.isSubTrip || false,
               metodoPago: packageData.paymentMethod || "efectivo",
               remitente: `${packageData.senderName} ${packageData.senderLastName}`,
