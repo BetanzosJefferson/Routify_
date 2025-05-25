@@ -77,11 +77,11 @@ const TransactionBox: React.FC = () => {
 
   // Consultar las transacciones del usuario actual
   const { data, isLoading, error } = useQuery({
-    queryKey: ["/api/transactions/current"],
+    queryKey: ["/api/transactions"],  // Cambiado a la nueva ruta sin restricciones
     staleTime: 30000, // 30 segundos
     queryFn: async () => {
-      console.log("Ejecutando consulta a /api/transactions/current");
-      const response = await fetch("/api/transactions/current", {
+      console.log("Ejecutando consulta a /api/transactions");
+      const response = await fetch("/api/transactions", {
         credentials: "include", // Importante para enviar las cookies de autenticación
       });
       
