@@ -188,6 +188,7 @@ const TransactionBox: React.FC = () => {
       return response.json();
     },
     onSuccess: (data) => {
+      console.log("Historial de cortes recibido:", data);
       setCutoffHistory(data);
     }
   });
@@ -579,7 +580,7 @@ const TransactionBox: React.FC = () => {
                   <TableRow key={cutoff.id}>
                     <TableCell>{cutoff.id}</TableCell>
                     <TableCell>
-                      {formatDate(cutoff.createdAt)}
+                      {formatDate(new Date(cutoff.createdAt))}
                     </TableCell>
                     <TableCell>{formatCurrency(cutoff.total_ingresos)}</TableCell>
                     <TableCell className="text-emerald-600">{formatCurrency(cutoff.total_efectivo)}</TableCell>
