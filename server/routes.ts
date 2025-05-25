@@ -2685,9 +2685,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Crear la transacción en la base de datos
             const transaccion = await storage.createTransaccion({
-              detalles: detallesTransaccion,
-              usuario_id: createdByUserId || (user ? user.id : null),
-              id_corte: null // Inicialmente NULL, se actualizará cuando se haga un corte de caja
+              detalles: detallesTransaccion, // Se mapeará a "details" en la BD
+              usuario_id: createdByUserId || (user ? user.id : null), // Se mapeará a "user_id" en la BD
+              id_corte: null // Se mapeará a "cutoff_id" en la BD - Inicialmente NULL, se actualizará cuando se haga un corte de caja
             });
             
             console.log(`[POST /reservations] Transacción creada exitosamente con ID: ${transaccion.id}`);
