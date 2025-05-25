@@ -418,23 +418,25 @@ export function CashRegisterPage() {
     let matchesSearch = true;
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      const routeName = reservation.trip?.route?.name?.toLowerCase() || '';
-      const senderName = (reservation.senderName || '').toLowerCase();
-      const receiverName = (reservation.receiverName || '').toLowerCase();
-      const packageId = `RES${reservation.id}`.toLowerCase();
+      const routeName = routeInfoMap[item.tripId]?.toLowerCase() || '';
+      const senderName = ((item.senderName || '') + ' ' + (item.senderLastName || '')).toLowerCase();
+      const receiverName = ((item.recipientName || '') + ' ' + (item.recipientLastName || '')).toLowerCase();
+      const packageId = `PKG${item.id}`.toLowerCase();
+      const packageDesc = (item.packageDescription || '').toLowerCase();
       
       matchesSearch = (
         routeName.includes(searchLower) ||
         senderName.includes(searchLower) ||
         receiverName.includes(searchLower) ||
-        packageId.includes(searchLower)
+        packageId.includes(searchLower) ||
+        packageDesc.includes(searchLower)
       );
     }
     
     // Aplicar filtro de fecha (misma lógica que para reservaciones)
     let matchesDate = true;
     if (dateFilter) {
-      const packageDate = new Date(reservation.paymentDate || reservation.markedAsPaidAt || reservation.paidAt || reservation.createdAt || '');
+      const packageDate = new Date(item.paymentDate || item.createdAt || '');
       const filterDate = new Date(dateFilter);
       
       matchesDate = (
@@ -447,13 +449,13 @@ export function CashRegisterPage() {
     // Aplicar filtro de método de pago
     let matchesPaymentMethod = true;
     if (paymentMethodFilter && paymentMethodFilter !== 'todos') {
-      matchesPaymentMethod = reservation.paymentMethod === paymentMethodFilter;
+      matchesPaymentMethod = item.paymentMethod === paymentMethodFilter;
     }
     
     // Aplicar filtro de empresa (solo para taquilleros)
     let matchesCompany = true;
     if (isTicketOfficeView && companyFilter !== 'todas') {
-      matchesCompany = reservation.companyInfo?.id === companyFilter;
+      matchesCompany = item.companyId === companyFilter;
     }
     
     return matchesSearch && matchesDate && matchesPaymentMethod && matchesCompany;
@@ -1785,6 +1787,7 @@ Total transacciones: ${cutoffData.transactionCount}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {/* Mostrar primero las reservaciones */}
                   {sortedReservations
                     .filter(reservation => !reservation.originalPackageId)
                     .map((reservation) => (
