@@ -367,7 +367,7 @@ export class CutoffService {
           itemId: isPackage ? (item.originalPackageId || item.id) : item.id,
           amount: item.amount || item.totalAmount || 0,
           paymentMethod: simplePaymentMethod, // Usar el método normalizado, no el original
-          concept: item.paymentNote || (isPackage ? 'Paquetería' : 'Reservación'),
+          concept: isPackage ? 'Paquetería' : (item.paymentNote || 'Reservación'),
           details: JSON.stringify(detailedInfo)
         });
       }
