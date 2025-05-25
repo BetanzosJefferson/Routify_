@@ -37,9 +37,6 @@ export interface IStorage {
   updateRoute(id: number, route: Partial<Route>): Promise<Route | undefined>;
   deleteRoute(id: number): Promise<boolean>;
   getRouteWithSegments(id: number): Promise<RouteWithSegments | undefined>;
-  
-  // Transaction methods
-  getPendingTransactionsByUserId(userId: number): Promise<any[]>;
 
   // Presupuestos de operadores
   getTripBudget(tripId: number): Promise<TripBudget | undefined>;
@@ -170,7 +167,6 @@ export interface IStorage {
   // Transacciones methods
   createTransaccion(transaccionData: schema.InsertTransaccion): Promise<schema.Transaccion>;
   getTransacciones(filters?: { usuario_id?: number, id_corte?: number }): Promise<schema.Transaccion[]>;
-  getPendingTransactionsByUserId(userId: number): Promise<schema.Transaccion[]>;
 }
 
 export class MemStorage implements IStorage {

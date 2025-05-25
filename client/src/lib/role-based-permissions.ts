@@ -23,7 +23,7 @@ export const ALL_SECTIONS: Section[] = [
   { id: "notifications", name: "Notificaciones", description: "Centro de notificaciones del sistema" },
   { id: "coupons", name: "Cupones", description: "Gestión de cupones de descuento" },
   { id: "packages", name: "Paqueterías", description: "Gestión de envío de paquetes" },
-  { id: "transactions", name: "Transacciones", description: "Gestión de transacciones pendientes" },
+  { id: "cash-register", name: "Caja", description: "Registro de pagos realizados" },
   /* Temporalmente deshabilitado
   { id: "passenger-transfer", name: "Transferencia de pasajeros", description: "Gestión de transferencias de pasajeros entre viajes" },
   */
@@ -48,7 +48,7 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "notifications",
     "coupons",
     "packages",
-    "transactions",
+    "cash-register",
     "passenger-transfer"
   ],
   [UserRole.ADMIN]: [
@@ -64,7 +64,7 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "reservation-requests", 
     "notifications",
     "packages",
-    "transactions",
+    "cash-register",
     "passenger-transfer"
   ],
   [UserRole.CALL_CENTER]: [
@@ -79,7 +79,7 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "boarding-list",
     "notifications",
     "packages",
-    "transactions"
+    "cash-register"
   ],
   // Permisos para rol DRIVER (conductor) - ya incluye el alias español 'chofer'
   [UserRole.DRIVER]: [
@@ -87,7 +87,7 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "boarding-list",
     "notifications",
     "packages",
-    "transactions"
+    "cash-register"
     // Quitamos acceso a "trips" y "reservations" para conductor
   ],
   [UserRole.TICKET_OFFICE]: [
@@ -95,7 +95,7 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "reservations",
     "notifications",
     "packages",
-    "transactions"
+    "cash-register"
   ],
   // Permisos para el nuevo rol COMISIONISTA
   [UserRole.COMMISSIONER]: [

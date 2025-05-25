@@ -23,7 +23,7 @@ import CouponsPage from "@/pages/coupons-page";
 import PackagesPage from "@/pages/packages-page";
 import PackageDetailPage from "@/pages/package-detail-page";
 import EditTripPage from "@/pages/edit-trip-page";
-import TransactionsPage from "@/pages/transactions-page";
+// Componente de caja registradora eliminado
 // Temporalmente deshabilitado
 // import PassengerTransferPageRoute from "@/pages/passenger-transfer-page";
 import BoardingListPageRoute from "@/pages/boarding-list-page";
@@ -44,7 +44,7 @@ function Router() {
       <ProtectedRoute path="/notifications" component={NotificationsPage} />
       <ProtectedRoute path="/coupons" component={CouponsPage} />
       <ProtectedRoute path="/packages" component={PackagesPage} />
-      <ProtectedRoute path="/transactions" component={TransactionsPage} />
+      {/* Ruta de caja registradora eliminada */}
       <ProtectedRoute path="/edit-trip/:id" component={EditTripPage} />
       {/* Temporalmente deshabilitada la ruta de transferencia de pasajeros
       <ProtectedRoute path="/passenger-transfer" component={PassengerTransferPageRoute} /> */}
