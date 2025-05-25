@@ -3476,7 +3476,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .select({
             isSubTrip: schema.trips.isSubTrip,
             segmentOrigin: schema.trips.segmentOrigin,
-            segmentDestination: schema.trips.segmentDestination
+            segmentDestination: schema.trips.segmentDestination,
+            companyId: schema.trips.companyId  // Incluir explícitamente el campo companyId
           })
           .from(schema.trips)
           .where(eq(schema.trips.id, packageData.tripId || 0))
