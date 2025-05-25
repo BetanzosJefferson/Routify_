@@ -2656,6 +2656,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.updateRelatedTripsAvailability(trip.id, -passengerCount);
       
+      // Crear transacción si hay anticipo (advanceAmount > 0)
+      if (reservationData.advanceAmount && reservationData.advanceAmount > 0) {
+        try {
+          console.log(`[POST /reservations] Creando transacción para anticipo de $${reservationData.advanceAmount}`);
+          
+          // Obtener información del viaje para los detalles de la transacción
+          const tripWithRouteInfo = await storage.getTripWithRouteInfo(trip.id);
+          
+          if (tripWithRouteInfo && tripWithRouteInfo.route) {
+            // Crear los detalles de la transacción en formato JSON
+            const detallesTransaccion = {
+              type: "reservation",
+              details: {
+                id: reservation.id,
+                pasajeros: passengers.map(p => `${p.firstName} ${p.lastName}`).join(", "),
+                contacto: {
+                  email: reservation.email,
+                  telefono: reservation.phone
+                },
+                origen: tripWithRouteInfo.route.origin,
+                destino: tripWithRouteInfo.route.destination,
+                monto: reservationData.advanceAmount,
+                metodoPago: reservationData.advancePaymentMethod || "efectivo",
+                notas: reservation.notes
+              }
+            };
+            
+            // Crear la transacción en la base de datos
+            const transaccion = await storage.createTransaccion({
+              detalles: detallesTransaccion,
+              usuario_id: createdByUserId || (user ? user.id : null),
+              id_corte: null // Inicialmente NULL, se actualizará cuando se haga un corte de caja
+            });
+            
+            console.log(`[POST /reservations] Transacción creada exitosamente con ID: ${transaccion.id}`);
+          } else {
+            console.log(`[POST /reservations] No se pudo obtener información completa del viaje para crear la transacción`);
+          }
+        } catch (error) {
+          console.error(`[POST /reservations] Error al crear transacción:`, error);
+          // Continuamos aunque falle la creación de la transacción para no afectar la creación de la reserva
+        }
+      }
+      
       res.status(201).json({
         ...reservation,
         passengers
