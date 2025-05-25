@@ -6657,141 +6657,28 @@ function setupPackageRoutes(app: Express) {
     }
   });
 
-  // Endpoint para obtener todas las transacciones (versión sin restricciones)
-  app.get(apiRouter("/transactions"), isAuthenticated, async (req: Request, res: Response) => {
+  // Ruta para obtener transacciones del usuario actual que no están en un corte
+  app.get(apiRouter("/transactions/current"), async (req: Request, res: Response) => {
     try {
-      const user = req.user as Express.User;
+      const { user } = req as any;
       
-      // Verificar autenticación
-      if (!user || !user.id) {
-        console.log('[GET /transactions] Usuario no autenticado o ID no disponible');
-        return res.status(401).json({ error: "Usuario no autenticado" });
-      }
-      
-      console.log(`[GET /transactions] Usuario: ${user.firstName} ${user.lastName}, ID: ${user.id}, Rol: ${user.role}`);
-      
-      try {
-        // Consulta directa a la tabla transactions
-        console.log('[GET /transactions] Consultando tabla transactions directamente');
-        
-        // Obtenemos todas las transacciones sin filtrar usando SQL directo
-        const transactions = await db.execute(
-          `SELECT * FROM transactions ORDER BY created_at DESC LIMIT 100`
-        );
-        
-        // El resultado de db.execute es un objeto con propiedades especiales, no un array
-        // La estructura real debe extraerse del objeto result.rows
-        const transactionRows = transactions?.rows || [];
-        
-        console.log(`[GET /transactions] Se encontraron ${transactionRows.length} transacciones en total`);
-        
-        if (transactionRows.length > 0) {
-          console.log('[GET /transactions] Primera transacción encontrada:', JSON.stringify(transactionRows[0]));
-        } else {
-          console.log('[GET /transactions] No se encontraron transacciones en la base de datos');
-          
-          // Si no hay transacciones y estamos en desarrollo, generamos datos de prueba
-          if (process.env.NODE_ENV !== 'production') {
-            const mockData = [
-              {
-                id: 1001,
-                detalles: {
-                  type: "reservation",
-                  details: {
-                    id: 501,
-                    monto: 350.50,
-                    notas: "Reservación de prueba",
-                    origen: "Mérida",
-                    destino: "Cancún",
-                    tripId: 3166,
-                    metodoPago: "efectivo",
-                    companyId: "bamo-936622",
-                    dateCreated: new Date().toISOString(),
-                    pasajeros: "2",
-                    contacto: {
-                      email: "cliente@ejemplo.com",
-                      telefono: "9991234567"
-                    }
-                  }
-                },
-                usuario_id: user.id,
-                id_corte: null,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                companyId: "bamo-936622"
-              },
-              {
-                id: 1002,
-                detalles: {
-                  type: "package",
-                  details: {
-                    id: 502,
-                    monto: 120.00,
-                    notas: "Paquete de prueba",
-                    origen: "Mérida",
-                    destino: "Valladolid",
-                    tripId: 3167,
-                    metodoPago: "transferencia",
-                    companyId: "bamo-936622",
-                    dateCreated: new Date().toISOString(),
-                    remitente: "Juan Pérez",
-                    destinatario: "María López",
-                    descripcion: "Documento importante",
-                    usaAsientos: false,
-                    asientos: 0
-                  }
-                },
-                usuario_id: user.id,
-                id_corte: null,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                companyId: "bamo-936622"
-              }
-            ];
-            
-            console.log(`[GET /transactions] Devolviendo ${mockData.length} transacciones de ejemplo para desarrollo`);
-            return res.json(mockData);
-          }
-        }
-        
-        // Devolvemos las transacciones de la base de datos
-        return res.json(transactionRows);
-        
-      } catch (dbError) {
-        console.error('[GET /transactions] Error al consultar la base de datos:', dbError);
-        return res.status(500).json({ error: "Error al consultar la base de datos de transacciones" });
-      }
-      
-    } catch (error) {
-      console.error("[GET /transactions] Error general:", error);
-      return res.status(500).json({ error: "Error al obtener transacciones" });
-    }
-  });
-  
-  // Mantenemos el endpoint anterior también para compatibilidad
-  app.get(apiRouter("/transactions/current"), isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const user = req.user as Express.User;
       if (!user) {
         return res.status(401).json({ error: "Usuario no autenticado" });
       }
       
-      // Redireccionar al nuevo endpoint (sin filtrar)
-      const response = await fetch(`${req.protocol}://${req.get('host')}/api/transactions`, {
-        headers: {
-          cookie: req.headers.cookie || ''
-        }
-      });
+      // Filtrar transacciones del usuario actual que no están en un corte de caja
+      const filters = {
+        usuario_id: user.id,
+        id_corte: null // Solo transacciones que no están en un corte
+      };
       
-      if (!response.ok) {
-        return res.status(response.status).json({ error: "Error al obtener transacciones" });
-      }
+      const transacciones = await storage.getTransacciones(filters);
+      console.log(`[GET /transactions/current] Encontradas ${transacciones.length} transacciones para usuario ${user.id}`);
       
-      const data = await response.json();
-      return res.json(data);
+      res.json(transacciones);
     } catch (error) {
-      console.error("[GET /transactions/current] Error:", error);
-      return res.status(500).json({ error: "Error al obtener transacciones actuales" });
+      console.error("Error al obtener transacciones actuales:", error);
+      res.status(500).json({ error: "Error al obtener transacciones actuales" });
     }
   });
 }
