@@ -4507,6 +4507,25 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
+  // Obtener historial de cortes de caja por usuario
+  async getBoxCutoffsByUser(userId: number): Promise<schema.BoxCutoff[]> {
+    try {
+      console.log(`[getBoxCutoffsByUser] Obteniendo cortes de caja para usuario ${userId}`);
+      
+      const cutoffs = await db
+        .select()
+        .from(schema.boxCutoff)
+        .where(eq(schema.boxCutoff.user_id, userId))
+        .orderBy(desc(schema.boxCutoff.createdAt));
+      
+      console.log(`[getBoxCutoffsByUser] Se encontraron ${cutoffs.length} cortes para el usuario ${userId}`);
+      return cutoffs;
+    } catch (error) {
+      console.error(`[getBoxCutoffsByUser] Error al obtener cortes para usuario ${userId}:`, error);
+      return [];
+    }
+  }
+
   // Método para crear un corte de caja
   async createBoxCutoff(data: schema.InsertBoxCutoff): Promise<schema.BoxCutoff> {
     try {

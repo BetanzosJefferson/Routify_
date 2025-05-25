@@ -6685,6 +6685,26 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
+  // Endpoint para obtener historial de cortes del usuario
+  app.get(apiRouter("/box/cutoff/history"), async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "Usuario no autenticado" });
+      }
+      
+      // Obtener historial de cortes para el usuario actual
+      const cutoffs = await storage.getBoxCutoffsByUser(user.id);
+      
+      console.log(`[GET /box/cutoff/history] Encontrados ${cutoffs.length} cortes para usuario ${user.id}`);
+      res.json(cutoffs);
+    } catch (error) {
+      console.error("Error al obtener historial de cortes:", error);
+      res.status(500).json({ error: "Error al obtener historial de cortes" });
+    }
+  });
+
   // Ruta para crear un nuevo corte de caja
   app.post(apiRouter("/box/cutoff"), async (req: Request, res: Response) => {
     try {
