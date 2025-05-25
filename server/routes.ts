@@ -2766,6 +2766,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // y la fecha actual para el registro de cuándo se realizó el pago
         reservationData.paidBy = user?.id || null;
         reservationData.markedAsPaidAt = new Date();
+        
+        // Obtener la reservación completa para calcular el monto restante
+        const originalReservation = await storage.getReservationWithDetails(id);
+        if (originalReservation) {
+          try {
+            // Calcular el monto restante (total - anticipo)
+            const remainingAmount = originalReservation.totalAmount - (originalReservation.advanceAmount || 0);
+            
+            if (remainingAmount > 0) {
+              console.log(`[PUT /reservations/${id}] Creando transacción para pago restante de $${remainingAmount}`);
+              
+              // Obtener información del viaje para los detalles de la transacción
+              const trip = await storage.getTrip(originalReservation.tripId);
+              if (!trip) {
+                console.log(`[PUT /reservations/${id}] No se encontró el viaje ${originalReservation.tripId}`);
+                // Continuamos con la actualización aunque no se pueda crear la transacción
+              } else {
+                const tripWithRouteInfo = await storage.getTripWithRouteInfo(trip.id);
+                
+                // Obtener los pasajeros de la reservación
+                const passengers = await storage.getPassengers(id);
+                
+                // Verificar si el viaje es un sub-viaje para determinar origen y destino correctos
+                let origen = "";
+                let destino = "";
+                
+                // Verificar si el viaje es un sub-viaje
+                if (tripWithRouteInfo.isSubTrip && tripWithRouteInfo.segmentOrigin && tripWithRouteInfo.segmentDestination) {
+                  console.log(`[PUT /reservations/${id}] El viaje ${trip.id} es un sub-viaje, usando segmentOrigin y segmentDestination`);
+                  origen = tripWithRouteInfo.segmentOrigin;
+                  destino = tripWithRouteInfo.segmentDestination;
+                } else if (tripWithRouteInfo && tripWithRouteInfo.route) {
+                  console.log(`[PUT /reservations/${id}] El viaje ${trip.id} es un viaje normal, usando route.origin y route.destination`);
+                  origen = tripWithRouteInfo.route.origin;
+                  destino = tripWithRouteInfo.route.destination;
+                }
+                
+                if ((tripWithRouteInfo && tripWithRouteInfo.route) || (tripWithRouteInfo.isSubTrip && origen && destino)) {
+                  // Crear los detalles de la transacción en formato JSON
+                  const detallesTransaccion = {
+                    type: "reservation-final-payment",
+                    details: {
+                      id: originalReservation.id,
+                      tripId: originalReservation.tripId,
+                      isSubTrip: tripWithRouteInfo.isSubTrip || false,
+                      pasajeros: passengers.map(p => `${p.firstName} ${p.lastName}`).join(", "),
+                      contacto: {
+                        email: originalReservation.email,
+                        telefono: originalReservation.phone
+                      },
+                      origen: origen,
+                      destino: destino,
+                      monto: remainingAmount,
+                      metodoPago: originalReservation.paymentMethod || "efectivo",
+                      notas: `Pago final - Reservación #${originalReservation.id}`
+                    }
+                  };
+                  
+                  console.log(`[PUT /reservations/${id}] DEPURACIÓN - Detalles de la transacción a crear:`, JSON.stringify(detallesTransaccion, null, 2));
+                  
+                  // Crear la transacción en la base de datos
+                  const transaccionData = {
+                    detalles: detallesTransaccion,
+                    usuario_id: user?.id || null,
+                    id_corte: null // Inicialmente NULL, se actualizará cuando se haga un corte de caja
+                  };
+                  
+                  const transaccion = await storage.createTransaccion(transaccionData);
+                  console.log(`[PUT /reservations/${id}] Transacción de pago final creada exitosamente con ID: ${transaccion.id}`);
+                }
+              }
+            } else {
+              console.log(`[PUT /reservations/${id}] No se creó transacción porque no hay monto restante por pagar`);
+            }
+          } catch (error) {
+            console.error(`[PUT /reservations/${id}] Error al crear transacción de pago final:`, error);
+            console.error(`[PUT /reservations/${id}] DEPURACIÓN - Stack de error:`, error instanceof Error ? error.stack : 'No stack disponible');
+            // Continuamos con la actualización aunque falle la creación de la transacción
+          }
+        }
       }
       
       const updatedReservation = await storage.updateReservation(id, reservationData);
