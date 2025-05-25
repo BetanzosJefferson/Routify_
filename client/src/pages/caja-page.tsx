@@ -1,6 +1,6 @@
 import { DefaultLayout } from "@/components/layout/default-layout";
 
-export function CajaPage() {
+export function CashboxPage() {
   return (
     <DefaultLayout>
       <div className="container mx-auto px-4 py-8">
