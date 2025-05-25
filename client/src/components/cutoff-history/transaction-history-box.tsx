@@ -31,13 +31,16 @@ import {
   ChevronDown,
   ChevronUp,
   Eye,
-  EyeOff
+  EyeOff,
+  Printer,
+  Download
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
+import { jsPDF } from "jspdf";
 
 // Tipos para las transacciones
 interface TransactionDetails {
@@ -114,6 +117,7 @@ const TransactionHistoryBox: React.FC = () => {
   const [reservationTransactions, setReservationTransactions] = useState<Transaction[]>([]);
   const [packageTransactions, setPackageTransactions] = useState<Transaction[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
+  const [loadingPdf, setLoadingPdf] = useState<{[key: string]: boolean}>({});
   
   // Nuevo estado para almacenar transacciones agrupadas por corte
   const [cutoffGroups, setCutoffGroups] = useState<{
@@ -350,6 +354,167 @@ const TransactionHistoryBox: React.FC = () => {
       }
       return updatedGroups;
     });
+  };
+  
+  // Función para generar e imprimir el PDF del corte
+  const generatePDF = async (cutoffId: number) => {
+    try {
+      // Marcar como cargando
+      setLoadingPdf(prev => ({...prev, [cutoffId]: true}));
+      
+      // Obtener el grupo de corte
+      const group = cutoffGroups[cutoffId];
+      if (!group) {
+        throw new Error("No se encontró información del corte");
+      }
+      
+      console.log("Generando PDF para corte:", group.cutoffId);
+      
+      // Obtener información del usuario
+      const userInfo = user ? `${user.firstName} ${user.lastName}` : "Usuario desconocido";
+      
+      // Guardar transacciones para el PDF
+      console.log("Guardando transacciones para PDF:", group.transactions.length);
+      
+      // Crear el documento PDF con ancho de 60mm (aproximadamente 226.8 puntos)
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: [60, 150] // 60mm de ancho, altura variable
+      });
+      
+      // Configurar fuente y tamaño
+      doc.setFont("helvetica");
+      doc.setFontSize(8);
+      
+      // Variables para controlar la posición
+      let y = 10;
+      const margin = 5;
+      const width = 60 - (margin * 2);
+      
+      // Añadir encabezado
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text("TransRoute", 30, y, { align: "center" });
+      y += 5;
+      
+      doc.setFontSize(8);
+      doc.text("HISTORIAL DE CORTE", 30, y, { align: "center" });
+      y += 5;
+      
+      // Información del corte
+      doc.setFont("helvetica", "normal");
+      doc.text(`Corte: ${group.cutoffCode}`, margin, y);
+      y += 4;
+      
+      doc.text(`Usuario: ${userInfo}`, margin, y);
+      y += 4;
+      
+      const fechaCorte = new Date().toLocaleString("es-MX", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+      
+      doc.text(`Fecha impresión: ${fechaCorte}`, margin, y);
+      y += 4;
+      
+      doc.text(`Total Transacciones: ${group.transactions.length}`, margin, y);
+      y += 6;
+      
+      // Línea separadora
+      doc.line(margin, y, width + margin, y);
+      y += 4;
+      
+      // Resumen de montos
+      doc.setFont("helvetica", "bold");
+      doc.text("RESUMEN", 30, y, { align: "center" });
+      y += 4;
+      
+      doc.setFont("helvetica", "normal");
+      doc.text(`Total Ingreso: ${formatCurrency(group.totalAmount)}`, margin, y);
+      y += 4;
+      
+      doc.text(`Efectivo: ${formatCurrency(group.cashAmount)}`, margin, y);
+      y += 4;
+      
+      doc.text(`Transferencia: ${formatCurrency(group.transferAmount)}`, margin, y);
+      y += 6;
+      
+      // Línea separadora
+      doc.line(margin, y, width + margin, y);
+      y += 4;
+      
+      // Listado de transacciones
+      doc.setFont("helvetica", "bold");
+      doc.text("DETALLE DE TRANSACCIONES", 30, y, { align: "center" });
+      y += 4;
+      
+      // Recorrer las transacciones
+      group.transactions.forEach((transaction, index) => {
+        if (y > 140) {
+          // Añadir nueva página si se acerca al límite
+          doc.addPage([60, 150]);
+          y = 10;
+        }
+        
+        doc.setFont("helvetica", "bold");
+        const tipo = transaction.detalles.type.includes("reservation") 
+          ? "Reservación" 
+          : "Paquetería";
+        doc.text(`${index + 1}. ${tipo}`, margin, y);
+        y += 3;
+        
+        doc.setFont("helvetica", "normal");
+        const details = transaction.detalles.details;
+        doc.text(`ID: ${details.id}`, margin, y);
+        y += 3;
+        
+        doc.text(`Monto: ${formatCurrency(details.monto || 0)}`, margin, y);
+        y += 3;
+        
+        doc.text(`Método: ${details.metodoPago === "efectivo" ? "Efectivo" : "Transferencia"}`, margin, y);
+        y += 3;
+        
+        const fecha = new Date(transaction.createdAt).toLocaleString("es-MX", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+        doc.text(`Fecha: ${fecha}`, margin, y);
+        y += 5;
+      });
+      
+      // Pie de página
+      y = doc.internal.pageSize.height - 10;
+      doc.setFontSize(6);
+      doc.text("TransRoute - Sistema de Gestión", 30, y, { align: "center" });
+      
+      // Guardar el PDF
+      const filename = `corte-${group.cutoffCode.toLowerCase()}.pdf`;
+      doc.save(filename);
+      
+      toast({
+        title: "PDF Generado",
+        description: `El PDF del corte ${group.cutoffCode} ha sido generado y descargado.`,
+        variant: "default",
+      });
+      
+    } catch (error) {
+      console.error("Error al generar PDF:", error);
+      toast({
+        title: "Error al generar PDF",
+        description: error instanceof Error ? error.message : "Error desconocido",
+        variant: "destructive",
+      });
+    } finally {
+      // Desmarcar como cargando
+      setLoadingPdf(prev => ({...prev, [cutoffId]: false}));
+    }
   };
 
   return (
