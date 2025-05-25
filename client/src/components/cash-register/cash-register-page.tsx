@@ -1634,11 +1634,8 @@ Total transacciones: ${cutoffData.transactionCount}
               <p>Error al cargar los datos: {error instanceof Error ? error.message : "Error desconocido"}</p>
               <p className="text-sm mt-2">Por favor, intenta de nuevo más tarde.</p>
             </div>
-          ) : ((isTicketOfficeView ? 
-              (companyFilter !== 'todas' 
-                ? !sortedReservations.length 
-                : !Object.keys(reservationsByCompany).length)
-              : !sortedReservations.length)) ? (
+          ) : ((!sortedReservations || sortedReservations.length === 0) && 
+              (!filteredPackages || filteredPackages.length === 0)) ? (
             <div className="text-center p-10 bg-gray-50 rounded-lg">
               <FilterIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-gray-600">No hay pagos registrados</h3>
