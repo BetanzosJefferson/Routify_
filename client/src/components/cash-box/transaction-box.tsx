@@ -130,8 +130,9 @@ const TransactionBox: React.FC = () => {
   // Mutación para crear un nuevo corte de caja
   const createCutoffMutation = useMutation({
     mutationFn: async () => {
-      // Combinar todas las transacciones para el PDF
+      // Capturar todas las transacciones actuales para el PDF antes de hacer el corte
       const allTransactions = [...reservationTransactions, ...packageTransactions];
+      console.log("Guardando transacciones para PDF:", allTransactions.length);
       
       const response = await fetch('/api/box/cutoff', {
         method: 'POST',
@@ -147,27 +148,34 @@ const TransactionBox: React.FC = () => {
       }
       
       const data = await response.json();
-      // Guardar el corte y las transacciones para generar el PDF
-      setLastCutoff({
-        cutoff: data.cutoff,
-        transactions: allTransactions
-      });
       
-      return data;
+      return {
+        ...data,
+        capturedTransactions: allTransactions // Pasar las transacciones junto con la respuesta
+      };
     },
     onMutate: () => {
       setIsCreatingCutoff(true);
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast({
         title: "Corte realizado con éxito",
         description: `Se han procesado ${data.transactionCount} transacciones en el corte #${data.cutoff.id}`,
         variant: "default",
       });
       
-      // Generar el PDF con las transacciones que teníamos antes de hacer el corte
-      if (lastCutoff) {
-        generateTicketPDF(data.cutoff, lastCutoff.transactions);
+      console.log("Generando PDF para corte:", data.cutoff.id);
+      
+      // Generar el PDF directamente con las transacciones capturadas
+      try {
+        await generateTicketPDF(data.cutoff, data.capturedTransactions);
+      } catch (error) {
+        console.error("Error al generar PDF:", error);
+        toast({
+          title: "Error al generar el ticket",
+          description: "El corte se realizó pero no se pudo generar el PDF",
+          variant: "destructive",
+        });
       }
       
       // Invalidar consulta para recargar las transacciones
