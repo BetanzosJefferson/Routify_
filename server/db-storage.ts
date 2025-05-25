@@ -4488,4 +4488,50 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
   }
+  
+  async updateTransaccion(id: number, data: Partial<schema.Transaccion>): Promise<schema.Transaccion | null> {
+    try {
+      const [updated] = await db
+        .update(schema.transacciones)
+        .set({
+          ...data,
+          updatedAt: new Date()
+        })
+        .where(eq(schema.transacciones.id, id))
+        .returning();
+      
+      return updated || null;
+    } catch (error) {
+      console.error(`[updateTransaccion] Error actualizando transacción ${id}:`, error);
+      return null;
+    }
+  }
+  
+  // Método para crear un corte de caja
+  async createBoxCutoff(data: schema.InsertBoxCutoff): Promise<schema.BoxCutoff> {
+    try {
+      console.log(`[createBoxCutoff] Creando nuevo corte de caja para usuario ${data.user_id}`);
+      
+      const [newCutoff] = await db
+        .insert(schema.boxCutoff)
+        .values({
+          fecha_inicio: data.fecha_inicio,
+          fecha_fin: data.fecha_fin,
+          total_ingresos: data.total_ingresos,
+          total_efectivo: data.total_efectivo,
+          total_transferencias: data.total_transferencias,
+          user_id: data.user_id,
+          companyId: data.companyId,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
+      
+      console.log(`[createBoxCutoff] Corte de caja creado con ID: ${newCutoff.id}`);
+      return newCutoff;
+    } catch (error) {
+      console.error('[createBoxCutoff] Error al crear corte de caja:', error);
+      throw new Error(`Error al crear corte de caja: ${error}`);
+    }
+  }
 }
