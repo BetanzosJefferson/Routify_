@@ -4460,20 +4460,20 @@ export class DatabaseStorage implements IStorage {
     try {
       let query = db.select().from(schema.transacciones);
       
-      // Filtrar por usuario_id para mostrar solo las transacciones del usuario actual
+      // Filtrar por user_id (nombre correcto de la columna) para mostrar solo las transacciones del usuario actual
       if (filters?.usuario_id) {
-        query = query.where(eq(schema.transacciones.usuario_id, filters.usuario_id));
+        query = query.where(eq(schema.transacciones.user_id, filters.usuario_id));
       }
       
       // Manejar el filtro de id_corte de manera especial para valores null
       if (filters?.id_corte === null) {
         // Usar isNull para filtrar cuando id_corte es null
-        query = query.where(isNull(schema.transacciones.id_corte));
-        console.log(`[getTransacciones] Filtrando transacciones con id_corte NULL`);
+        query = query.where(isNull(schema.transacciones.cutoff_id));
+        console.log(`[getTransacciones] Filtrando transacciones con cutoff_id NULL`);
       } else if (filters?.id_corte) {
         // Filtro normal para valores no nulos
-        query = query.where(eq(schema.transacciones.id_corte, filters.id_corte));
-        console.log(`[getTransacciones] Filtrando transacciones con id_corte: ${filters.id_corte}`);
+        query = query.where(eq(schema.transacciones.cutoff_id, filters.id_corte));
+        console.log(`[getTransacciones] Filtrando transacciones con cutoff_id: ${filters.id_corte}`);
       }
       
       // Ordenar por fecha de creación descendente (más recientes primero)
