@@ -6649,6 +6649,7 @@ function setupPackageRoutes(app: Express) {
       // Verificar que el usuario tenga permisos adecuados
       const permittedRoles = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.OWNER, UserRole.TICKET_SELLER];
       if (!permittedRoles.includes(user.role)) {
+        console.log(`[GET /transactions/company] Usuario ${user.firstName} ${user.lastName} con rol ${user.role} no tiene permiso para acceder a transacciones`);
         return res.status(403).json({ 
           message: "No tienes permisos para acceder a las transacciones" 
         });
@@ -6656,6 +6657,8 @@ function setupPackageRoutes(app: Express) {
 
       // Obtener la compañía del usuario
       const companyId = user.company;
+      console.log(`[GET /transactions/company] Compañía del usuario: ${companyId}`);
+      
       if (!companyId) {
         return res.status(400).json({ 
           message: "El usuario no está asociado a ninguna empresa" 
@@ -6667,14 +6670,43 @@ function setupPackageRoutes(app: Express) {
       
       console.log(`[GET /transactions/company] Se encontraron ${transacciones.length} transacciones para la empresa ${companyId}`);
       
+      // Verificamos la estructura de las primeras transacciones (para depuración)
+      if (transacciones.length > 0) {
+        console.log(`[GET /transactions/company] Primera transacción:`, JSON.stringify(transacciones[0]));
+        console.log(`[GET /transactions/company] Tipo de detalles:`, typeof transacciones[0].detalles);
+        
+        if (typeof transacciones[0].detalles === 'string') {
+          // Si es un string, intenta parsearlo como JSON
+          try {
+            transacciones.forEach((transaccion, index) => {
+              if (typeof transaccion.detalles === 'string') {
+                transaccion.detalles = JSON.parse(transaccion.detalles);
+              }
+            });
+            console.log(`[GET /transactions/company] Detalles parseados como JSON`);
+          } catch (e) {
+            console.error(`[GET /transactions/company] Error al parsear detalles como JSON:`, e);
+          }
+        }
+      }
+      
       // Filtrar por tipo de transacción si se proporciona en la consulta
       const { type } = req.query;
       let filteredTransactions = transacciones;
       
       if (type && (type === 'reservation' || type === 'package')) {
+        console.log(`[GET /transactions/company] Filtrando por tipo: ${type}`);
+        
         filteredTransactions = transacciones.filter(transaccion => {
           // Verificar si el campo detalles (details) tiene la propiedad 'type' y coincide con el tipo solicitado
           const details = transaccion.detalles;
+          
+          if (!details) {
+            console.log(`[GET /transactions/company] Transacción sin detalles:`, transaccion.id);
+            return false;
+          }
+          
+          console.log(`[GET /transactions/company] Tipo de transacción ${transaccion.id}:`, details.type);
           return details && details.type === type;
         });
         
