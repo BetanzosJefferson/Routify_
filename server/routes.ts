@@ -5294,8 +5294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               destinatario: `${newPackage.recipientName} ${newPackage.recipientLastName}`,
               descripcion: newPackage.packageDescription || "",
               usaAsientos: newPackage.usesSeats || false,
-              asientos: newPackage.seatsQuantity || 0,
-              companyId: userCompanyId // Añadir el ID de la compañía en los detalles
+              asientos: newPackage.seatsQuantity || 0
             }
           };
           
