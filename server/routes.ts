@@ -6674,8 +6674,29 @@ function setupPackageRoutes(app: Express) {
         id_corte: null // Solo transacciones que no están en un corte
       };
       
+      console.log(`[GET /transactions/current] Filtrando transacciones con: usuario_id=${user.id}, id_corte=null`);
+      
+      try {
+        // Obtener todas las transacciones para depuración
+        const todasTransacciones = await storage.getTransacciones({});
+        console.log(`[GET /transactions/current] DEBUG - Total transacciones en BD: ${todasTransacciones.length}`);
+        
+        if (todasTransacciones.length > 0) {
+          console.log(`[GET /transactions/current] DEBUG - Muestra de transacción:`, JSON.stringify(todasTransacciones[0]));
+        }
+      } catch (err) {
+        console.error(`[GET /transactions/current] Error al obtener todas las transacciones:`, err);
+      }
+      
       const transacciones = await storage.getTransacciones(filters);
       console.log(`[GET /transactions/current] Encontradas ${transacciones.length} transacciones para usuario ${user.id}`);
+      
+      if (transacciones.length === 0) {
+        console.log('[GET /transactions/current] No se encontraron transacciones. Verificando formato del filtro y consulta SQL');
+      } else {
+        // Mostrar la primera transacción como ejemplo
+        console.log('[GET /transactions/current] Ejemplo de transacción encontrada:', JSON.stringify(transacciones[0]));
+      }
       
       res.json(transacciones);
     } catch (error) {

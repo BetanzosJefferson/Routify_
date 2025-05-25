@@ -82,19 +82,41 @@ const TransactionBox: React.FC = () => {
   });
 
   useEffect(() => {
+    console.log("Datos recibidos del endpoint:", data);
+    
     if (data) {
+      console.log("Tipo de datos recibidos:", typeof data);
+      console.log("¿Es un array?", Array.isArray(data));
+      console.log("Longitud de los datos:", data.length);
+      
       // Separar las transacciones por tipo
       const reservations: Transaction[] = [];
       const packages: Transaction[] = [];
 
-      data.forEach((transaction: Transaction) => {
-        if (transaction.detalles.type === "reservation") {
-          reservations.push(transaction);
-        } else if (transaction.detalles.type === "package") {
-          packages.push(transaction);
+      try {
+        if (Array.isArray(data)) {
+          data.forEach((transaction: Transaction) => {
+            console.log("Procesando transacción:", transaction);
+            console.log("Detalles de la transacción:", transaction.detalles);
+            
+            if (transaction.detalles && transaction.detalles.type === "reservation") {
+              reservations.push(transaction);
+            } else if (transaction.detalles && transaction.detalles.type === "package") {
+              packages.push(transaction);
+            } else {
+              console.log("Transacción con formato desconocido:", transaction);
+            }
+          });
+        } else {
+          console.error("Los datos recibidos no son un array:", data);
         }
-      });
+      } catch (err) {
+        console.error("Error al procesar las transacciones:", err);
+      }
 
+      console.log("Transacciones de reservaciones encontradas:", reservations.length);
+      console.log("Transacciones de paqueterías encontradas:", packages.length);
+      
       setReservationTransactions(reservations);
       setPackageTransactions(packages);
     }
