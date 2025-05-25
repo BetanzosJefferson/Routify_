@@ -4483,7 +4483,8 @@ export class DatabaseStorage implements IStorage {
         console.log(`[getTransacciones] Filtrando transacciones con cutoff_id: ${filters.id_corte}`);
       } else if (filters?.id_corte_not_null) {
         // Filtro especial para transacciones que YA están en cortes (cutoff_id NO es NULL)
-        query = query.where(isNotNull(schema.transacciones.cutoff_id));
+        // En lugar de usar isNotNull, usamos una alternativa con SQL personalizado
+        query = query.where(sql`${schema.transacciones.cutoff_id} IS NOT NULL`);
         console.log(`[getTransacciones] Filtrando transacciones con cutoff_id NO NULL (historial)`);
       }
       
