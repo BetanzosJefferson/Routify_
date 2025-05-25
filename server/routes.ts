@@ -6685,8 +6685,8 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
-  // Ruta para obtener el historial de cortes de caja del usuario actual
-  app.get(apiRouter("/transactions/cutoff-history"), async (req: Request, res: Response) => {
+  // Endpoint para obtener historial de cortes del usuario
+  app.get(apiRouter("/box/cutoff/history"), async (req: Request, res: Response) => {
     try {
       const { user } = req as any;
       
@@ -6694,42 +6694,13 @@ function setupPackageRoutes(app: Express) {
         return res.status(401).json({ error: "Usuario no autenticado" });
       }
       
-      console.log(`[GET /transactions/cutoff-history] Solicitando historial de cortes para usuario ${user.id}, compañía: ${user.companyId || user.company || 'no definida'}`);
+      // Obtener historial de cortes para el usuario actual
+      const cutoffs = await storage.getBoxCutoffsByUser(user.id);
       
-      // Verificar estructura de la tabla
-      try {
-        const tablasExistentes = await db.execute(sql`
-          SELECT table_name 
-          FROM information_schema.tables 
-          WHERE table_schema='public' 
-          ORDER BY table_name;
-        `);
-        console.log('[GET /transactions/cutoff-history] Tablas disponibles:', tablasExistentes.rows.map((r: any) => r.table_name));
-        
-        // Verificar si la tabla box_cutoff existe
-        const estructuraTabla = await db.execute(sql`
-          SELECT column_name, data_type 
-          FROM information_schema.columns 
-          WHERE table_name = 'box_cutoff';
-        `);
-        console.log('[GET /transactions/cutoff-history] Estructura de box_cutoff:', estructuraTabla.rows);
-      } catch (err) {
-        console.error('[GET /transactions/cutoff-history] Error al verificar tablas:', err);
-      }
-      
-      // Obtener el historial de cortes del usuario actual
-      const cutoffHistory = await db
-        .select()
-        .from(schema.boxCutoff)
-        .where(eq(schema.boxCutoff.user_id, user.id))
-        .orderBy(desc(schema.boxCutoff.fecha_fin));
-      
-      console.log(`[GET /transactions/cutoff-history] Encontrados ${cutoffHistory.length} cortes para usuario ${user.id}`);
-      console.log('[GET /transactions/cutoff-history] Datos obtenidos:', JSON.stringify(cutoffHistory, null, 2));
-      
-      res.json(cutoffHistory);
+      console.log(`[GET /box/cutoff/history] Encontrados ${cutoffs.length} cortes para usuario ${user.id}`);
+      res.json(cutoffs);
     } catch (error) {
-      console.error("[GET /transactions/cutoff-history] Error:", error);
+      console.error("Error al obtener historial de cortes:", error);
       res.status(500).json({ error: "Error al obtener historial de cortes" });
     }
   });

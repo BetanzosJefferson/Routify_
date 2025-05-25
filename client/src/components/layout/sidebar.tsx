@@ -181,15 +181,6 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   Caja
                 </NavItem>
               )}
-              {canAccess("reservations") && (
-                <NavItem 
-                  icon={<ClipboardListIcon className="h-5 w-5" />} 
-                  active={location === "/cutoff-history"}
-                  onClick={() => setLocation("/cutoff-history")}
-                >
-                  Historial de Cortes
-                </NavItem>
-              )}
               {canAccess("boarding-list") && (
                 <NavItem 
                   icon={<UsersIcon className="h-5 w-5" />} 
