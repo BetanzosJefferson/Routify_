@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Loader2, Receipt, DollarSign, ArrowRight, CreditCard, Scissors } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -96,8 +96,66 @@ interface Transaction {
 const TransactionBox: React.FC = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [reservationTransactions, setReservationTransactions] = useState<Transaction[]>([]);
   const [packageTransactions, setPackageTransactions] = useState<Transaction[]>([]);
+  const [isCreatingCutoff, setIsCreatingCutoff] = useState(false);
+  
+  // Mutación para crear un nuevo corte de caja
+  const createCutoffMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/box/cutoff', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
+    },
+    onMutate: () => {
+      setIsCreatingCutoff(true);
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Corte realizado con éxito",
+        description: `Se han procesado ${data.transactionCount} transacciones en el corte #${data.cutoff.id}`,
+        variant: "default",
+      });
+      
+      // Invalidar consulta para recargar las transacciones
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions/current'] });
+      setIsCreatingCutoff(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error al realizar el corte",
+        description: error instanceof Error ? error.message : "Error desconocido",
+        variant: "destructive",
+      });
+      setIsCreatingCutoff(false);
+    }
+  });
+  
+  // Función para manejar el clic en el botón "Hacer corte"
+  const handleCreateCutoff = () => {
+    if (totalTransactions === 0) {
+      toast({
+        title: "No hay transacciones para realizar el corte",
+        description: "Debe haber al menos una transacción para crear un corte de caja",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    createCutoffMutation.mutate();
+  };
 
   // Consultar las transacciones del usuario actual
   const { data, isLoading, error } = useQuery({
@@ -248,6 +306,9 @@ const TransactionBox: React.FC = () => {
       transferAmount += amount;
     }
   });
+  
+  // Total de transacciones
+  const totalTransactions = reservationTransactions.length + packageTransactions.length;
 
   const totals = {
     total: totalAmount,
@@ -258,13 +319,34 @@ const TransactionBox: React.FC = () => {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <Receipt className="mr-2 h-6 w-6" />
-          Transacciones en Caja
-        </CardTitle>
-        <CardDescription>
-          Transacciones pendientes que no han sido incluidas en un corte
-        </CardDescription>
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+          <div>
+            <CardTitle className="flex items-center">
+              <Receipt className="mr-2 h-6 w-6" />
+              Transacciones en Caja
+            </CardTitle>
+            <CardDescription>
+              Transacciones pendientes que no han sido incluidas en un corte
+            </CardDescription>
+          </div>
+          <Button
+            className="mt-4 md:mt-0"
+            onClick={handleCreateCutoff}
+            disabled={isCreatingCutoff || totalTransactions === 0}
+          >
+            {isCreatingCutoff ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Procesando...
+              </>
+            ) : (
+              <>
+                <Scissors className="mr-2 h-4 w-4" />
+                Hacer corte
+              </>
+            )}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {/* Resumen de totales */}
