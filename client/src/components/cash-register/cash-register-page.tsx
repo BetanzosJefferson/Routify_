@@ -301,6 +301,12 @@ export function CashRegisterPage() {
   // Función auxiliar para verificar si un elemento ya fue procesado en un corte anterior
   // Usando localStorage como respaldo mientras se resuelve el problema de base de datos
   const isItemProcessed = (itemType: string, itemId: number) => {
+    // TEMPORALMENTE DESACTIVADO PARA MOSTRAR TODOS LOS ELEMENTOS
+    // Esto permitirá ver todas las transacciones pendientes aunque hayan sido procesadas anteriormente
+    return false;
+    
+    // Código original comentado:
+    /*
     if (!user) return false;
     
     try {
@@ -341,12 +347,20 @@ export function CashRegisterPage() {
       console.error("Error al verificar elementos procesados:", e);
       return false;
     }
+    */
   };
   
 
   
   // Filtrar las reservaciones
   const filteredReservations = paidReservations?.filter((reservation: ReservationWithCompany) => {
+    // Agregar log para debugging
+    console.log(`Evaluando reservación #${reservation.id} para filtrar:`, {
+      isPaqueteria: !!reservation.originalPackageId,
+      procesada: isItemProcessed('reservation', reservation.id),
+      reservacion: reservation
+    });
+    
     // No incluir paqueterías en esta lista
     if (reservation.originalPackageId) {
       return false;
@@ -508,6 +522,13 @@ export function CashRegisterPage() {
     } else {
       return dateB.getTime() - dateA.getTime();
     }
+  });
+  
+  // Debugging: Verifiquemos qué tenemos al final del proceso
+  console.log("Después de filtrar y ordenar:", {
+    filteredReservationsLength: filteredReservations?.length || 0,
+    sortedReservationsLength: sortedReservations?.length || 0,
+    paidReservationsLength: paidReservations?.length || 0
   });
   
   // Ordenar paqueterías por fecha
