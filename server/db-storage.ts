@@ -4428,21 +4428,15 @@ export class DatabaseStorage implements IStorage {
   async createTransaccion(transaccionData: schema.InsertTransaccion): Promise<schema.Transaccion> {
     try {
       console.log(`[createTransaccion] Creando nueva transacción para usuario ${transaccionData.usuario_id}`);
-      console.log(`[createTransaccion] Detalles de transacción:`, JSON.stringify(transaccionData.detalles, null, 2));
       
-      if (!transaccionData.detalles) {
-        console.error('[createTransaccion] ERROR: detalles es null o undefined');
-        throw new Error('Los detalles de la transacción son obligatorios');
-      }
-      
-      // Preparar los datos para insertar en la base de datos
+      // Preparar los datos para mapear a los nombres de columnas correctos en la base de datos
       const dataToInsert = {
-        details: transaccionData.detalles, // El campo 'detalles' del esquema se mapea a 'details' en la BD
-        user_id: transaccionData.usuario_id, // El campo 'usuario_id' del esquema se mapea a 'user_id' en la BD
-        cutoff_id: transaccionData.id_corte // El campo 'id_corte' del esquema se mapea a 'cutoff_id' en la BD
+        details: transaccionData.detalles,
+        user_id: transaccionData.usuario_id,
+        cutoff_id: transaccionData.id_corte
       };
       
-      console.log(`[createTransaccion] Datos a insertar:`, JSON.stringify(dataToInsert, null, 2));
+      console.log(`[createTransaccion] Datos a insertar:`, dataToInsert);
       
       // Guardar la transacción en la base de datos
       const [newTransaccion] = await db

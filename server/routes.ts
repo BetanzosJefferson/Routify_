@@ -2666,32 +2666,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (tripWithRouteInfo && tripWithRouteInfo.route) {
             // Crear los detalles de la transacción en formato JSON
-            // Determinar origen y destino correctos basados en si es un sub-viaje
-            let origen = tripWithRouteInfo.route.origin;
-            let destino = tripWithRouteInfo.route.destination;
-            
-            // Si es un sub-viaje, usar los datos del segmento específico
-            if (tripWithRouteInfo.isSubTrip && tripWithRouteInfo.segmentOrigin && tripWithRouteInfo.segmentDestination) {
-              console.log(`[POST /reservations] Es un sub-viaje. Usando datos de segmento: ${tripWithRouteInfo.segmentOrigin} -> ${tripWithRouteInfo.segmentDestination}`);
-              origen = tripWithRouteInfo.segmentOrigin;
-              destino = tripWithRouteInfo.segmentDestination;
-            }
-            
-            // La estructura correcta: el objeto completo se asigna a "detalles" en el esquema
-            // que luego se mapea a "details" en la BD
             const detallesTransaccion = {
               type: "reservation",
-              id: reservation.id,
-              pasajeros: passengers.map(p => `${p.firstName} ${p.lastName}`).join(", "),
-              contacto: {
-                email: reservation.email,
-                telefono: reservation.phone
-              },
-              origen: origen,
-              destino: destino,
-              monto: reservationData.advanceAmount,
-              metodoPago: reservationData.advancePaymentMethod || "efectivo",
-              notas: reservation.notes
+              details: {
+                id: reservation.id,
+                pasajeros: passengers.map(p => `${p.firstName} ${p.lastName}`).join(", "),
+                contacto: {
+                  email: reservation.email,
+                  telefono: reservation.phone
+                },
+                origen: tripWithRouteInfo.route.origin,
+                destino: tripWithRouteInfo.route.destination,
+                monto: reservationData.advanceAmount,
+                metodoPago: reservationData.advancePaymentMethod || "efectivo",
+                notas: reservation.notes
+              }
             };
             
             // Crear la transacción en la base de datos
