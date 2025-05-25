@@ -6681,4 +6681,87 @@ function setupPackageRoutes(app: Express) {
       res.status(500).json({ error: "Error al obtener transacciones actuales" });
     }
   });
+  
+  // Ruta para crear un nuevo corte de caja
+  app.post(apiRouter("/box/cutoff"), async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "Usuario no autenticado" });
+      }
+
+      // Obtener transacciones sin corte (cutoff_id es NULL)
+      const filters = { 
+        usuario_id: user.id,
+        id_corte: null
+      };
+      
+      const transacciones = await storage.getTransacciones(filters);
+
+      if (transacciones.length === 0) {
+        return res.status(400).json({ error: "No hay transacciones para realizar el corte" });
+      }
+
+      console.log(`[POST /box/cutoff] Procesando ${transacciones.length} transacciones para el corte de usuario ${user.id}`);
+      
+      // Calcular totales
+      let totalIngresos = 0;
+      let totalEfectivo = 0;
+      let totalTransferencias = 0;
+      let fechaInicio = new Date();
+      
+      // Buscar la fecha más antigua
+      transacciones.forEach(transaction => {
+        const createdAt = new Date(transaction.createdAt);
+        if (createdAt < fechaInicio) {
+          fechaInicio = createdAt;
+        }
+        
+        const details = transaction.detalles?.details || {};
+        const amount = details.monto || 0;
+        totalIngresos += amount;
+        
+        if (details.metodoPago === "efectivo") {
+          totalEfectivo += amount;
+        } else if (details.metodoPago === "transferencia") {
+          totalTransferencias += amount;
+        }
+      });
+      
+      // Fecha actual para el fin del corte
+      const fechaFin = new Date();
+      
+      // Crear el registro de corte
+      const cutoff = await storage.createBoxCutoff({
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
+        total_ingresos: totalIngresos,
+        total_efectivo: totalEfectivo,
+        total_transferencias: totalTransferencias,
+        user_id: user.id,
+        companyId: user.companyId || null
+      });
+      
+      console.log(`[POST /box/cutoff] Corte creado con ID: ${cutoff.id}`);
+      
+      // Actualizar las transacciones con el ID del corte
+      for (const transaction of transacciones) {
+        await storage.updateTransaccion(transaction.id, {
+          cutoff_id: cutoff.id
+        });
+      }
+      
+      console.log(`[POST /box/cutoff] Actualizadas ${transacciones.length} transacciones con ID de corte ${cutoff.id}`);
+      
+      return res.json({ 
+        message: "Corte realizado con éxito", 
+        cutoff,
+        transactionCount: transacciones.length
+      });
+    } catch (error) {
+      console.error("Error al realizar corte de caja:", error);
+      return res.status(500).json({ error: "Error al realizar corte de caja" });
+    }
+  });
 }
