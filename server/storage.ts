@@ -30,8 +30,6 @@ import {
 } from "@shared/schema";
 
 export interface IStorage {
-  // Métodos para transacciones
-  getTransacciones(filters?: { companyId?: string }): Promise<any[]>;
   // Route methods
   getRoutes(companyId?: string): Promise<Route[]>;
   getRoute(id: number): Promise<Route | undefined>;
