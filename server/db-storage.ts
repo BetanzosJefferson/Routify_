@@ -4542,4 +4542,40 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
   }
+  
+  // Implementación de getAllTransactions para el sistema de Caja
+  async getAllTransactions(companyId: string | null): Promise<schema.Transaccion[]> {
+    try {
+      console.log(`[getAllTransactions] Buscando transacciones para compañía: ${companyId || 'todas'}`);
+      
+      // Crear una consulta SQL directa para obtener los datos de transacciones
+      const result = await db.execute(
+        'SELECT id, details, user_id, cutoff_id, created_at as "createdAt", updated_at as "updatedAt" FROM transactions ORDER BY created_at DESC LIMIT 100'
+      );
+      
+      console.log(`[getAllTransactions] Se encontraron ${result.length} transacciones en la base de datos`);
+      
+      if (result.length > 0) {
+        console.log(`[getAllTransactions] Muestra de la primera transacción:`, JSON.stringify(result[0]).substring(0, 200));
+      }
+      
+      // Mapear los resultados al formato que espera la aplicación
+      const transactions = result.map(row => {
+        return {
+          id: row.id,
+          detalles: row.details, // Aunque en la DB se llama 'details', nuestro modelo espera 'detalles'
+          usuario_id: row.user_id,
+          id_corte: row.cutoff_id,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt
+        };
+      });
+      
+      return transactions;
+    } catch (error) {
+      console.error('[getAllTransactions] Error al obtener transacciones:', error);
+      console.error('[getAllTransactions] Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+      return [];
+    }
+  }
 }
