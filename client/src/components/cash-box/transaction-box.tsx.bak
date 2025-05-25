@@ -64,6 +64,29 @@ interface PackageDetails extends TransactionDetails {
   asientos: number;
 }
 
+interface TransactionDetails {
+  id: number;
+  monto: number;
+  notas: string | null;
+  origen: string;
+  tripId?: number;
+  destino: string;
+  isSubTrip?: boolean;
+  pasajeros?: string;
+  contacto?: {
+    email: string;
+    telefono: string;
+  };
+  remitente?: string;
+  destinatario?: string;
+  descripcion?: string;
+  usaAsientos?: boolean;
+  asientos?: number;
+  metodoPago: string;
+  companyId?: string;
+  dateCreated?: string;
+}
+
 interface Transaction {
   id: number;
   detalles: {
@@ -408,216 +431,215 @@ const TransactionBox: React.FC = () => {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          {/* Resumen de totales */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
-            <div className="flex items-center justify-between md:justify-center">
-              <div className="flex items-center">
-                <DollarSign className="h-6 w-6 mr-2 text-primary" />
-                <div>
-                  <p className="text-sm font-medium">Total</p>
-                  <p className="text-xl font-bold">{formatCurrency(totals.total)}</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center justify-between md:justify-center">
-              <div className="flex items-center">
-                <ArrowRight className="h-6 w-6 mr-2 text-green-500" />
-                <div>
-                  <p className="text-sm font-medium">Efectivo</p>
-                  <p className="text-xl font-bold">{formatCurrency(totals.efectivo)}</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center justify-between md:justify-center">
-              <div className="flex items-center">
-                <CreditCard className="h-6 w-6 mr-2 text-blue-500" />
-                <div>
-                  <p className="text-sm font-medium">Transferencia</p>
-                  <p className="text-xl font-bold">{formatCurrency(totals.transferencia)}</p>
-                </div>
+      <CardContent>
+        {/* Resumen de totales */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
+          <div className="flex items-center justify-between md:justify-center">
+            <div className="flex items-center">
+              <DollarSign className="h-6 w-6 mr-2 text-primary" />
+              <div>
+                <p className="text-sm font-medium">Total</p>
+                <p className="text-xl font-bold">{formatCurrency(totals.total)}</p>
               </div>
             </div>
           </div>
-
-          {/* Sección de Reservaciones */}
-          <div className="mb-8">
-            <div className="flex items-center mb-4">
-              <h3 className="text-lg font-semibold">Reservaciones ({reservationTransactions.length})</h3>
-            </div>
-            
-            <Table>
-              <TableCaption>
-                {reservationTransactions.length === 0
-                  ? "No hay transacciones de reservaciones pendientes"
-                  : "Lista de transacciones de reservaciones"}
-              </TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Origen-Destino</TableHead>
-                  <TableHead>Pasajeros</TableHead>
-                  <TableHead>Método</TableHead>
-                  <TableHead>Monto</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {reservationTransactions.map((transaction) => {
-                  try {
-                    const details = transaction.detalles?.details || {};
-                    return (
-                      <TableRow key={transaction.id}>
-                        <TableCell>{transaction.id}</TableCell>
-                        <TableCell>
-                          {formatDate(details.dateCreated || transaction.createdAt)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs">
-                            <div className="font-medium">{details.origen}</div>
-                            <div className="mt-1">{details.destino}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{details.pasajeros || 'N/A'}</TableCell>
-                        <TableCell>
-                          <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
-                            {details.metodoPago || "N/A"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
-                      </TableRow>
-                    );
-                  } catch (error) {
-                    console.error("Error al renderizar transacción:", error, transaction);
-                    return null;
-                  }
-                })}
-              </TableBody>
-            </Table>
-          </div>
-
-          <Separator className="my-6" />
-
-          {/* Sección de Paqueterías */}
-          <div>
-            <div className="flex items-center mb-4">
-              <h3 className="text-lg font-semibold">Paqueterías ({packageTransactions.length})</h3>
-            </div>
-            
-            <Table>
-              <TableCaption>
-                {packageTransactions.length === 0
-                  ? "No hay transacciones de paqueterías pendientes"
-                  : "Lista de transacciones de paqueterías"}
-              </TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Origen-Destino</TableHead>
-                  <TableHead>Remitente/Destinatario</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead>Método</TableHead>
-                  <TableHead>Monto</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {packageTransactions.map((transaction) => {
-                  try {
-                    const details = transaction.detalles?.details || {};
-                    return (
-                      <TableRow key={transaction.id}>
-                        <TableCell>{transaction.id}</TableCell>
-                        <TableCell>
-                          {formatDate(details.dateCreated || transaction.createdAt)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs">
-                            <div className="font-medium">{details.origen}</div>
-                            <div className="mt-1">{details.destino}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs">
-                            <div className="font-medium">De: {details.remitente || 'No especificado'}</div>
-                            <div className="mt-1">Para: {details.destinatario || 'No especificado'}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs max-w-[150px] truncate">
-                            {details.descripcion || "Sin descripción"}
-                            {details.usaAsientos && (
-                              <Badge variant="outline" className="ml-1">
-                                {details.asientos} asiento{details.asientos !== 1 && "s"}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
-                            {details.metodoPago || "N/A"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
-                      </TableRow>
-                    );
-                  } catch (error) {
-                    console.error("Error al renderizar transacción de paquete:", error, transaction);
-                    return null;
-                  }
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Diálogo para mostrar el PDF */}
-      <Dialog open={pdfDialogOpen} onOpenChange={handleClosePdfDialog}>
-        <DialogContent className="max-w-screen-md w-full">
-          <DialogHeader>
-            <DialogTitle className="flex items-center">
-              <FileText className="mr-2 h-5 w-5" />
-              Ticket de corte de caja
-            </DialogTitle>
-            <DialogDescription>
-              Se ha generado un ticket para este corte de caja. Puedes visualizarlo y descargarlo.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="mt-4 border rounded-md overflow-hidden">
-            {pdfUrl ? (
-              <iframe 
-                src={pdfUrl} 
-                className="w-full h-[70vh]" 
-                title="Ticket de corte" 
-              />
-            ) : (
-              <div className="flex items-center justify-center p-10">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <span className="ml-2">Generando PDF...</span>
+          <div className="flex items-center justify-between md:justify-center">
+            <div className="flex items-center">
+              <ArrowRight className="h-6 w-6 mr-2 text-green-500" />
+              <div>
+                <p className="text-sm font-medium">Efectivo</p>
+                <p className="text-xl font-bold">{formatCurrency(totals.efectivo)}</p>
               </div>
-            )}
+            </div>
+          </div>
+          <div className="flex items-center justify-between md:justify-center">
+            <div className="flex items-center">
+              <CreditCard className="h-6 w-6 mr-2 text-blue-500" />
+              <div>
+                <p className="text-sm font-medium">Transferencia</p>
+                <p className="text-xl font-bold">{formatCurrency(totals.transferencia)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sección de Reservaciones */}
+        <div className="mb-8">
+          <div className="flex items-center mb-4">
+            <h3 className="text-lg font-semibold">Reservaciones ({reservationTransactions.length})</h3>
           </div>
           
-          <DialogFooter className="mt-4">
-            <Button
-              variant="outline"
-              onClick={handleClosePdfDialog}
-            >
-              Cerrar
-            </Button>
-            <Button 
-              onClick={handleDownloadPdf}
-              disabled={!pdfUrl}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Descargar PDF
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+          <Table>
+            <TableCaption>
+              {reservationTransactions.length === 0
+                ? "No hay transacciones de reservaciones pendientes"
+                : "Lista de transacciones de reservaciones"}
+            </TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Origen-Destino</TableHead>
+                <TableHead>Pasajeros</TableHead>
+                <TableHead>Método</TableHead>
+                <TableHead>Monto</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reservationTransactions.map((transaction) => {
+                try {
+                  const details = transaction.detalles?.details || {};
+                  return (
+                    <TableRow key={transaction.id}>
+                      <TableCell>{transaction.id}</TableCell>
+                      <TableCell>
+                        {formatDate(details.dateCreated || transaction.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs">
+                          <div className="font-medium">{details.origen}</div>
+                          <div className="mt-1">{details.destino}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{details.pasajeros || 'N/A'}</TableCell>
+                      <TableCell>
+                        <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
+                          {details.metodoPago || "N/A"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
+                    </TableRow>
+                  );
+                } catch (error) {
+                  console.error("Error al renderizar transacción:", error, transaction);
+                  return null;
+                }
+              })}
+            </TableBody>
+          </Table>
+        </div>
+
+        <Separator className="my-6" />
+
+        {/* Sección de Paqueterías */}
+        <div>
+          <div className="flex items-center mb-4">
+            <h3 className="text-lg font-semibold">Paqueterías ({packageTransactions.length})</h3>
+          </div>
+          
+          <Table>
+            <TableCaption>
+              {packageTransactions.length === 0
+                ? "No hay transacciones de paqueterías pendientes"
+                : "Lista de transacciones de paqueterías"}
+            </TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Origen-Destino</TableHead>
+                <TableHead>Remitente/Destinatario</TableHead>
+                <TableHead>Descripción</TableHead>
+                <TableHead>Método</TableHead>
+                <TableHead>Monto</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {packageTransactions.map((transaction) => {
+                try {
+                  const details = transaction.detalles?.details || {};
+                  return (
+                    <TableRow key={transaction.id}>
+                      <TableCell>{transaction.id}</TableCell>
+                      <TableCell>
+                        {formatDate(details.dateCreated || transaction.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs">
+                          <div className="font-medium">{details.origen}</div>
+                          <div className="mt-1">{details.destino}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs">
+                          <div className="font-medium">De: {details.remitente || 'No especificado'}</div>
+                          <div className="mt-1">Para: {details.destinatario || 'No especificado'}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs max-w-[150px] truncate">
+                          {details.descripcion || "Sin descripción"}
+                          {details.usaAsientos && (
+                            <Badge variant="outline" className="ml-1">
+                              {details.asientos} asiento{details.asientos !== 1 && "s"}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
+                          {details.metodoPago || "N/A"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
+                    </TableRow>
+                  );
+                } catch (error) {
+                  console.error("Error al renderizar transacción de paquete:", error, transaction);
+                  return null;
+                }
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+
+    {/* Diálogo para mostrar el PDF */}
+    <Dialog open={pdfDialogOpen} onOpenChange={handleClosePdfDialog}>
+      <DialogContent className="max-w-screen-md w-full">
+        <DialogHeader>
+          <DialogTitle className="flex items-center">
+            <FileText className="mr-2 h-5 w-5" />
+            Ticket de corte de caja
+          </DialogTitle>
+          <DialogDescription>
+            Se ha generado un ticket para este corte de caja. Puedes visualizarlo y descargarlo.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="mt-4 border rounded-md overflow-hidden">
+          {pdfUrl ? (
+            <iframe 
+              src={pdfUrl} 
+              className="w-full h-[70vh]" 
+              title="Ticket de corte" 
+            />
+          ) : (
+            <div className="flex items-center justify-center p-10">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2">Generando PDF...</span>
+            </div>
+          )}
+        </div>
+        
+        <DialogFooter className="mt-4">
+          <Button
+            variant="outline"
+            onClick={handleClosePdfDialog}
+          >
+            Cerrar
+          </Button>
+          <Button 
+            onClick={handleDownloadPdf}
+            disabled={!pdfUrl}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Descargar PDF
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
