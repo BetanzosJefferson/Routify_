@@ -337,42 +337,110 @@ export class CutoffService {
         
         console.log(`[createCutoff] Procesando origen/destino para ítem ${item.id}:`, originDestInfo);
         
-        const detailedInfo = {
+        // Primero creamos un objeto base con propiedades comunes
+        const baseInfo = {
           // Información básica
           id: item.id,
-          type: isPackage ? 'package' : 'reservation',
-          
-          // Información del pasajero/remitente
-          passengerName: personName,
           
           // Información de ruta/viaje
           tripId: item.tripId,
           tripName: tripName || (item.trip ? `${item.trip.route?.name || 'Ruta'} - ${new Date(item.trip?.departureDate).toLocaleDateString()}` : ''),
           
-          // Almacenamos la información de trip para que podamos procesarla correctamente en el PDF
+          // Información de origen/destino
+          origin: originDestInfo.origin,
+          destination: originDestInfo.destination,
+          departureDate: item.trip?.departureDate || '',
+          departureTime: item.trip?.departureTime || '',
+          
+          // Información de pago
+          amount: item.amount || item.totalAmount || 0,
+          advanceAmount: item.advanceAmount || 0,
+          paymentMethod: simplePaymentMethod,
+          paymentMethodRaw: item.paymentMethod || '',
+          
+          // Información de viaje para PDF
           tripInfo: {
-            // Datos crudos (pueden ser null)
             segmentOrigin: item.trip?.segmentOrigin || null,
             segmentDestination: item.trip?.segmentDestination || null,
             routeOrigin: item.trip?.route?.origin || null,
             routeDestination: item.trip?.route?.destination || null,
-            
-            // Datos directos del item (pueden ser undefined)
             itemOrigin: item.origin,
             itemDestination: item.destination,
-            
-            // IMPORTANTE: Resultado procesado (nunca será null/undefined)
-            // Estos son los valores que deben usarse en el PDF
             processedOrigin: originDestInfo.origin,
             processedDestination: originDestInfo.destination,
             isSegment: originDestInfo.isSegment
           },
           
-          // Actualizamos los campos principales con la información procesada
-          origin: originDestInfo.origin,
-          destination: originDestInfo.destination,
-          departureDate: item.trip?.departureDate || '',
-          departureTime: item.trip?.departureTime || '',
+          // Metadatos
+          companyId: item.companyId || item.trip?.companyId || '',
+          companyName: item.companyInfo?.name || '',
+          createdAt: item.createdAt || new Date().toISOString(),
+          paidAt: item.paidAt || item.paymentAt || new Date().toISOString()
+        };
+        
+        // Luego añadimos propiedades específicas según el tipo
+        const detailedInfo = isPackage ? {
+          ...baseInfo,
+          // Tipo explícito para paqueterías
+          type: 'package',
+          concept: 'Paquetería',
+          paymentNote: 'Paquetería',
+          
+          // Datos específicos de paqueterías
+          sender: item.senderName ? `${item.senderName || ''} ${item.senderLastName || ''}`.trim() : personName,
+          recipient: item.recipientName ? `${item.recipientName || ''} ${item.recipientLastName || ''}`.trim() : '',
+          senderName: item.senderName || '',
+          senderLastName: item.senderLastName || '',
+          receiverName: item.recipientName || '',
+          receiverLastName: item.recipientLastName || '',
+          packageDescription: item.packageDescription || '',
+          weight: item.weight || '',
+          dimensions: item.dimensions || '',
+          deliveryStatus: item.deliveryStatus || '',
+          
+          // Incluir el campo passengers como array vacío para mantener estructura consistente
+          passengers: [],
+          passengerCount: 0
+        } : {
+          ...baseInfo,
+          // Tipo explícito para reservaciones
+          type: 'reservation',
+          concept: 'Reservación',
+          paymentNote: item.isAdvancePayment ? 'Anticipo' : 'Pago completo',
+          
+          // Datos específicos de reservaciones
+          passengerName: personName,
+          passengerCount: item.passengerCount || (Array.isArray(item.passengers) ? item.passengers.length : 0),
+          seatNumbers: item.seatNumbers || [],
+          
+          // Campos de pasajeros
+          passengers: Array.isArray(item.passengers) ? 
+            item.passengers.map((p: any) => ({
+              firstName: p.firstName || '',
+              lastName: p.lastName || '',
+              phone: p.phone || '',
+              email: p.email || ''
+            })) : 
+            (item.passengerName || item.firstName) ? 
+              [{
+                firstName: item.passengerName || item.firstName || '',
+                lastName: item.passengerLastName || item.lastName || '',
+                phone: item.phone || item.passengerPhone || '',
+                email: item.email || item.passengerEmail || ''
+              }] : [],
+              
+          // Incluir campos vacíos de paqueterías para mantener estructura consistente
+          sender: '',
+          recipient: '',
+          senderName: '',
+          senderLastName: '',
+          receiverName: '',
+          receiverLastName: '',
+          packageDescription: '',
+          weight: '',
+          dimensions: '',
+          deliveryStatus: ''
+        };
           
           // Información de pago
           amount: item.amount || item.totalAmount || 0,
@@ -420,10 +488,23 @@ export class CutoffService {
           paidAt: item.paidAt || item.paymentAt || new Date().toISOString()
         };
         
-        // Guardar en la tabla de elementos procesados con método de pago normalizado
+        // PUNTO CRÍTICO: Guardar en la tabla de elementos procesados
+        // Verificación DOBLE para asegurar que se guarde correctamente el tipo
+        const itemTypeToSave = isPackage ? 'package' : 'reservation';
+        
+        // Verifica EXPLÍCITAMENTE que se use el tipo correcto
+        console.log(`[createCutoff] GUARDANDO elemento ID=${item.id} con tipo "${itemTypeToSave}" (isPackage=${isPackage})`);
+        
+        // IMPORTANTE: Si se trata de una paquetería, asegurarnos que detailedInfo.type sea 'package'
+        if (isPackage && detailedInfo.type !== 'package') {
+          console.log(`[createCutoff] CORRIGIENDO tipo en detailedInfo para paquetería ID=${item.id}`);
+          detailedInfo.type = 'package';
+        }
+        
+        // Guardamos el elemento procesado
         await this.addProcessedItem({
           cutoffId: cutoff.id,
-          itemType: isPackage ? 'package' : 'reservation',
+          itemType: itemTypeToSave, // Usando variable explícita para mayor claridad
           itemId: isPackage ? (item.originalPackageId || item.id) : item.id,
           amount: item.amount || item.totalAmount || 0,
           paymentMethod: simplePaymentMethod, // Usar el método normalizado, no el original
