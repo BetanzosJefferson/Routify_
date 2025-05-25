@@ -3463,20 +3463,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Crear una transacción cuando el paquete es marcado como pagado
       if (userId && updatedPackage) {
         try {
-          // Determinar origen y destino según sea subtrip o viaje completo
-          let origen = "";
-          let destino = "";
-          
-          if (tripInfo?.isSubTrip) {
-            // Si es un subtrip, usar los segmentos específicos
-            origen = tripInfo.segmentOrigin || "";
-            destino = tripInfo.segmentDestination || "";
-          } else {
-            // Si es un viaje completo, usar origen/destino del paquete o del viaje
-            origen = packageData.segmentOrigin || tripInfo?.route?.origin || "";
-            destino = packageData.segmentDestination || tripInfo?.route?.destination || "";
-          }
-          
           // Crear los detalles de la transacción en formato JSON
           const detallesTransaccion = {
             type: "package",
@@ -3484,9 +3470,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               id: packageData.id,
               monto: packageData.price,
               notas: "Pago de paquetería",
-              origen: origen,
+              origen: packageData.segmentOrigin || tripInfo?.route?.origin || "",
               tripId: packageData.tripId || "",
-              destino: destino,
+              destino: packageData.segmentDestination || tripInfo?.route?.destination || "",
               isSubTrip: tripInfo?.isSubTrip || false,
               metodoPago: packageData.paymentMethod || "efectivo",
               remitente: `${packageData.senderName} ${packageData.senderLastName}`,
