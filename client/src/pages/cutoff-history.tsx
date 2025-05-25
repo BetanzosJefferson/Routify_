@@ -35,9 +35,15 @@ const CutoffHistoryPage: React.FC = () => {
   }
 
   // Consultar historial de cortes
-  const { data: cutoffs, isLoading: isLoadingCutoffs } = useQuery<BoxCutoff[]>({
+  const { data: cutoffs, isLoading: isLoadingCutoffs, error: cutoffsError } = useQuery<BoxCutoff[]>({
     queryKey: ['/api/transactions/cutoff-history'],
     enabled: !!user,
+    onSuccess: (data) => {
+      console.log('Datos de historial de cortes recibidos:', data);
+    },
+    onError: (error) => {
+      console.error('Error al obtener historial de cortes:', error);
+    },
     select: (data) => {
       // El endpoint ya filtra por usuario actual en el backend, pero podemos aplicar filtros adicionales aquí
       console.log('Cortes recibidos:', data);
