@@ -4460,10 +4460,11 @@ export class DatabaseStorage implements IStorage {
     try {
       let query = db.select().from(schema.transacciones);
       
-      // Aplicar filtros
-      if (filters?.usuario_id) {
-        query = query.where(eq(schema.transacciones.usuario_id, filters.usuario_id));
-      }
+      // Ya no filtramos por usuario_id para mostrar todas las transacciones
+      // Comentamos esta parte para mostrar todas las transacciones
+      // if (filters?.usuario_id) {
+      //   query = query.where(eq(schema.transacciones.usuario_id, filters.usuario_id));
+      // }
       
       // Manejar el filtro de id_corte de manera especial para valores null
       if (filters?.id_corte === null) {
