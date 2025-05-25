@@ -6711,25 +6711,6 @@ function setupPackageRoutes(app: Express) {
       res.status(500).json({ error: "Error al obtener historial de cortes" });
     }
   });
-  
-  // Ruta para obtener el historial de cortes de caja
-  app.get(apiRouter("/transactions/cutoff-history"), async (req: Request, res: Response) => {
-    try {
-      const { user } = req as any;
-      
-      if (!user) {
-        return res.status(401).json({ error: "Usuario no autenticado" });
-      }
-      
-      // Obtener todos los cortes realizados por el usuario
-      const cortes = await storage.getBoxCutoffsByUser(user.id);
-      
-      res.json(cortes);
-    } catch (error) {
-      console.error("Error al obtener historial de cortes:", error);
-      res.status(500).json({ error: "Error al obtener historial de cortes" });
-    }
-  });
 
   // Ruta para crear un nuevo corte de caja
   app.post(apiRouter("/box/cutoff"), async (req: Request, res: Response) => {
