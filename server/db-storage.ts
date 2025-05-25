@@ -4507,25 +4507,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  // Obtener historial de cortes de caja por usuario
-  async getBoxCutoffsByUser(userId: number): Promise<schema.BoxCutoff[]> {
-    try {
-      console.log(`[getBoxCutoffsByUser] Obteniendo cortes de caja para usuario ${userId}`);
-      
-      const cutoffs = await db
-        .select()
-        .from(schema.boxCutoff)
-        .where(eq(schema.boxCutoff.user_id, userId))
-        .orderBy(desc(schema.boxCutoff.createdAt));
-      
-      console.log(`[getBoxCutoffsByUser] Se encontraron ${cutoffs.length} cortes para el usuario ${userId}`);
-      return cutoffs;
-    } catch (error) {
-      console.error(`[getBoxCutoffsByUser] Error al obtener cortes para usuario ${userId}:`, error);
-      return [];
-    }
-  }
-
   // Método para crear un corte de caja
   async createBoxCutoff(data: schema.InsertBoxCutoff): Promise<schema.BoxCutoff> {
     try {
@@ -4552,6 +4533,25 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('[createBoxCutoff] Error al crear corte de caja:', error);
       throw new Error(`Error al crear corte de caja: ${error}`);
+    }
+  }
+  
+  // Método para obtener cortes de caja por usuario
+  async getBoxCutoffsByUser(userId: number): Promise<schema.BoxCutoff[]> {
+    try {
+      console.log(`[getBoxCutoffsByUser] Buscando cortes para usuario ${userId}`);
+      
+      const cortes = await db
+        .select()
+        .from(schema.boxCutoff)
+        .where(eq(schema.boxCutoff.user_id, userId))
+        .orderBy(desc(schema.boxCutoff.fecha_fin));
+      
+      console.log(`[getBoxCutoffsByUser] Se encontraron ${cortes.length} cortes para el usuario ${userId}`);
+      return cortes;
+    } catch (error) {
+      console.error(`[getBoxCutoffsByUser] Error al obtener cortes para usuario ${userId}:`, error);
+      return [];
     }
   }
 }
