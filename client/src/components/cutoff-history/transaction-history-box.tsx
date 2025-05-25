@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { jsPDF } from "jspdf";
 import {
   Card,
   CardContent,
@@ -28,6 +29,7 @@ import {
   BarChart, 
   Hash,
   ArrowUpRight,
+  Printer,
   ChevronDown,
   ChevronUp,
   Eye,
@@ -376,11 +378,15 @@ const TransactionHistoryBox: React.FC = () => {
       // Guardar transacciones para el PDF
       console.log("Guardando transacciones para PDF:", group.transactions.length);
       
-      // Crear el documento PDF con ancho de 60mm (aproximadamente 226.8 puntos)
+      // Calcular una altura aproximada basada en el número de transacciones
+      // Estimamos unos 20mm por transacción más 60mm para el encabezado y pie de página
+      const estimatedHeight = Math.max(150, 60 + (group.transactions.length * 30));
+      
+      // Crear el documento PDF con ancho de 60mm y altura estimada
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "mm",
-        format: [60, 150] // 60mm de ancho, altura variable
+        format: [60, estimatedHeight] // 60mm de ancho, altura dinámica
       });
       
       // Configurar fuente y tamaño
@@ -454,16 +460,19 @@ const TransactionHistoryBox: React.FC = () => {
       
       // Recorrer las transacciones
       group.transactions.forEach((transaction, index) => {
-        if (y > 140) {
+        // Verificar si necesitamos una nueva página
+        // Calculamos aproximadamente 15mm por campo de información
+        const isReservation = transaction.detalles.type.includes("reservation");
+        const estimatedHeight = isReservation ? 35 : 40; // Altura estimada según el tipo
+        
+        if (y + estimatedHeight > doc.internal.pageSize.height - 15) {
           // Añadir nueva página si se acerca al límite
-          doc.addPage([60, 150]);
+          doc.addPage([60, estimatedHeight]);
           y = 10;
         }
         
         doc.setFont("helvetica", "bold");
-        const tipo = transaction.detalles.type.includes("reservation") 
-          ? "Reservación" 
-          : "Paquetería";
+        const tipo = isReservation ? "Reservación" : "Paquetería";
         doc.text(`${index + 1}. ${tipo}`, margin, y);
         y += 3;
         
@@ -478,6 +487,42 @@ const TransactionHistoryBox: React.FC = () => {
         doc.text(`Método: ${details.metodoPago === "efectivo" ? "Efectivo" : "Transferencia"}`, margin, y);
         y += 3;
         
+        // Información específica según el tipo de transacción
+        if (isReservation) {
+          // Para reservaciones: origen-destino y pasajeros
+          doc.text(`Ruta: ${details.origen} → ${details.destino}`, margin, y);
+          y += 3;
+          
+          // Verificar si hay información de pasajeros
+          if (details.pasajeros) {
+            doc.text(`Pasajeros: ${details.pasajeros}`, margin, y);
+            y += 3;
+          }
+        } else {
+          // Para paqueterías: origen-destino, remitente/destinatario y descripcion
+          doc.text(`Ruta: ${details.origen} → ${details.destino}`, margin, y);
+          y += 3;
+          
+          if (details.remitente) {
+            doc.text(`Remitente: ${details.remitente}`, margin, y);
+            y += 3;
+          }
+          
+          if (details.destinatario) {
+            doc.text(`Destinatario: ${details.destinatario}`, margin, y);
+            y += 3;
+          }
+          
+          if (details.descripcion) {
+            // Limitamos la descripción a 20 caracteres para evitar desbordamiento
+            const descripcion = details.descripcion.length > 20 
+              ? details.descripcion.substring(0, 20) + "..." 
+              : details.descripcion;
+            doc.text(`Desc: ${descripcion}`, margin, y);
+            y += 3;
+          }
+        }
+        
         const fecha = new Date(transaction.createdAt).toLocaleString("es-MX", {
           day: "2-digit",
           month: "2-digit",
@@ -486,7 +531,7 @@ const TransactionHistoryBox: React.FC = () => {
           minute: "2-digit"
         });
         doc.text(`Fecha: ${fecha}`, margin, y);
-        y += 5;
+        y += 6; // Espacio adicional entre transacciones
       });
       
       // Pie de página
