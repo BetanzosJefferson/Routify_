@@ -253,12 +253,14 @@ const TransactionBox: React.FC = () => {
                 {reservationTransactions.map((transaction) => {
                   try {
                     const details = transaction.detalles?.details || {};
+                    // Verificar que esta transacción pertenezca al usuario actual
+                    // usando la transacción en lugar de los detalles
                     return (
                       <TableRow key={transaction.id}>
                         <TableCell>
                           {formatDate(details.dateCreated || transaction.createdAt)}
                         </TableCell>
-                        <TableCell>{details.id}</TableCell>
+                        <TableCell>{transaction.id}</TableCell>
                         <TableCell>
                           {details.tripId || 'N/A'}
                           {details.isSubTrip && (
@@ -318,12 +320,13 @@ const TransactionBox: React.FC = () => {
                 {packageTransactions.map((transaction) => {
                   try {
                     const details = transaction.detalles?.details || {};
+                    // Usar el ID de la transacción en lugar del ID del paquete para la consistencia
                     return (
                       <TableRow key={transaction.id}>
                         <TableCell>
                           {formatDate(details.dateCreated || transaction.createdAt)}
                         </TableCell>
-                        <TableCell>{details.id}</TableCell>
+                        <TableCell>{transaction.id}</TableCell>
                         <TableCell>
                           <div className="text-xs">
                             <div className="font-medium">{details.origen}</div>
