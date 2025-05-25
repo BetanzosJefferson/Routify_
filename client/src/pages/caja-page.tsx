@@ -275,9 +275,12 @@ export function CashboxPage() {
         
         {/* Lista de transacciones */}
         {transacciones && transacciones.length === 0 && !isLoading && (
-          <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-8 text-center">
+          <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-8 text-center space-y-4">
             <p className="text-gray-500 dark:text-gray-400">
-              No se encontraron transacciones con los filtros seleccionados.
+              No se encontraron transacciones para esta empresa.
+            </p>
+            <p className="text-gray-500 dark:text-gray-400">
+              Las transacciones aparecerán aquí cuando se registren reservaciones o paqueterías.
             </p>
           </div>
         )}
