@@ -376,35 +376,32 @@ const TransactionHistoryBox: React.FC = () => {
       // Guardar transacciones para el PDF
       console.log("Guardando transacciones para PDF:", group.transactions.length);
       
-      // Usar un tamaño fijo de 60mm de ancho y calcular altura en función de contenido
-      // El tamaño inicial es solo una estimación, la altura real se ajustará automáticamente
-      const paperWidth = 60; // Ancho fijo de 60mm (ticketera estándar)
+      // Configuración del ticket
+      const paperWidth = 60; // Ancho estándar de papel térmico 60mm
       
-      // Crear el documento PDF con ancho fijo
+      // Crear documento con tamaño de papel térmico
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "mm",
         format: [paperWidth, 500] // Altura inicial grande, se ajustará automáticamente
       });
       
-      // Configurar fuente y tamaño
-      doc.setFont("helvetica");
-      doc.setFontSize(8);
+      // Configuración de márgenes y posición
+      const margin = 3;
+      const textWidth = paperWidth - (margin * 2);
+      let y = 5;
       
-      // Variables para controlar la posición
-      let y = 10;
-      const margin = 5;
-      const width = 60 - (margin * 2);
-      
-      // Añadir encabezado
-      doc.setFontSize(10);
+      // Establecer fuente y tamaño
       doc.setFont("helvetica", "bold");
-      doc.text("TransRoute", 30, y, { align: "center" });
+      doc.setFontSize(10);
+      
+      // Encabezado centrado
+      doc.text("TransRoute", paperWidth / 2, y, { align: "center" });
       y += 5;
       
       doc.setFontSize(8);
-      doc.text("HISTORIAL DE CORTE", 30, y, { align: "center" });
-      y += 5;
+      doc.text("HISTORIAL DE CORTE", paperWidth / 2, y, { align: "center" });
+      y += 6;
       
       // Información del corte
       doc.setFont("helvetica", "normal");
@@ -426,16 +423,16 @@ const TransactionHistoryBox: React.FC = () => {
       y += 4;
       
       doc.text(`Total Transacciones: ${group.transactions.length}`, margin, y);
-      y += 6;
+      y += 5;
       
       // Línea separadora
-      doc.line(margin, y, width + margin, y);
-      y += 4;
+      doc.line(margin, y, paperWidth - margin, y);
+      y += 5;
       
       // Resumen de montos
       doc.setFont("helvetica", "bold");
-      doc.text("RESUMEN", 30, y, { align: "center" });
-      y += 4;
+      doc.text("RESUMEN", paperWidth / 2, y, { align: "center" });
+      y += 5;
       
       doc.setFont("helvetica", "normal");
       doc.text(`Total Ingreso: ${formatCurrency(group.totalAmount)}`, margin, y);
@@ -445,110 +442,127 @@ const TransactionHistoryBox: React.FC = () => {
       y += 4;
       
       doc.text(`Transferencia: ${formatCurrency(group.transferAmount)}`, margin, y);
-      y += 6;
+      y += 5;
       
       // Línea separadora
-      doc.line(margin, y, width + margin, y);
-      y += 4;
+      doc.line(margin, y, paperWidth - margin, y);
+      y += 5;
       
       // Listado de transacciones
       doc.setFont("helvetica", "bold");
-      doc.text("DETALLE DE TRANSACCIONES", 30, y, { align: "center" });
-      y += 4;
+      doc.text("DETALLE DE TRANSACCIONES", paperWidth / 2, y, { align: "center" });
+      y += 5;
       
       // Recorrer las transacciones
       group.transactions.forEach((transaction, index) => {
         // Verificar si necesitamos una nueva página
-        // Calculamos aproximadamente 15mm por campo de información
         const isReservation = transaction.detalles.type.includes("reservation");
         const estimatedHeight = isReservation ? 35 : 40; // Altura estimada según el tipo
         
         if (y + estimatedHeight > doc.internal.pageSize.height - 15) {
           // Añadir nueva página si se acerca al límite
-          doc.addPage([60, estimatedHeight]);
+          doc.addPage([paperWidth, 500]);
           y = 10;
         }
         
+        // Número y tipo de transacción
         doc.setFont("helvetica", "bold");
         const tipo = isReservation ? "Reservación" : "Paquetería";
         doc.text(`${index + 1}. ${tipo}`, margin, y);
-        y += 3;
+        y += 4;
         
+        // Detalles de la transacción
         doc.setFont("helvetica", "normal");
         const details = transaction.detalles.details;
+        
+        // ID y monto
         doc.text(`ID: ${details.id}`, margin, y);
-        y += 3;
+        y += 4;
         
         doc.text(`Monto: ${formatCurrency(details.monto || 0)}`, margin, y);
-        y += 3;
+        y += 4;
         
         doc.text(`Método: ${details.metodoPago === "efectivo" ? "Efectivo" : "Transferencia"}`, margin, y);
-        y += 3;
+        y += 4;
         
         // Información específica según el tipo de transacción
         if (isReservation) {
           // Para reservaciones: origen-destino y pasajeros
           doc.text("Ruta:", margin, y);
-          y += 3;
+          y += 4;
           
-          // Dividir origen en múltiples líneas si es necesario
-          const maxWidth = paperWidth - (margin * 2); // Ancho disponible para texto
+          // Origen con salto de línea automático
+          const maxWidth = paperWidth - (margin * 2);
           const origen = details.origen || "";
-          doc.text(origen, margin, y, { maxWidth: maxWidth });
-          y += origen.length > 30 ? 6 : 3; // Ajustar espacio según longitud
+          doc.text(origen, margin, y, { maxWidth });
           
-          // Añadir flecha de dirección
+          // Calcular cuántas líneas ocupó el texto (aproximadamente)
+          const origenLines = Math.ceil(doc.getTextWidth(origen) / maxWidth);
+          y += origenLines * 3;
+          
+          // Flecha de dirección
           doc.text("→", margin, y);
-          y += 3;
+          y += 4;
           
-          // Dividir destino en múltiples líneas
+          // Destino con salto de línea automático
           const destino = details.destino || "";
-          doc.text(destino, margin, y, { maxWidth: maxWidth });
-          y += destino.length > 30 ? 6 : 3; // Ajustar espacio según longitud
+          doc.text(destino, margin, y, { maxWidth });
           
-          // Verificar si hay información de pasajeros
+          // Calcular cuántas líneas ocupó el texto (aproximadamente)
+          const destinoLines = Math.ceil(doc.getTextWidth(destino) / maxWidth);
+          y += destinoLines * 3;
+          
+          // Pasajeros
           if (details.pasajeros) {
-            doc.text(`Pasajeros: ${details.pasajeros}`, margin, y, { maxWidth: maxWidth });
-            y += 3;
+            doc.text(`Pasajeros: ${details.pasajeros}`, margin, y, { maxWidth });
+            y += 4;
           }
         } else {
           // Para paqueterías: origen-destino, remitente/destinatario y descripcion
           doc.text("Ruta:", margin, y);
-          y += 3;
+          y += 4;
           
-          // Dividir origen en múltiples líneas si es necesario
-          const maxWidth = paperWidth - (margin * 2); // Ancho disponible para texto
+          // Origen con salto de línea automático
+          const maxWidth = paperWidth - (margin * 2);
           const origen = details.origen || "";
-          doc.text(origen, margin, y, { maxWidth: maxWidth });
-          y += origen.length > 30 ? 6 : 3; // Ajustar espacio según longitud
+          doc.text(origen, margin, y, { maxWidth });
           
-          // Añadir flecha de dirección
+          // Calcular cuántas líneas ocupó el texto (aproximadamente)
+          const origenLines = Math.ceil(doc.getTextWidth(origen) / maxWidth);
+          y += origenLines * 3;
+          
+          // Flecha de dirección
           doc.text("→", margin, y);
-          y += 3;
+          y += 4;
           
-          // Dividir destino en múltiples líneas
+          // Destino con salto de línea automático
           const destino = details.destino || "";
-          doc.text(destino, margin, y, { maxWidth: maxWidth });
-          y += destino.length > 30 ? 6 : 3; // Ajustar espacio según longitud
+          doc.text(destino, margin, y, { maxWidth });
           
+          // Calcular cuántas líneas ocupó el texto (aproximadamente)
+          const destinoLines = Math.ceil(doc.getTextWidth(destino) / maxWidth);
+          y += destinoLines * 3;
+          
+          // Remitente
           if (details.remitente) {
-            doc.text(`Remitente: ${details.remitente}`, margin, y, { maxWidth: maxWidth });
-            y += 3;
+            doc.text(`Remitente: ${details.remitente}`, margin, y, { maxWidth });
+            y += 4;
           }
           
+          // Destinatario
           if (details.destinatario) {
-            doc.text(`Destinatario: ${details.destinatario}`, margin, y, { maxWidth: maxWidth });
-            y += 3;
+            doc.text(`Destinatario: ${details.destinatario}`, margin, y, { maxWidth });
+            y += 4;
           }
           
+          // Descripción
           if (details.descripcion) {
-            doc.text("Desc:", margin, y);
-            y += 3;
-            doc.text(details.descripcion, margin, y, { maxWidth: maxWidth });
-            y += 3;
+            doc.text(`Desc: ${details.descripcion}`, margin, y, { maxWidth });
+            y += 4;
           }
         }
         
+        // Fecha de la transacción
         const fecha = new Date(transaction.createdAt).toLocaleString("es-MX", {
           day: "2-digit",
           month: "2-digit",
