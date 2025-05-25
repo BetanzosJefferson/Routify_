@@ -102,6 +102,17 @@ const TransactionBox: React.FC = () => {
   const { data, isLoading, error } = useQuery({
     queryKey: ["/api/transactions/current"],
     staleTime: 30000, // 30 segundos
+    queryFn: async () => {
+      const response = await fetch("/api/transactions/current", {
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
+    },
   });
 
   useEffect(() => {
@@ -111,13 +122,19 @@ const TransactionBox: React.FC = () => {
       const packages: Transaction[] = [];
 
       if (Array.isArray(data)) {
-        console.log("Transacciones recibidas:", data);
+        console.log("Transacciones recibidas:", data.length);
         
         data.forEach((transaction: any) => {
           try {
             // Verificar que la transacción y sus datos son válidos
-            if (transaction && transaction.detalles) {
+            if (transaction && typeof transaction === 'object' && transaction.detalles && typeof transaction.detalles === 'object') {
               const transactionType = transaction.detalles.type;
+              
+              // Verificar que detalles.details existe
+              if (!transaction.detalles.details) {
+                console.warn("La transacción no tiene detalles.details:", transaction);
+                return;
+              }
               
               // Incluir también las transacciones de tipo 'reservation-final-payment'
               if (transactionType === "reservation" || transactionType === "reservation-final-payment") {
@@ -128,7 +145,7 @@ const TransactionBox: React.FC = () => {
                 console.warn("Tipo de transacción desconocido:", transactionType, transaction);
               }
             } else {
-              console.warn("Transacción sin tipo definido:", transaction);
+              console.warn("Transacción inválida o sin tipo definido:", transaction);
             }
           } catch (error) {
             console.error("Error al procesar transacción:", error, transaction);
@@ -138,12 +155,17 @@ const TransactionBox: React.FC = () => {
         console.log("Transacciones procesadas - Reservaciones:", reservations.length, "Paquetes:", packages.length);
       } else {
         console.error("Los datos recibidos no son un array:", data);
+        toast({
+          title: "Error al cargar transacciones",
+          description: "El formato de datos recibido no es correcto.",
+          variant: "destructive",
+        });
       }
 
       setReservationTransactions(reservations);
       setPackageTransactions(packages);
     }
-  }, [data]);
+  }, [data, toast]);
 
   // Formatear fecha
   const formatDate = (dateString: string) => {
@@ -157,11 +179,28 @@ const TransactionBox: React.FC = () => {
     });
   };
 
+  // Mostrar mensaje de carga
   if (isLoading) {
     return (
       <div className="flex justify-center items-center p-8">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <span className="ml-2">Cargando transacciones...</span>
+      </div>
+    );
+  }
+  
+  // Mostrar mensaje de error
+  if (error) {
+    return (
+      <div className="flex flex-col justify-center items-center p-8 text-red-500">
+        <span className="font-bold">Error al cargar transacciones:</span>
+        <span className="mt-2">{error instanceof Error ? error.message : "Error desconocido"}</span>
+        <button 
+          className="mt-4 px-4 py-2 bg-primary text-white rounded-md"
+          onClick={() => window.location.reload()}
+        >
+          Reintentar
+        </button>
       </div>
     );
   }
