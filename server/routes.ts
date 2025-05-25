@@ -2806,7 +2806,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 if ((tripWithRouteInfo && tripWithRouteInfo.route) || (tripWithRouteInfo.isSubTrip && origen && destino)) {
                   // Crear los detalles de la transacción en formato JSON
                   const detallesTransaccion = {
-                    type: "reservation-final-payment",
+                    type: "reservation",
                     details: {
                       id: originalReservation.id,
                       tripId: originalReservation.tripId,
