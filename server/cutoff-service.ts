@@ -180,31 +180,10 @@ export class CutoffService {
       
       // Registrar cada elemento como procesado
       for (const item of items) {
-        // Mejorar la detección de paqueterías con criterios más robustos
-        const isPackage = Boolean(
-          // Verificar indicadores explícitos de paqueterías
-          item.originalPackageId !== undefined || 
-          item.packageDescription !== undefined ||
-          item.type === 'package' || 
-          item.isPackage === true ||
-          // Verificar si tiene campos específicos de paqueterías
-          (item.senderName !== undefined && item.recipientName !== undefined) ||
-          // Verificar formato de ID de paquetería
-          (typeof item.cashItemId === 'string' && item.cashItemId.startsWith('paquete-')) ||
-          (typeof item.id === 'string' && item.id.toString().startsWith('paquete-'))
-        );
-        
-        // Log mejorado para depuración
-        console.log(`[createCutoff] Tipo de ítem detectado para ID=${item.id}:`, {
-          esPaqueteria: isPackage,
-          tipoOriginal: item.type,
-          tieneOriginalPackageId: item.originalPackageId !== undefined,
-          tienePackageDescription: item.packageDescription !== undefined,
-          tieneSenderName: item.senderName !== undefined,
-          tieneRecipientName: item.recipientName !== undefined,
-          cashItemId: item.cashItemId,
-          isPackageFlag: item.isPackage
-        });
+        // Determinar si es una reservación o un paquete de forma segura
+        const isPackage = Boolean(item.originalPackageId !== undefined || 
+                               item.type === 'package' || 
+                               (item.senderName !== undefined && item.receiverName !== undefined));
         
         // Usar el método centralizado de normalización
         const simplePaymentMethod = this.normalizePaymentMethod(item.paymentMethod || '');
