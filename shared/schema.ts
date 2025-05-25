@@ -818,163 +818,16 @@ export const TransactionSource = {
 
 export type TransactionSourceType = typeof TransactionSource[keyof typeof TransactionSource];
 
-// CAJA SCHEMA
-export const cashboxes = pgTable("cashboxes", {
-  id: serial("id").primaryKey(),
-  companyId: text("company_id"),
-  name: text("name").notNull(),
-  description: text("description"),
-  balance: doublePrecision("balance").default(0).notNull(),
-  operatorId: integer("operator_id").notNull(),  // Usuario operador de la caja
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
-  lastCutoffAt: timestamp("last_cutoff_at"),     // Último corte de caja
-});
+// Las tablas de caja han sido eliminadas
 
-export const insertCashboxSchema = createInsertSchema(cashboxes, {
-  balance: z.number().default(0),
-  isActive: z.boolean().default(true),
-  createdAt: z.date().optional(),
-  updatedAt: z.date().optional(),
-  lastCutoffAt: z.date().optional(),
-});
-
-export type InsertCashbox = z.infer<typeof insertCashboxSchema>;
-export type Cashbox = typeof cashboxes.$inferSelect;
-
-// TRANSACCIONES SCHEMA
-export const cashboxTransactions = pgTable("cashbox_transactions", {
-  id: serial("id").primaryKey(),
-  cashboxId: integer("cashbox_id").notNull(),
-  type: text("type").notNull(),                  // income, expense, withdraw
-  source: text("source").notNull(),              // reservation, package, manual
-  amount: doublePrecision("amount").notNull(),
-  description: text("description"),
-  createdAt: timestamp("created_at").defaultNow(),
-  createdBy: integer("created_by").notNull(),    // Usuario que creó la transacción
-  sourceId: integer("source_id"),                // ID de la reservación o paquetería (opcional)
-  paymentMethod: text("payment_method"),         // Método de pago
-  cutoffId: integer("cutoff_id"),                // ID del corte al que pertenece esta transacción
-});
-
-export const insertCashboxTransactionSchema = createInsertSchema(cashboxTransactions, {
-  createdAt: z.date().optional(),
-  description: z.string().optional(),
-  sourceId: z.number().optional(),
-  paymentMethod: z.string().optional(),
-  cutoffId: z.number().optional(),
-});
-
-export type InsertCashboxTransaction = z.infer<typeof insertCashboxTransactionSchema>;
-export type CashboxTransaction = typeof cashboxTransactions.$inferSelect;
-
-// CORTES DE CAJA SCHEMA (Ampliado para soportar paqueterías)
-export const cashboxCutoffs = pgTable("cashbox_cutoffs", {
-  id: serial("id").primaryKey(),
-  cashboxId: integer("cashbox_id").notNull(),
-  operatorId: integer("operator_id").notNull(),  // Usuario que hizo el corte
-  previousBalance: doublePrecision("previous_balance").notNull(),
-  totalIncome: doublePrecision("total_income").notNull(),
-  totalExpenses: doublePrecision("total_expenses").notNull(),
-  finalBalance: doublePrecision("final_balance").notNull(),
-  totalCash: doublePrecision("total_cash").default(0),  // Total de efectivo en el corte
-  totalTransfer: doublePrecision("total_transfer").default(0), // Total de transferencias en el corte
-  transactionCount: integer("transaction_count").default(0), // Cantidad de transacciones
-  notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-  printedAt: timestamp("printed_at"),
-});
-
-export const insertCashboxCutoffSchema = createInsertSchema(cashboxCutoffs, {
-  notes: z.string().optional(),
-  createdAt: z.date().optional(),
-  printedAt: z.date().optional(),
-  totalCash: z.number().default(0),
-  totalTransfer: z.number().default(0),
-  transactionCount: z.number().default(0),
-});
-
-export type InsertCashboxCutoff = z.infer<typeof insertCashboxCutoffSchema>;
-export type CashboxCutoff = typeof cashboxCutoffs.$inferSelect;
-
-// RELACIONES
-export const cashboxRelations = relations(cashboxes, ({ one, many }) => ({
-  operator: one(users, {
-    fields: [cashboxes.operatorId],
-    references: [users.id]
-  }),
-  company: one(companies, {
-    fields: [cashboxes.companyId],
-    references: [companies.identifier]
-  }),
-  transactions: many(cashboxTransactions),
-  cutoffs: many(cashboxCutoffs)
-}));
-
-export const cashboxTransactionRelations = relations(cashboxTransactions, ({ one }) => ({
-  cashbox: one(cashboxes, {
-    fields: [cashboxTransactions.cashboxId],
-    references: [cashboxes.id]
-  }),
-  creator: one(users, {
-    fields: [cashboxTransactions.createdBy],
-    references: [users.id]
-  }),
-  cutoff: one(cashboxCutoffs, {
-    fields: [cashboxTransactions.cutoffId],
-    references: [cashboxCutoffs.id]
-  })
-}));
-
-// Tabla para registrar elementos procesados en un corte
-export const processedItems = pgTable("processed_items", {
-  id: serial("id").primaryKey(),
-  cutoffId: integer("cutoff_id").references(() => cashboxCutoffs.id).notNull(),
-  itemType: text("item_type").notNull(), // 'reservation' o 'package'
-  itemId: integer("item_id").notNull(),
-  amount: doublePrecision("amount").notNull(),
-  paymentMethod: text("payment_method").notNull(),
-  concept: text("concept").notNull(), // 'Anticipo', 'Restante', 'Paquetería'
-  details: text("details"), // JSON con información adicional
-  createdAt: timestamp("created_at").defaultNow()
-});
-
-export const insertProcessedItemSchema = createInsertSchema(processedItems, {
-  id: z.number().optional(),
-  createdAt: z.date().optional(),
-  details: z.string().optional()
-});
-
-export type ProcessedItem = typeof processedItems.$inferSelect;
-export type InsertProcessedItem = z.infer<typeof insertProcessedItemSchema>;
-
-export const cashboxCutoffRelations = relations(cashboxCutoffs, ({ one, many }) => ({
-  cashbox: one(cashboxes, {
-    fields: [cashboxCutoffs.cashboxId],
-    references: [cashboxes.id]
-  }),
-  operator: one(users, {
-    fields: [cashboxCutoffs.operatorId],
-    references: [users.id]
-  }),
-  transactions: many(cashboxTransactions),
-  processedItems: many(processedItems)
-}));
-
-export const processedItemsRelations = relations(processedItems, ({ one }) => ({
-  cutoff: one(cashboxCutoffs, {
-    fields: [processedItems.cutoffId],
-    references: [cashboxCutoffs.id]
-  })
-}));
+// Las relaciones y tablas relacionadas con la caja han sido eliminadas
 
 // TABLA DE TRANSACCIONES
 export const transacciones = pgTable("transactions", { // Cambiado de "transacciones" a "transactions"
   id: serial("id").primaryKey(),
   detalles: jsonb("details").notNull(), // Cambiado de "detalles" a "details"
   usuario_id: integer("user_id").notNull().references(() => users.id), // Cambiado de "usuario_id" a "user_id"
-  id_corte: integer("cutoff_id").references(() => cashboxCutoffs.id), // Cambiado de "id_corte" a "cutoff_id"
+  id_corte: integer("cutoff_id"), // Referencia a corte de caja eliminada
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
