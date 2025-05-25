@@ -31,17 +31,41 @@ export class CutoffService {
   }
   /**
    * Registra un elemento como procesado en un corte
+   * Versión mejorada con validación adicional del tipo de ítem
    */
   async addProcessedItem(item: schema.InsertProcessedItem): Promise<schema.ProcessedItem> {
     try {
-      console.log(`[addProcessedItem] Agregando elemento procesado al corte ${item.cutoffId}`);
+      // Validación explícita del tipo de ítem
+      if (item.itemType !== 'package' && item.itemType !== 'reservation') {
+        console.error(`[addProcessedItem] TIPO INVÁLIDO: "${item.itemType}" - Debe ser 'package' o 'reservation'`);
+        throw new Error(`Tipo de ítem inválido: ${item.itemType}`);
+      }
       
+      console.log(`[addProcessedItem] Agregando elemento procesado al corte ${item.cutoffId} de tipo "${item.itemType}"`);
+      
+      // Verificación adicional para asegurar que los detalles coincidan con el tipo
+      const detailsObj = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
+      
+      if (detailsObj && typeof detailsObj === 'object') {
+        // Asegurarse que el tipo en los detalles coincida con itemType
+        if (item.itemType === 'package' && detailsObj.type !== 'package') {
+          console.log(`[addProcessedItem] CORRIGIENDO tipo en detalles para paquetería ID=${item.itemId}`);
+          detailsObj.type = 'package';
+          item.details = JSON.stringify(detailsObj);
+        } else if (item.itemType === 'reservation' && detailsObj.type !== 'reservation') {
+          console.log(`[addProcessedItem] CORRIGIENDO tipo en detalles para reservación ID=${item.itemId}`);
+          detailsObj.type = 'reservation';
+          item.details = JSON.stringify(detailsObj);
+        }
+      }
+      
+      // Agregar el registro a la base de datos
       const [newItem] = await db
         .insert(schema.processedItems)
         .values(item)
         .returning();
       
-      console.log(`[addProcessedItem] Elemento procesado creado con ID ${newItem.id}`);
+      console.log(`[addProcessedItem] Elemento procesado creado con ID ${newItem.id} de tipo "${newItem.itemType}"`);
       return newItem;
     } catch (error) {
       console.error(`[addProcessedItem] Error:`, error);
@@ -180,54 +204,88 @@ export class CutoffService {
       
       // Registrar cada elemento como procesado
       for (const item of items) {
-        // Determinar si es una reservación o un paquete de forma más robusta
-        // Utilizamos múltiples criterios para una identificación más confiable
-        // IMPORTANTE: Priorizar los identificadores más explícitos y directos
+        // ========== SISTEMA MEJORADO DE DETECCIÓN DE PAQUETERÍAS ==========
+        // Enfoque por niveles para identificar correctamente el tipo de ítem
         
-        // 1. Verificar si ya tenemos una identificación explícita
-        let isExplicitlyIdentified = false;
-        let isExplicitlyPackage = false;
+        // Inicialización
+        let isPackage = false;
+        let detectionMethod = '';
         
-        // Verificaciones explícitas de tipo
-        if (item.type === 'package' || 
-            item.itemType === 'package' || 
-            item.originalPackageId !== undefined ||
-            (typeof item.cashItemId === 'string' && item.cashItemId.startsWith('paquete-'))) {
-          isExplicitlyIdentified = true;
-          isExplicitlyPackage = true;
-          console.log(`[createCutoff] Item #${item.id} EXPLÍCITAMENTE identificado como paquetería por tipo directo`);
+        // ===== NIVEL 1: Indicadores explícitos (mayor confianza) =====
+        if (item.type === 'package') {
+          isPackage = true;
+          detectionMethod = 'tipo explícito (item.type)';
+        } 
+        else if (item.itemType === 'package') {
+          isPackage = true;
+          detectionMethod = 'tipo explícito (item.itemType)';
+        }
+        else if (typeof item.cashItemId === 'string' && item.cashItemId.startsWith('paquete-')) {
+          isPackage = true;
+          detectionMethod = 'ID de caja con prefijo "paquete-"';
+        }
+        else if (item.originalPackageId !== undefined) {
+          isPackage = true;
+          detectionMethod = 'tiene originalPackageId';
         }
         
-        // Si aún no está identificado explícitamente, buscar campos clave de paqueterías
-        if (!isExplicitlyIdentified) {
-          // Si tiene campos específicos de paqueterías Y NO tiene campos exclusivos de reservaciones
-          if ((item.senderName || item.recipientName || item.packageDescription) && 
-              !(item.passengerCount > 0 || (item.passengers && item.passengers.length > 0))) {
-            isExplicitlyIdentified = true;
-            isExplicitlyPackage = true;
-            console.log(`[createCutoff] Item #${item.id} EXPLÍCITAMENTE identificado como paquetería por campos específicos`);
+        // ===== NIVEL 2: Campos característicos (confianza media-alta) =====
+        else if (item.packageDescription) {
+          // Si tiene descripción de paquete y NO tiene pasajeros
+          if (!(item.passengers && Array.isArray(item.passengers) && item.passengers.length > 0)) {
+            isPackage = true;
+            detectionMethod = 'tiene packageDescription sin pasajeros';
           }
         }
+        else if (item.senderName && item.recipientName) {
+          // Si tiene remitente Y destinatario
+          isPackage = true;
+          detectionMethod = 'tiene remitente y destinatario';
+        }
         
-        // Si aún no está identificado explícitamente, usar identificación secundaria
-        const isPackage = isExplicitlyIdentified ? isExplicitlyPackage : Boolean(
-          // Criterios basados en conceptos
-          item.concept === 'Paquetería' ||
-          item.paymentNote === 'Paquetería' ||
-          
-          // Campos específicos de paqueterías (menos confiables si están solos)
-          (item.senderName !== undefined && item.senderName !== null) ||
-          (item.receiverName !== undefined && item.receiverName !== null) ||
-          (item.recipientName !== undefined && item.recipientName !== null) ||
-          (item.packageDescription !== undefined && item.packageDescription !== null) ||
-          
-          // Estados propios de paqueterías
-          item.deliveryStatus !== undefined ||
-          item.deliveredBy !== undefined ||
-          item.deliveredAt !== undefined
-        );
+        // ===== NIVEL 3: Otros indicadores específicos (confianza media) =====
+        else if (item.deliveryStatus !== undefined) {
+          isPackage = true;
+          detectionMethod = 'tiene estado de entrega (deliveryStatus)';
+        }
+        else if (item.deliveredBy !== undefined || item.deliveredAt !== undefined) {
+          isPackage = true;
+          detectionMethod = 'tiene información de entrega (deliveredBy/At)';
+        }
+        else if (item.concept === 'Paquetería' || item.paymentNote === 'Paquetería') {
+          isPackage = true;
+          detectionMethod = 'concepto o nota de pago indica paquetería';
+        }
         
-        console.log(`[createCutoff] DECISIÓN FINAL para Item #${item.id}: ${isPackage ? 'PAQUETERÍA' : 'RESERVACIÓN'} (Identificación explícita: ${isExplicitlyIdentified ? 'SÍ' : 'NO'})`);
+        // ===== NIVEL 4: Verificación negativa (exclusión) =====
+        // Si llegamos aquí sin decisión y tiene campos exclusivos de reservación, es definitivamente una reservación
+        else if (item.passengers && Array.isArray(item.passengers) && item.passengers.length > 0) {
+          isPackage = false;
+          detectionMethod = 'tiene lista de pasajeros (definitivamente una reservación)';
+        }
+        else if (item.passengerId) {
+          isPackage = false;
+          detectionMethod = 'tiene ID de pasajero (definitivamente una reservación)';
+        }
+        
+        // ===== REGISTRO DETALLADO PARA DEPURACIÓN =====
+        console.log(`[createCutoff] ⚠️ CLASIFICACIÓN FINAL - Ítem #${item.id}: ${isPackage ? 'PAQUETERÍA' : 'RESERVACIÓN'}`);
+        console.log(`[createCutoff] ⚠️ MÉTODO DE DETECCIÓN: ${detectionMethod}`);
+        
+        // Registro de campos clave para verificación
+        console.log(`[createCutoff] ⚠️ CAMPOS CLAVE:`, {
+          id: item.id,
+          type: item.type,
+          itemType: item.itemType,
+          cashItemId: item.cashItemId,
+          originalPackageId: item.originalPackageId,
+          senderName: !!item.senderName,
+          recipientName: !!item.recipientName,
+          packageDescription: !!item.packageDescription,
+          deliveryStatus: item.deliveryStatus,
+          hasPassengers: !!(item.passengers && Array.isArray(item.passengers) && item.passengers.length > 0),
+          passengerId: item.passengerId
+        });
         
         
         // Registrar información de depuración sobre la identificación del tipo
@@ -288,6 +346,98 @@ export class CutoffService {
           originFromItem: item.origin,
           destinationFromItem: item.destination,
           passengerName: personName
+        });
+        
+        // Procesar información de origen/destino de manera consistente
+        const originDestInfo = await this.processOriginDestination(item);
+        
+        // CREAR REGISTRO EN BASE DE DATOS CON TIPO EXPLÍCITO
+        // ===================================================
+        
+        // Importante: Usamos 'package' o 'reservation' de manera explícita y clara
+        const itemTypeToSave = isPackage ? 'package' : 'reservation';
+        
+        // Detalle completo que se guardará en JSON según el tipo identificado
+        const detailedInfo = isPackage ? {
+          // Para PAQUETERÍAS - Usar campos específicos de paquetes
+          type: 'package', // Explícitamente marcado como paquete
+          id: item.id,
+          originalPackageId: item.originalPackageId || item.id,
+          
+          // Información de origen/destino procesada
+          origin: originDestInfo.origin,
+          destination: originDestInfo.destination,
+          
+          // Información de viaje y ruta
+          tripId: item.tripId,
+          tripInfo: {
+            processedOrigin: originDestInfo.origin,
+            processedDestination: originDestInfo.destination,
+            isSegment: originDestInfo.isSegment,
+            routeInfo: item.trip?.route ? `${item.trip.route.origin} → ${item.trip.route.destination}` : null
+          },
+          
+          // Información de pago
+          amount: item.amount || item.totalAmount || 0,
+          paymentMethod: item.paymentMethod || 'efectivo',
+          simplePaymentMethod: simplePaymentMethod,
+          
+          // Información de remitente/destinatario
+          senderName: item.senderName || '',
+          senderLastName: item.senderLastName || '',
+          recipientName: item.recipientName || '',
+          recipientLastName: item.recipientLastName || '',
+          
+          // Información del paquete
+          packageDescription: item.packageDescription || '',
+          
+          // Fechas relevantes
+          createdAt: item.createdAt || new Date().toISOString(),
+          paidAt: item.paidAt || item.paymentAt || new Date().toISOString()
+        } : {
+          // Para RESERVACIONES - Usar campos específicos de reservas
+          type: 'reservation', // Explícitamente marcado como reservación
+          id: item.id,
+          
+          // Información de origen/destino procesada
+          origin: originDestInfo.origin,
+          destination: originDestInfo.destination,
+          
+          // Información de viaje y ruta
+          tripId: item.tripId,
+          tripInfo: {
+            processedOrigin: originDestInfo.origin,
+            processedDestination: originDestInfo.destination,
+            isSegment: originDestInfo.isSegment,
+            routeInfo: item.trip?.route ? `${item.trip.route.origin} → ${item.trip.route.destination}` : null
+          },
+          
+          // Información de pago
+          amount: item.amount || item.totalAmount || 0,
+          paymentMethod: item.paymentMethod || 'efectivo',
+          simplePaymentMethod: simplePaymentMethod,
+          
+          // Información del pasajero
+          passengers: item.passengers || [],
+          passengerName: personName,
+          
+          // Fechas relevantes
+          createdAt: item.createdAt || new Date().toISOString(),
+          paidAt: item.paidAt || item.paymentAt || new Date().toISOString()
+        };
+        
+        // Verificación FINAL importante
+        console.log(`[createCutoff] ⚠️ GUARDANDO EN BD: Item #${item.id} como ${itemTypeToSave.toUpperCase()}`);
+        
+        // Usar la función mejorada de addProcessedItem para guardar con validación de tipo
+        await this.addProcessedItem({
+          cutoffId: cutoff.id,
+          itemType: itemTypeToSave,
+          itemId: isPackage ? (item.originalPackageId || item.id) : item.id,
+          amount: item.amount || item.totalAmount || 0,
+          paymentMethod: simplePaymentMethod,
+          concept: isPackage ? 'Paquetería' : (item.paymentNote || 'Reservación'),
+          details: JSON.stringify(detailedInfo)
         });
         
         // Analizar la información de origen/destino correcta
