@@ -962,12 +962,40 @@ export function CashRegisterPage() {
             passengerName: itemDetails.passengerName
           });
           
+          // Detectar paqueterías con múltiples criterios
+          const isPackage = !!item.originalPackageId || 
+                          !!item.packageDescription || 
+                          (item.cashItemId && typeof item.cashItemId === 'string' && item.cashItemId.startsWith('paquete-')) ||
+                          (typeof item.id === 'string' && item.id.toString().startsWith('paquete-')) ||
+                          !!item.senderName || !!item.recipientName;
+          
+          // Tipo correcto basado en la detección mejorada
+          const correctType = isPackage ? 'package' : 'reservation';
+          
+          // Log para depuración
+          console.log(`[CRÍTICO] Elemento para corte de caja:`, {
+            id: item.id,
+            detectadoComoPaquete: isPackage,
+            tipo: correctType,
+            originalPackageId: item.originalPackageId,
+            packageDescription: item.packageDescription,
+            cashItemId: item.cashItemId,
+            senderName: item.senderName,
+            recipientName: item.recipientName
+          });
+          
           return {
             ...item,
-            // Asegurarse de que cada elemento tenga el tipo correcto
-            type: item.originalPackageId ? 'package' : 'reservation',
+            // Establecer el tipo correcto consistentemente
+            type: correctType,
+            // Indicador adicional para el backend
+            isPackage: isPackage,
             // Incluir los detalles importantes que queremos guardar
-            details: itemDetails
+            details: {
+              ...itemDetails,
+              // Asegurarse de que el tipo también está en los detalles
+              type: correctType
+            }
           };
         })
       };
