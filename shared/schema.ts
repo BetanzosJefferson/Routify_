@@ -824,8 +824,8 @@ export type TransactionSourceType = typeof TransactionSource[keyof typeof Transa
 export const transacciones = pgTable("transactions", { // Cambiado de "transacciones" a "transactions"
   id: serial("id").primaryKey(),
   detalles: jsonb("details").notNull(), // Cambiado de "detalles" a "details"
-  usuario_id: integer("user_id").notNull().references(() => users.id), // Cambiado de "usuario_id" a "user_id"
-  id_corte: integer("cutoff_id"), // Referencia a corte de caja eliminada
+  user_id: integer("user_id").notNull().references(() => users.id), // Nombre correcto en la BD
+  cutoff_id: integer("cutoff_id"), // Nombre correcto en la BD
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   companyId: text("company_id"), // Campo para aislamiento de datos por compañía
@@ -835,9 +835,9 @@ export const insertTransaccionSchema = createInsertSchema(transacciones, {
   id: z.number().optional(),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
-  id_corte: z.number().optional().nullable(), // Mantenemos el nombre original en el esquema de inserción
+  cutoff_id: z.number().optional().nullable(), // Usamos el nombre correcto
   detalles: z.any().optional(), // Campo para mapear a "details"
-  usuario_id: z.number().optional(), // Campo para mapear a "user_id"
+  user_id: z.number().optional(), // Campo para mapear a "user_id" en la base de datos
   companyId: z.string().optional().nullable() // Campo de compañía
 });
 
@@ -847,7 +847,7 @@ export type InsertTransaccion = z.infer<typeof insertTransaccionSchema>;
 // Relaciones para la tabla de transacciones
 export const transaccionesRelations = relations(transacciones, ({ one }) => ({
   usuario: one(users, {
-    fields: [transacciones.usuario_id],
+    fields: [transacciones.user_id],
     references: [users.id]
   }),
   // Relación con corte de caja eliminada
