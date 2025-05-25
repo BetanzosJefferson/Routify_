@@ -6658,13 +6658,15 @@ function setupPackageRoutes(app: Express) {
   });
 
   // Ruta para obtener transacciones del usuario actual que no están en un corte
-  app.get(apiRouter("/transactions/current"), async (req: Request, res: Response) => {
+  app.get(apiRouter("/transactions/current"), isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const { user } = req as any;
+      const user = req.user as Express.User;
       
       if (!user) {
         return res.status(401).json({ error: "Usuario no autenticado" });
       }
+      
+      console.log(`[GET /transactions/current] Usuario: ${user.firstName} ${user.lastName}, ID: ${user.id}, Rol: ${user.role}`);
       
       // Filtrar transacciones del usuario actual que no están en un corte de caja
       const filters = {
