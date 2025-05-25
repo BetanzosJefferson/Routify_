@@ -26,9 +26,7 @@ import {
   InsertTripBudget,
   TripExpense,
   InsertTripExpense,
-  BoxCutoff,
-  InsertBoxCutoff,
-  Transaccion
+  // Referencias a caja registradora eliminadas
 } from "@shared/schema";
 
 export interface IStorage {
@@ -168,13 +166,7 @@ export interface IStorage {
   
   // Transacciones methods
   createTransaccion(transaccionData: schema.InsertTransaccion): Promise<schema.Transaccion>;
-  getTransacciones(filters?: { usuario_id?: number, id_corte?: number | null }): Promise<schema.Transaccion[]>;
-  
-  // Box Cutoff methods (Cortes de Caja)
-  createBoxCutoff(cutoffData: schema.InsertBoxCutoff): Promise<schema.BoxCutoff>;
-  getBoxCutoffs(userId?: number): Promise<schema.BoxCutoff[]>;
-  getBoxCutoff(id: number): Promise<schema.BoxCutoff | undefined>;
-  updateTransactionsCutoff(userId: number, cutoffId: number): Promise<number>;
+  getTransacciones(filters?: { usuario_id?: number, id_corte?: number }): Promise<schema.Transaccion[]>;
 }
 
 export class MemStorage implements IStorage {
