@@ -1004,8 +1004,21 @@ export function CashRegisterPage() {
           // Agregar elementos de este corte
           cutoffData.transactions.forEach(item => {
             // Determinar el tipo correcto del elemento
-            const itemType = item.originalPackageId ? 'package' : 'reservation';
+            // Verificar con múltiples propiedades si es una paquetería
+            const isPackage = item.originalPackageId || 
+                             item.packageDescription || 
+                             (item.cashItemId && item.cashItemId.startsWith('paquete-'));
+            const itemType = isPackage ? 'package' : 'reservation';
             const itemId = item.id;
+            
+            // Log adicional para asegurar la detección correcta
+            console.log(`Determinando tipo de elemento:`, {
+              id: itemId,
+              originalPackageId: item.originalPackageId,
+              packageDescription: item.packageDescription,
+              cashItemId: item.cashItemId,
+              tipoDetectado: itemType
+            });
             
             // Log para depuración
             processingLogs.push(`Procesando ${itemType} con ID ${itemId}`);
