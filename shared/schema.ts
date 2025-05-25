@@ -869,6 +869,24 @@ export const insertCashboxTransactionSchema = createInsertSchema(cashboxTransact
 export type InsertCashboxTransaction = z.infer<typeof insertCashboxTransactionSchema>;
 export type CashboxTransaction = typeof cashboxTransactions.$inferSelect;
 
+// TRANSACCIONES GENÉRICAS SCHEMA
+export const transactions = pgTable("transactions", {
+  id: serial("id").primaryKey(),
+  details: jsonb("details").notNull(),      // Detalles de la transacción en formato JSON
+  usuarioId: integer("usuario_id").notNull(), // ID del usuario que creó la transacción
+  idCorte: integer("id_corte"),             // ID del corte al que pertenece (nullable)
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertTransactionSchema = createInsertSchema(transactions, {
+  id: z.number().optional(),
+  createdAt: z.date().optional(),
+  idCorte: z.number().optional(),
+});
+
+export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
+export type Transaction = typeof transactions.$inferSelect;
+
 // CORTES DE CAJA SCHEMA (Ampliado para soportar paqueterías)
 export const cashboxCutoffs = pgTable("cashbox_cutoffs", {
   id: serial("id").primaryKey(),

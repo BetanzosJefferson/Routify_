@@ -31,7 +31,9 @@ import {
   CashboxTransaction,
   InsertCashboxTransaction,
   CashboxCutoff,
-  InsertCashboxCutoff
+  InsertCashboxCutoff,
+  Transaction,
+  InsertTransaction
 } from "@shared/schema";
 
 export interface IStorage {
@@ -206,6 +208,10 @@ export interface IStorage {
   
   // Company methods
   getCompanyById(companyId: string): Promise<{id: string, name: string} | null>;
+  
+  // Transaction methods (new)
+  createTransaction(transaction: InsertTransaction): Promise<Transaction>;
+  getTransactions(filters?: { usuarioId?: number, idCorte?: number }): Promise<Transaction[]>;
 }
 
 export class MemStorage implements IStorage {
