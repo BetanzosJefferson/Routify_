@@ -5442,17 +5442,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const formattedTransactions = transactions.map(transaction => {
         console.log(`[GET /transactions] Procesando transacción ID: ${transaction.id}`);
         
-        // Parsear el campo de detalles si existe
+        // Parsear el campo de detalles si existe (ahora se llama details, no detalles)
         let details = {};
         try {
-          if (transaction.detalles) {
+          if (transaction.details) {
             // Verificar el tipo de datos antes de intentar parsear
-            console.log(`[GET /transactions] Tipo de detalles:`, typeof transaction.detalles);
+            console.log(`[GET /transactions] Tipo de detalles:`, typeof transaction.details);
             
-            if (typeof transaction.detalles === 'string') {
-              details = JSON.parse(transaction.detalles);
-            } else if (typeof transaction.detalles === 'object') {
-              details = transaction.detalles;
+            if (typeof transaction.details === 'string') {
+              details = JSON.parse(transaction.details);
+            } else if (typeof transaction.details === 'object') {
+              details = transaction.details;
             }
             
             console.log(`[GET /transactions] Detalles parseados para ID ${transaction.id}:`, details);
@@ -5462,9 +5462,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (e) {
           console.error(`[GET /transactions] Error al parsear detalles para ID ${transaction.id}:`, e);
           console.error('[GET /transactions] Detalles raw:', 
-            typeof transaction.detalles === 'string' 
-              ? transaction.detalles.substring(0, 100) + '...' 
-              : String(transaction.detalles));
+            typeof transaction.details === 'string' 
+              ? transaction.details.substring(0, 100) + '...' 
+              : String(transaction.details));
         }
         
         // Determinar el tipo de transacción
