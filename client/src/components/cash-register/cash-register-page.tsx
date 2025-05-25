@@ -1358,14 +1358,24 @@ Total transacciones: ${cutoffData.transactionCount}
                     <div key={t.id} className="border-b pb-2 text-sm">
                       <p><span className="font-medium">ID:</span> {t.id}</p>
                       <p>
-                        <span className="font-medium">Pasajero:</span> {
-                          t.type === 'reservation' 
-                            ? (t.passengerName || 
-                               (t.passengers && Array.isArray(t.passengers) && t.passengers.length > 0 
-                                 ? `${t.passengers[0]?.firstName || ''} ${t.passengers[0]?.lastName || ''}`.trim() 
-                                 : 'No disponible'))
-                            : (t.type === 'package' ? (t.sender || 'Remitente sin nombre') : 'No disponible')
-                        }
+                        {t.type === 'reservation' ? (
+                          <>
+                            <span className="font-medium">Pasajero:</span> {
+                              t.passengerName || 
+                              (t.passengers && Array.isArray(t.passengers) && t.passengers.length > 0 
+                                ? `${t.passengers[0]?.firstName || ''} ${t.passengers[0]?.lastName || ''}`.trim() 
+                                : 'No disponible')
+                            }
+                          </>
+                        ) : t.type === 'package' ? (
+                          <>
+                            <span className="font-medium">Remitente → Destinatario:</span> {
+                              `${t.sender || 'Sin nombre'} → ${t.recipient || 'Sin nombre'}`
+                            }
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">Información no disponible</span>
+                        )}
                       </p>
                       <p>
                         <span className="font-medium">Ruta:</span> {t.origin || t.tripInfo?.processedOrigin || 'Origen no especificado'} 
