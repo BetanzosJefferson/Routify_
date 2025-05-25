@@ -4436,12 +4436,14 @@ export class DatabaseStorage implements IStorage {
       
       // Guardar la transacción en la base de datos
       // Usamos directamente el schema.transacciones con los nombres de campos correctos
+      console.log(`[createTransaccion] CompanyId de la transacción: ${transaccionData.companyId || 'No especificado'}`);
       const [newTransaccion] = await db
         .insert(schema.transacciones)
         .values({
           detalles: transaccionData.detalles,
           usuario_id: transaccionData.usuario_id,
           id_corte: transaccionData.id_corte,
+          companyId: transaccionData.companyId, // Incluir el ID de la compañía
           createdAt: new Date(),
           updatedAt: new Date()
         })

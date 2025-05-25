@@ -2705,7 +2705,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const transaccionData = {
               detalles: detallesTransaccion, // Se mapeará a "details" en la BD
               usuario_id: createdByUserId || (user ? user.id : null), // Se mapeará a "user_id" en la BD
-              id_corte: null // Se mapeará a "cutoff_id" en la BD - Inicialmente NULL, se actualizará cuando se haga un corte de caja
+              id_corte: null, // Se mapeará a "cutoff_id" en la BD - Inicialmente NULL, se actualizará cuando se haga un corte de caja
+              companyId: reservation.companyId || tripWithRouteInfo.companyId // Incluir el ID de la compañía
             };
             
             console.log(`[POST /reservations] DEPURACIÓN - Datos para crear transacción:`, JSON.stringify(transaccionData, null, 2));
@@ -2825,7 +2826,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   const transaccionData = {
                     detalles: detallesTransaccion,
                     usuario_id: user?.id || null,
-                    id_corte: null // Inicialmente NULL, se actualizará cuando se haga un corte de caja
+                    id_corte: null, // Inicialmente NULL, se actualizará cuando se haga un corte de caja
+                    companyId: existingReservation.companyId || tripInfo.companyId // Incluir el ID de la compañía
                   };
                   
                   const transaccion = await storage.createTransaccion(transaccionData);
@@ -3547,8 +3549,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Crear la transacción en la base de datos
           const transaccion = await storage.createTransaccion({
             detalles: detallesTransaccion,
-            usuario_id: userId
+            usuario_id: userId,
             // id_corte se asignará posteriormente cuando se haga un corte de caja
+            companyId: packageData.companyId // Incluir el ID de la compañía del paquete
           });
           
           console.log(`[POST /public/packages/${packageId}/mark-paid] Transacción creada con ID:`, transaccion.id);
