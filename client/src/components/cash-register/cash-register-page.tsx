@@ -19,6 +19,7 @@ import {
   Printer,
   XCircle,
   Users,
+  Package,
   TicketIcon
 } from "lucide-react";
 
@@ -305,36 +306,13 @@ export function CashRegisterPage() {
       // Usamos localStorage como respaldo hasta que la tabla exista en la BD
       const processedItemsKey = `processed_items_${user.id}`;
       const storedProcessedItems = localStorage.getItem(processedItemsKey);
-      
-      // Log para depuración
-      console.log(`[isItemProcessed] Verificando si el elemento ${itemType} ${itemId} ya ha sido procesado`);
-      
-      if (!storedProcessedItems) {
-        console.log(`[isItemProcessed] No hay elementos procesados en localStorage para el usuario ${user.id}`);
-        return false;
-      }
+      if (!storedProcessedItems) return false;
 
       const processedItems = JSON.parse(storedProcessedItems);
-      
-      // Log para depuración - ver todos los elementos procesados
-      console.log(`[isItemProcessed] Total elementos procesados encontrados: ${processedItems.length}`);
-      
-      // Convertir el ID a string para comparación consistente
-      const itemIdStr = String(itemId);
-      
-      // Verificar si este elemento específico ya está en la lista de procesados (comparando como string para evitar problemas de tipo)
-      const isProcessed = processedItems.some((item: any) => {
-        const storedId = String(item.id);
-        const match = item.type === itemType && storedId === itemIdStr;
-        
-        if (match) {
-          console.log(`[isItemProcessed] Coincidencia encontrada: ${itemType} ${itemIdStr} procesado en corte #${item.cutoffId || 'desconocido'}`);
-        }
-        
-        return match;
-      });
-      
-      return isProcessed;
+      // Verificar si este elemento específico ya está en la lista de procesados
+      return processedItems.some((item: any) => 
+        item.type === itemType && item.id === itemId
+      );
     } catch (e) {
       console.error("Error al verificar elementos procesados:", e);
       return false;
@@ -418,16 +396,8 @@ export function CashRegisterPage() {
       return false;
     }
     
-    console.log(`Evaluando paquetería #${item.id} para mostrar en caja:`, {
-      isPaid: item.isPaid,
-      paidBy: item.paidBy,
-      userId: user?.id,
-      isAdminView: isAdminView
-    });
-    
     // Verificar que la paquetería está marcada como pagada
     if (!item.isPaid) {
-      console.log(`Paquetería #${item.id} no está marcada como pagada, omitiendo`);
       return false;
     }
     
@@ -436,16 +406,11 @@ export function CashRegisterPage() {
     const userCanViewAll = isAdminView;
     
     if (!userMarkedAsPaid && !userCanViewAll) {
-      console.log(`Paquetería #${item.id} no fue marcada como pagada por el usuario actual (${user?.id}) y no es admin/dueño, omitiendo`);
       return false;
     }
     
     // No incluir elementos ya procesados en cortes anteriores
-    const isProcessed = isItemProcessed('package', item.id);
-    console.log(`Verificando si paquetería #${item.id} ya está procesada: ${isProcessed ? 'SÍ' : 'NO'}`);
-    
-    if (isProcessed) {
-      console.log(`Paquetería #${item.id} ya procesada en un corte anterior, omitiendo`);
+    if (isItemProcessed('package', item.id)) {
       return false;
     }
     
@@ -453,25 +418,23 @@ export function CashRegisterPage() {
     let matchesSearch = true;
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      const routeName = routeInfoMap[item.tripId]?.toLowerCase() || '';
-      const senderName = ((item.senderName || '') + ' ' + (item.senderLastName || '')).toLowerCase();
-      const receiverName = ((item.recipientName || '') + ' ' + (item.recipientLastName || '')).toLowerCase();
-      const packageId = `PKG${item.id}`.toLowerCase();
-      const packageDesc = (item.packageDescription || '').toLowerCase();
+      const routeName = reservation.trip?.route?.name?.toLowerCase() || '';
+      const senderName = (reservation.senderName || '').toLowerCase();
+      const receiverName = (reservation.receiverName || '').toLowerCase();
+      const packageId = `RES${reservation.id}`.toLowerCase();
       
       matchesSearch = (
         routeName.includes(searchLower) ||
         senderName.includes(searchLower) ||
         receiverName.includes(searchLower) ||
-        packageId.includes(searchLower) ||
-        packageDesc.includes(searchLower)
+        packageId.includes(searchLower)
       );
     }
     
     // Aplicar filtro de fecha (misma lógica que para reservaciones)
     let matchesDate = true;
     if (dateFilter) {
-      const packageDate = new Date(item.paymentDate || item.createdAt || '');
+      const packageDate = new Date(reservation.paymentDate || reservation.markedAsPaidAt || reservation.paidAt || reservation.createdAt || '');
       const filterDate = new Date(dateFilter);
       
       matchesDate = (
@@ -484,13 +447,13 @@ export function CashRegisterPage() {
     // Aplicar filtro de método de pago
     let matchesPaymentMethod = true;
     if (paymentMethodFilter && paymentMethodFilter !== 'todos') {
-      matchesPaymentMethod = item.paymentMethod === paymentMethodFilter;
+      matchesPaymentMethod = reservation.paymentMethod === paymentMethodFilter;
     }
     
     // Aplicar filtro de empresa (solo para taquilleros)
     let matchesCompany = true;
     if (isTicketOfficeView && companyFilter !== 'todas') {
-      matchesCompany = item.companyId === companyFilter;
+      matchesCompany = reservation.companyInfo?.id === companyFilter;
     }
     
     return matchesSearch && matchesDate && matchesPaymentMethod && matchesCompany;
@@ -960,40 +923,12 @@ export function CashRegisterPage() {
             passengerName: itemDetails.passengerName
           });
           
-          // Detectar paqueterías con múltiples criterios
-          const isPackage = !!item.originalPackageId || 
-                          !!item.packageDescription || 
-                          (item.cashItemId && typeof item.cashItemId === 'string' && item.cashItemId.startsWith('paquete-')) ||
-                          (typeof item.id === 'string' && item.id.toString().startsWith('paquete-')) ||
-                          !!item.senderName || !!item.recipientName;
-          
-          // Tipo correcto basado en la detección mejorada
-          const correctType = isPackage ? 'package' : 'reservation';
-          
-          // Log para depuración
-          console.log(`[CRÍTICO] Elemento para corte de caja:`, {
-            id: item.id,
-            detectadoComoPaquete: isPackage,
-            tipo: correctType,
-            originalPackageId: item.originalPackageId,
-            packageDescription: item.packageDescription,
-            cashItemId: item.cashItemId,
-            senderName: item.senderName,
-            recipientName: item.recipientName
-          });
-          
           return {
             ...item,
-            // Establecer el tipo correcto consistentemente
-            type: correctType,
-            // Indicador adicional para el backend
-            isPackage: isPackage,
+            // Asegurarse de que cada elemento tenga el tipo correcto
+            type: item.originalPackageId ? 'package' : 'reservation',
             // Incluir los detalles importantes que queremos guardar
-            details: {
-              ...itemDetails,
-              // Asegurarse de que el tipo también está en los detalles
-              type: correctType
-            }
+            details: itemDetails
           };
         })
       };
@@ -1014,86 +949,6 @@ export function CashRegisterPage() {
       
       const result = await response.json();
       console.log("Corte creado exitosamente:", result);
-      
-      // Marcar elementos procesados en localStorage para que no se muestren en futuros cortes
-      // Esto incluye tanto reservaciones como paqueterías
-      if (user) {
-        try {
-          const processedItemsKey = `processed_items_${user.id}`;
-          // Obtener elementos ya procesados
-          const storedProcessedItems = localStorage.getItem(processedItemsKey);
-          let processedItems = storedProcessedItems ? JSON.parse(storedProcessedItems) : [];
-          
-          // Crear un array para los logs
-          const processingLogs = [];
-          
-          // Agregar elementos de este corte
-          cutoffData.transactions.forEach(item => {
-            // Determinar el tipo correcto del elemento
-            // Verificar con múltiples propiedades si es una paquetería
-            const isPackage = !!item.originalPackageId || 
-                             !!item.packageDescription || 
-                             (item.cashItemId && typeof item.cashItemId === 'string' && item.cashItemId.startsWith('paquete-')) ||
-                             (typeof item.id === 'string' && item.id.toString().startsWith('paquete-'));
-            
-            // IMPORTANTE: El tipo debe ser 'package' para paqueterías
-            const itemType = isPackage ? 'package' : 'reservation';
-            const itemId = item.id;
-            
-            // Log adicional para asegurar la detección correcta
-            console.log(`[IMPORTANTE] Determinando tipo de elemento:`, {
-              id: itemId,
-              originalPackageId: item.originalPackageId,
-              packageDescription: item.packageDescription,
-              cashItemId: item.cashItemId,
-              esPackage: isPackage,
-              tipoDetectado: itemType
-            });
-            
-            // CRÍTICO: Verificar que las paqueterías siempre se guarden como "package"
-            if (isPackage && itemType !== 'package') {
-              console.error('ERROR CRÍTICO: Paquetería detectada pero no marcada como "package"');
-            }
-            
-            // Log para depuración
-            processingLogs.push(`Procesando ${itemType} con ID ${itemId}`);
-            
-            // Verificar si este elemento ya está marcado como procesado
-            const isAlreadyProcessed = processedItems.some(
-              (p: any) => p.id === itemId && p.type === itemType
-            );
-            
-            // Solo agregar si no está procesado ya
-            if (!isAlreadyProcessed) {
-              // Agregar a la lista de procesados
-              processedItems.push({
-                id: itemId,
-                type: itemType,
-                processedAt: new Date().toISOString(),
-                cutoffId: result.id // ID del corte actual
-              });
-              processingLogs.push(`-> Marcado como procesado`);
-            } else {
-              processingLogs.push(`-> Ya estaba marcado como procesado`);
-            }
-          });
-          
-          // Guardar la lista actualizada
-          localStorage.setItem(processedItemsKey, JSON.stringify(processedItems));
-          
-          // Mostrar logs en consola
-          console.log(`--- PROCESAMIENTO DE ELEMENTOS EN CORTE #${result.id || 'nuevo'} ---`);
-          processingLogs.forEach(log => console.log(log));
-          console.log(`Marcados ${cutoffData.transactions.length} elementos como procesados en el corte #${result.id || 'nuevo'}`);
-          console.log(`Total de elementos procesados en localStorage: ${processedItems.length}`);
-          
-          // Para depuración: mostrar lista completa
-          console.log('Lista completa de elementos procesados:', processedItems);
-        } catch (e) {
-          console.error("Error al marcar elementos como procesados:", e);
-          console.error(e);
-        }
-      }
       
       // Invalidar la caché para forzar una recarga de las transacciones
       // Esto eliminará los elementos procesados en este corte
@@ -1930,7 +1785,6 @@ Total transacciones: ${cutoffData.transactionCount}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {/* Mostrar primero las reservaciones */}
                   {sortedReservations
                     .filter(reservation => !reservation.originalPackageId)
                     .map((reservation) => (
@@ -2140,17 +1994,6 @@ Total transacciones: ${cutoffData.transactionCount}
           )}
         </div>
       </Card>
-      
-      {/* Sección de Paqueterías */}
-      <div className="my-6">
-        <PackageList 
-          packages={filteredPackages || []} 
-          routeInfoMap={completeRoutes}
-          isLoading={isLoading}
-          sortDirection={sortDirection}
-          userName={user?.firstName || ''}
-        />
-      </div>
       
       {/* Modal para mostrar el historial de cortes */}
       <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
