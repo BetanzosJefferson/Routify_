@@ -471,42 +471,40 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
                 )}
               />
               
-              <FormField
-                control={form.control}
-                name="defaultPaymentMethod"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Método de Pago</FormLabel>
-                    <Select 
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        // Si no está marcado como pagado, actualizamos también el método de pago principal
-                        if (!isPaid) {
-                          form.setValue("paymentMethod", value);
-                        }
-                      }} 
-                      defaultValue={field.value || "efectivo"}
-                      disabled={isPaid}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccione un método de pago" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="efectivo">Efectivo</SelectItem>
-                        <SelectItem value="transferencia">Transferencia</SelectItem>
-                        <SelectItem value="tarjeta">Tarjeta</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      {isPaid ? "Este campo está deshabilitado porque el paquete ya está marcado como pagado." : 
-                      "Seleccione el método de pago para este envío."}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Campo para el método de pago predeterminado (siempre visible) */}
+              <div className="form-field">
+                <FormItem>
+                  <FormLabel>Método de Pago</FormLabel>
+                  <Select 
+                    onValueChange={(value) => {
+                      // Actualizar nuestro estado interno
+                      form.setValue("defaultPaymentMethod" as any, value);
+                      
+                      // Si no está marcado como pagado, actualizamos también el método de pago principal
+                      if (!isPaid) {
+                        form.setValue("paymentMethod", value);
+                      }
+                    }} 
+                    defaultValue={form.getValues("defaultPaymentMethod" as any) || "efectivo"}
+                    disabled={isPaid}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccione un método de pago" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="efectivo">Efectivo</SelectItem>
+                      <SelectItem value="transferencia">Transferencia</SelectItem>
+                      <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    {isPaid ? "Este campo está deshabilitado porque el paquete ya está marcado como pagado." : 
+                    "Seleccione el método de pago para este envío."}
+                  </FormDescription>
+                </FormItem>
+              </div>
               
               <FormField
                 control={form.control}
