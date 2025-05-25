@@ -26,7 +26,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Receipt } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { useAuth } from "@/hooks/use-auth";
 
 // Tipos para las transacciones
 interface TransactionDetails {
@@ -96,7 +95,6 @@ interface Transaction {
 
 const TransactionBox: React.FC = () => {
   const { toast } = useToast();
-  const { user } = useAuth();
   const [reservationTransactions, setReservationTransactions] = useState<Transaction[]>([]);
   const [packageTransactions, setPackageTransactions] = useState<Transaction[]>([]);
 
@@ -118,11 +116,10 @@ const TransactionBox: React.FC = () => {
   });
 
   useEffect(() => {
-    if (data && user) {
+    if (data) {
       // Separar las transacciones por tipo
       const reservations: Transaction[] = [];
       const packages: Transaction[] = [];
-      const userCompanyId = user.company;
 
       if (Array.isArray(data)) {
         console.log("Transacciones recibidas:", data.length);
@@ -131,16 +128,6 @@ const TransactionBox: React.FC = () => {
           try {
             // Verificar que la transacción y sus datos son válidos
             if (transaction && typeof transaction === 'object' && transaction.detalles && typeof transaction.detalles === 'object') {
-              // Filtrar solo las transacciones de la compañía del usuario actual
-              const transactionCompanyId = transaction.companyId || 
-                                          (transaction.detalles.details && transaction.detalles.details.companyId);
-              
-              // Si la transacción tiene companyId y no coincide con la del usuario, ignorarla
-              if (transactionCompanyId && transactionCompanyId !== userCompanyId) {
-                console.log("Ignorando transacción de otra compañía:", transactionCompanyId, "vs", userCompanyId);
-                return;
-              }
-              
               const transactionType = transaction.detalles.type;
               
               // Verificar que detalles.details existe
@@ -178,7 +165,7 @@ const TransactionBox: React.FC = () => {
       setReservationTransactions(reservations);
       setPackageTransactions(packages);
     }
-  }, [data, toast, user]);
+  }, [data, toast]);
 
   // Formatear fecha
   const formatDate = (dateString: string) => {
