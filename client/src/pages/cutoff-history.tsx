@@ -20,14 +20,45 @@ const CutoffHistoryPage: React.FC = () => {
   // Verificar autenticación
   const { user, loading } = useRequireAuth();
 
+  // Definir el tipo para los cortes de caja
+  interface BoxCutoff {
+    id: number;
+    fecha_inicio: string;
+    fecha_fin: string;
+    total_ingresos: number;
+    total_efectivo: number;
+    total_transferencias: number;
+    user_id: number;
+    created_at: string;
+    updated_at: string;
+    company_id: string | null;
+  }
+
   // Consultar historial de cortes
-  const { data: cutoffs, isLoading: isLoadingCutoffs } = useQuery({
+  const { data: cutoffs, isLoading: isLoadingCutoffs } = useQuery<BoxCutoff[]>({
     queryKey: ['/api/transactions/cutoff-history'],
     enabled: !!user,
     select: (data) => {
       // El endpoint ya filtra por usuario actual en el backend, pero podemos aplicar filtros adicionales aquí
       console.log('Cortes recibidos:', data);
-      return data;
+      
+      // Filtrar por período si es necesario
+      if (period !== 'all' && data) {
+        const now = new Date();
+        let filterDate = new Date();
+        
+        if (period === 'today') {
+          filterDate.setHours(0, 0, 0, 0); // Inicio del día actual
+        } else if (period === 'week') {
+          filterDate.setDate(now.getDate() - 7); // 7 días atrás
+        } else if (period === 'month') {
+          filterDate.setMonth(now.getMonth() - 1); // 1 mes atrás
+        }
+        
+        return data.filter(corte => new Date(corte.fecha_fin) >= filterDate);
+      }
+      
+      return data || [];
     }
   });
 
@@ -104,7 +135,7 @@ const CutoffHistoryPage: React.FC = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {cutoffs.map((corte) => (
+                      {cutoffs.map((corte: BoxCutoff) => (
                         <TableRow key={corte.id}>
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
@@ -171,7 +202,7 @@ const CutoffHistoryPage: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      ${cutoffs.reduce((sum, corte) => sum + Number(corte.total_ingresos), 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                      ${cutoffs.reduce((sum, corte: BoxCutoff) => sum + Number(corte.total_ingresos), 0).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                     </div>
                     <p className="text-xs text-gray-500">
                       {cutoffs.length} cortes en total
@@ -185,7 +216,7 @@ const CutoffHistoryPage: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      ${(cutoffs.reduce((sum, corte) => sum + Number(corte.total_ingresos), 0) / cutoffs.length).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                      ${(cutoffs.reduce((sum, corte: BoxCutoff) => sum + Number(corte.total_ingresos), 0) / cutoffs.length).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                     </div>
                     <p className="text-xs text-gray-500">
                       Calculado sobre {cutoffs.length} cortes
@@ -199,7 +230,7 @@ const CutoffHistoryPage: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     {(() => {
-                      const mayorCorte = [...cutoffs].sort((a, b) => Number(b.total_ingresos) - Number(a.total_ingresos))[0];
+                      const mayorCorte = [...cutoffs].sort((a: BoxCutoff, b: BoxCutoff) => Number(b.total_ingresos) - Number(a.total_ingresos))[0];
                       return (
                         <>
                           <div className="text-2xl font-bold">
