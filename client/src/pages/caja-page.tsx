@@ -50,8 +50,10 @@ export function CashboxPage() {
   }, [transactions, isLoading, isError, error]);
 
   // Filtrar transacciones por tipo
-  const filteredTransactions = transactions ? transactions.filter((transaction: Transaction) => {
+  const filteredTransactions = Array.isArray(transactions) ? transactions.filter((transaction: Transaction) => {
+    if (!transaction) return false;
     if (activeTab === "all") return true;
+    if (!transaction.type) return false;
     return transaction.type === activeTab;
   }) : [];
 
@@ -60,20 +62,31 @@ export function CashboxPage() {
 
   // Calcular totales
   const getTotalAmount = (type: string | null = null) => {
-    if (!transactions) return 0;
+    if (!transactions || !Array.isArray(transactions) || transactions.length === 0) return 0;
     
-    const amount = transactions
-      .filter((t: Transaction) => type ? t.type === type : true)
-      .reduce((sum: number, transaction: Transaction) => {
-        // Asegurar que amount es un número
-        const transactionAmount = typeof transaction.amount === 'number' 
-          ? transaction.amount 
-          : parseFloat(String(transaction.amount)) || 0;
-        
-        return sum + transactionAmount;
-      }, 0);
-    
-    return amount;
+    try {
+      const amount = transactions
+        .filter((t: Transaction) => {
+          if (!t) return false;
+          if (type) return t.type === type;
+          return true;
+        })
+        .reduce((sum: number, transaction: Transaction) => {
+          if (!transaction) return sum;
+          
+          // Asegurar que amount es un número
+          const transactionAmount = typeof transaction.amount === 'number' 
+            ? transaction.amount 
+            : parseFloat(String(transaction.amount)) || 0;
+          
+          return sum + transactionAmount;
+        }, 0);
+      
+      return amount;
+    } catch (error) {
+      console.error("Error al calcular el total:", error);
+      return 0;
+    }
   };
 
   // Renderizar fecha en formato legible
@@ -191,9 +204,23 @@ export function CashboxPage() {
                             <TableCell>{transaction.paymentMethod || "No especificado"}</TableCell>
                             <TableCell>{formatDate(transaction.createdAt)}</TableCell>
                             <TableCell className="max-w-xs truncate">
-                              {transaction.type === "reservation" 
-                                ? `Reservación #${transaction.details?.reservationId || "N/A"}` 
-                                : `Paquete #${transaction.details?.packageId || "N/A"}`}
+                              {(() => {
+                                if (!transaction.details) return "Sin detalles";
+                                
+                                if (transaction.type === "reservation") {
+                                  const reservationId = transaction.details.reservationId || 
+                                    (transaction.details.details?.id) || 
+                                    "N/A";
+                                  return `Reservación #${reservationId}`;
+                                } else if (transaction.type === "package") {
+                                  const packageId = transaction.details.packageId || 
+                                    (transaction.details.details?.id) || 
+                                    "N/A";
+                                  return `Paquete #${packageId}`;
+                                } else {
+                                  return "Otro tipo de transacción";
+                                }
+                              })()}
                             </TableCell>
                           </TableRow>
                         ))}
