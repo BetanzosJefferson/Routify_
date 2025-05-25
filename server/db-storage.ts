@@ -4423,4 +4423,48 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
   }
+  
+  // Métodos para la tabla de transacciones
+  async createTransaccion(transaccionData: schema.InsertTransaccion): Promise<schema.Transaccion> {
+    try {
+      console.log(`[createTransaccion] Creando nueva transacción para usuario ${transaccionData.usuario_id}`);
+      
+      // Guardar la transacción en la base de datos
+      const [newTransaccion] = await db
+        .insert(schema.transacciones)
+        .values(transaccionData)
+        .returning();
+      
+      console.log(`[createTransaccion] Transacción creada con ID: ${newTransaccion.id}`);
+      return newTransaccion;
+    } catch (error) {
+      console.error('[createTransaccion] Error al crear transacción:', error);
+      throw new Error(`Error al crear transacción: ${error}`);
+    }
+  }
+  
+  async getTransacciones(filters?: { usuario_id?: number, id_corte?: number }): Promise<schema.Transaccion[]> {
+    try {
+      let query = db.select().from(schema.transacciones);
+      
+      // Aplicar filtros
+      if (filters?.usuario_id) {
+        query = query.where(eq(schema.transacciones.usuario_id, filters.usuario_id));
+      }
+      
+      if (filters?.id_corte) {
+        query = query.where(eq(schema.transacciones.id_corte, filters.id_corte));
+      }
+      
+      // Ordenar por fecha de creación descendente (más recientes primero)
+      query = query.orderBy(desc(schema.transacciones.createdAt));
+      
+      const transacciones = await query;
+      console.log(`[getTransacciones] Se encontraron ${transacciones.length} transacciones`);
+      return transacciones;
+    } catch (error) {
+      console.error('[getTransacciones] Error al obtener transacciones:', error);
+      return [];
+    }
+  }
 }
