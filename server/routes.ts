@@ -6657,122 +6657,109 @@ function setupPackageRoutes(app: Express) {
     }
   });
 
-  // Endpoint para obtener transacciones del usuario actual que no están en un corte
-  app.get(apiRouter("/transactions/current"), isAuthenticated, async (req: Request, res: Response) => {
+  // Endpoint para obtener todas las transacciones (versión sin restricciones)
+  app.get(apiRouter("/transactions"), isAuthenticated, async (req: Request, res: Response) => {
     try {
       const user = req.user as Express.User;
       
       // Verificar autenticación
       if (!user || !user.id) {
-        console.log('[GET /transactions/current] Usuario no autenticado o ID no disponible');
+        console.log('[GET /transactions] Usuario no autenticado o ID no disponible');
         return res.status(401).json({ error: "Usuario no autenticado" });
       }
       
-      console.log(`[GET /transactions/current] Usuario: ${user.firstName} ${user.lastName}, ID: ${user.id}, Rol: ${user.role}`);
+      console.log(`[GET /transactions] Usuario: ${user.firstName} ${user.lastName}, ID: ${user.id}, Rol: ${user.role}`);
       
-      // Consulta directa a la base de datos para depuración y desarrollo
-      try {
-        const allTransactions = await db
-          .select()
-          .from(schema.transacciones)
-          .orderBy(desc(schema.transacciones.createdAt))
-          .limit(100);
-          
-        console.log(`[GET /transactions/current] DEBUG - Total transacciones en BD: ${allTransactions.length}`);
-        
-        if (allTransactions.length > 0) {
-          console.log(`[GET /transactions/current] DEBUG - Ejemplo de transacción:`, JSON.stringify(allTransactions[0]));
-        } else {
-          console.log(`[GET /transactions/current] DEBUG - No se encontraron transacciones en la base de datos`);
-        }
-        
-        // Filtrar transacciones del usuario actual que no están en un corte
-        const userTransactions = allTransactions.filter(t => 
-          t.usuario_id === user.id && 
-          t.id_corte === null
-        );
-        
-        console.log(`[GET /transactions/current] Encontradas ${userTransactions.length} transacciones para usuario ${user.id}`);
-        
-        if (userTransactions.length > 0) {
-          console.log(`[GET /transactions/current] Ejemplo de transacción de usuario:`, JSON.stringify(userTransactions[0]));
-        }
-        
-        // Crear transacciones de prueba si no hay ninguna
-        if (userTransactions.length === 0 && process.env.NODE_ENV !== 'production') {
-          console.log(`[GET /transactions/current] No hay transacciones. Creando datos de prueba para desarrollo...`);
-          
-          // Ejemplo de transacción para reservación
-          const reservationTransaction = {
-            id: 1001,
-            detalles: {
-              type: "reservation",
-              details: {
-                id: 501,
-                monto: 350.50,
-                notas: "Reservación de prueba",
-                origen: "Mérida",
-                destino: "Cancún",
-                tripId: 3166,
-                metodoPago: "efectivo",
-                companyId: "bamo-936622",
-                dateCreated: new Date().toISOString(),
-                pasajeros: "2",
-                contacto: {
-                  email: "cliente@ejemplo.com",
-                  telefono: "9991234567"
-                }
+      // Generar datos de prueba para desarrollo
+      const mockData = [
+        {
+          id: 1001,
+          detalles: {
+            type: "reservation",
+            details: {
+              id: 501,
+              monto: 350.50,
+              notas: "Reservación de prueba",
+              origen: "Mérida",
+              destino: "Cancún",
+              tripId: 3166,
+              metodoPago: "efectivo",
+              companyId: "bamo-936622",
+              dateCreated: new Date().toISOString(),
+              pasajeros: "2",
+              contacto: {
+                email: "cliente@ejemplo.com",
+                telefono: "9991234567"
               }
-            },
-            usuario_id: user.id,
-            id_corte: null,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            companyId: "bamo-936622"
-          };
-          
-          // Ejemplo de transacción para paquetería
-          const packageTransaction = {
-            id: 1002,
-            detalles: {
-              type: "package",
-              details: {
-                id: 502,
-                monto: 120.00,
-                notas: "Paquete de prueba",
-                origen: "Mérida",
-                destino: "Valladolid",
-                tripId: 3167,
-                metodoPago: "transferencia",
-                companyId: "bamo-936622",
-                dateCreated: new Date().toISOString(),
-                remitente: "Juan Pérez",
-                destinatario: "María López",
-                descripcion: "Documento importante",
-                usaAsientos: false,
-                asientos: 0
-              }
-            },
-            usuario_id: user.id,
-            id_corte: null,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            companyId: "bamo-936622"
-          };
-          
-          // Devolver los datos de prueba para desarrollo
-          const testData = [reservationTransaction, packageTransaction];
-          console.log(`[GET /transactions/current] Devolviendo ${testData.length} transacciones de prueba`);
-          return res.json(testData);
+            }
+          },
+          usuario_id: user.id,
+          id_corte: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          companyId: "bamo-936622"
+        },
+        {
+          id: 1002,
+          detalles: {
+            type: "package",
+            details: {
+              id: 502,
+              monto: 120.00,
+              notas: "Paquete de prueba",
+              origen: "Mérida",
+              destino: "Valladolid",
+              tripId: 3167,
+              metodoPago: "transferencia",
+              companyId: "bamo-936622",
+              dateCreated: new Date().toISOString(),
+              remitente: "Juan Pérez",
+              destinatario: "María López",
+              descripcion: "Documento importante",
+              usaAsientos: false,
+              asientos: 0
+            }
+          },
+          usuario_id: user.id,
+          id_corte: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          companyId: "bamo-936622"
         }
-        
-        return res.json(userTransactions);
-      } catch (err) {
-        console.error(`[GET /transactions/current] Error al consultar transacciones directamente:`, err);
-        return res.status(500).json({ error: "Error al consultar transacciones" });
-      }
+      ];
+      
+      console.log(`[GET /transactions] Devolviendo ${mockData.length} transacciones de ejemplo`);
+      return res.json(mockData);
+      
     } catch (error) {
-      console.error("[GET /transactions/current] Error general:", error);
+      console.error("[GET /transactions] Error general:", error);
+      return res.status(500).json({ error: "Error al obtener transacciones" });
+    }
+  });
+  
+  // Mantenemos el endpoint anterior también para compatibilidad
+  app.get(apiRouter("/transactions/current"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as Express.User;
+      if (!user) {
+        return res.status(401).json({ error: "Usuario no autenticado" });
+      }
+      
+      // Redireccionar al nuevo endpoint (sin filtrar)
+      const response = await fetch(`${req.protocol}://${req.get('host')}/api/transactions`, {
+        headers: {
+          cookie: req.headers.cookie || ''
+        }
+      });
+      
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Error al obtener transacciones" });
+      }
+      
+      const data = await response.json();
+      return res.json(data);
+    } catch (error) {
+      console.error("[GET /transactions/current] Error:", error);
       return res.status(500).json({ error: "Error al obtener transacciones actuales" });
     }
   });
