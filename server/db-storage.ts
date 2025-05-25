@@ -3625,6 +3625,35 @@ export class DatabaseStorage implements IStorage {
       
       console.log(`[updatePackage] Paquetería actualizada: ${updatedPackage.id}`);
       
+      // Verificar si el paquete fue marcado como pagado
+      if (packageData.paymentStatus === 'pagado' && 
+          originalPackage.paymentStatus !== 'pagado' && 
+          packageData.paidBy) {
+        try {
+          // Preparar los detalles de la transacción
+          const detalles = {
+            tipo: "pago_paqueteria",
+            paqueteriaId: updatedPackage.id,
+            monto: updatedPackage.price,
+            metodoPago: packageData.paymentMethod || updatedPackage.paymentMethod || 'efectivo',
+            fecha: new Date(),
+            descripcion: "Pago de paquetería"
+          };
+          
+          // Crear la transacción
+          await this.createTransaction({
+            details: detalles,
+            usuarioId: packageData.paidBy,
+            createdAt: new Date()
+          });
+          
+          console.log(`[updatePackage] Transacción creada para el pago de paquetería #${updatedPackage.id}`);
+        } catch (transactionError) {
+          console.error(`[updatePackage] Error al crear transacción para paquetería:`, transactionError);
+          // No lanzamos el error para no interrumpir el flujo principal
+        }
+      }
+      
       // Verificar si hubo cambios en el uso de asientos
       const originalSeatsUsed = originalPackage.usesSeats ? (originalPackage.seatsQuantity || 0) : 0;
       const updatedSeatsUsed = updatedPackage.usesSeats ? (updatedPackage.seatsQuantity || 0) : 0;
