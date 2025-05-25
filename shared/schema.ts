@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, doublePrecision, jsonb, uuid, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, doublePrecision, jsonb, uuid, varchar, decimal } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -844,11 +844,40 @@ export const insertTransaccionSchema = createInsertSchema(transacciones, {
 export type Transaccion = typeof transacciones.$inferSelect;
 export type InsertTransaccion = z.infer<typeof insertTransaccionSchema>;
 
+// TABLA DE BOX CUTOFF (CORTE DE CAJA)
+export const boxCutoff = pgTable("box_cutoff", {
+  id: serial("id").primaryKey(),
+  fecha_inicio: timestamp("fecha_inicio").notNull(),
+  fecha_fin: timestamp("fecha_fin").notNull(),
+  total_ingresos: decimal("total_ingresos", { precision: 10, scale: 2 }).notNull().default("0"),
+  total_efectivo: decimal("total_efectivo", { precision: 10, scale: 2 }).notNull().default("0"),
+  total_transferencias: decimal("total_transferencias", { precision: 10, scale: 2 }).notNull().default("0"),
+  user_id: integer("user_id").notNull().references(() => users.id),
+});
+
+export const insertBoxCutoffSchema = createInsertSchema(boxCutoff).omit({ 
+  id: true 
+});
+export type InsertBoxCutoff = z.infer<typeof insertBoxCutoffSchema>;
+export type BoxCutoff = typeof boxCutoff.$inferSelect;
+
+// Relaciones para la tabla de box_cutoff
+export const boxCutoffRelations = relations(boxCutoff, ({ one, many }) => ({
+  usuario: one(users, {
+    fields: [boxCutoff.user_id],
+    references: [users.id]
+  }),
+  transacciones: many(transacciones)
+}));
+
 // Relaciones para la tabla de transacciones
 export const transaccionesRelations = relations(transacciones, ({ one }) => ({
   usuario: one(users, {
     fields: [transacciones.user_id],
     references: [users.id]
   }),
-  // Relación con corte de caja eliminada
+  corte: one(boxCutoff, {
+    fields: [transacciones.cutoff_id],
+    references: [boxCutoff.id]
+  })
 }));
