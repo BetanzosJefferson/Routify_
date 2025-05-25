@@ -567,11 +567,34 @@ const TransactionHistoryBox: React.FC = () => {
             {Object.values(cutoffGroups).map((group) => (
               <Card key={group.cutoffId} className="bg-blue-50 border-blue-200 overflow-hidden">
                 <CardHeader className="bg-blue-100 pb-2">
-                  <div className="flex flex-col space-y-2">
-                    <CardTitle className="text-lg flex items-center">
-                      <BarChart className="h-5 w-5 mr-2 text-primary" />
-                      Resumen de Transacciones
-                    </CardTitle>
+                  <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+                    <div>
+                      <CardTitle className="text-lg flex items-center">
+                        <BarChart className="h-5 w-5 mr-2 text-primary" />
+                        Resumen de Transacciones
+                      </CardTitle>
+                    </div>
+                    <div className="mt-2 md:mt-0">
+                      <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        className="flex items-center gap-1"
+                        onClick={() => generatePDF(group.cutoffId)}
+                        disabled={loadingPdf[group.cutoffId]}
+                      >
+                        {loadingPdf[group.cutoffId] ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Generando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Printer className="h-4 w-4" />
+                            <span>Imprimir en PDF</span>
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="p-4">
