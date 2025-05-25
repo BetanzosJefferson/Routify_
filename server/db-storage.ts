@@ -4429,10 +4429,19 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log(`[createTransaccion] Creando nueva transacción para usuario ${transaccionData.usuario_id}`);
       
+      // Preparar los datos para mapear a los nombres de columnas correctos en la base de datos
+      const dataToInsert = {
+        details: transaccionData.detalles,
+        user_id: transaccionData.usuario_id,
+        cutoff_id: transaccionData.id_corte
+      };
+      
+      console.log(`[createTransaccion] Datos a insertar:`, dataToInsert);
+      
       // Guardar la transacción en la base de datos
       const [newTransaccion] = await db
         .insert(schema.transacciones)
-        .values(transaccionData)
+        .values(dataToInsert as any)
         .returning();
       
       console.log(`[createTransaccion] Transacción creada con ID: ${newTransaccion.id}`);
