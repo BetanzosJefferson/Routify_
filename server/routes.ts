@@ -2659,10 +2659,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Crear transacción si hay anticipo (advanceAmount > 0)
       if (reservationData.advanceAmount && reservationData.advanceAmount > 0) {
         try {
+          console.log(`[POST /reservations] DEPURACIÓN - Información completa de la reservación creada:`, JSON.stringify(reservation, null, 2));
+          console.log(`[POST /reservations] DEPURACIÓN - Datos de pasajeros:`, JSON.stringify(passengers, null, 2));
+          console.log(`[POST /reservations] DEPURACIÓN - Usuario creador:`, createdByUserId || (user ? user.id : null));
           console.log(`[POST /reservations] Creando transacción para anticipo de $${reservationData.advanceAmount}`);
           
           // Obtener información del viaje para los detalles de la transacción
           const tripWithRouteInfo = await storage.getTripWithRouteInfo(trip.id);
+          console.log(`[POST /reservations] DEPURACIÓN - Información del viaje obtenida:`, JSON.stringify(tripWithRouteInfo, null, 2));
           
           if (tripWithRouteInfo && tripWithRouteInfo.route) {
             // Crear los detalles de la transacción en formato JSON
@@ -2683,21 +2687,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             };
             
+            console.log(`[POST /reservations] DEPURACIÓN - Detalles de la transacción a crear:`, JSON.stringify(detallesTransaccion, null, 2));
+            
             // Crear la transacción en la base de datos
-            const transaccion = await storage.createTransaccion({
+            const transaccionData = {
               detalles: detallesTransaccion, // Se mapeará a "details" en la BD
               usuario_id: createdByUserId || (user ? user.id : null), // Se mapeará a "user_id" en la BD
               id_corte: null // Se mapeará a "cutoff_id" en la BD - Inicialmente NULL, se actualizará cuando se haga un corte de caja
-            });
+            };
+            
+            console.log(`[POST /reservations] DEPURACIÓN - Datos para crear transacción:`, JSON.stringify(transaccionData, null, 2));
+            
+            const transaccion = await storage.createTransaccion(transaccionData);
             
             console.log(`[POST /reservations] Transacción creada exitosamente con ID: ${transaccion.id}`);
+            console.log(`[POST /reservations] DEPURACIÓN - Transacción creada:`, JSON.stringify(transaccion, null, 2));
           } else {
             console.log(`[POST /reservations] No se pudo obtener información completa del viaje para crear la transacción`);
           }
         } catch (error) {
           console.error(`[POST /reservations] Error al crear transacción:`, error);
+          console.error(`[POST /reservations] DEPURACIÓN - Stack de error:`, error instanceof Error ? error.stack : 'No stack disponible');
           // Continuamos aunque falle la creación de la transacción para no afectar la creación de la reserva
         }
+      } else {
+        console.log(`[POST /reservations] DEPURACIÓN - No se creó transacción porque no hay anticipo o es 0: ${reservationData.advanceAmount}`);
       }
       
       res.status(201).json({
