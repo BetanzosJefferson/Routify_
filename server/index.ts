@@ -41,7 +41,10 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
   
-  // Rutas de cortes de caja eliminadas
+  // Registrar rutas de transacciones
+  import { registerTransactionRoutes } from "./routes-transactions";
+  import { storage } from "./storage";
+  registerTransactionRoutes(app, storage);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
