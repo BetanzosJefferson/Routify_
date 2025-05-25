@@ -975,7 +975,6 @@ export const transacciones = pgTable("transactions", { // Cambiado de "transacci
   detalles: jsonb("details").notNull(), // Cambiado de "detalles" a "details"
   usuario_id: integer("user_id").notNull().references(() => users.id), // Cambiado de "usuario_id" a "user_id"
   id_corte: integer("cutoff_id").references(() => cashboxCutoffs.id), // Cambiado de "id_corte" a "cutoff_id"
-  company_id: text("company_id"), // Campo para guardar el ID de la compañía del usuario
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -986,8 +985,7 @@ export const insertTransaccionSchema = createInsertSchema(transacciones, {
   updatedAt: z.date().optional(),
   id_corte: z.number().optional().nullable(), // Mantenemos el nombre original en el esquema de inserción
   detalles: z.any().optional(), // Campo para mapear a "details"
-  usuario_id: z.number().optional(), // Campo para mapear a "user_id"
-  company_id: z.string().optional() // Campo para guardar el ID de la compañía
+  usuario_id: z.number().optional() // Campo para mapear a "user_id"
 });
 
 export type Transaccion = typeof transacciones.$inferSelect;
