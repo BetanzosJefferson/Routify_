@@ -828,7 +828,6 @@ export const transacciones = pgTable("transactions", { // Cambiado de "transacci
   id_corte: integer("cutoff_id"), // Referencia a corte de caja eliminada
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  companyId: text("company_id").notNull().default("default-company"), // Campo para asociar la transacción con una compañía
 });
 
 export const insertTransaccionSchema = createInsertSchema(transacciones, {
@@ -837,8 +836,7 @@ export const insertTransaccionSchema = createInsertSchema(transacciones, {
   updatedAt: z.date().optional(),
   id_corte: z.number().optional().nullable(), // Mantenemos el nombre original en el esquema de inserción
   detalles: z.any().optional(), // Campo para mapear a "details"
-  usuario_id: z.number().optional(), // Campo para mapear a "user_id"
-  companyId: z.string().optional().nullable() // Campo para la compañía asociada a la transacción
+  usuario_id: z.number().optional() // Campo para mapear a "user_id"
 });
 
 export type Transaccion = typeof transacciones.$inferSelect;

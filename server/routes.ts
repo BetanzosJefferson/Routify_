@@ -2701,39 +2701,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             console.log(`[POST /reservations] DEPURACIÓN - Detalles de la transacción a crear:`, JSON.stringify(detallesTransaccion, null, 2));
             
-            // Buscar el viaje para obtener su companyId
-            let companyIdToUse = "default-company";
-            
-            if (tripWithRouteInfo && tripWithRouteInfo.companyId) {
-              companyIdToUse = tripWithRouteInfo.companyId;
-              console.log(`[POST /reservations] Usando companyId del viaje: ${companyIdToUse}`);
-            } else if (reservation.companyId) {
-              companyIdToUse = reservation.companyId;
-              console.log(`[POST /reservations] Usando companyId de la reservación: ${companyIdToUse}`);
-            } else {
-              // Búsqueda directa en la base de datos
-              try {
-                const tripResult = await db
-                  .select({ companyId: schema.trips.companyId })
-                  .from(schema.trips)
-                  .where(eq(schema.trips.id, tripId))
-                  .limit(1);
-                
-                if (tripResult && tripResult.length > 0 && tripResult[0].companyId) {
-                  companyIdToUse = tripResult[0].companyId;
-                  console.log(`[POST /reservations] Obtenido companyId directamente de la DB: ${companyIdToUse}`);
-                }
-              } catch (dbError) {
-                console.error(`[POST /reservations] Error al consultar companyId del viaje: ${dbError}`);
-              }
-            }
-            
             // Crear la transacción en la base de datos
             const transaccionData = {
               detalles: detallesTransaccion, // Se mapeará a "details" en la BD
               usuario_id: createdByUserId || (user ? user.id : null), // Se mapeará a "user_id" en la BD
-              id_corte: null, // Se mapeará a "cutoff_id" en la BD - Inicialmente NULL, se actualizará cuando se haga un corte de caja
-              companyId: companyIdToUse // Usar el companyId obtenido
+              id_corte: null // Se mapeará a "cutoff_id" en la BD - Inicialmente NULL, se actualizará cuando se haga un corte de caja
             };
             
             console.log(`[POST /reservations] DEPURACIÓN - Datos para crear transacción:`, JSON.stringify(transaccionData, null, 2));
@@ -2850,35 +2822,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   console.log(`[PUT /reservations/${id}] DEPURACIÓN - Detalles de la transacción a crear:`, JSON.stringify(detallesTransaccion, null, 2));
                   
                   // Crear la transacción en la base de datos
-                  // Buscar el viaje para obtener su companyId
-                  let companyIdToUse = "default-company";
-                  
-                  if (trip && trip.companyId) {
-                    companyIdToUse = trip.companyId;
-                    console.log(`[PUT /reservations/${id}] Usando companyId del viaje: ${companyIdToUse}`);
-                  } else {
-                    // Búsqueda directa en la base de datos
-                    try {
-                      const tripResult = await db
-                        .select({ companyId: schema.trips.companyId })
-                        .from(schema.trips)
-                        .where(eq(schema.trips.id, tripId))
-                        .limit(1);
-                      
-                      if (tripResult && tripResult.length > 0 && tripResult[0].companyId) {
-                        companyIdToUse = tripResult[0].companyId;
-                        console.log(`[PUT /reservations/${id}] Obtenido companyId directamente de la DB: ${companyIdToUse}`);
-                      }
-                    } catch (dbError) {
-                      console.error(`[PUT /reservations/${id}] Error al consultar companyId del viaje: ${dbError}`);
-                    }
-                  }
-                  
                   const transaccionData = {
                     detalles: detallesTransaccion,
                     usuario_id: user?.id || null,
-                    id_corte: null, // Inicialmente NULL, se actualizará cuando se haga un corte de caja
-                    companyId: companyIdToUse // Usar el companyId obtenido
+                    id_corte: null // Inicialmente NULL, se actualizará cuando se haga un corte de caja
                   };
                   
                   const transaccion = await storage.createTransaccion(transaccionData);
@@ -3598,34 +3545,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       JSON.stringify(detallesTransaccion, null, 2));
           
           // Crear la transacción en la base de datos
-          // Buscar el companyId directamente en la base de datos
-          let companyIdToUse = "default-company";
-          
-          if (packageData && packageData.companyId) {
-            companyIdToUse = packageData.companyId;
-            console.log(`[POST /public/packages/${packageId}/mark-paid] Usando companyId del paquete: ${companyIdToUse}`);
-          } else if (packageData.tripId) {
-            try {
-              const tripResult = await db
-                .select({ companyId: schema.trips.companyId })
-                .from(schema.trips)
-                .where(eq(schema.trips.id, packageData.tripId))
-                .limit(1);
-              
-              if (tripResult && tripResult.length > 0 && tripResult[0].companyId) {
-                companyIdToUse = tripResult[0].companyId;
-                console.log(`[POST /public/packages/${packageId}/mark-paid] Obtenido companyId del viaje en DB: ${companyIdToUse}`);
-              }
-            } catch (dbError) {
-              console.error(`[POST /public/packages/${packageId}/mark-paid] Error al consultar companyId del viaje: ${dbError}`);
-            }
-          }
-          
           const transaccion = await storage.createTransaccion({
             detalles: detallesTransaccion,
-            usuario_id: userId,
+            usuario_id: userId
             // id_corte se asignará posteriormente cuando se haga un corte de caja
-            companyId: companyIdToUse // Usar el companyId obtenido
           });
           
           console.log(`[POST /public/packages/${packageId}/mark-paid] Transacción creada con ID:`, transaccion.id);
@@ -5357,35 +5280,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[POST /packages] Creando transacción con detalles:`, 
                       JSON.stringify(detallesTransaccion, null, 2));
           
-          // Buscar el companyId directamente en la base de datos
-          let companyIdToUse = "default-company";
-          
-          if (newPackage && newPackage.companyId) {
-            companyIdToUse = newPackage.companyId;
-            console.log(`[POST /packages] Usando companyId del paquete: ${companyIdToUse}`);
-          } else if (newPackage.tripId) {
-            try {
-              const tripResult = await db
-                .select({ companyId: schema.trips.companyId })
-                .from(schema.trips)
-                .where(eq(schema.trips.id, newPackage.tripId))
-                .limit(1);
-              
-              if (tripResult && tripResult.length > 0 && tripResult[0].companyId) {
-                companyIdToUse = tripResult[0].companyId;
-                console.log(`[POST /packages] Obtenido companyId del viaje en DB: ${companyIdToUse}`);
-              }
-            } catch (dbError) {
-              console.error(`[POST /packages] Error al consultar companyId del viaje: ${dbError}`);
-            }
-          }
-          
           // Crear la transacción en la base de datos
           const transaccion = await storage.createTransaccion({
             detalles: detallesTransaccion,
-            usuario_id: user.id,
+            usuario_id: user.id
             // id_corte se asignará posteriormente cuando se haga un corte de caja
-            companyId: companyIdToUse // Usar el companyId obtenido
           });
           
           console.log(`[POST /packages] Transacción creada con ID:`, transaccion.id);
