@@ -16,13 +16,11 @@ type TabType = "reservations" | "packages";
 
 interface Transaction {
   id: number;
-  type: string;
-  amount: number;
-  paymentMethod: string | null;
-  details: Record<string, any>;
+  detalles: Record<string, any>;
+  usuario_id: number;
+  id_corte: number | null;
   createdAt: string;
-  createdBy: number | null;
-  cutoffId: number | null;
+  updatedAt: string;
 }
 
 export default function TransactionsPage() {
@@ -64,11 +62,11 @@ export default function TransactionsPage() {
 
   // Filtrar transacciones por tipo
   const reservationTransactions = transactions?.filter(
-    (transaction: Transaction) => transaction.type === "reservation"
+    (transaction: Transaction) => transaction.detalles?.type === "reservation"
   ) || [];
 
   const packageTransactions = transactions?.filter(
-    (transaction: Transaction) => transaction.type === "package"
+    (transaction: Transaction) => transaction.detalles?.type === "package"
   ) || [];
 
   return (
@@ -117,14 +115,14 @@ export default function TransactionsPage() {
                                   {format(new Date(transaction.createdAt), "dd/MM/yyyy HH:mm", { locale: es })}
                                 </TableCell>
                                 <TableCell>
-                                  {transaction.details.passengerName || "N/A"}
+                                  {transaction.detalles.passengerName || "N/A"}
                                 </TableCell>
                                 <TableCell>
-                                  {transaction.details.route ? (
+                                  {transaction.detalles.route ? (
                                     <div>
-                                      <div>{transaction.details.route.origin}</div>
+                                      <div>{transaction.detalles.route.origin}</div>
                                       <div className="text-xs text-muted-foreground">a</div>
-                                      <div>{transaction.details.route.destination}</div>
+                                      <div>{transaction.detalles.route.destination}</div>
                                     </div>
                                   ) : (
                                     "N/A"
