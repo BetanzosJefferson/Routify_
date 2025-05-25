@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Card,
   CardContent,
@@ -39,18 +39,21 @@ export function CashboxPage() {
   // Consultar transacciones
   const { data: transactions, isLoading, isError, error } = useQuery({
     queryKey: ['/api/transactions'],
-    retry: 2,
+    retry: 3,
+    refetchOnWindowFocus: false,
   });
   
   // Debugging
-  console.log("Estado de la consulta:", { isLoading, isError, errorMessage: error });
-  console.log("Datos de transacciones:", transactions);
+  useEffect(() => {
+    console.log("Estado de la consulta:", { isLoading, isError, errorMessage: error });
+    console.log("Datos de transacciones:", transactions);
+  }, [transactions, isLoading, isError, error]);
 
   // Filtrar transacciones por tipo
-  const filteredTransactions = transactions?.filter((transaction: Transaction) => {
+  const filteredTransactions = transactions ? transactions.filter((transaction: Transaction) => {
     if (activeTab === "all") return true;
     return transaction.type === activeTab;
-  }) || [];
+  }) : [];
 
   // Log para debugging
   console.log("Transacciones recibidas:", transactions);
