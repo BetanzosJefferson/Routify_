@@ -379,11 +379,21 @@ const TransactionHistoryBox: React.FC = () => {
       // Configuración del ticket
       const paperWidth = 60; // Ancho estándar de papel térmico 60mm
       
-      // Crear documento con tamaño de papel térmico
+      // Calcular altura del PDF basada en el número de transacciones
+      const alturaEncabezado = 30; // mm para encabezado, resumen y títulos
+      const alturaPorTransaccion = 35; // mm estimados por transacción
+      const alturaPie = 15; // mm para pie de página y margen inferior
+      
+      // Altura total: encabezado + (altura por transacción * número de transacciones) + pie
+      const alturaTotal = alturaEncabezado + (alturaPorTransaccion * group.transactions.length) + alturaPie;
+      
+      console.log(`Generando PDF con altura calculada: ${alturaTotal}mm para ${group.transactions.length} transacciones`);
+      
+      // Crear documento con tamaño calculado
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "mm",
-        format: [paperWidth, 500] // Altura inicial grande, se ajustará automáticamente
+        format: [paperWidth, alturaTotal] // Altura basada en número de transacciones
       });
       
       // Configuración de márgenes y posición
