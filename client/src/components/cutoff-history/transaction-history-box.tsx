@@ -456,15 +456,42 @@ const TransactionHistoryBox: React.FC = () => {
                     </div>
                   </div>
                   
-                  {/* Sección de Reservaciones */}
-                  {group.reservationCount > 0 && (
-                    <div className="mb-4">
-                      <div className="flex items-center mb-2">
-                        <h3 className="text-sm font-semibold">Reservaciones ({group.reservationCount})</h3>
-                      </div>
-                      
-                      <div className="bg-white rounded-md overflow-hidden border border-blue-100">
-                        <Table>
+                  {/* Botón para mostrar/ocultar transacciones */}
+                  <div className="flex justify-center my-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => toggleGroupExpansion(group.cutoffId)}
+                      className="text-sm flex items-center gap-1"
+                    >
+                      {group.isExpanded ? (
+                        <>
+                          <EyeOff className="w-4 h-4" />
+                          Ocultar transacciones
+                          <ChevronUp className="w-4 h-4" />
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-4 h-4" />
+                          Mostrar transacciones
+                          <ChevronDown className="w-4 h-4" />
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  
+                  {/* Secciones expandibles de transacciones */}
+                  {group.isExpanded && (
+                    <>
+                      {/* Sección de Reservaciones */}
+                      {group.reservationCount > 0 && (
+                        <div className="mb-4">
+                          <div className="flex items-center mb-2">
+                            <h3 className="text-sm font-semibold">Reservaciones ({group.reservationCount})</h3>
+                          </div>
+                          
+                          <div className="bg-white rounded-md overflow-hidden border border-blue-100">
+                            <Table>
                           <TableHeader>
                             <TableRow>
                               <TableHead className="w-[60px]">ID</TableHead>
