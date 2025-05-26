@@ -395,6 +395,15 @@ const TransactionHistoryBox: React.FC = () => {
           try {
             // Verificar que la transacción y sus datos son válidos
             if (transaction && typeof transaction === 'object' && transaction.detalles && typeof transaction.detalles === 'object') {
+              // VERIFICACIÓN CRÍTICA: Filtrar por user_id para seguridad
+              const transactionUserId = transaction.user_id || transaction.usuario_id;
+              
+              // Solo procesar transacciones del usuario actual
+              if (transactionUserId !== user.id) {
+                console.log(`[HISTORIAL] Omitiendo transacción ${transaction.id} porque pertenece a otro usuario (${transactionUserId}), usuario actual: ${user.id}`);
+                return;
+              }
+              
               const transactionType = transaction.detalles.type;
               
               // Verificar que detalles.details existe
