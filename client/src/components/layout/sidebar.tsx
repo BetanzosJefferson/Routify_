@@ -181,15 +181,6 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   Caja
                 </NavItem>
               )}
-              {canAccess("users-cash-box") && (
-                <NavItem 
-                  icon={<UsersIcon className="h-5 w-5" />} 
-                  active={location === "/users-cash-box"}
-                  onClick={() => setLocation("/users-cash-box")}
-                >
-                  Caja de usuarios
-                </NavItem>
-              )}
               {canAccess("cutoff-history") && (
                 <NavItem 
                   icon={<ClipboardListIcon className="h-5 w-5" />} 

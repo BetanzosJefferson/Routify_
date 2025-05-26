@@ -24,7 +24,6 @@ import PackagesPage from "@/pages/packages-page";
 import PackageDetailPage from "@/pages/package-detail-page";
 import EditTripPage from "@/pages/edit-trip-page";
 import CashBoxPage from "@/pages/cash-box";
-import UsersCashBoxPage from "@/pages/users-cash-box";
 import CutoffHistoryPage from "@/pages/cutoff-history";
 // Temporalmente deshabilitado
 // import PassengerTransferPageRoute from "@/pages/passenger-transfer-page";
@@ -47,7 +46,6 @@ function Router() {
       <ProtectedRoute path="/coupons" component={CouponsPage} />
       <ProtectedRoute path="/packages" component={PackagesPage} />
       <ProtectedRoute path="/cash-box" component={CashBoxPage} />
-      <ProtectedRoute path="/users-cash-box" component={UsersCashBoxPage} />
       <ProtectedRoute path="/cutoff-history" component={CutoffHistoryPage} />
       <ProtectedRoute path="/edit-trip/:id" component={EditTripPage} />
       {/* Temporalmente deshabilitada la ruta de transferencia de pasajeros
