@@ -30,7 +30,7 @@ import {
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db } from "./db";
-import { eq, and, gte, lt, like, or, sql, desc, isNull, not, inArray } from "drizzle-orm";
+import { eq, and, gte, lt, like, or, sql, desc, isNull, not, inArray, ne } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   // Implementación de métodos para presupuestos de viajes (operadores)
