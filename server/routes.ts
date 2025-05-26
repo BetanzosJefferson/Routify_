@@ -4150,6 +4150,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Actualizar el estado de la solicitud
       // Este método también crea automáticamente una reservación en la tabla "reservations" si se aprueba
+      console.log(`[routes] DEPURACIÓN CRÍTICA - currentUser.id: ${currentUser.id}, typeof: ${typeof currentUser.id}`);
+      console.log(`[routes] currentUser completo: ${JSON.stringify(currentUser, null, 2)}`);
+      
       const updatedRequest = await storage.updateReservationRequestStatus(
         requestId, 
         status, 
