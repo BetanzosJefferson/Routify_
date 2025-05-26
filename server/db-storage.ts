@@ -2870,7 +2870,14 @@ export class DatabaseStorage implements IStorage {
             
             // Obtener información del comisionista (requester)
             const [requester] = await db
-              .select()
+              .select({
+                id: schema.users.id,
+                first_name: schema.users.first_name,
+                last_name: schema.users.last_name,
+                email: schema.users.email,
+                company_id: schema.users.company_id,
+                role: schema.users.role
+              })
               .from(schema.users)
               .where(eq(schema.users.id, currentRequest.requesterId));
             
@@ -2915,7 +2922,7 @@ export class DatabaseStorage implements IStorage {
                   // Información del comisionista que solicitó la reservación
                   commissioner: requester ? {
                     id: requester.id,
-                    name: `${requester.first_name} ${requester.last_name}`,
+                    name: `${requester.first_name || ''} ${requester.last_name || ''}`.trim() || 'Nombre no disponible',
                     email: requester.email,
                     company: requester.company_id,
                     role: requester.role
@@ -2924,6 +2931,14 @@ export class DatabaseStorage implements IStorage {
               };
               
               console.log(`[updateReservationRequestStatus] Creando transacción con información del comisionista:`, JSON.stringify(detallesTransaccion, null, 2));
+              
+              console.log(`[updateReservationRequestStatus] ReviewedBy (usuario que aprueba): ${reviewedBy}`);
+              
+              // Validar que el usuario que aprueba esté definido
+              if (!reviewedBy) {
+                console.error(`[updateReservationRequestStatus] Error: reviewedBy es undefined o null`);
+                throw new Error('El usuario que aprueba la solicitud no está definido');
+              }
               
               // Crear la transacción en la base de datos asociada al usuario que aprobó (reviewedBy)
               const transaccionData = {
