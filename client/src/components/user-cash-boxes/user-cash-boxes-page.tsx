@@ -71,6 +71,17 @@ export function UserCashBoxesPage() {
       
       const data = await response.json() as Transaction[];
       console.log("[UserCashBoxes] Transacciones obtenidas:", data.length);
+      
+      // Debug: mostrar los datos de usuario de la primera transacción
+      if (data.length > 0) {
+        console.log("[UserCashBoxes] Datos de usuario de la primera transacción:", {
+          user_id: data[0].user_id,
+          userName: data[0].userName,
+          userFirstName: data[0].userFirstName,
+          userLastName: data[0].userLastName
+        });
+      }
+      
       return data;
     },
     retry: (failureCount, error) => {
