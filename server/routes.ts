@@ -4177,60 +4177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Crear transacción para solicitud de reservación aprobada
-  app.post(apiRouter('/reservation-requests/create-transaction'), isAuthenticated, async (req, res) => {
-    try {
-      const currentUser = req.user as any;
-      if (!currentUser) {
-        console.log(`[POST /reservation-requests/create-transaction] ERROR: Usuario no autenticado`);
-        return res.status(401).json({ message: "No autenticado" });
-      }
 
-      const { requestId, approvedBy } = req.body;
-      console.log(`[POST /reservation-requests/create-transaction] INICIO - requestId: ${requestId}, approvedBy: ${approvedBy}`);
-
-      if (!requestId || !approvedBy) {
-        console.log(`[POST /reservation-requests/create-transaction] ERROR: Faltan parámetros - requestId: ${requestId}, approvedBy: ${approvedBy}`);
-        return res.status(400).json({ message: "requestId y approvedBy son requeridos" });
-      }
-
-      console.log(`[POST /reservation-requests/create-transaction] Obteniendo solicitud ${requestId}...`);
-
-      // Obtener la solicitud de reservación
-      const request = await storage.getReservationRequest(requestId);
-      if (!request) {
-        console.log(`[POST /reservation-requests/create-transaction] ERROR: Solicitud ${requestId} no encontrada`);
-        return res.status(404).json({ message: "Solicitud de reservación no encontrada" });
-      }
-
-      console.log(`[POST /reservation-requests/create-transaction] Solicitud encontrada. Anticipo: ${request.advanceAmount}`);
-
-      // Verificar que hay anticipo mayor a 0
-      if (!request.advanceAmount || request.advanceAmount <= 0) {
-        console.log(`[POST /reservation-requests/create-transaction] SALIDA: No se creará transacción - advanceAmount: ${request.advanceAmount}`);
-        return res.json({ 
-          message: "No se requiere transacción (sin anticipo)",
-          transactionCreated: false 
-        });
-      }
-
-      console.log(`[POST /reservation-requests/create-transaction] Llamando a createTransactionFromApprovedRequest...`);
-
-      // Crear la transacción usando el método que ya habíamos implementado
-      await storage.createTransactionFromApprovedRequest(request, approvedBy);
-
-      console.log(`[POST /reservation-requests/create-transaction] ÉXITO: Transacción creada para solicitud ${requestId}`);
-
-      res.json({
-        message: "Transacción creada exitosamente",
-        transactionCreated: true
-      });
-
-    } catch (error) {
-      console.error(`[POST /reservation-requests/create-transaction] ERROR CAPTURADO:`, error);
-      res.status(500).json({ message: "Error interno al crear la transacción", error: error.message });
-    }
-  });
   
   // =========== RUTAS PARA NOTIFICACIONES ===========
   

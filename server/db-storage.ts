@@ -2951,6 +2951,86 @@ export class DatabaseStorage implements IStorage {
           // No fallamos aquí para no interrumpir el proceso principal
         }
         
+        // Crear transacción si hay anticipo mayor a 0
+        if (currentRequest.advanceAmount && currentRequest.advanceAmount > 0) {
+          try {
+            console.log(`[updateReservationRequestStatus] Creando transacción para reservación ${reservation.id} con anticipo de ${currentRequest.advanceAmount}`);
+            
+            // Obtener información completa del viaje y la ruta
+            const tripWithRouteInfo = await this.getTripWithRoute(currentRequest.tripId);
+            if (!tripWithRouteInfo) {
+              throw new Error(`No se pudo obtener información del viaje ${currentRequest.tripId}`);
+            }
+            
+            // Determinar origen y destino (manejar subtrips correctamente)
+            let origen: string;
+            let destino: string;
+            
+            if (tripWithRouteInfo.isSubTrip && tripWithRouteInfo.segmentOrigin && tripWithRouteInfo.segmentDestination) {
+              origen = tripWithRouteInfo.segmentOrigin;
+              destino = tripWithRouteInfo.segmentDestination;
+            } else {
+              origen = tripWithRouteInfo.route.origin;
+              destino = tripWithRouteInfo.route.destination;
+            }
+            
+            // Obtener información del solicitante
+            const requester = await this.getUser(currentRequest.requesterId);
+            
+            // Obtener el companyId del viaje
+            const tripCompanyId = tripWithRouteInfo.companyId || trip.companyId;
+            
+            // Obtener los pasajeros reales de la reservación creada
+            const passengers = await this.getPassengers(reservation.id);
+            
+            // Crear los detalles de la transacción en formato JSON
+            const detallesTransaccion = {
+              type: "reservation",
+              details: {
+                id: reservation.id,           // ← ID de la RESERVACIÓN (no solicitud)
+                tripId: reservation.tripId,   // ← ID del viaje
+                isSubTrip: tripWithRouteInfo.isSubTrip || false,
+                pasajeros: passengers.map(p => `${p.firstName} ${p.lastName}`).join(", "),
+                contacto: {
+                  email: reservation.email,
+                  telefono: reservation.phone
+                },
+                requester: requester ? {
+                  id: requester.id,
+                  nombreCompleto: `${requester.firstName} ${requester.lastName}`,
+                  role: requester.role,
+                  email: currentRequest.email,
+                  telefono: currentRequest.phone
+                } : null,
+                origen: origen,
+                destino: destino,
+                monto: currentRequest.advanceAmount,
+                metodoPago: currentRequest.advancePaymentMethod || "efectivo",
+                notas: reservation.notes,
+                companyId: tripCompanyId,
+                dateCreated: new Date().toISOString()
+              }
+            };
+            
+            console.log(`[updateReservationRequestStatus] Creando transacción con detalles:`, 
+                        JSON.stringify(detallesTransaccion, null, 2));
+            
+            // Crear la transacción usando el método que funciona
+            const transaccion = await this.createTransaccion({
+              detalles: detallesTransaccion,
+              usuario_id: reviewedBy, // ← Quien aprobó la solicitud
+              companyId: tripCompanyId
+            });
+            
+            console.log(`[updateReservationRequestStatus] Transacción creada con ID:`, transaccion.id);
+          } catch (transactionError) {
+            console.error(`[updateReservationRequestStatus] Error al crear la transacción:`, transactionError);
+            // Continuamos aunque haya error en la creación de la transacción, ya que la reservación ya fue creada
+          }
+        } else {
+          console.log(`[updateReservationRequestStatus] No se creará transacción - advanceAmount: ${currentRequest.advanceAmount}`);
+        }
+        
         // Crear notificación para el comisionista
         const notification: InsertNotification = {
           userId: currentRequest.requesterId,
@@ -4710,88 +4790,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Método para obtener cajas de usuarios con información del usuario asociado
-  async createTransactionFromApprovedRequest(
-    request: schema.ReservationRequest, 
-    approvedBy: number
-  ): Promise<void> {
-    try {
-      console.log(`[createTransactionFromApprovedRequest] Iniciando creación de transacción para solicitud ${request.id}`);
-      
-      // Obtener información del trip para determinar origen y destino
-      const trip = await this.getTrip(request.tripId);
-      if (!trip) {
-        throw new Error(`No se encontró el viaje con ID ${request.tripId}`);
-      }
-      
-      // Obtener información del usuario que aprueba
-      const approver = await this.getUserById(approvedBy);
-      if (!approver) {
-        throw new Error(`No se encontró el usuario que aprueba con ID ${approvedBy}`);
-      }
-      
-      // Obtener información del requester
-      const requester = await this.getUserById(request.requesterId);
-      if (!requester) {
-        throw new Error(`No se encontró el requester con ID ${request.requesterId}`);
-      }
-      
-      // Determinar origen y destino según si es subviaje o no
-      let origen: string;
-      let destino: string;
-      
-      if (trip.is_sub_trip) {
-        origen = trip.segment_origin || trip.tripOrigin;
-        destino = trip.segment_destination || trip.tripDestination;
-      } else {
-        origen = trip.tripOrigin;
-        destino = trip.tripDestination;
-      }
-      
-      // Construir el esquema de la transacción
-      const detalles = {
-        type: "reservation",
-        details: {
-          id: request.id,
-          monto: request.advanceAmount,
-          notas: "",
-          origen: origen,
-          tripId: request.tripId,
-          destino: destino,
-          contacto: {
-            email: request.email,
-            telefono: request.phone
-          },
-          companyId: request.companyId,
-          isSubTrip: trip.is_sub_trip,
-          pasajeros: request.passengerNames,
-          metodoPago: request.advancePaymentMethod,
-          requester: {
-            id: requester.id,
-            nombreCompleto: `${requester.firstName} ${requester.lastName}`,
-            role: requester.role
-          }
-        }
-      };
-      
-      // Crear la transacción usando el esquema correcto 'transacciones'
-      const [transaction] = await db
-        .insert(schema.transacciones)
-        .values({
-          detalles: detalles,
-          user_id: approvedBy,
-          cutoff_id: null,
-          companyId: approver.company || request.companyId,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        })
-        .returning();
-      console.log(`[createTransactionFromApprovedRequest] Transacción creada exitosamente con ID: ${transaction.id}`);
-      
-    } catch (error) {
-      console.error(`[createTransactionFromApprovedRequest] Error al crear transacción para solicitud ${request.id}:`, error);
-      throw error;
-    }
-  }
+
 
   async getUserCashBoxes(currentUserId: number, companyId: string): Promise<any[]> {
     console.log(`[getUserCashBoxes] Consultando transacciones para usuario ${currentUserId} y compañía ${companyId}`);
