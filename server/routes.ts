@@ -6614,6 +6614,30 @@ function setupPackageRoutes(app: Express) {
   app.get(apiRouter('/companies'), isAuthenticated, async (req, res) => {
     try {
       const { user } = req as any;
+      console.log(`[GET /companies] Solicitud recibida desde usuario: ${user.firstName} ${user.lastName}, rol: ${user.role}`);
+      
+      // Permitir acceso a usuarios taquilla específicamente
+      if (user.role === UserRole.TICKET_OFFICE) {
+        console.log(`[GET /companies] Usuario taquilla detectado - obteniendo empresas asignadas`);
+        
+        // Obtener las asignaciones de compañías para este taquillero
+        const userCompanyAssociations = await db
+          .select()
+          .from(userCompanies)
+          .where(eq(userCompanies.userId, user.id));
+        
+        const assignedCompanyIds = userCompanyAssociations.map(uc => uc.companyId);
+        console.log(`[GET /companies] Taquillero tiene ${assignedCompanyIds.length} empresas asignadas: [${assignedCompanyIds.join(', ')}]`);
+        
+        // Obtener todas las empresas y filtrar por las asignadas
+        let allCompanies = await db.select().from(companies);
+        const filteredCompanies = allCompanies.filter(company => assignedCompanyIds.includes(company.identifier));
+        
+        console.log(`[GET /companies] Devolviendo ${filteredCompanies.length} empresas para taquillero`);
+        return res.json(filteredCompanies);
+      }
+      
+      // Para otros roles, continuar con la lógica existente
       console.log(`[GET /companies] Usuario ${user.firstName} ${user.lastName} solicitando lista de empresas`);
       
       // Obtener todas las empresas desde la base de datos
@@ -6637,19 +6661,6 @@ function setupPackageRoutes(app: Express) {
           if (userCompanyId) {
             allCompanies = allCompanies.filter(company => company.identifier === userCompanyId);
           }
-        }
-        
-        // Para taquilleros, mostrar solo las compañías asignadas
-        if (user.role === UserRole.TICKET_OFFICE) {
-          // Obtener las asignaciones de compañías para este taquillero
-          const userCompanyAssociations = await db
-            .select()
-            .from(userCompanies)
-            .where(eq(userCompanies.userId, user.id));
-          
-          const assignedCompanyIds = userCompanyAssociations.map(uc => uc.companyId);
-          allCompanies = allCompanies.filter(company => assignedCompanyIds.includes(company.identifier));
-          console.log(`[GET /companies] Taquillero: ${allCompanies.length} empresas asignadas`);
         }
       }
       
