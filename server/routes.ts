@@ -6743,16 +6743,23 @@ function setupPackageRoutes(app: Express) {
   app.post(apiRouter("/box/cutoff"), async (req: Request, res: Response) => {
     try {
       const { user } = req as any;
+      const { companyFilter } = req.body || {};
       
       if (!user) {
         return res.status(401).json({ error: "Usuario no autenticado" });
       }
 
       // Obtener transacciones sin corte (cutoff_id es NULL)
-      const filters = { 
+      const filters: any = { 
         usuario_id: user.id,
         id_corte: null
       };
+
+      // Si es un usuario taquilla y especifica un filtro de empresa, aplicarlo
+      if (user.role === "taquilla" && companyFilter) {
+        filters.companyId = companyFilter;
+        console.log(`[POST /box/cutoff] Usuario taquilla filtrando por empresa: ${companyFilter}`);
+      }
       
       const transacciones = await storage.getTransacciones(filters);
 
@@ -6797,7 +6804,8 @@ function setupPackageRoutes(app: Express) {
         total_efectivo: totalEfectivo,
         total_transferencias: totalTransferencias,
         user_id: user.id,
-        companyId: user.companyId || null
+        // Para usuarios taquilla, usar la empresa filtrada; para otros, usar su companyId
+        companyId: (user.role === "taquilla" && companyFilter) ? companyFilter : (user.companyId || null)
       });
       
       console.log(`[POST /box/cutoff] Corte creado con ID: ${cutoff.id}`);

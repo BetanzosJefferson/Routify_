@@ -142,12 +142,19 @@ const TransactionBox: React.FC = () => {
       const allTransactions = [...reservationTransactions, ...packageTransactions];
       console.log("Guardando transacciones para PDF:", allTransactions.length);
       
+      // Preparar el cuerpo de la petición con información del filtro de empresa para usuarios taquilla
+      const requestBody: any = {};
+      if (user?.role === "taquilla" && selectedCompany !== "all") {
+        requestBody.companyFilter = selectedCompany;
+      }
+      
       const response = await fetch('/api/box/cutoff', {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json'
         },
+        body: Object.keys(requestBody).length > 0 ? JSON.stringify(requestBody) : undefined,
       });
       
       if (!response.ok) {
