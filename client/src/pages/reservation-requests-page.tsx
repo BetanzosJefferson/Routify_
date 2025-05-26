@@ -136,15 +136,9 @@ export default function ReservationRequestsPage() {
       console.log(`[handleApprove] Creando transacción para solicitud ${selectedRequest.id} con anticipo ${selectedRequest.advanceAmount}`);
       
       try {
-        await apiRequest('/api/reservation-requests/create-transaction', {
-          method: 'POST',
-          body: JSON.stringify({
-            requestId: selectedRequest.id,
-            approvedBy: user?.id
-          }),
-          headers: {
-            'Content-Type': 'application/json'
-          }
+        await apiRequest('POST', '/api/reservation-requests/create-transaction', {
+          requestId: selectedRequest.id,
+          approvedBy: user?.id
         });
         
         console.log(`[handleApprove] Transacción creada exitosamente para solicitud ${selectedRequest.id}`);
