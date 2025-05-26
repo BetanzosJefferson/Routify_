@@ -4543,6 +4543,7 @@ export class DatabaseStorage implements IStorage {
   async createTransaccion(transaccionData: schema.InsertTransaccion): Promise<schema.Transaccion> {
     try {
       console.log(`[createTransaccion] Creando nueva transacción para usuario ${transaccionData.user_id}`);
+      console.log(`[createTransaccion] Datos recibidos: ${JSON.stringify(transaccionData, null, 2)}`);
       
       if (!transaccionData.detalles) {
         console.error('[createTransaccion] Error: detalles es requerido');
@@ -4550,10 +4551,11 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Guardar la transacción en la base de datos
+      // IMPORTANTE: El campo en la BD se llama "details", no "detalles"
       const [newTransaccion] = await db
         .insert(schema.transacciones)
         .values({
-          detalles: transaccionData.detalles,
+          details: transaccionData.detalles, // Mapear detalles -> details
           user_id: transaccionData.user_id,
           cutoff_id: transaccionData.cutoff_id,
           companyId: transaccionData.companyId,
