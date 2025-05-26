@@ -2952,6 +2952,7 @@ export class DatabaseStorage implements IStorage {
         }
         
         // Crear transacción si hay anticipo mayor a 0
+        console.log(`[updateReservationRequestStatus] DEBUG - Verificando anticipo: advanceAmount=${currentRequest.advanceAmount}, tipo=${typeof currentRequest.advanceAmount}`);
         if (currentRequest.advanceAmount && currentRequest.advanceAmount > 0) {
           try {
             console.log(`[updateReservationRequestStatus] Creando transacción para reservación ${reservation.id} con anticipo de ${currentRequest.advanceAmount}`);
