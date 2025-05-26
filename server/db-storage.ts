@@ -4597,4 +4597,39 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
   }
+
+  // Nueva función para obtener transacciones de otros usuarios de la misma compañía
+  async getTransaccionesUserCashBoxes(filters: { 
+    not_usuario_id: number,
+    companyId: string
+  }): Promise<schema.Transaccion[]> {
+    try {
+      console.log(`[getTransaccionesUserCashBoxes] Iniciando consulta con filtros:`, filters);
+      
+      let query = db.select().from(schema.transacciones);
+      
+      // Filtro 1: Excluir transacciones del usuario actual (user_id diferente)
+      if (filters.not_usuario_id) {
+        query = query.where(ne(schema.transacciones.user_id, filters.not_usuario_id));
+        console.log(`[getTransaccionesUserCashBoxes] Excluyendo transacciones del usuario: ${filters.not_usuario_id}`);
+      }
+      
+      // Filtro 2: Solo transacciones de la misma compañía
+      if (filters.companyId) {
+        query = query.where(eq(schema.transacciones.companyId, filters.companyId));
+        console.log(`[getTransaccionesUserCashBoxes] Filtrando por compañía: ${filters.companyId}`);
+      }
+      
+      // Ordenar por fecha de creación descendente (más recientes primero)
+      query = query.orderBy(desc(schema.transacciones.createdAt));
+      
+      const transacciones = await query;
+      console.log(`[getTransaccionesUserCashBoxes] Encontradas ${transacciones.length} transacciones de otros usuarios de la misma compañía`);
+      
+      return transacciones;
+    } catch (error) {
+      console.error('[getTransaccionesUserCashBoxes] Error al obtener transacciones:', error);
+      return [];
+    }
+  }
 }

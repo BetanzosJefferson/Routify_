@@ -6739,6 +6739,43 @@ function setupPackageRoutes(app: Express) {
     }
   });
 
+  // Ruta para obtener transacciones de otros usuarios de la misma compañía (para cajas de usuarios)
+  app.get(apiRouter("/transactions/user-cash-boxes"), async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "Usuario no autenticado" });
+      }
+
+      // Verificar que el usuario tenga permisos (solo dueño y admin)
+      if (user.role !== UserRole.OWNER && user.role !== UserRole.ADMIN) {
+        return res.status(403).json({ error: "No tienes permisos para acceder a esta información" });
+      }
+
+      // Filtros específicos para cajas de usuarios:
+      // 1. user_id diferente al usuario actual
+      // 2. company_id igual al del usuario actual
+      const filters = {
+        not_usuario_id: user.id, // Excluir transacciones del usuario actual
+        companyId: user.companyId || user.company // Solo transacciones de la misma compañía
+      };
+
+      console.log(`[GET /transactions/user-cash-boxes] Usuario: ${user.firstName} ${user.lastName} (ID: ${user.id})`);
+      console.log(`[GET /transactions/user-cash-boxes] Rol: ${user.role}, CompañíaID: ${user.companyId || user.company}`);
+      console.log(`[GET /transactions/user-cash-boxes] Filtros aplicados:`, filters);
+      
+      const transacciones = await storage.getTransaccionesUserCashBoxes(filters);
+      
+      console.log(`[GET /transactions/user-cash-boxes] Encontradas ${transacciones.length} transacciones de otros usuarios de la misma compañía`);
+      
+      res.json(transacciones);
+    } catch (error) {
+      console.error("[GET /transactions/user-cash-boxes] Error:", error);
+      res.status(500).json({ error: "Error al obtener transacciones de cajas de usuarios" });
+    }
+  });
+
   // Ruta para crear un nuevo corte de caja
   app.post(apiRouter("/box/cutoff"), async (req: Request, res: Response) => {
     try {

@@ -139,6 +139,9 @@ export interface IStorage {
     affectedCount: number;
   }>;
   
+  // Transacciones para cajas de usuarios
+  getTransaccionesUserCashBoxes(filters: any): Promise<any[]>;
+  
   // Cupones methods
   getCoupons(companyId?: string): Promise<Coupon[]>;
   getCoupon(id: number): Promise<Coupon | undefined>;
