@@ -1,12 +1,11 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, Users, DollarSign, CreditCard, Calendar, RefreshCw, Eye, EyeOff, Filter } from "lucide-react";
+import { AlertCircle, Users, DollarSign, CreditCard, Calendar, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -14,9 +13,6 @@ import { useToast } from "@/hooks/use-toast";
 interface Transaction {
   id: number;
   user_id: number;
-  userName: string;
-  userFirstName: string;
-  userLastName: string;
   detalles: {
     type: string;
     details: {
@@ -50,13 +46,12 @@ export function UserCashBoxesPage() {
   const { toast } = useToast();
   const [expandedUsers, setExpandedUsers] = useState<Set<number>>(new Set());
   const [showAmounts, setShowAmounts] = useState(true);
-  const [selectedUser, setSelectedUser] = useState<string>("all");
 
   // Consultar transacciones de otros usuarios
   const { data: transactions, isLoading, error, refetch } = useQuery({
     queryKey: ["/api/transactions/user-cash-boxes"],
-    staleTime: 0, // Sin cache para forzar consultas frescas
-    gcTime: 0, // Sin cache
+    staleTime: 60000, // 1 minuto
+    gcTime: 300000, // 5 minutos en caché
     queryFn: async () => {
       console.log("[UserCashBoxes] Consultando transacciones de otros usuarios...");
       const response = await fetch("/api/transactions/user-cash-boxes", {
@@ -71,17 +66,6 @@ export function UserCashBoxesPage() {
       
       const data = await response.json() as Transaction[];
       console.log("[UserCashBoxes] Transacciones obtenidas:", data.length);
-      
-      // Debug: mostrar los datos de usuario de la primera transacción
-      if (data.length > 0) {
-        console.log("[UserCashBoxes] Datos de usuario de la primera transacción:", {
-          user_id: data[0].user_id,
-          userName: data[0].userName,
-          userFirstName: data[0].userFirstName,
-          userLastName: data[0].userLastName
-        });
-      }
-      
       return data;
     },
     retry: (failureCount, error) => {
@@ -93,47 +77,21 @@ export function UserCashBoxesPage() {
     refetchOnMount: true,
   });
 
-  // Obtener lista única de usuarios para el filtro
-  const uniqueUsers = React.useMemo(() => {
-    if (!transactions || !Array.isArray(transactions)) return [];
-    
-    return Array.from(new Set(transactions.map(t => t.user_id)))
-      .map(userId => {
-        const userTransaction = transactions.find(t => t.user_id === userId);
-        const userName = userTransaction?.userName || 
-                        `${userTransaction?.userFirstName || ''} ${userTransaction?.userLastName || ''}`.trim() || 
-                        `Usuario ${userId}`;
-        return { userId, userName };
-      })
-      .sort((a, b) => a.userName.localeCompare(b.userName));
-  }, [transactions]);
-
-  // Filtrar transacciones por usuario seleccionado
-  const filteredTransactions = React.useMemo(() => {
-    if (!transactions || !Array.isArray(transactions)) return [];
-    return selectedUser === "all" ? transactions : transactions.filter(t => t.user_id.toString() === selectedUser);
-  }, [transactions, selectedUser]);
-
   // Procesar datos para agrupar por usuario
   const userCashBoxes: UserCashBoxData[] = React.useMemo(() => {
-    if (!filteredTransactions || !Array.isArray(filteredTransactions)) return [];
+    if (!transactions || !Array.isArray(transactions)) return [];
 
     const userGroups = new Map<number, UserCashBoxData>();
 
-    filteredTransactions.forEach((transaction) => {
+    transactions.forEach((transaction) => {
       const userId = transaction.user_id;
       const amount = transaction.detalles?.details?.monto || 0;
       const paymentMethod = transaction.detalles?.details?.metodoPago || "efectivo";
       
       if (!userGroups.has(userId)) {
-        // Usar el nombre del usuario real desde la transacción
-        const userName = transaction.userName || 
-                        `${transaction.userFirstName || ''} ${transaction.userLastName || ''}`.trim() || 
-                        `Usuario ${userId}`;
-        
         userGroups.set(userId, {
           userId,
-          userName,
+          userName: `Usuario ${userId}`, // Por ahora usamos ID, después podemos obtener nombres reales
           transactions: [],
           totalCash: 0,
           totalTransfer: 0,
@@ -155,7 +113,7 @@ export function UserCashBoxesPage() {
     });
 
     return Array.from(userGroups.values()).sort((a, b) => b.totalAmount - a.totalAmount);
-  }, [filteredTransactions]);
+  }, [transactions]);
 
   const toggleUserExpansion = (userId: number) => {
     const newExpanded = new Set(expandedUsers);
@@ -243,20 +201,6 @@ export function UserCashBoxesPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Select value={selectedUser} onValueChange={setSelectedUser}>
-            <SelectTrigger className="w-48">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Filtrar por usuario" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los usuarios</SelectItem>
-              {uniqueUsers.map((user) => (
-                <SelectItem key={user.userId} value={user.userId.toString()}>
-                  {user.userName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Button
             variant="outline"
             size="sm"
@@ -289,10 +233,7 @@ export function UserCashBoxesPage() {
           <CardContent>
             <div className="text-2xl font-bold">{userCashBoxes.length}</div>
             <p className="text-xs text-muted-foreground">
-              {selectedUser === "all" 
-                ? `${userCashBoxes.length === 1 ? 'usuario activo' : 'usuarios activos'}` 
-                : 'usuario filtrado'
-              }
+              {userCashBoxes.length === 1 ? 'usuario activo' : 'usuarios activos'}
             </p>
           </CardContent>
         </Card>

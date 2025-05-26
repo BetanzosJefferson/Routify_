@@ -6761,13 +6761,6 @@ function setupPackageRoutes(app: Express) {
       
       console.log(`[GET /transactions/user-cash-boxes] Encontradas ${transacciones.length} transacciones de otros usuarios para compañía ${user.companyId}`);
       
-      // Deshabilitar cache completamente
-      res.set({
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      });
-      
       res.json(transacciones);
     } catch (error) {
       console.error("[GET /transactions/user-cash-boxes] Error:", error);
