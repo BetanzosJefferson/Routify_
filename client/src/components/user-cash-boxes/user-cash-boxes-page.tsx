@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 interface Transaction {
   id: number;
   user_id: number;
-  details: {
+  detalles: {
     type: string;
     details: {
       id: number;
@@ -92,7 +92,7 @@ export function UserCashBoxesPage() {
     refetchOnMount: true,
   });
 
-  // Procesar datos para agrupar por usuario
+  // Procesar datos para agrupar por usuario usando información del JOIN
   const userCashBoxes: UserCashBoxData[] = React.useMemo(() => {
     if (!transactions || !Array.isArray(transactions)) return [];
 
@@ -106,7 +106,11 @@ export function UserCashBoxesPage() {
       if (!userGroups.has(userId)) {
         userGroups.set(userId, {
           userId,
-          userName: `Usuario ${userId}`, // Por ahora usamos ID, después podemos obtener nombres reales
+          userName: `${transaction.user.firstName} ${transaction.user.lastName}`.trim(),
+          userEmail: transaction.user.email,
+          userRole: transaction.user.role,
+          userCompany: transaction.user.company,
+          userProfilePicture: transaction.user.profilePicture,
           transactions: [],
           totalCash: 0,
           totalTransfer: 0,
