@@ -131,29 +131,9 @@ export default function ReservationRequestsPage() {
   const handleApprove = async () => {
     if (!selectedRequest) return;
 
-    // Crear transacción si hay anticipo mayor a 0
-    if (selectedRequest.advanceAmount && selectedRequest.advanceAmount > 0) {
-      console.log(`[handleApprove] Creando transacción para solicitud ${selectedRequest.id} con anticipo ${selectedRequest.advanceAmount}`);
-      
-      try {
-        await apiRequest('POST', '/api/reservation-requests/create-transaction', {
-          requestId: selectedRequest.id,
-          approvedBy: user?.id
-        });
-        
-        console.log(`[handleApprove] Transacción creada exitosamente para solicitud ${selectedRequest.id}`);
-      } catch (error) {
-        console.error(`[handleApprove] Error al crear transacción:`, error);
-        toast({
-          title: "Advertencia",
-          description: "Se aprobará la reservación pero no se pudo crear la transacción automática.",
-          variant: "default",
-        });
-      }
-    } else {
-      console.log(`[handleApprove] No se creará transacción - advanceAmount: ${selectedRequest.advanceAmount}`);
-    }
-
+    // La transacción se creará automáticamente cuando se apruebe la solicitud
+    console.log(`[handleApprove] Aprobando solicitud ${selectedRequest.id}. La transacción se creará automáticamente si hay anticipo.`);
+    
     // Proceder con la aprobación normal
     updateRequestMutation.mutate({ 
       id: selectedRequest.id, 
