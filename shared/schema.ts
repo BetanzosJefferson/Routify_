@@ -846,6 +846,12 @@ export const transacciones = pgTable("transactions", { // Cambiado de "transacci
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   companyId: text("company_id"), // Campo para aislamiento de datos por compañía
+  // Campos para información del comisionista (cuando aplique)
+  commissionerId: integer("commissioner_id").references(() => users.id), // ID del comisionista
+  commissionerName: text("commissioner_name"), // Nombre completo del comisionista
+  commissionerEmail: text("commissioner_email"), // Email del comisionista
+  commissionerCompany: text("commissioner_company"), // Compañía del comisionista
+  commissionerRole: text("commissioner_role"), // Rol del comisionista
 });
 
 export const insertTransaccionSchema = createInsertSchema(transacciones, {
