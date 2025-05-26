@@ -82,21 +82,47 @@ export function UserCashBoxesPage() {
     refetchOnMount: true,
   });
 
+  // Obtener lista única de usuarios para el filtro
+  const uniqueUsers = React.useMemo(() => {
+    if (!transactions || !Array.isArray(transactions)) return [];
+    
+    return Array.from(new Set(transactions.map(t => t.user_id)))
+      .map(userId => {
+        const userTransaction = transactions.find(t => t.user_id === userId);
+        const userName = userTransaction?.userName || 
+                        `${userTransaction?.userFirstName || ''} ${userTransaction?.userLastName || ''}`.trim() || 
+                        `Usuario ${userId}`;
+        return { userId, userName };
+      })
+      .sort((a, b) => a.userName.localeCompare(b.userName));
+  }, [transactions]);
+
+  // Filtrar transacciones por usuario seleccionado
+  const filteredTransactions = React.useMemo(() => {
+    if (!transactions || !Array.isArray(transactions)) return [];
+    return selectedUser === "all" ? transactions : transactions.filter(t => t.user_id.toString() === selectedUser);
+  }, [transactions, selectedUser]);
+
   // Procesar datos para agrupar por usuario
   const userCashBoxes: UserCashBoxData[] = React.useMemo(() => {
-    if (!transactions || !Array.isArray(transactions)) return [];
+    if (!filteredTransactions || !Array.isArray(filteredTransactions)) return [];
 
     const userGroups = new Map<number, UserCashBoxData>();
 
-    transactions.forEach((transaction) => {
+    filteredTransactions.forEach((transaction) => {
       const userId = transaction.user_id;
       const amount = transaction.detalles?.details?.monto || 0;
       const paymentMethod = transaction.detalles?.details?.metodoPago || "efectivo";
       
       if (!userGroups.has(userId)) {
+        // Usar el nombre del usuario real desde la transacción
+        const userName = transaction.userName || 
+                        `${transaction.userFirstName || ''} ${transaction.userLastName || ''}`.trim() || 
+                        `Usuario ${userId}`;
+        
         userGroups.set(userId, {
           userId,
-          userName: `Usuario ${userId}`, // Por ahora usamos ID, después podemos obtener nombres reales
+          userName,
           transactions: [],
           totalCash: 0,
           totalTransfer: 0,
@@ -118,7 +144,7 @@ export function UserCashBoxesPage() {
     });
 
     return Array.from(userGroups.values()).sort((a, b) => b.totalAmount - a.totalAmount);
-  }, [transactions]);
+  }, [filteredTransactions]);
 
   const toggleUserExpansion = (userId: number) => {
     const newExpanded = new Set(expandedUsers);
