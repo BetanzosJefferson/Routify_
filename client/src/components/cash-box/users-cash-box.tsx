@@ -45,6 +45,20 @@ const UsersCashBoxComponent: React.FC = () => {
   // Obtener transacciones de otros usuarios en la empresa
   const { data: transactions, isLoading: transactionsLoading, refetch } = useQuery({
     queryKey: ['/api/transactions/users-company', selectedUser, selectedTimeRange],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedUser !== "all") {
+        params.append('selectedUser', selectedUser);
+      }
+      if (selectedTimeRange !== "all") {
+        params.append('selectedTimeRange', selectedTimeRange);
+      }
+      
+      const url = `/api/transactions/users-company${params.toString() ? '?' + params.toString() : ''}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Error al obtener transacciones');
+      return response.json();
+    },
     enabled: !!user?.company,
     select: (data) => data || [],
   });
