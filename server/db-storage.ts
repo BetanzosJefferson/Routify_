@@ -2915,8 +2915,8 @@ export class DatabaseStorage implements IStorage {
                   pasajeros: passengersData.map(p => `${p.firstName} ${p.lastName}`).join(", ")
                 }
               },
-              usuario_id: reviewedBy,
-              id_corte: null,
+              user_id: reviewedBy,
+              cutoff_id: null,
               companyId: currentRequest.companyId
             };
 
@@ -2951,8 +2951,8 @@ export class DatabaseStorage implements IStorage {
                   pasajeros: passengersData.map(p => `${p.firstName} ${p.lastName}`).join(", ")
                 }
               },
-              usuario_id: reviewedBy,
-              id_corte: null,
+              user_id: reviewedBy,
+              cutoff_id: null,
               companyId: currentRequest.companyId
             };
 
@@ -4542,7 +4542,7 @@ export class DatabaseStorage implements IStorage {
   // Métodos para la tabla de transacciones
   async createTransaccion(transaccionData: schema.InsertTransaccion): Promise<schema.Transaccion> {
     try {
-      console.log(`[createTransaccion] Creando nueva transacción para usuario ${transaccionData.usuario_id}`);
+      console.log(`[createTransaccion] Creando nueva transacción para usuario ${transaccionData.user_id}`);
       
       if (!transaccionData.detalles) {
         console.error('[createTransaccion] Error: detalles es requerido');
@@ -4550,14 +4550,13 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Guardar la transacción en la base de datos
-      // Convertimos los nombres de los campos en español a los nombres en inglés que espera la BD
       const [newTransaccion] = await db
         .insert(schema.transacciones)
         .values({
           detalles: transaccionData.detalles,
-          user_id: transaccionData.usuario_id, // Mapear usuario_id a user_id
-          cutoff_id: transaccionData.id_corte, // Mapear id_corte a cutoff_id
-          companyId: transaccionData.companyId, // Añadimos el ID de la compañía
+          user_id: transaccionData.user_id,
+          cutoff_id: transaccionData.cutoff_id,
+          companyId: transaccionData.companyId,
           createdAt: new Date(),
           updatedAt: new Date()
         })
