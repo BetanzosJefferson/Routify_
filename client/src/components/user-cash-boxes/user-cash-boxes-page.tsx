@@ -9,8 +9,8 @@ import { Loader2, InfoIcon, Users, DollarSign } from "lucide-react";
 interface Transaction {
   id: number;
   user_id: number;
-  company_id: string;
-  details: {
+  companyId: string;
+  detalles: {
     type: string;
     details: {
       id: number;
@@ -24,7 +24,7 @@ interface Transaction {
       notas?: string;
     };
   };
-  created_at: string;
+  createdAt: string;
 }
 
 export function UserCashBoxesPage() {
@@ -61,7 +61,7 @@ export function UserCashBoxesPage() {
         grouped[userId].push(transaction);
         
         // Sumar el monto de la transacción
-        const amount = transaction.details?.details?.monto || 0;
+        const amount = transaction.detalles?.details?.monto || 0;
         totals[userId] += amount;
       });
 
@@ -183,8 +183,8 @@ export function UserCashBoxesPage() {
                   </TableHeader>
                   <TableBody>
                     {userTransactions[userId].map((transaction) => {
-                      const details = transaction.details?.details || {};
-                      const type = transaction.details?.type || 'Desconocido';
+                      const details = transaction.detalles?.details || {};
+                      const type = transaction.detalles?.type || 'Desconocido';
                       
                       return (
                         <TableRow key={transaction.id}>
@@ -227,7 +227,7 @@ export function UserCashBoxesPage() {
                             {formatCurrency(details.monto || 0)}
                           </TableCell>
                           <TableCell className="text-xs">
-                            {formatDate(transaction.created_at)}
+                            {formatDate(transaction.createdAt)}
                           </TableCell>
                         </TableRow>
                       );
