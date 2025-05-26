@@ -2934,7 +2934,7 @@ export class DatabaseStorage implements IStorage {
             console.log(`[updateReservationRequestStatus] Creando transacción para reservación ${reservation.id} con anticipo de ${currentRequest.advanceAmount}`);
             
             // Obtener información completa del viaje y la ruta
-            const tripWithRouteInfo = await this.getTripWithRoute(currentRequest.tripId);
+            const tripWithRouteInfo = await this.getTripWithRouteInfo(currentRequest.tripId);
             if (!tripWithRouteInfo) {
               throw new Error(`No se pudo obtener información del viaje ${currentRequest.tripId}`);
             }
