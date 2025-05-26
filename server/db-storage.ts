@@ -4521,7 +4521,7 @@ export class DatabaseStorage implements IStorage {
 
   async getTransactionsByCompanyExcludingUser(companyId: string, excludeUserId: number): Promise<any[]> {
     try {
-      console.log(`[getTransactionsByCompanyExcludingUser] Obteniendo transacciones de compañía ${companyId}, excluyendo usuario ${excludeUserId}`);
+      console.log(`[getTransactionsByCompanyExcludingUser] EJECUTANDO CONSULTA FRESCA - Compañía ${companyId}, excluyendo usuario ${excludeUserId}`);
       
       const transacciones = await db
         .select({
