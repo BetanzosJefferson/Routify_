@@ -4110,6 +4110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Aprobar o rechazar una solicitud de reservación
   app.post(apiRouter('/reservation-requests/:id/update-status'), isAuthenticated, async (req, res) => {
+    console.log(`[routes] ===== INICIO ENDPOINT update-status para ID: ${req.params.id} =====`);
     try {
       const requestId = parseInt(req.params.id);
       if (isNaN(requestId)) {
