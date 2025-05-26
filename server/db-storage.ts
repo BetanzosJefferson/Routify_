@@ -4551,11 +4551,11 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Guardar la transacción en la base de datos
-      // IMPORTANTE: El campo en la BD se llama "details", no "detalles"
+      // IMPORTANTE: Usar el nombre del esquema TypeScript (detalles), no el de la BD (details)
       const [newTransaccion] = await db
         .insert(schema.transacciones)
         .values({
-          details: transaccionData.detalles, // Mapear detalles -> details
+          detalles: transaccionData.detalles, // Campo del esquema TypeScript
           user_id: transaccionData.user_id,
           cutoff_id: transaccionData.cutoff_id,
           companyId: transaccionData.companyId,
