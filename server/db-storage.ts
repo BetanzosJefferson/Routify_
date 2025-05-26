@@ -2952,7 +2952,7 @@ export class DatabaseStorage implements IStorage {
             }
             
             // Obtener información del solicitante
-            const requester = await this.getUser(currentRequest.requesterId);
+            const requester = await this.getUserById(currentRequest.requesterId);
             
             // Obtener el companyId del viaje
             const tripCompanyId = tripWithRouteInfo.companyId || trip.companyId;
