@@ -4176,6 +4176,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Error interno al procesar la solicitud" });
     }
   });
+
+  // Crear transacción para solicitud de reservación aprobada
+  app.post(apiRouter('/reservation-requests/create-transaction'), isAuthenticated, async (req, res) => {
+    try {
+      const currentUser = req.user as any;
+      if (!currentUser) {
+        return res.status(401).json({ message: "No autenticado" });
+      }
+
+      const { requestId, approvedBy } = req.body;
+
+      if (!requestId || !approvedBy) {
+        return res.status(400).json({ message: "requestId y approvedBy son requeridos" });
+      }
+
+      console.log(`[POST /reservation-requests/create-transaction] Creando transacción para solicitud ${requestId} aprobada por usuario ${approvedBy}`);
+
+      // Obtener la solicitud de reservación
+      const request = await storage.getReservationRequest(requestId);
+      if (!request) {
+        return res.status(404).json({ message: "Solicitud de reservación no encontrada" });
+      }
+
+      // Verificar que hay anticipo mayor a 0
+      if (!request.advanceAmount || request.advanceAmount <= 0) {
+        console.log(`[POST /reservation-requests/create-transaction] No se creará transacción - advanceAmount: ${request.advanceAmount}`);
+        return res.json({ 
+          message: "No se requiere transacción (sin anticipo)",
+          transactionCreated: false 
+        });
+      }
+
+      // Crear la transacción usando el método que ya habíamos implementado
+      await storage.createTransactionFromApprovedRequest(request, approvedBy);
+
+      console.log(`[POST /reservation-requests/create-transaction] Transacción creada exitosamente para solicitud ${requestId}`);
+
+      res.json({
+        message: "Transacción creada exitosamente",
+        transactionCreated: true
+      });
+
+    } catch (error) {
+      console.error(`[POST /reservation-requests/create-transaction] Error:`, error);
+      res.status(500).json({ message: "Error interno al crear la transacción" });
+    }
+  });
   
   // =========== RUTAS PARA NOTIFICACIONES ===========
   
