@@ -4773,11 +4773,11 @@ export class DatabaseStorage implements IStorage {
         }
       };
       
-      // Crear la transacción usando la tabla correcta 'transactions'
+      // Crear la transacción usando el esquema correcto 'transacciones'
       const [transaction] = await db
-        .insert(schema.transactions)
+        .insert(schema.transacciones)
         .values({
-          details: detalles,
+          detalles: detalles,
           user_id: approvedBy,
           cutoff_id: null,
           companyId: approver.company || request.companyId,
