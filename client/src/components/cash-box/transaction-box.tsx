@@ -220,11 +220,11 @@ const TransactionBox: React.FC = () => {
     },
   });
 
-  // Consultar las empresas (solo para usuarios TICKET_OFFICE)
+  // Consultar las empresas (solo para usuarios taquilla)
   const { data: companies } = useQuery({
     queryKey: ["/api/companies"],
     staleTime: 300000, // 5 minutos
-    enabled: user?.role === "TICKET_OFFICE",
+    enabled: user?.role === "taquilla",
     queryFn: async () => {
       const response = await fetch("/api/companies", {
         credentials: "include",
@@ -261,8 +261,8 @@ const TransactionBox: React.FC = () => {
                 return;
               }
 
-              // Filtrar por empresa si el usuario es TICKET_OFFICE y se ha seleccionado una empresa específica
-              if (user.role === "TICKET_OFFICE" && selectedCompany !== "all") {
+              // Filtrar por empresa si el usuario es taquilla y se ha seleccionado una empresa específica
+              if (user.role === "taquilla" && selectedCompany !== "all") {
                 const transactionCompanyId = transaction.companyId || transaction.detalles?.details?.companyId;
                 if (transactionCompanyId !== selectedCompany) {
                   console.log(`Omitiendo transacción ${transaction.id} porque no pertenece a la empresa seleccionada (${selectedCompany}), empresa de transacción: ${transactionCompanyId}`);
@@ -441,8 +441,8 @@ const TransactionBox: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Filtro por empresa (solo para usuarios TICKET_OFFICE) */}
-          {user?.role === "TICKET_OFFICE" && companies && (
+          {/* Filtro por empresa (solo para usuarios taquilla) */}
+          {user?.role === "taquilla" && companies && (
             <div className="mb-6">
               <div className="flex items-center gap-4">
                 <label htmlFor="company-filter" className="text-sm font-medium">
