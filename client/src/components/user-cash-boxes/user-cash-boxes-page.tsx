@@ -509,6 +509,7 @@ export function UserCashBoxesPage() {
                             ))}
                         </div>
                     )}
+                    </div>
                 </CardContent>
             </Card>
         </div>
