@@ -240,14 +240,16 @@ async function generateCutoffTicketPDF(
       doc.setFontSize(7);
       doc.setFont("courier", "normal");
       
-      // ID y tipo de transacción
+      // ID y tipo de transacción (en negrita)
       const type = transaction.detalles.type.includes("reservation") ? "RESERVA" : "PAQUETE";
+      doc.setFont("courier", "bold");
       doc.text(`#${transaction.id} - ${type}`, 5, y);
       
       // Monto y método de pago
       y += 3;
+      doc.setFont("courier", "normal");
       const monto = transaction.detalles.details.monto || 0;
-      const metodoPago = transaction.detalles.details.metodoPago === "efectivo" ? "EFE" : "TRA";
+      const metodoPago = transaction.detalles.details.metodoPago === "efectivo" ? "Efectivo" : "Transferencia";
       doc.text(`${formatCurrency(monto)} - ${metodoPago}`, 5, y);
       
       // Detalles específicos según el tipo
@@ -257,10 +259,12 @@ async function generateCutoffTicketPDF(
         // Para paquetes: origen-destino, remitente/destinatario, descripción
         if (details.origen && details.destino) {
           y += 3;
-          // Acortar nombres de lugares si son muy largos
-          const origenCorto = details.origen.length > 20 ? details.origen.substring(0, 20) + "..." : details.origen;
-          const destinoCorto = details.destino.length > 20 ? details.destino.substring(0, 20) + "..." : details.destino;
-          doc.text(`${origenCorto} -> ${destinoCorto}`, 5, y);
+          // Mostrar origen y destino en líneas separadas para evitar desbordamiento
+          const origenCorto = details.origen.length > 35 ? details.origen.substring(0, 35) + "..." : details.origen;
+          doc.text(`De: ${origenCorto}`, 5, y);
+          y += 3;
+          const destinoCorto = details.destino.length > 35 ? details.destino.substring(0, 35) + "..." : details.destino;
+          doc.text(`A: ${destinoCorto}`, 5, y);
         }
         
         if (details.remitente && details.destinatario) {
@@ -284,10 +288,12 @@ async function generateCutoffTicketPDF(
         // Para reservas: origen-destino, pasajeros
         if (details.origen && details.destino) {
           y += 3;
-          // Acortar nombres de lugares si son muy largos
-          const origenCorto = details.origen.length > 20 ? details.origen.substring(0, 20) + "..." : details.origen;
-          const destinoCorto = details.destino.length > 20 ? details.destino.substring(0, 20) + "..." : details.destino;
-          doc.text(`${origenCorto} -> ${destinoCorto}`, 5, y);
+          // Mostrar origen y destino en líneas separadas para evitar desbordamiento
+          const origenCorto = details.origen.length > 35 ? details.origen.substring(0, 35) + "..." : details.origen;
+          doc.text(`De: ${origenCorto}`, 5, y);
+          y += 3;
+          const destinoCorto = details.destino.length > 35 ? details.destino.substring(0, 35) + "..." : details.destino;
+          doc.text(`A: ${destinoCorto}`, 5, y);
         }
         
         if (details.pasajeros) {
