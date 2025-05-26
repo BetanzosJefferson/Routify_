@@ -24,6 +24,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { generateTicket } from "./ticket-generator";
 import { 
   Dialog,
@@ -89,6 +96,7 @@ const TransactionBox: React.FC = () => {
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [lastCutoff, setLastCutoff] = useState<any>(null);
+  const [selectedCompany, setSelectedCompany] = useState<string>("all");
   
   // Función para generar el PDF del ticket
   const generateTicketPDF = async (cutoff: any, transactions: Transaction[]) => {
@@ -212,6 +220,24 @@ const TransactionBox: React.FC = () => {
     },
   });
 
+  // Consultar las empresas (solo para usuarios TICKET_OFFICE)
+  const { data: companies } = useQuery({
+    queryKey: ["/api/companies"],
+    staleTime: 300000, // 5 minutos
+    enabled: user?.role === "TICKET_OFFICE",
+    queryFn: async () => {
+      const response = await fetch("/api/companies", {
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
+    },
+  });
+
   useEffect(() => {
     if (data && user) {
       // Separar las transacciones por tipo
@@ -233,6 +259,15 @@ const TransactionBox: React.FC = () => {
               if (transactionUserId !== user.id) {
                 console.log(`Omitiendo transacción ${transaction.id} porque pertenece a otro usuario (${transactionUserId}), usuario actual: ${user.id}`);
                 return;
+              }
+
+              // Filtrar por empresa si el usuario es TICKET_OFFICE y se ha seleccionado una empresa específica
+              if (user.role === "TICKET_OFFICE" && selectedCompany !== "all") {
+                const transactionCompanyId = transaction.companyId || transaction.detalles?.details?.companyId;
+                if (transactionCompanyId !== selectedCompany) {
+                  console.log(`Omitiendo transacción ${transaction.id} porque no pertenece a la empresa seleccionada (${selectedCompany}), empresa de transacción: ${transactionCompanyId}`);
+                  return;
+                }
               }
               
               const transactionType = transaction.detalles.type;
@@ -274,7 +309,7 @@ const TransactionBox: React.FC = () => {
       setReservationTransactions(reservations);
       setPackageTransactions(packages);
     }
-  }, [data, toast, user]);
+  }, [data, toast, user, selectedCompany]);
 
   // Formatear fecha
   const formatDate = (dateString: string) => {
@@ -406,6 +441,30 @@ const TransactionBox: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
+          {/* Filtro por empresa (solo para usuarios TICKET_OFFICE) */}
+          {user?.role === "TICKET_OFFICE" && companies && (
+            <div className="mb-6">
+              <div className="flex items-center gap-4">
+                <label htmlFor="company-filter" className="text-sm font-medium">
+                  Filtrar por empresa:
+                </label>
+                <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+                  <SelectTrigger className="w-[250px]">
+                    <SelectValue placeholder="Selecciona una empresa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las empresas</SelectItem>
+                    {companies.map((company: any) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
           {/* Resumen de totales */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
             <div className="flex items-center justify-between md:justify-center">
