@@ -4631,35 +4631,35 @@ export class DatabaseStorage implements IStorage {
       const result = await db
         .select({
           // Campos de la transacción
-          id: schema.transactions.id,
-          details: schema.transactions.details,
-          user_id: schema.transactions.user_id,
-          cutoff_id: schema.transactions.cutoff_id,
-          createdAt: schema.transactions.created_at,
-          updatedAt: schema.transactions.updated_at,
-          companyId: schema.transactions.company_id,
+          id: schema.transacciones.id,
+          details: schema.transacciones.detalles,
+          user_id: schema.transacciones.user_id,
+          cutoff_id: schema.transacciones.cutoff_id,
+          createdAt: schema.transacciones.createdAt,
+          updatedAt: schema.transacciones.updatedAt,
+          companyId: schema.transacciones.companyId,
           // Información del usuario
           user: {
             id: schema.users.id,
-            firstName: schema.users.first_name,
-            lastName: schema.users.last_name,
+            firstName: schema.users.firstName,
+            lastName: schema.users.lastName,
             email: schema.users.email,
             role: schema.users.role,
             company: schema.users.company,
-            profilePicture: schema.users.profile_picture,
-            companyId: schema.users.company_id,
-            commissionPercentage: schema.users.commission_percentage
+            profilePicture: schema.users.profilePicture,
+            companyId: schema.users.companyId,
+            commissionPercentage: schema.users.commissionPercentage
           }
         })
-        .from(schema.transactions)
-        .innerJoin(schema.users, eq(schema.transactions.user_id, schema.users.id))
+        .from(schema.transacciones)
+        .innerJoin(schema.users, eq(schema.transacciones.user_id, schema.users.id))
         .where(
           and(
-            ne(schema.transactions.user_id, Number(currentUserId)),
-            eq(schema.transactions.company_id, companyId)
+            ne(schema.transacciones.user_id, Number(currentUserId)),
+            eq(schema.transacciones.companyId, companyId)
           )
         )
-        .orderBy(desc(schema.transactions.created_at));
+        .orderBy(desc(schema.transacciones.createdAt));
 
       console.log(`[getUserCashBoxes] Encontradas ${result.length} transacciones con información de usuario`);
       return result;
