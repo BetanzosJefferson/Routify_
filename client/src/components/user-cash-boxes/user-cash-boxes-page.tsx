@@ -413,22 +413,16 @@ export function UserCashBoxesPage() {
                                                         {userBox.userName}
                                                         {userBox.hasPendingCutoff ? (
                                                             <Badge 
-                                                                style={{ 
-                                                                    backgroundColor: '#ffc107', 
-                                                                    color: '#333', 
-                                                                    fontWeight: 'bold' 
-                                                                }}
+                                                                variant="outline"
+                                                                className="border-amber-500 text-amber-700 bg-amber-50 hover:bg-amber-100"
                                                             >
                                                                 Corte pendiente
                                                             </Badge>
                                                         ) : (
                                                             userBox.transactionCount > 0 && (
                                                                 <Badge 
-                                                                    style={{ 
-                                                                        backgroundColor: '#28a745', 
-                                                                        color: '#fff', 
-                                                                        fontWeight: 'bold' 
-                                                                    }}
+                                                                    variant="outline"
+                                                                    className="border-emerald-500 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
                                                                 >
                                                                     Corte realizado
                                                                 </Badge>

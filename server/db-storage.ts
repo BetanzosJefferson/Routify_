@@ -2863,6 +2863,72 @@ export class DatabaseStorage implements IStorage {
           // No fallamos aquí para no interrumpir el proceso principal
         }
         
+        // Crear transacciones si hay anticipo o pago total
+        try {
+          if (currentRequest.advanceAmount && currentRequest.advanceAmount > 0) {
+            // Crear transacción para el anticipo
+            console.log(`[updateReservationRequestStatus] Creando transacción de anticipo por ${currentRequest.advanceAmount}`);
+            
+            const advanceTransactionData = {
+              detalles: {
+                type: "reservation",
+                details: {
+                  id: reservation.id,
+                  monto: currentRequest.advanceAmount,
+                  notas: `Anticipo de reservación #${reservation.id} (Solicitud #${id})`,
+                  origen: trip.route?.origin || "Origen no especificado",
+                  destino: trip.route?.destination || "Destino no especificado",
+                  tripId: currentRequest.tripId,
+                  metodoPago: currentRequest.advancePaymentMethod || "efectivo",
+                  companyId: currentRequest.companyId,
+                  dateCreated: new Date().toISOString(),
+                  pasajeros: passengersData.map(p => `${p.firstName} ${p.lastName}`).join(", ")
+                }
+              },
+              user_id: currentRequest.requesterId,
+              cutoff_id: null,
+              companyId: currentRequest.companyId
+            };
+            
+            const advanceTransaction = await this.createTransaccion(advanceTransactionData);
+            console.log(`[updateReservationRequestStatus] Transacción de anticipo creada con ID: ${advanceTransaction.id}`);
+          }
+          
+          // Si ya está completamente pagado, crear transacción del monto total
+          if (currentRequest.paymentStatus === "pagado" && currentRequest.totalAmount > (currentRequest.advanceAmount || 0)) {
+            const remainingAmount = currentRequest.totalAmount - (currentRequest.advanceAmount || 0);
+            
+            console.log(`[updateReservationRequestStatus] Creando transacción de pago completo por ${remainingAmount}`);
+            
+            const fullPaymentTransactionData = {
+              detalles: {
+                type: "reservation-final-payment",
+                details: {
+                  id: reservation.id,
+                  monto: remainingAmount,
+                  notas: `Pago completo de reservación #${reservation.id} (Solicitud #${id})`,
+                  origen: trip.route?.origin || "Origen no especificado",
+                  destino: trip.route?.destination || "Destino no especificado",
+                  tripId: currentRequest.tripId,
+                  metodoPago: currentRequest.paymentMethod || "efectivo",
+                  companyId: currentRequest.companyId,
+                  dateCreated: new Date().toISOString(),
+                  pasajeros: passengersData.map(p => `${p.firstName} ${p.lastName}`).join(", ")
+                }
+              },
+              user_id: currentRequest.requesterId,
+              cutoff_id: null,
+              companyId: currentRequest.companyId
+            };
+            
+            const finalTransaction = await this.createTransaccion(fullPaymentTransactionData);
+            console.log(`[updateReservationRequestStatus] Transacción de pago completo creada con ID: ${finalTransaction.id}`);
+          }
+        } catch (transactionError) {
+          console.error(`[updateReservationRequestStatus] Error al crear transacciones para la solicitud ${id}:`, transactionError);
+          // No fallamos aquí para no interrumpir el proceso principal de aprobación
+        }
+        
         // Crear notificación para el comisionista
         const notification: InsertNotification = {
           userId: currentRequest.requesterId,
