@@ -2760,30 +2760,23 @@ export class DatabaseStorage implements IStorage {
   }
   
   async updateReservationRequestStatus(
-    id: number,
-    status: string,
-    reviewedBy: number,
+    id: number, 
+    status: string, 
+    reviewedBy: number, 
     reviewNotes?: string
-  ): Promise<schema.ReservationRequest> {
-    // Log de entrada a la función
-    console.log(`[updateReservationRequestStatus] === INICIANDO FUNCIÓN para ID: ${id}, status: ${status} ===`);
-
+  ): Promise<ReservationRequest> {
     try {
       // Obtener la solicitud actual antes de actualizarla
-      console.log(`[updateReservationRequestStatus] Obteniendo currentRequest para ID: ${id}`);
       const [currentRequest] = await db
         .select()
         .from(schema.reservationRequests)
         .where(eq(schema.reservationRequests.id, id));
-
+      
       if (!currentRequest) {
-        console.error(`[updateReservationRequestStatus] ERROR: No se encontró la solicitud con ID ${id}`);
         throw new Error(`No se encontró la solicitud con ID ${id}`);
       }
-      console.log(`[updateReservationRequestStatus] currentRequest encontrado: ${JSON.stringify(currentRequest, null, 2)}`);
-
+      
       // Actualizar el estado de la solicitud
-      console.log(`[updateReservationRequestStatus] Actualizando solicitud ID ${id} a status: ${status}`);
       const [updatedRequest] = await db
         .update(schema.reservationRequests)
         .set({
@@ -2794,194 +2787,83 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(schema.reservationRequests.id, id))
         .returning();
-
-      console.log(`[updateReservationRequestStatus] Solicitud actualizada: ${JSON.stringify(updatedRequest, null, 2)}`);
-
+      
       // Si fue aprobada, crear una reservación real
       if (status === "aprobada") {
-        console.log(`[updateReservationRequestStatus] La solicitud ${id} tiene status 'aprobada'. Procediendo a crear reservación.`);
-
+        console.log(`[updateReservationRequestStatus] Aprobando solicitud ID ${id}. Creando reservación en tabla reservations.`);
+        
         // Obtener información del viaje para almacenar más detalles
-        console.log(`[updateReservationRequestStatus] Obteniendo trip para tripId: ${currentRequest.tripId}`);
         const trip = await this.getTrip(currentRequest.tripId);
         if (!trip) {
-          console.error(`[updateReservationRequestStatus] ERROR: El viaje con ID ${currentRequest.tripId} no existe.`);
           throw new Error(`El viaje con ID ${currentRequest.tripId} no existe.`);
         }
-        console.log(`[updateReservationRequestStatus] Trip encontrado: ${JSON.stringify(trip, null, 2)}`);
-
-
+        
         // Preparar los datos para la nueva reservación
         const newReservation: InsertReservation = {
           tripId: currentRequest.tripId,
           totalAmount: currentRequest.totalAmount,
           email: currentRequest.email,
           phone: currentRequest.phone,
-          notes: currentRequest.notes ?
-            `${currentRequest.notes} [Creado automáticamente a partir de solicitud #${id}]` :
+          notes: currentRequest.notes ? 
+            `${currentRequest.notes} [Creado automáticamente a partir de solicitud #${id}]` : 
             `Creado automáticamente a partir de solicitud #${id}`,
           paymentMethod: currentRequest.paymentMethod || PaymentMethod.CASH,
           paymentStatus: currentRequest.paymentStatus || PaymentStatus.PENDING,
           advanceAmount: currentRequest.advanceAmount || 0,
           advancePaymentMethod: currentRequest.advancePaymentMethod || PaymentMethod.CASH,
-          createdBy: currentRequest.requesterId,
+          createdBy: currentRequest.requesterId, // El creador es el comisionista
           companyId: currentRequest.companyId,
-          status: "confirmed",
-          commissionPaid: false,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          status: "confirmed", // La reservación se crea ya confirmada
+          commissionPaid: false, // Por defecto, la comisión no está pagada
+          createdAt: new Date(), // Fecha de creación actual
+          updatedAt: new Date(), // Fecha de actualización
+          // Inicializar los campos de escaneo de tickets
           checkedBy: null,
           checkedAt: null,
           checkCount: 0
         };
-
-        console.log(`[updateReservationRequestStatus] Datos de nueva reservación: ${JSON.stringify(newReservation, null, 2)}`);
-
+        
         // Crear la reservación
         const reservation = await this.createReservation(newReservation);
-        console.log(`[updateReservationRequestStatus] Reservación creada con ID: ${reservation.id}`);
-
+        
         // Crear los pasajeros
         const passengersData = currentRequest.passengersData as any[];
         const passengerCount = passengersData.length;
-        console.log(`[updateReservationRequestStatus] Creando ${passengerCount} pasajeros para la reservación ${reservation.id}`);
-
+        
+        // Crear cada pasajero en la base de datos
         for (const passengerData of passengersData) {
           await this.createPassenger({
             ...passengerData,
             reservationId: reservation.id
           });
         }
-        console.log(`[updateReservationRequestStatus] Pasajeros creados exitosamente.`);
-
-
+        
         // Actualizar la cantidad de asientos disponibles en el viaje
         try {
-          console.log(`[updateReservationRequestStatus] Intentando actualizar asientos disponibles para tripId: ${currentRequest.tripId}`);
-          const tripAfterReservation = await this.getTrip(currentRequest.tripId); // Volver a obtener el trip por si ha cambiado
-          if (tripAfterReservation && passengerCount > 0) {
-            console.log(`[updateReservationRequestStatus] Viaje ${tripAfterReservation.id}: asientos disponibles antes = ${tripAfterReservation.availableSeats}, pasajeros = ${passengerCount}`);
-
-            const newAvailableSeats = Math.max(0, tripAfterReservation.availableSeats - passengerCount);
-
+          const trip = await this.getTrip(currentRequest.tripId);
+          if (trip && passengerCount > 0) {
+            console.log(`[updateReservationRequestStatus] Viaje ${trip.id}: asientos disponibles antes = ${trip.availableSeats}, pasajeros = ${passengerCount}`);
+            
+            // Calcular nuevos asientos disponibles, no permitir que sean negativos
+            const newAvailableSeats = Math.max(0, trip.availableSeats - passengerCount);
+            
+            // Actualizar asientos disponibles
             await db
               .update(schema.trips)
               .set({ availableSeats: newAvailableSeats })
-              .where(eq(schema.trips.id, tripAfterReservation.id));
-
-            console.log(`[updateReservationRequestStatus] Viaje ${tripAfterReservation.id}: asientos disponibles actualizados a ${newAvailableSeats}`);
-
-            await this.updateRelatedTripsAvailability(tripAfterReservation.id, -passengerCount);
-            console.log(`[updateReservationRequestStatus] Disponibilidad de viajes relacionados actualizada.`);
-          } else {
-            console.log(`[updateReservationRequestStatus] No se actualizan asientos: tripAfterReservation es nulo o passengerCount es 0.`);
+              .where(eq(schema.trips.id, trip.id));
+            
+            console.log(`[updateReservationRequestStatus] Viaje ${trip.id}: asientos disponibles actualizados a ${newAvailableSeats}`);
+            
+            // Actualizar viajes relacionados
+            await this.updateRelatedTripsAvailability(trip.id, -passengerCount);
           }
         } catch (error) {
-          console.error(`[updateReservationRequestStatus] ERROR al actualizar asientos disponibles:`, error);
+          console.error(`[updateReservationRequestStatus] Error al actualizar asientos disponibles:`, error);
           // No fallamos aquí para no interrumpir el proceso principal
         }
-
-        // === BLOQUE DE TRANSACCIONES (donde nos habíamos enfocado antes) ===
-        console.log(`[updateReservationRequestStatus] PUNTO DE CONTROL: Llegando al bloque de transacciones`);
-        try {
-          console.log(`[updateReservationRequestStatus] === INICIANDO CREACIÓN DE TRANSACCIONES ===`);
-          console.log(`[updateReservationRequestStatus] DEPURACIÓN CRÍTICA - currentRequest.requesterId: ${currentRequest.requesterId}, reviewedBy: ${reviewedBy}`);
-          console.log(`[updateReservationRequestStatus] currentRequest.advanceAmount: ${currentRequest.advanceAmount}`);
-          console.log(`[updateReservationRequestStatus] currentRequest.paymentStatus: ${currentRequest.paymentStatus}`);
-          console.log(`[updateReservationRequestStatus] currentRequest.totalAmount: ${currentRequest.totalAmount}`);
-          console.log(`[updateReservationRequestStatus] reservation.id: ${reservation.id}`);
-          console.log(`[updateReservationRequestStatus] id (solicitud): ${id}`);
-          console.log(`[updateReservationRequestStatus] trip.route?.origin: ${trip.route?.origin}`);
-          console.log(`[updateReservationRequestStatus] trip.route?.destination: ${trip.route?.destination}`);
-          console.log(`[updateReservationRequestStatus] passengersData.length: ${passengersData.length}`);
-
-
-          // Verificar si el anticipo cubre el 100% del viaje
-          const isFullPaymentWithAdvance = currentRequest.advanceAmount && 
-                                         currentRequest.totalAmount && 
-                                         currentRequest.advanceAmount >= currentRequest.totalAmount;
-
-          if (currentRequest.advanceAmount && currentRequest.advanceAmount > 0) {
-            const transactionNote = isFullPaymentWithAdvance 
-              ? `Pago completo de reservación #${reservation.id} (Solicitud #${id})` 
-              : `Anticipo de reservación #${reservation.id} (Solicitud #${id})`;
-            
-            console.log(`[updateReservationRequestStatus] Condición de anticipo CUMPLIDA. Creando transacción de ${isFullPaymentWithAdvance ? 'pago completo' : 'anticipo'} por ${currentRequest.advanceAmount}`);
-
-            const advanceTransactionData = {
-              detalles: {
-                type: "reservation",
-                details: {
-                  id: reservation.id,
-                  monto: currentRequest.advanceAmount,
-                  notas: transactionNote,
-                  origen: trip.route?.origin || "Origen no especificado",
-                  destino: trip.route?.destination || "Destino no especificado",
-                  tripId: currentRequest.tripId,
-                  metodoPago: currentRequest.advancePaymentMethod || "efectivo",
-                  companyId: currentRequest.companyId,
-                  dateCreated: new Date().toISOString(),
-                  pasajeros: passengersData.map(p => `${p.firstName} ${p.lastName}`).join(", ")
-                }
-              },
-              user_id: reviewedBy,
-              cutoff_id: null,
-              companyId: currentRequest.companyId
-            };
-
-            console.log(`[updateReservationRequestStatus] Datos de anticipo a enviar: ${JSON.stringify(advanceTransactionData, null, 2)}`);
-            console.log(`[updateReservationRequestStatus] VERIFICACIÓN: advanceTransactionData.detalles = ${JSON.stringify(advanceTransactionData.detalles)}`);
-
-            const advanceTransaction = await this.createTransaccion(advanceTransactionData);
-            console.log(`[updateReservationRequestStatus] Transacción de anticipo creada con ID: ${advanceTransaction.id}`);
-          } else {
-            console.log(`[updateReservationRequestStatus] Condición de anticipo NO CUMPLIDA. currentRequest.advanceAmount es ${currentRequest.advanceAmount}`);
-          }
-
-          console.log(`[updateReservationRequestStatus] Verificando pago completo: paymentStatus=${currentRequest.paymentStatus}, totalAmount=${currentRequest.totalAmount}, advanceAmount=${currentRequest.advanceAmount}`);
-
-          // Solo crear transacción de pago completo si hay un monto restante (no cubierto por el anticipo)
-          if (currentRequest.paymentStatus === "pagado" && currentRequest.totalAmount > (currentRequest.advanceAmount || 0) && !isFullPaymentWithAdvance) {
-            const remainingAmount = currentRequest.totalAmount - (currentRequest.advanceAmount || 0);
-
-            console.log(`[updateReservationRequestStatus] Condición de pago completo CUMPLIDA. Creando transacción de pago completo por ${remainingAmount}`);
-
-            const fullPaymentTransactionData = {
-              detalles: {
-                type: "reservation-final-payment",
-                details: {
-                  id: reservation.id,
-                  monto: remainingAmount,
-                  notas: `Pago completo de reservación #${reservation.id} (Solicitud #${id})`,
-                  origen: trip.route?.origin || "Origen no especificado",
-                  destino: trip.route?.destination || "Destino no especificado",
-                  tripId: currentRequest.tripId,
-                  metodoPago: currentRequest.paymentMethod || "efectivo",
-                  companyId: currentRequest.companyId,
-                  dateCreated: new Date().toISOString(),
-                  pasajeros: passengersData.map(p => `${p.firstName} ${p.lastName}`).join(", ")
-                }
-              },
-              user_id: reviewedBy,
-              cutoff_id: null,
-              companyId: currentRequest.companyId
-            };
-
-            console.log(`[updateReservationRequestStatus] Datos de pago completo a enviar: ${JSON.stringify(fullPaymentTransactionData, null, 2)}`);
-
-            const finalTransaction = await this.createTransaccion(fullPaymentTransactionData);
-            console.log(`[updateReservationRequestStatus] Transacción de pago completo creada con ID: ${finalTransaction.id}`);
-          } else {
-            console.log(`[updateReservationRequestStatus] Condición de pago completo NO CUMPLIDA. paymentStatus es ${currentRequest.paymentStatus} y (totalAmount > advanceAmount) es ${currentRequest.totalAmount > (currentRequest.advanceAmount || 0)}`);
-          }
-          console.log(`[updateReservationRequestStatus] === FINALIZANDO CREACIÓN DE TRANSACCIONES ===`);
-        } catch (transactionError) {
-          console.error(`[updateReservationRequestStatus] ERROR CAPTURADO al crear transacciones para la solicitud ${id}:`, transactionError);
-          // No fallamos aquí para no interrumpir el proceso principal de aprobación
-        }
-
+        
         // Crear notificación para el comisionista
-        console.log(`[updateReservationRequestStatus] Creando notificación de aprobación para el usuario ${currentRequest.requesterId}`);
         const notification: InsertNotification = {
           userId: currentRequest.requesterId,
           type: "reservation_approved",
@@ -2992,12 +2874,9 @@ export class DatabaseStorage implements IStorage {
           createdAt: new Date(),
           updatedAt: new Date()
         };
-
+        
         await this.createNotification(notification);
-        console.log(`[updateReservationRequestStatus] Notificación de aprobación creada.`);
-
       } else if (status === "rechazada") {
-        console.log(`[updateReservationRequestStatus] La solicitud ${id} tiene status 'rechazada'. Creando notificación de rechazo.`);
         // Si fue rechazada, notificar al comisionista
         const notification: InsertNotification = {
           userId: currentRequest.requesterId,
@@ -3009,18 +2888,13 @@ export class DatabaseStorage implements IStorage {
           createdAt: new Date(),
           updatedAt: new Date()
         };
-
+        
         await this.createNotification(notification);
-        console.log(`[updateReservationRequestStatus] Notificación de rechazo creada.`);
-      } else {
-          console.log(`[updateReservationRequestStatus] El estado (${status}) no es 'aprobada' ni 'rechazada'. No se realiza acción adicional.`);
       }
-
-      console.log(`[updateReservationRequestStatus] === FUNCIÓN FINALIZADA para ID: ${id} ===`);
+      
       return updatedRequest;
-
     } catch (error) {
-      console.error(`[updateReservationRequestStatus] ERROR GENERAL EN LA FUNCIÓN para ID ${id}:`, error);
+      console.error(`Error al actualizar estado de solicitud ${id}:`, error);
       throw error;
     }
   }
@@ -4553,8 +4427,7 @@ export class DatabaseStorage implements IStorage {
   // Métodos para la tabla de transacciones
   async createTransaccion(transaccionData: schema.InsertTransaccion): Promise<schema.Transaccion> {
     try {
-      console.log(`[createTransaccion] Creando nueva transacción para usuario ${transaccionData.user_id}`);
-      console.log(`[createTransaccion] Datos recibidos: ${JSON.stringify(transaccionData, null, 2)}`);
+      console.log(`[createTransaccion] Creando nueva transacción para usuario ${transaccionData.usuario_id}`);
       
       if (!transaccionData.detalles) {
         console.error('[createTransaccion] Error: detalles es requerido');
@@ -4562,21 +4435,17 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Guardar la transacción en la base de datos
-      // IMPORTANTE: El esquema mapea detalles->details, entonces usar directamente el objeto con el nombre BD
-      const insertData = {
-        details: transaccionData.detalles, // Usar 'details' que es el nombre real en BD
-        user_id: transaccionData.user_id,
-        cutoff_id: transaccionData.cutoff_id,
-        company_id: transaccionData.companyId, // También corregir este campo
-        created_at: new Date(),
-        updated_at: new Date()
-      };
-      
-      console.log(`[createTransaccion] Datos a insertar en BD: ${JSON.stringify(insertData, null, 2)}`);
-      
+      // Convertimos los nombres de los campos en español a los nombres en inglés que espera la BD
       const [newTransaccion] = await db
         .insert(schema.transacciones)
-        .values(insertData as any)
+        .values({
+          detalles: transaccionData.detalles,
+          user_id: transaccionData.usuario_id, // Mapear usuario_id a user_id
+          cutoff_id: transaccionData.id_corte, // Mapear id_corte a cutoff_id
+          companyId: transaccionData.companyId, // Añadimos el ID de la compañía
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
         .returning();
       
       console.log(`[createTransaccion] Transacción creada con ID: ${newTransaccion.id}, CompanyId: ${transaccionData.companyId || 'No especificado'}`);

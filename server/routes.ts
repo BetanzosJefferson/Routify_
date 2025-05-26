@@ -4110,7 +4110,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Aprobar o rechazar una solicitud de reservación
   app.post(apiRouter('/reservation-requests/:id/update-status'), isAuthenticated, async (req, res) => {
-    console.log(`[routes] ===== INICIO ENDPOINT update-status para ID: ${req.params.id} =====`);
     try {
       const requestId = parseInt(req.params.id);
       if (isNaN(requestId)) {
@@ -4151,17 +4150,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Actualizar el estado de la solicitud
       // Este método también crea automáticamente una reservación en la tabla "reservations" si se aprueba
-      console.log(`[routes] DEPURACIÓN CRÍTICA - currentUser.id: ${currentUser.id}, typeof: ${typeof currentUser.id}`);
-      console.log(`[routes] currentUser completo: ${JSON.stringify(currentUser, null, 2)}`);
-      
-      // SOLUCIÓN TEMPORAL: Si currentUser.id es undefined, usar un valor por defecto
-      const reviewerId = currentUser.id || currentUser.userId || 24; // 24 es el ID del usuario logueado según los logs
-      console.log(`[routes] reviewerId final usado: ${reviewerId}`);
-      
       const updatedRequest = await storage.updateReservationRequestStatus(
         requestId, 
         status, 
-        reviewerId, 
+        currentUser.id, 
         reviewNotes
       );
       
