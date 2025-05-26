@@ -6745,37 +6745,25 @@ function setupPackageRoutes(app: Express) {
       const { user } = req as any;
       
       if (!user) {
-        console.log("[GET /transactions/user-cash-boxes] ❌ Usuario no autenticado");
         return res.status(401).json({ error: "Usuario no autenticado" });
       }
 
       if (!user.companyId) {
-        console.log("[GET /transactions/user-cash-boxes] ❌ Usuario sin compañía asignada");
         return res.status(400).json({ error: "Usuario sin compañía asignada" });
       }
       
-      console.log(`[GET /transactions/user-cash-boxes] 🔍 Solicitando transacciones de otros usuarios para compañía ${user.companyId}, usuario actual: ${user.id}`);
-      console.log(`[GET /transactions/user-cash-boxes] 📋 Usuario actual: ${user.firstName} ${user.lastName} (${user.role})`);
+      console.log(`[GET /transactions/user-cash-boxes] Solicitando transacciones de otros usuarios para compañía ${user.companyId}, usuario actual: ${user.id}`);
       
-      // Obtener transacciones con información completa del usuario mediante JOIN
-      const transacciones = await storage.getUserCashBoxes(user.id, user.companyId);
+      // Obtener transacciones donde:
+      // - user_id sea diferente al usuario actual
+      // - company_id sea igual a la compañía del usuario actual
+      const transacciones = await storage.getTransactionsByCompanyExcludingUser(user.companyId, user.id);
       
-      console.log(`[GET /transactions/user-cash-boxes] ✅ Encontradas ${transacciones.length} transacciones de otros usuarios para compañía ${user.companyId}`);
-      
-      if (transacciones.length > 0) {
-        console.log(`[GET /transactions/user-cash-boxes] 📊 Primera transacción:`, {
-          id: transacciones[0].id,
-          user_id: transacciones[0].user_id,
-          hasUserData: !!transacciones[0].user,
-          userName: transacciones[0].user ? `${transacciones[0].user.firstName} ${transacciones[0].user.lastName}` : 'No disponible',
-          userRole: transacciones[0].user?.role || 'No disponible',
-          userEmail: transacciones[0].user?.email || 'No disponible'
-        });
-      }
+      console.log(`[GET /transactions/user-cash-boxes] Encontradas ${transacciones.length} transacciones de otros usuarios para compañía ${user.companyId}`);
       
       res.json(transacciones);
     } catch (error) {
-      console.error("[GET /transactions/user-cash-boxes] ❌ Error:", error);
+      console.error("[GET /transactions/user-cash-boxes] Error:", error);
       res.status(500).json({ error: "Failed to fetch user cash box transactions" });
     }
   });

@@ -92,14 +92,9 @@ export function UserCashBoxesPage() {
     refetchOnMount: true,
   });
 
-  // Procesar datos para agrupar por usuario
+  // Procesar datos para agrupar por usuario usando información del JOIN
   const userCashBoxes: UserCashBoxData[] = React.useMemo(() => {
     if (!transactions || !Array.isArray(transactions)) return [];
-
-    console.log("[UserCashBoxes] Datos de usuario de la primera transacción:", transactions?.[0] ? { 
-      user_id: transactions[0].user_id, 
-      user: transactions[0].user 
-    } : 'No hay transacciones');
 
     const userGroups = new Map<number, UserCashBoxData>();
 
@@ -109,18 +104,13 @@ export function UserCashBoxesPage() {
       const paymentMethod = transaction.detalles?.details?.metodoPago || "efectivo";
       
       if (!userGroups.has(userId)) {
-        // Usar información real del usuario si está disponible
-        const userName = transaction.user ? 
-          `${transaction.user.firstName || ''} ${transaction.user.lastName || ''}`.trim() || `Usuario ${userId}` :
-          `Usuario ${userId}`;
-        
         userGroups.set(userId, {
           userId,
-          userName,
-          userEmail: transaction.user?.email || '',
-          userRole: transaction.user?.role || '',
-          userCompany: transaction.user?.company || '',
-          userProfilePicture: transaction.user?.profilePicture,
+          userName: `${transaction.user.firstName} ${transaction.user.lastName}`.trim(),
+          userEmail: transaction.user.email,
+          userRole: transaction.user.role,
+          userCompany: transaction.user.company,
+          userProfilePicture: transaction.user.profilePicture,
           transactions: [],
           totalCash: 0,
           totalTransfer: 0,
