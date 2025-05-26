@@ -4655,7 +4655,7 @@ export class DatabaseStorage implements IStorage {
         .innerJoin(schema.users, eq(schema.transactions.user_id, schema.users.id))
         .where(
           and(
-            ne(schema.transactions.user_id, currentUserId),
+            ne(schema.transactions.user_id, Number(currentUserId)),
             eq(schema.transactions.company_id, companyId)
           )
         )
