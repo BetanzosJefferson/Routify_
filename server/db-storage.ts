@@ -2914,8 +2914,8 @@ export class DatabaseStorage implements IStorage {
                   pasajeros: passengersData.map(p => `${p.firstName} ${p.lastName}`).join(", ")
                 }
               },
-              user_id: reviewedBy,
-              cutoff_id: null,
+              usuario_id: reviewedBy,
+              id_corte: null,
               companyId: currentRequest.companyId
             };
 
@@ -2950,8 +2950,8 @@ export class DatabaseStorage implements IStorage {
                   pasajeros: passengersData.map(p => `${p.firstName} ${p.lastName}`).join(", ")
                 }
               },
-              user_id: reviewedBy,
-              cutoff_id: null,
+              usuario_id: reviewedBy,
+              id_corte: null,
               companyId: currentRequest.companyId
             };
 
