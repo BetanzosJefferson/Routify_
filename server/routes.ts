@@ -6754,10 +6754,8 @@ function setupPackageRoutes(app: Express) {
       
       console.log(`[GET /transactions/user-cash-boxes] Solicitando transacciones de otros usuarios para compañía ${user.companyId}, usuario actual: ${user.id}`);
       
-      // Obtener transacciones donde:
-      // - user_id sea diferente al usuario actual
-      // - company_id sea igual a la compañía del usuario actual
-      const transacciones = await storage.getTransactionsByCompanyExcludingUser(user.companyId, user.id);
+      // Obtener transacciones con información completa del usuario mediante JOIN
+      const transacciones = await storage.getUserCashBoxes(user.id, user.companyId);
       
       console.log(`[GET /transactions/user-cash-boxes] Encontradas ${transacciones.length} transacciones de otros usuarios para compañía ${user.companyId}`);
       
