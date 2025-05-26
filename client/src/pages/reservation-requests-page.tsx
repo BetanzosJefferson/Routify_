@@ -64,6 +64,10 @@ interface ReservationRequest {
   tripDestination?: string;
   tripDate?: string;
   tripDepartureTime?: string;
+  isSubTrip?: boolean;
+  parentTripId?: number | null;
+  segmentOrigin?: string;
+  segmentDestination?: string;
 }
 
 export default function ReservationRequestsPage() {
@@ -492,6 +496,25 @@ function RequestCard({ request, isProcessed, onReview }: RequestCardProps) {
   const formattedReviewedAt = request.reviewedAt 
     ? format(new Date(request.reviewedAt), "dd MMM yyyy, HH:mm", { locale: es }) 
     : null;
+
+  // Determinar el origen y destino basado en si es sub-viaje o viaje principal
+  const getRouteInfo = () => {
+    if (request.isSubTrip) {
+      // Si es un sub-viaje, usar segmentOrigin y segmentDestination
+      return {
+        origin: request.segmentOrigin || request.tripOrigin || "Origen no especificado",
+        destination: request.segmentDestination || request.tripDestination || "Destino no especificado"
+      };
+    } else {
+      // Si es viaje principal, usar tripOrigin y tripDestination (que vienen de la ruta)
+      return {
+        origin: request.tripOrigin || "Origen no especificado",
+        destination: request.tripDestination || "Destino no especificado"
+      };
+    }
+  };
+
+  const routeInfo = getRouteInfo();
   
   // Estado con colores
   const getStatusBadge = () => {
@@ -533,8 +556,13 @@ function RequestCard({ request, isProcessed, onReview }: RequestCardProps) {
             <div className="flex items-center text-sm">
               <MapPin className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
               <span className="truncate">
-                {extractCityName(request.tripOrigin) || "Origen no especificado"} - {extractCityName(request.tripDestination) || "Destino no especificado"}
+                {extractCityName(routeInfo.origin)} - {extractCityName(routeInfo.destination)}
               </span>
+              {request.isSubTrip && (
+                <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                  Sub-viaje
+                </span>
+              )}
             </div>
             <div className="flex items-center text-sm">
               <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
