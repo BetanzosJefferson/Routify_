@@ -55,8 +55,8 @@ export function UserCashBoxesPage() {
   // Consultar transacciones de otros usuarios
   const { data: transactions, isLoading, error, refetch } = useQuery({
     queryKey: ["/api/transactions/user-cash-boxes"],
-    staleTime: 60000, // 1 minuto
-    gcTime: 300000, // 5 minutos en caché
+    staleTime: 0, // Sin cache para forzar consultas frescas
+    gcTime: 0, // Sin cache
     queryFn: async () => {
       console.log("[UserCashBoxes] Consultando transacciones de otros usuarios...");
       const response = await fetch("/api/transactions/user-cash-boxes", {
