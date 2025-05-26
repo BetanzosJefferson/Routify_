@@ -260,10 +260,10 @@ async function generateCutoffTicketPDF(
         if (details.origen && details.destino) {
           y += 3;
           // Mostrar origen y destino en líneas separadas para evitar desbordamiento
-          const origenCorto = details.origen.length > 35 ? details.origen.substring(0, 35) + "..." : details.origen;
+          const origenCorto = details.origen.length > 28 ? details.origen.substring(0, 28) + "..." : details.origen;
           doc.text(`De: ${origenCorto}`, 5, y);
           y += 3;
-          const destinoCorto = details.destino.length > 35 ? details.destino.substring(0, 35) + "..." : details.destino;
+          const destinoCorto = details.destino.length > 28 ? details.destino.substring(0, 28) + "..." : details.destino;
           doc.text(`A: ${destinoCorto}`, 5, y);
         }
         
@@ -289,10 +289,10 @@ async function generateCutoffTicketPDF(
         if (details.origen && details.destino) {
           y += 3;
           // Mostrar origen y destino en líneas separadas para evitar desbordamiento
-          const origenCorto = details.origen.length > 35 ? details.origen.substring(0, 35) + "..." : details.origen;
+          const origenCorto = details.origen.length > 28 ? details.origen.substring(0, 28) + "..." : details.origen;
           doc.text(`De: ${origenCorto}`, 5, y);
           y += 3;
-          const destinoCorto = details.destino.length > 35 ? details.destino.substring(0, 35) + "..." : details.destino;
+          const destinoCorto = details.destino.length > 28 ? details.destino.substring(0, 28) + "..." : details.destino;
           doc.text(`A: ${destinoCorto}`, 5, y);
         }
         
