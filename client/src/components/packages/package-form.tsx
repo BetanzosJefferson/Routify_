@@ -326,7 +326,7 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
         <CardTitle>{packageId ? "Editar Paquete" : "Registro de Paquete"}</CardTitle>
         <CardDescription>
           {packageId 
-            ? "Actualiza los datos del remitente, destinatario y detalles del paquete"
+            ? "Solo puedes editar el precio y el método de pago del paquete"
             : "Ingresa los datos del remitente, destinatario y detalles del paquete"
           }
         </CardDescription>
@@ -344,7 +344,7 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
                     <FormItem>
                       <FormLabel>Nombre</FormLabel>
                       <FormControl>
-                        <Input placeholder="Nombre del remitente" {...field} />
+                        <Input placeholder="Nombre del remitente" {...field} disabled={!!packageId} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -357,7 +357,7 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
                     <FormItem>
                       <FormLabel>Apellido</FormLabel>
                       <FormControl>
-                        <Input placeholder="Apellido del remitente" {...field} />
+                        <Input placeholder="Apellido del remitente" {...field} disabled={!!packageId} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -375,6 +375,7 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
                         placeholder="Número de teléfono" 
                         {...field} 
                         type="tel"
+                        disabled={!!packageId}
                       />
                     </FormControl>
                     <FormMessage />
@@ -393,7 +394,7 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
                     <FormItem>
                       <FormLabel>Nombre</FormLabel>
                       <FormControl>
-                        <Input placeholder="Nombre del destinatario" {...field} />
+                        <Input placeholder="Nombre del destinatario" {...field} disabled={!!packageId} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -406,7 +407,7 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
                     <FormItem>
                       <FormLabel>Apellido</FormLabel>
                       <FormControl>
-                        <Input placeholder="Apellido del destinatario" {...field} />
+                        <Input placeholder="Apellido del destinatario" {...field} disabled={!!packageId} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -424,6 +425,7 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
                         placeholder="Número de teléfono" 
                         {...field} 
                         type="tel"
+                        disabled={!!packageId}
                       />
                     </FormControl>
                     <FormMessage />
@@ -444,6 +446,7 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
                       <Textarea 
                         placeholder="Describa el contenido y características del paquete" 
                         {...field} 
+                        disabled={!!packageId}
                       />
                     </FormControl>
                     <FormMessage />
@@ -521,6 +524,7 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
                       <Switch
                         checked={field.value}
                         onCheckedChange={field.onChange}
+                        disabled={!!packageId}
                       />
                     </FormControl>
                   </FormItem>
@@ -541,6 +545,7 @@ export function PackageForm({ tripId, packageId, onSuccess, onCancel }: PackageF
                           type="number"
                           min="1"
                           max={maxAvailableSeats}
+                          disabled={!!packageId}
                           onChange={(e) => {
                             // Limitar el valor al máximo disponible
                             const value = parseInt(e.target.value);
