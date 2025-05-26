@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, User, Mail, Phone, MapPin, Calendar, Clock, CheckCircle, X, ArrowRightLeft } from "lucide-react";
+import { Loader2, User, Mail, Phone, MapPin, Calendar, Clock, CheckCircle, X, ArrowRightLeft, Eye, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -466,14 +466,31 @@ export default function ReservationDetailsModal({
                         Escanea para ver o compartir el boleto.
                       </p>
                       
-                      <a 
-                        href={`/reservation-details?id=${reservation.id}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="mt-2 sm:mt-4 inline-block text-xs sm:text-sm text-blue-600 hover:underline"
-                      >
-                        Ver boleto completo
-                      </a>
+                      <div className="mt-2 sm:mt-4 flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
+                        <a 
+                          href={`/reservation-details?id=${reservation.id}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center px-3 py-2 text-xs sm:text-sm text-blue-600 hover:text-blue-700 hover:underline border border-blue-200 rounded-md hover:bg-blue-50 transition-colors"
+                        >
+                          <Eye className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />
+                          Ver boleto completo
+                        </a>
+                        
+                        <Button
+                          onClick={() => {
+                            // Abrir el boleto en una nueva ventana para imprimir/descargar
+                            const ticketUrl = `/reservation-details?id=${reservation.id}&print=true`;
+                            window.open(ticketUrl, '_blank');
+                          }}
+                          variant="default"
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          <Download className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />
+                          Descargar Boleto
+                        </Button>
+                      </div>
                     </div>
                   </div>
                   
