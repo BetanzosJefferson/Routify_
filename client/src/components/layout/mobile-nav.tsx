@@ -109,17 +109,6 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
                 Caja
               </NavLink>
             )}
-            {canAccess("users-cash-box") && (
-              <NavLink 
-                active={window.location.pathname === "/users-cash-box"}
-                onClick={() => {
-                  setLocation("/users-cash-box");
-                  setOpen(false);
-                }}
-              >
-                Caja de usuarios
-              </NavLink>
-            )}
             {canAccess("cutoff-history") && (
               <NavLink 
                 active={window.location.pathname === "/cutoff-history"}
