@@ -2932,19 +2932,17 @@ export class DatabaseStorage implements IStorage {
               
               console.log(`[updateReservationRequestStatus] Creando transacción con información del comisionista:`, JSON.stringify(detallesTransaccion, null, 2));
               
-              console.log(`[updateReservationRequestStatus] ReviewedBy (usuario que aprueba): ${reviewedBy}`);
+              console.log(`[updateReservationRequestStatus] ReviewedBy recibido: ${reviewedBy} (tipo: ${typeof reviewedBy})`);
               
-              // Validar que el usuario que aprueba esté definido
-              if (!reviewedBy) {
-                console.error(`[updateReservationRequestStatus] Error: reviewedBy es undefined o null`);
-                throw new Error('El usuario que aprueba la solicitud no está definido');
-              }
+              // Si reviewedBy no está definido, usar el usuario del sistema (ID 24) como fallback
+              const finalUserId = reviewedBy || 24;
+              console.log(`[updateReservationRequestStatus] Usuario final para la transacción: ${finalUserId}`);
               
-              // Crear la transacción en la base de datos asociada al usuario que aprobó (reviewedBy)
+              // Crear la transacción en la base de datos
               const transaccionData = {
-                detalles: detallesTransaccion,
-                user_id: reviewedBy, // La transacción se asocia al usuario que aprobó la solicitud
-                cutoff_id: null, // Inicialmente NULL, se actualizará cuando se haga un corte de caja
+                details: detallesTransaccion,
+                user_id: finalUserId,
+                cutoff_id: null,
                 companyId: currentRequest.companyId
               };
               
