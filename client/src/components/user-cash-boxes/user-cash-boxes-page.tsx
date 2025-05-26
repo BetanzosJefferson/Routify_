@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, Users, DollarSign, CreditCard, Calendar } from "lucide-react";
+import { AlertCircle, Users, DollarSign, CreditCard, Calendar, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -44,24 +45,36 @@ interface UserCashBoxData {
 export function UserCashBoxesPage() {
   const { toast } = useToast();
   const [expandedUsers, setExpandedUsers] = useState<Set<number>>(new Set());
+  const [showAmounts, setShowAmounts] = useState(true);
 
   // Consultar transacciones de otros usuarios
-  const { data: transactions, isLoading, error } = useQuery({
+  const { data: transactions, isLoading, error, refetch } = useQuery({
     queryKey: ["/api/transactions/user-cash-boxes"],
-    staleTime: 30000, // 30 segundos
+    staleTime: 60000, // 1 minuto
+    gcTime: 300000, // 5 minutos en caché
     queryFn: async () => {
+      console.log("[UserCashBoxes] Consultando transacciones de otros usuarios...");
       const response = await fetch("/api/transactions/user-cash-boxes", {
         credentials: "include",
       });
       
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[UserCashBoxes] Error en la consulta:", response.status, errorText);
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
       
-      return await response.json() as Transaction[];
+      const data = await response.json() as Transaction[];
+      console.log("[UserCashBoxes] Transacciones obtenidas:", data.length);
+      return data;
     },
-    retry: 3,
-    retryDelay: 1000,
+    retry: (failureCount, error) => {
+      console.log("[UserCashBoxes] Reintento", failureCount, error);
+      return failureCount < 3;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
   });
 
   // Procesar datos para agrupar por usuario
@@ -113,10 +126,23 @@ export function UserCashBoxesPage() {
   };
 
   const formatCurrency = (amount: number) => {
+    if (!showAmounts) return "****";
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN'
     }).format(amount);
+  };
+
+  const handleRefresh = () => {
+    refetch();
+    toast({
+      title: "Actualizando datos",
+      description: "Consultando transacciones más recientes...",
+    });
+  };
+
+  const toggleAmountVisibility = () => {
+    setShowAmounts(!showAmounts);
   };
 
   const formatDate = (dateString: string) => {
@@ -167,11 +193,34 @@ export function UserCashBoxesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Cajas de usuarios</h1>
-        <p className="text-muted-foreground">
-          Gestión de cajas individuales por usuario
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Cajas de usuarios</h1>
+          <p className="text-muted-foreground">
+            Gestión de cajas individuales por usuario
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleAmountVisibility}
+            className="flex items-center space-x-2"
+          >
+            {showAmounts ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            <span>{showAmounts ? "Ocultar montos" : "Mostrar montos"}</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className="flex items-center space-x-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Actualizar</span>
+          </Button>
+        </div>
       </div>
 
       {/* Resumen general */}
@@ -183,6 +232,9 @@ export function UserCashBoxesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{userCashBoxes.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {userCashBoxes.length === 1 ? 'usuario activo' : 'usuarios activos'}
+            </p>
           </CardContent>
         </Card>
         
@@ -195,6 +247,9 @@ export function UserCashBoxesPage() {
             <div className="text-2xl font-bold">
               {formatCurrency(userCashBoxes.reduce((sum, user) => sum + user.totalCash, 0))}
             </div>
+            <p className="text-xs text-muted-foreground">
+              Total en efectivo
+            </p>
           </CardContent>
         </Card>
         
@@ -207,6 +262,9 @@ export function UserCashBoxesPage() {
             <div className="text-2xl font-bold">
               {formatCurrency(userCashBoxes.reduce((sum, user) => sum + user.totalTransfer, 0))}
             </div>
+            <p className="text-xs text-muted-foreground">
+              Total en transferencias
+            </p>
           </CardContent>
         </Card>
         
@@ -219,6 +277,9 @@ export function UserCashBoxesPage() {
             <div className="text-2xl font-bold">
               {formatCurrency(userCashBoxes.reduce((sum, user) => sum + user.totalAmount, 0))}
             </div>
+            <p className="text-xs text-muted-foreground">
+              {userCashBoxes.reduce((sum, user) => sum + user.transactionCount, 0)} transacciones
+            </p>
           </CardContent>
         </Card>
       </div>
