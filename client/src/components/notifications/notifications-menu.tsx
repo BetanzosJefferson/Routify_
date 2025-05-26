@@ -256,6 +256,11 @@ function NotificationItem({ notification, onMarkAsRead, onShowTransferDetails }:
       }
     }
     
+    // Si es una notificación de solicitud de reservación, navegar a la solicitud específica
+    if (notification.type === 'reservation_request' && notification.relatedId) {
+      setLocation(`/reservation-requests?requestId=${notification.relatedId}`);
+    }
+    
     // Si no está leída, marcarla como leída
     if (!notification.read) {
       onMarkAsRead();
@@ -264,9 +269,9 @@ function NotificationItem({ notification, onMarkAsRead, onShowTransferDetails }:
   
   return (
     <DropdownMenuItem 
-      className={`flex items-start gap-3 px-4 py-3 ${notification.type === 'transfer' ? 'cursor-pointer' : 'cursor-default'} ${notification.read ? 'opacity-70' : 'bg-primary/5'}`}
+      className={`flex items-start gap-3 px-4 py-3 ${(notification.type === 'transfer' || notification.type === 'reservation_request') ? 'cursor-pointer' : 'cursor-default'} ${notification.read ? 'opacity-70' : 'bg-primary/5'}`}
       onSelect={(e) => e.preventDefault()}
-      onClick={notification.type === 'transfer' ? handleClick : undefined}
+      onClick={(notification.type === 'transfer' || notification.type === 'reservation_request') ? handleClick : undefined}
     >
       {getAvatar()}
       <div className="flex-1 space-y-1">
