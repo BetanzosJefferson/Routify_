@@ -2594,10 +2594,6 @@ export class DatabaseStorage implements IStorage {
           let tripDestination = "";
           let tripDate = "";
           let tripDepartureTime = "";
-          let isSubTrip = false;
-          let parentTripId = null;
-          let segmentOrigin = "";
-          let segmentDestination = "";
           
           if (tripResult) {
             const { trip, route } = tripResult;
@@ -2605,12 +2601,6 @@ export class DatabaseStorage implements IStorage {
             tripDestination = route?.destination || "";
             tripDate = trip.departureDate ? trip.departureDate.toISOString().split('T')[0] : "";
             tripDepartureTime = trip.departureTime || "";
-            
-            // Información de sub-viaje
-            isSubTrip = trip.isSubTrip || false;
-            parentTripId = trip.parentTripId || null;
-            segmentOrigin = trip.segmentOrigin || "";
-            segmentDestination = trip.segmentDestination || "";
             
             console.log(`[getReservationRequests] Información de viaje para solicitud ${request.id}: 
               Origen: ${tripOrigin}
@@ -2717,10 +2707,6 @@ export class DatabaseStorage implements IStorage {
             tripDepartureTime,
             advancePaymentInfo,
             segmentPrices,
-            isSubTrip,
-            parentTripId,
-            segmentOrigin,
-            segmentDestination,
             // Solo datos seguros del requester
             requester: requester ? {
               id: requester.id,
