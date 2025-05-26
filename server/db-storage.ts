@@ -2881,9 +2881,12 @@ export class DatabaseStorage implements IStorage {
         console.log(`[updateReservationRequestStatus] Aprobando solicitud ID ${id}. Creando reservación en tabla reservations.`);
         
         // Crear transacción si hay anticipo
+        console.log(`[updateReservationRequestStatus] Verificando anticipo - advanceAmount: ${currentRequest.advanceAmount}, tipo: ${typeof currentRequest.advanceAmount}`);
         if (currentRequest.advanceAmount && currentRequest.advanceAmount > 0) {
           console.log(`[updateReservationRequestStatus] Creando transacción para solicitud aprobada ID: ${id} con anticipo: ${currentRequest.advanceAmount}`);
           await this.createTransactionFromApprovedRequest(currentRequest, reviewedBy);
+        } else {
+          console.log(`[updateReservationRequestStatus] NO se creará transacción - advanceAmount: ${currentRequest.advanceAmount}`);
         }
         
         // Obtener información del viaje para almacenar más detalles
