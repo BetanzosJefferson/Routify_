@@ -2926,32 +2926,7 @@ export class DatabaseStorage implements IStorage {
           });
         }
         
-        // Actualizar la cantidad de asientos disponibles en el viaje
-        try {
-          const trip = await this.getTrip(currentRequest.tripId);
-          if (trip && passengerCount > 0) {
-            console.log(`[updateReservationRequestStatus] Viaje ${trip.id}: asientos disponibles antes = ${trip.availableSeats}, pasajeros = ${passengerCount}`);
-            
-            // Calcular nuevos asientos disponibles, no permitir que sean negativos
-            const newAvailableSeats = Math.max(0, trip.availableSeats - passengerCount);
-            
-            // Actualizar asientos disponibles
-            await db
-              .update(schema.trips)
-              .set({ availableSeats: newAvailableSeats })
-              .where(eq(schema.trips.id, trip.id));
-            
-            console.log(`[updateReservationRequestStatus] Viaje ${trip.id}: asientos disponibles actualizados a ${newAvailableSeats}`);
-            
-            // Actualizar viajes relacionados
-            await this.updateRelatedTripsAvailability(trip.id, -passengerCount);
-          }
-        } catch (error) {
-          console.error(`[updateReservationRequestStatus] Error al actualizar asientos disponibles:`, error);
-          // No fallamos aquí para no interrumpir el proceso principal
-        }
-        
-        // Crear transacción si hay anticipo mayor a 0
+        // Crear transacción si hay anticipo mayor a 0 (ANTES de actualizar asientos)
         console.log(`[updateReservationRequestStatus] DEBUG - Verificando anticipo: advanceAmount=${currentRequest.advanceAmount}, tipo=${typeof currentRequest.advanceAmount}`);
         if (currentRequest.advanceAmount && currentRequest.advanceAmount > 0) {
           try {
@@ -3031,6 +3006,33 @@ export class DatabaseStorage implements IStorage {
         } else {
           console.log(`[updateReservationRequestStatus] No se creará transacción - advanceAmount: ${currentRequest.advanceAmount}`);
         }
+        
+        // Actualizar la cantidad de asientos disponibles en el viaje
+        try {
+          const trip = await this.getTrip(currentRequest.tripId);
+          if (trip && passengerCount > 0) {
+            console.log(`[updateReservationRequestStatus] Viaje ${trip.id}: asientos disponibles antes = ${trip.availableSeats}, pasajeros = ${passengerCount}`);
+            
+            // Calcular nuevos asientos disponibles, no permitir que sean negativos
+            const newAvailableSeats = Math.max(0, trip.availableSeats - passengerCount);
+            
+            // Actualizar asientos disponibles
+            await db
+              .update(schema.trips)
+              .set({ availableSeats: newAvailableSeats })
+              .where(eq(schema.trips.id, trip.id));
+            
+            console.log(`[updateReservationRequestStatus] Viaje ${trip.id}: asientos disponibles actualizados a ${newAvailableSeats}`);
+            
+            // Actualizar viajes relacionados
+            await this.updateRelatedTripsAvailability(trip.id, -passengerCount);
+          }
+        } catch (error) {
+          console.error(`[updateReservationRequestStatus] Error al actualizar asientos disponibles:`, error);
+          // No fallamos aquí para no interrumpir el proceso principal
+        }
+        
+
         
         // Crear notificación para el comisionista
         const notification: InsertNotification = {
