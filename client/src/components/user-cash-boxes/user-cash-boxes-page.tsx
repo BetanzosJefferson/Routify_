@@ -35,13 +35,20 @@ export function UserCashBoxesPage() {
   const { data: transactions, isLoading, error } = useQuery({
     queryKey: ["/api/transactions/user-cash-boxes"],
     queryFn: async () => {
-      const response = await fetch("/api/transactions/user-cash-boxes", {
-        credentials: "include",
-      });
-      if (!response.ok) {
-        throw new Error("Error al cargar las transacciones");
+      try {
+        const response = await fetch("/api/transactions/user-cash-boxes", {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+        const data = await response.json();
+        console.log("Datos recibidos del endpoint:", data);
+        return data as Transaction[];
+      } catch (err) {
+        console.error("Error en la consulta:", err);
+        throw err;
       }
-      return response.json() as Promise<Transaction[]>;
     },
     staleTime: 30000,
   });
