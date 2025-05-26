@@ -547,16 +547,17 @@ function RequestCard({ request, isProcessed, onReview }: RequestCardProps) {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-3">
-            <div className="flex items-center text-sm">
-              <MapPin className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-              <span className="truncate">
-                {extractCityName(routeInfo.origin)} - {extractCityName(routeInfo.destination)}
-              </span>
-              {request.isSubTrip && (
-                <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                  Sub-viaje
-                </span>
-              )}
+            <div className="flex items-start text-sm">
+              <MapPin className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
+              <div className="flex-1">
+                <div className="break-words">
+                  {extractCityName(routeInfo.origin)}
+                </div>
+                <div className="text-xs text-muted-foreground">↓</div>
+                <div className="break-words">
+                  {extractCityName(routeInfo.destination)}
+                </div>
+              </div>
             </div>
             <div className="flex items-center text-sm">
               <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
