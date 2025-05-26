@@ -4124,15 +4124,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const currentUser = req.user as any;
-      console.log(`[POST /reservation-requests/${requestId}/update-status] Usuario actual:`, currentUser);
-      console.log(`[POST /reservation-requests/${requestId}/update-status] ID del usuario:`, currentUser?.id);
+      console.log(`[POST /reservation-requests/${requestId}/update-status] Usuario actual completo:`, JSON.stringify(currentUser, null, 2));
       
       if (!currentUser) {
         return res.status(401).json({ message: "No autenticado" });
       }
       
-      if (!currentUser.id) {
-        console.error(`[POST /reservation-requests/${requestId}/update-status] Error: currentUser.id es undefined`);
+      // Obtener el ID del usuario de manera flexible
+      const userId = currentUser.id || currentUser.userId;
+      console.log(`[POST /reservation-requests/${requestId}/update-status] ID del usuario extraído:`, userId);
+      
+      if (!userId) {
+        console.error(`[POST /reservation-requests/${requestId}/update-status] Error: no se pudo obtener el ID del usuario`);
         return res.status(401).json({ message: "Usuario sin ID válido" });
       }
       
@@ -4161,7 +4164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedRequest = await storage.updateReservationRequestStatus(
         requestId, 
         status, 
-        currentUser.id, 
+        userId, 
         reviewNotes
       );
       
