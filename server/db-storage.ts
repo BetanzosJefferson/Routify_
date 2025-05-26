@@ -4606,22 +4606,26 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log(`[getTransaccionesUserCashBoxes] Iniciando consulta con filtros:`, filters);
       
-      let query = db.select().from(schema.transacciones);
+      // Crear array de condiciones de filtro
+      const conditions = [];
       
       // Filtro 1: Excluir transacciones del usuario actual (user_id diferente)
       if (filters.not_usuario_id) {
-        query = query.where(ne(schema.transacciones.user_id, filters.not_usuario_id));
+        conditions.push(ne(schema.transacciones.user_id, filters.not_usuario_id));
         console.log(`[getTransaccionesUserCashBoxes] Excluyendo transacciones del usuario: ${filters.not_usuario_id}`);
       }
       
       // Filtro 2: Solo transacciones de la misma compañía
       if (filters.companyId) {
-        query = query.where(eq(schema.transacciones.companyId, filters.companyId));
+        conditions.push(eq(schema.transacciones.companyId, filters.companyId));
         console.log(`[getTransaccionesUserCashBoxes] Filtrando por compañía: ${filters.companyId}`);
       }
       
-      // Ordenar por fecha de creación descendente (más recientes primero)
-      query = query.orderBy(desc(schema.transacciones.createdAt));
+      // Construir query con filtros combinados
+      const query = db.select()
+        .from(schema.transacciones)
+        .where(and(...conditions))
+        .orderBy(desc(schema.transacciones.createdAt));
       
       const transacciones = await query;
       console.log(`[getTransaccionesUserCashBoxes] Encontradas ${transacciones.length} transacciones de otros usuarios de la misma compañía`);
@@ -4629,6 +4633,7 @@ export class DatabaseStorage implements IStorage {
       return transacciones;
     } catch (error) {
       console.error('[getTransaccionesUserCashBoxes] Error al obtener transacciones:', error);
+      console.error('[getTransaccionesUserCashBoxes] Stack trace:', error instanceof Error ? error.stack : 'No stack available');
       return [];
     }
   }
