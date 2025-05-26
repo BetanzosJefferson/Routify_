@@ -2610,6 +2610,30 @@ export class DatabaseStorage implements IStorage {
             );
           }
           
+          // Calcular precios por segmento para la ruta
+          let segmentPrices = [];
+          if (tripResult && tripResult.route && tripResult.route.stops) {
+            const { trip, route } = tripResult;
+            const stops = route.stops || [];
+            const allLocations = [route.origin, ...stops, route.destination];
+            
+            // Crear segmentos con precios estimados basados en el precio total del viaje
+            const totalSegments = allLocations.length - 1;
+            const basePrice = trip.price || 120; // Precio base si no hay precio definido
+            
+            for (let i = 0; i < totalSegments; i++) {
+              const segmentPrice = Math.round(basePrice / totalSegments);
+              
+              segmentPrices.push({
+                origin: allLocations[i],
+                destination: allLocations[i + 1],
+                price: segmentPrice,
+                departureTime: trip.departureTime || "10:00 AM",
+                arrivalTime: trip.arrivalTime || "12:00 PM"
+              });
+            }
+          }
+          
           // Obtener información del comisionista (solo datos seguros)
           const [requester] = await db
             .select({
@@ -2682,6 +2706,7 @@ export class DatabaseStorage implements IStorage {
             tripDate,
             tripDepartureTime,
             advancePaymentInfo,
+            segmentPrices,
             // Solo datos seguros del requester
             requester: requester ? {
               id: requester.id,
