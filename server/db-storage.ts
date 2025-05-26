@@ -4773,17 +4773,18 @@ export class DatabaseStorage implements IStorage {
         }
       };
       
-      // Crear la transacción
-      const transactionData: schema.InsertTransaccion = {
-        user_id: approvedBy,
-        detalles: detalles,
-        cutoff_id: null,
-        companyId: approver.company || request.companyId,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      const transaction = await this.createTransaccion(transactionData);
+      // Crear la transacción usando la tabla correcta 'transactions'
+      const [transaction] = await db
+        .insert(schema.transactions)
+        .values({
+          details: detalles,
+          user_id: approvedBy,
+          cutoff_id: null,
+          companyId: approver.company || request.companyId,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
       console.log(`[createTransactionFromApprovedRequest] Transacción creada exitosamente con ID: ${transaction.id}`);
       
     } catch (error) {
