@@ -244,30 +244,24 @@ export default function ReservationRequestsPage() {
                 Revisa los detalles y selecciona si deseas aprobar o rechazar esta solicitud.
               </DialogDescription>
             </DialogHeader>
-
+            
             {selectedRequest && (
               <div className="space-y-6 py-4">
                 {/* Resumen del viaje */}
                 <div className="bg-muted/40 p-4 rounded-lg space-y-2">
                   <h3 className="font-semibold text-base">Detalles del Viaje</h3>
-
+                  
                   <div className="grid grid-cols-1 gap-2 text-sm">
                     <div className="flex items-center">
                       <MapPin className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
                       <div>
                         <span className="font-medium">Ruta:</span>{" "}
                         <span className="text-muted-foreground">
-                          {selectedRequest.trip?.isSubTrip ?
-                            // If it's a sub-trip, use segmentOrigin and segmentDestination (full string)
-                            `${selectedRequest.trip.segmentOrigin || "Origen no especificado"} - ${selectedRequest.trip.segmentDestination || "Destino no especificado"}`
-                            :
-                            // Otherwise, use route origin and destination (assuming extractCityName is still desired here for general routes)
-                            `${extractCityName(selectedRequest.route?.origin) || "Origen no especificado"} - ${extractCityName(selectedRequest.route?.destination) || "Destino no especificado"}`
-                          }
+                          {extractCityName(selectedRequest.tripOrigin) || "Origen no especificado"} - {extractCityName(selectedRequest.tripDestination) || "Destino no especificado"}
                         </span>
                       </div>
                     </div>
-
+                    
                     <div className="flex items-center">
                       <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
                       <div>
@@ -277,7 +271,7 @@ export default function ReservationRequestsPage() {
                         </span>
                       </div>
                     </div>
-
+                    
                     <div className="flex items-start">
                       <User className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
                       <div>
@@ -285,7 +279,7 @@ export default function ReservationRequestsPage() {
                         <span className="text-muted-foreground">
                           {selectedRequest.passengersData?.length || 0}
                         </span>
-
+                        
                         {selectedRequest.passengerNames && selectedRequest.passengerNames.length > 0 && (
                           <div className="mt-1 text-xs text-muted-foreground">
                             {selectedRequest.passengerNames.map((name, index) => (
@@ -297,11 +291,11 @@ export default function ReservationRequestsPage() {
                     </div>
                   </div>
                 </div>
-
+                
                 {/* Información de pagos */}
                 <div className="bg-muted/40 p-4 rounded-lg space-y-2">
                   <h3 className="font-semibold text-base">Información de Pago</h3>
-
+                  
                   <div className="grid grid-cols-1 gap-2 text-sm">
                     <div className="flex items-center">
                       <CreditCard className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
@@ -312,7 +306,7 @@ export default function ReservationRequestsPage() {
                         </span>
                       </div>
                     </div>
-
+                    
                     <div className="flex items-center">
                       <CreditCard className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
                       <div>
@@ -322,7 +316,7 @@ export default function ReservationRequestsPage() {
                         </span>
                       </div>
                     </div>
-
+                    
                     {selectedRequest.advanceAmount > 0 && (
                       <div className="flex items-center">
                         <CreditCard className="mr-2 h-4 w-4 flex-shrink-0 text-green-500" />
@@ -334,11 +328,11 @@ export default function ReservationRequestsPage() {
                         </div>
                       </div>
                     )}
-
+                    
                     <div className="flex items-center">
                       <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        selectedRequest.paymentStatus === 'pagado'
-                          ? 'bg-green-100 text-green-800'
+                        selectedRequest.paymentStatus === 'pagado' 
+                          ? 'bg-green-100 text-green-800' 
                           : 'bg-yellow-100 text-yellow-800'
                       }`}>
                         {selectedRequest.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
@@ -346,11 +340,11 @@ export default function ReservationRequestsPage() {
                     </div>
                   </div>
                 </div>
-
+                
                 {/* Información del solicitante */}
                 <div className="bg-muted/40 p-4 rounded-lg space-y-2">
                   <h3 className="font-semibold text-base">Información del Solicitante</h3>
-
+                  
                   <div className="grid grid-cols-1 gap-2 text-sm">
                     <div className="flex items-center">
                       <User className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
@@ -361,7 +355,7 @@ export default function ReservationRequestsPage() {
                         </span>
                       </div>
                     </div>
-
+                    
                     <div className="flex items-center">
                       <Phone className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
                       <div>
@@ -371,7 +365,7 @@ export default function ReservationRequestsPage() {
                         </span>
                       </div>
                     </div>
-
+                    
                     <div className="flex items-center">
                       <span className="mr-2 flex-shrink-0">📧</span>
                       <div>
@@ -381,7 +375,7 @@ export default function ReservationRequestsPage() {
                         </span>
                       </div>
                     </div>
-
+                    
                     {selectedRequest.notes && (
                       <div className="flex items-start pt-2 border-t border-border mt-2">
                         <div>
@@ -394,12 +388,12 @@ export default function ReservationRequestsPage() {
                     )}
                   </div>
                 </div>
-
+                
                 {/* Notas de revisión */}
                 <div className="space-y-2">
                   <Label>Notas sobre la revisión (opcional)</Label>
-                  <Textarea
-                    placeholder="Escribe algún comentario si es necesario"
+                  <Textarea 
+                    placeholder="Escribe algún comentario si es necesario" 
                     value={reviewNotes}
                     onChange={(e) => setReviewNotes(e.target.value)}
                   />
@@ -408,16 +402,16 @@ export default function ReservationRequestsPage() {
             )}
 
             <DialogFooter className="flex justify-between sm:justify-between">
-              <Button
-                type="button"
-                variant="destructive"
+              <Button 
+                type="button" 
+                variant="destructive" 
                 onClick={handleReject}
                 disabled={updateRequestMutation.isPending}
               >
                 <X className="mr-2 h-4 w-4" /> Rechazar
               </Button>
-              <Button
-                type="button"
+              <Button 
+                type="button" 
                 onClick={handleApprove}
                 disabled={updateRequestMutation.isPending}
               >
