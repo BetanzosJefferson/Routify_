@@ -6841,4 +6841,112 @@ function setupPackageRoutes(app: Express) {
       return res.status(500).json({ error: "Error al realizar corte de caja" });
     }
   });
+
+  // Ruta para obtener usuarios de la empresa (para caja de usuarios)
+  app.get(apiRouter("/users/company"), async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "Usuario no autenticado" });
+      }
+
+      // Solo dueños y administradores pueden acceder a esta funcionalidad
+      if (user.role !== "dueño" && user.role !== "admin") {
+        return res.status(403).json({ error: "Sin permisos para acceder a esta funcionalidad" });
+      }
+
+      // Obtener usuarios de la misma empresa
+      const companyUsers = await storage.getUsersByCompany(user.company || user.companyId);
+      
+      console.log(`[GET /users/company] Encontrados ${companyUsers.length} usuarios para la empresa ${user.company || user.companyId}`);
+      
+      res.json(companyUsers);
+    } catch (error) {
+      console.error("[GET /users/company] Error:", error);
+      res.status(500).json({ error: "Error al obtener usuarios de la empresa" });
+    }
+  });
+
+  // Ruta para obtener transacciones de otros usuarios en la empresa
+  app.get(apiRouter("/transactions/users-company"), async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      const { selectedUser, selectedTimeRange } = req.query;
+      
+      if (!user) {
+        return res.status(401).json({ error: "Usuario no autenticado" });
+      }
+
+      // Solo dueños y administradores pueden acceder a esta funcionalidad
+      if (user.role !== "dueño" && user.role !== "admin") {
+        return res.status(403).json({ error: "Sin permisos para acceder a esta funcionalidad" });
+      }
+
+      console.log(`[GET /transactions/users-company] Usuario: ${user.id}, selectedUser: ${selectedUser}, timeRange: ${selectedTimeRange}`);
+
+      // Preparar filtros
+      const filters: any = {
+        // Filtrar por empresa
+        companyId: user.company || user.companyId
+      };
+
+      // Si se especifica un usuario específico, filtrarlo (pero que no sea el usuario actual)
+      if (selectedUser && selectedUser !== "all") {
+        const userId = parseInt(selectedUser as string);
+        if (userId !== user.id) {
+          filters.usuario_id = userId;
+        }
+      } else {
+        // Si es "all", obtener todos los usuarios EXCEPTO el actual
+        // Esto lo manejaremos después de obtener las transacciones
+      }
+
+      // Aplicar filtro de tiempo
+      if (selectedTimeRange && selectedTimeRange !== "all") {
+        const now = new Date();
+        let startDate: Date | undefined;
+        
+        if (selectedTimeRange === "today") {
+          startDate = new Date(now);
+          startDate.setHours(0, 0, 0, 0);
+        } else if (selectedTimeRange === "week") {
+          startDate = new Date(now);
+          startDate.setDate(now.getDate() - 7);
+        } else if (selectedTimeRange === "month") {
+          startDate = new Date(now);
+          startDate.setMonth(now.getMonth() - 1);
+        }
+        
+        if (startDate) {
+          filters.startDate = startDate;
+        }
+      }
+
+      // Obtener transacciones
+      let transacciones = await storage.getTransacciones(filters);
+
+      // Si selectedUser es "all", filtrar para excluir al usuario actual
+      if (!selectedUser || selectedUser === "all") {
+        transacciones = transacciones.filter(t => t.user_id !== user.id);
+      }
+
+      // Obtener nombres de usuarios para mostrar en las transacciones
+      const companyUsers = await storage.getUsersByCompany(user.company || user.companyId);
+      const transaccionesConUsuarios = transacciones.map(transaccion => {
+        const usuario = companyUsers.find(u => u.id === transaccion.user_id);
+        return {
+          ...transaccion,
+          userName: usuario ? `${usuario.firstName} ${usuario.lastName}` : `Usuario ${transaccion.user_id}`
+        };
+      });
+
+      console.log(`[GET /transactions/users-company] Encontradas ${transaccionesConUsuarios.length} transacciones`);
+      
+      res.json(transaccionesConUsuarios);
+    } catch (error) {
+      console.error("[GET /transactions/users-company] Error:", error);
+      res.status(500).json({ error: "Error al obtener transacciones de usuarios" });
+    }
+  });
 }
