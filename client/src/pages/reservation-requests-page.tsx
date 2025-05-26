@@ -67,10 +67,31 @@ interface ReservationRequest {
 export default function ReservationRequestsPage() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [location] = useLocation();
   const [activeTab, setActiveTab] = useState<string>("pending");
   const [selectedRequest, setSelectedRequest] = useState<ReservationRequest | null>(null);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState<boolean>(false);
   const [reviewNotes, setReviewNotes] = useState<string>("");
+  const [highlightedRequestId, setHighlightedRequestId] = useState<number | null>(null);
+
+  // Efecto para manejar parámetros de URL desde notificaciones
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.split('?')[1] || '');
+    const requestId = urlParams.get('requestId');
+    
+    if (requestId) {
+      const id = parseInt(requestId);
+      if (!isNaN(id)) {
+        setHighlightedRequestId(id);
+        setActiveTab("pending"); // Cambiar a pestaña pendientes para mostrar la solicitud
+        
+        // Limpiar el highlighting después de 3 segundos
+        setTimeout(() => {
+          setHighlightedRequestId(null);
+        }, 3000);
+      }
+    }
+  }, [location]);
 
   // Consulta para obtener solicitudes de reservación
   const { data: requests, isLoading, refetch } = useQuery<ReservationRequest[]>({
@@ -206,7 +227,8 @@ export default function ReservationRequestsPage() {
                   <RequestCard 
                     key={request.id} 
                     request={request} 
-                    onReview={openReviewDialog} 
+                    onReview={openReviewDialog}
+                    isHighlighted={highlightedRequestId === request.id}
                   />
                 ))}
               </div>
@@ -482,9 +504,10 @@ interface RequestCardProps {
   request: ReservationRequest;
   isProcessed?: boolean;
   onReview?: (request: ReservationRequest) => void;
+  isHighlighted?: boolean;
 }
 
-function RequestCard({ request, isProcessed, onReview }: RequestCardProps) {
+function RequestCard({ request, isProcessed, onReview, isHighlighted }: RequestCardProps) {
   // Formatear fechas
   const formattedCreatedAt = format(new Date(request.createdAt), "dd MMM yyyy, HH:mm", { locale: es });
   const formattedReviewedAt = request.reviewedAt 
