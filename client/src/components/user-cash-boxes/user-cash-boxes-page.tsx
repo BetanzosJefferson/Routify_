@@ -96,17 +96,31 @@ export function UserCashBoxesPage() {
   const userCashBoxes: UserCashBoxData[] = React.useMemo(() => {
     if (!transactions || !Array.isArray(transactions)) return [];
 
+    console.log("[UserCashBoxes] Datos de usuario de la primera transacción:", transactions?.[0] ? { 
+      user_id: transactions[0].user_id, 
+      user: transactions[0].user 
+    } : 'No hay transacciones');
+
     const userGroups = new Map<number, UserCashBoxData>();
 
     transactions.forEach((transaction) => {
       const userId = transaction.user_id;
-      const amount = transaction.detalles?.details?.monto || 0;
-      const paymentMethod = transaction.detalles?.details?.metodoPago || "efectivo";
+      const amount = transaction.details?.details?.monto || 0;
+      const paymentMethod = transaction.details?.details?.metodoPago || "efectivo";
       
       if (!userGroups.has(userId)) {
+        // Usar información real del usuario si está disponible
+        const userName = transaction.user ? 
+          `${transaction.user.firstName || ''} ${transaction.user.lastName || ''}`.trim() || `Usuario ${userId}` :
+          `Usuario ${userId}`;
+        
         userGroups.set(userId, {
           userId,
-          userName: `Usuario ${userId}`, // Por ahora usamos ID, después podemos obtener nombres reales
+          userName,
+          userEmail: transaction.user?.email || '',
+          userRole: transaction.user?.role || '',
+          userCompany: transaction.user?.company || '',
+          userProfilePicture: transaction.user?.profilePicture,
           transactions: [],
           totalCash: 0,
           totalTransfer: 0,
@@ -371,33 +385,33 @@ export function UserCashBoxesPage() {
                                   {formatDate(transaction.createdAt)}
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant={transaction.detalles.type === 'reservation' ? 'default' : 'secondary'}>
-                                    {transaction.detalles.type === 'reservation' ? 'Reservación' : 'Paquetería'}
+                                  <Badge variant={transaction.details.type === 'reservation' ? 'default' : 'secondary'}>
+                                    {transaction.details.type === 'reservation' ? 'Reservación' : 'Paquetería'}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-sm">
-                                  {transaction.detalles.type === 'reservation' ? (
+                                  {transaction.details.type === 'reservation' ? (
                                     <div>
-                                      <div className="font-medium">{transaction.detalles.details.pasajeros}</div>
+                                      <div className="font-medium">{transaction.details.details.pasajeros}</div>
                                       <div className="text-muted-foreground">
-                                        {transaction.detalles.details.origen} → {transaction.detalles.details.destino}
+                                        {transaction.details.details.origen} → {transaction.details.details.destino}
                                       </div>
                                     </div>
                                   ) : (
                                     <div>
                                       <div className="font-medium">
-                                        {transaction.detalles.details.remitente} → {transaction.detalles.details.destinatario}
+                                        {transaction.details.details.remitente} → {transaction.details.details.destinatario}
                                       </div>
                                     </div>
                                   )}
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant={transaction.detalles.details.metodoPago === 'efectivo' ? 'default' : 'secondary'}>
-                                    {transaction.detalles.details.metodoPago}
+                                  <Badge variant={transaction.details.details.metodoPago === 'efectivo' ? 'default' : 'secondary'}>
+                                    {transaction.details.details.metodoPago}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-right font-medium">
-                                  {formatCurrency(transaction.detalles.details.monto)}
+                                  {formatCurrency(transaction.details.details.monto)}
                                 </TableCell>
                               </TableRow>
                             ))}

@@ -4669,3 +4669,48 @@ export class DatabaseStorage implements IStorage {
     }
   }
 }
+
+  // ========== CAJAS DE USUARIOS ==========
+  
+  // Obtener transacciones de otros usuarios con información completa del usuario
+  async getUserCashBoxes(currentUserId: number, companyId: string): Promise<any[]> {
+    try {
+      console.log(`[getUserCashBoxes] Obteniendo transacciones de otros usuarios para compañía ${companyId}, excluyendo usuario ${currentUserId}`);
+      
+      const transactions = await db
+        .select({
+          id: schema.transactions.id,
+          user_id: schema.transactions.user_id,
+          details: schema.transactions.details,
+          createdAt: schema.transactions.createdAt,
+          companyId: schema.transactions.companyId,
+          user: {
+            id: schema.users.id,
+            firstName: schema.users.firstName,
+            lastName: schema.users.lastName,
+            email: schema.users.email,
+            role: schema.users.role,
+            company: schema.users.company,
+            profilePicture: schema.users.profilePicture,
+            companyId: schema.users.companyId,
+            commissionPercentage: schema.users.commissionPercentage
+          }
+        })
+        .from(schema.transactions)
+        .innerJoin(schema.users, eq(schema.transactions.user_id, schema.users.id))
+        .where(
+          and(
+            ne(schema.transactions.user_id, currentUserId),
+            eq(schema.transactions.companyId, companyId)
+          )
+        )
+        .orderBy(desc(schema.transactions.createdAt));
+
+      console.log(`[getUserCashBoxes] Se encontraron ${transactions.length} transacciones de otros usuarios en la compañía ${companyId}`);
+      return transactions;
+    } catch (error) {
+      console.error(`[getUserCashBoxes] Error al obtener transacciones de otros usuarios:`, error);
+      return [];
+    }
+  }
+}
