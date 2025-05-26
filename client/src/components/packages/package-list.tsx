@@ -43,6 +43,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Link } from "wouter";
 import {
   Package,
@@ -67,6 +73,16 @@ interface PackageListProps {
   onEditPackage: (packageId: number) => void;
 }
 
+// Schema de validación para editar paquete
+const editPackageSchema = z.object({
+  price: z.number().min(1, "El precio debe ser mayor a 0"),
+  paymentMethod: z.enum(["efectivo", "transferencia"], {
+    required_error: "Selecciona un método de pago",
+  }),
+});
+
+type EditPackageFormData = z.infer<typeof editPackageSchema>;
+
 export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -74,6 +90,8 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
   const [packageToView, setPackageToView] = useState<any | null>(null);
   const [packageToDetail, setPackageToDetail] = useState<any | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
+  const [packageToEdit, setPackageToEdit] = useState<any | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   
   // Determinar si el usuario puede añadir/editar paquetes
   const canCreateEdit = user ? hasRoleAccess(user.role, [UserRole.OWNER, UserRole.ADMIN, UserRole.CALL_CENTER, UserRole.CHECKER]) : false;
@@ -154,6 +172,67 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
       setPackageToDelete(null);
     },
   });
+
+  // Mutación para editar un paquete
+  const editPackageMutation = useMutation({
+    mutationFn: async ({ packageId, data }: { packageId: number; data: EditPackageFormData }) => {
+      const response = await apiRequest("PATCH", `/api/packages/${packageId}`, data);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al actualizar el paquete");
+      }
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Paquete actualizado",
+        description: "El precio y método de pago han sido actualizados exitosamente",
+        variant: "default",
+      });
+      
+      // Invalidar la caché de paquetes
+      queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
+      
+      setPackageToEdit(null);
+      setIsEditModalOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Configurar el formulario de edición
+  const editForm = useForm<EditPackageFormData>({
+    resolver: zodResolver(editPackageSchema),
+    defaultValues: {
+      price: 0,
+      paymentMethod: "efectivo",
+    },
+  });
+
+  // Función para abrir el modal de edición
+  const handleEditPackage = (pkg: any) => {
+    setPackageToEdit(pkg);
+    editForm.reset({
+      price: pkg.price,
+      paymentMethod: pkg.paymentMethod || "efectivo",
+    });
+    setIsEditModalOpen(true);
+  };
+
+  // Función para manejar el envío del formulario de edición
+  const handleEditSubmit = (data: EditPackageFormData) => {
+    if (packageToEdit) {
+      editPackageMutation.mutate({
+        packageId: packageToEdit.id,
+        data: data,
+      });
+    }
+  };
   
   // Manejar la impresión del ticket usando jsPDF para el formato térmico
   const handlePrintTicket = () => {
@@ -341,9 +420,9 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       {canCreateEdit && (
-                        <DropdownMenuItem onClick={() => onEditPackage(pkg.id)}>
+                        <DropdownMenuItem onClick={() => handleEditPackage(pkg)}>
                           <Edit className="mr-2 h-4 w-4" />
-                          Editar
+                          Editar Precio/Pago
                         </DropdownMenuItem>
                       )}
                       
