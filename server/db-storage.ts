@@ -2921,6 +2921,7 @@ export class DatabaseStorage implements IStorage {
             };
 
             console.log(`[updateReservationRequestStatus] Datos de anticipo a enviar: ${JSON.stringify(advanceTransactionData, null, 2)}`);
+            console.log(`[updateReservationRequestStatus] VERIFICACIÓN: advanceTransactionData.detalles = ${JSON.stringify(advanceTransactionData.detalles)}`);
 
             const advanceTransaction = await this.createTransaccion(advanceTransactionData);
             console.log(`[updateReservationRequestStatus] Transacción de anticipo creada con ID: ${advanceTransaction.id}`);
