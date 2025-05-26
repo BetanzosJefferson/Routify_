@@ -11,6 +11,17 @@ export function UserCashBoxesPage() {
   // Query para obtener transacciones de otros usuarios de la misma compañía
   const { data: userCashBoxTransactions, isLoading, error } = useQuery({
     queryKey: ["/api/transactions/user-cash-boxes"],
+    queryFn: async () => {
+      const response = await fetch("/api/transactions/user-cash-boxes", {
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
+    },
     enabled: !!user && (user.role === "dueño" || user.role === "admin"),
     staleTime: 30000, // 30 segundos
     retry: 3,
