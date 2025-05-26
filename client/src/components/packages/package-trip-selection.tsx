@@ -297,26 +297,67 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
       
       {/* Lista de viajes disponibles */}
       {!isLoading && !isError && sortedTrips && sortedTrips.length > 0 && (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4">
           {sortedTrips.map((trip) => (
-            <Card 
-              key={trip.id}
-              className="hover:shadow-md transition-all cursor-pointer border-l-4 border-l-blue-500"
+            <div 
+              key={trip.id} 
+              className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-white cursor-pointer"
               onClick={() => onTripSelect(trip.id)}
             >
-              <div className="p-4 w-full">
-                {/* Horarios en la parte superior */}
-                <div className="flex justify-between items-center mb-4">
-                  <div className="font-bold text-lg">{formatTripTime(trip.departureTime, true, "pretty")}</div>
-                  <div className="text-xs text-gray-500">
-                    {calculateDuration(trip.departureTime, trip.arrivalTime)}
+              {/* Header con logo de la compañía */}
+              <div className="border-b border-gray-100 p-3 flex justify-between items-center">
+                <div className="flex items-center">
+                  {/* Logo de la compañía con fallback a icono predeterminado */}
+                  <div className="mr-3 h-8 w-8 flex-shrink-0">
+                    {trip.companyLogo ? (
+                      <img 
+                        src={trip.companyLogo} 
+                        alt={trip.companyName || "Logo de transportista"} 
+                        className="h-full w-full object-cover rounded-full"
+                        onError={(e) => {
+                          // Si falla la carga, mostrar el icono predeterminado
+                          const target = e.currentTarget as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <div className={`${trip.companyLogo ? 'hidden' : ''} h-full w-full bg-gray-200 rounded-full flex items-center justify-center`}>
+                      <span className="text-xs font-bold text-gray-600">
+                        {(trip.companyName || "TR").substring(0, 2).toUpperCase()}
+                      </span>
+                    </div>
                   </div>
-                  <div className="font-bold text-lg text-right">{formatTripTime(trip.arrivalTime, true, "pretty")}</div>
+                  
+                  <div>
+                    <div className="font-medium text-sm">{trip.companyName || "Transportista"}</div>
+                    <div className="text-xs text-gray-500">
+                      Directo • {trip.availableSeats} asientos disponibles
+                    </div>
+                  </div>
                 </div>
                 
+                <div className="text-right">
+                  <div className="text-lg font-bold">${trip.price}</div>
+                  <div className="text-xs text-gray-500">MXN</div>
+                </div>
+              </div>
+
+              {/* Contenido principal */}
+              <div className="p-4">
+                {/* Horarios */}
+                <div className="flex justify-between items-center mb-4">
+                  <div className="text-lg font-bold">{formatTripTime(trip.departureTime, true, "pretty")}</div>
+                  <div className="flex flex-col items-center text-xs text-gray-500">
+                    <div>{calculateDuration(trip.departureTime, trip.arrivalTime)}</div>
+                    <div>→</div>
+                  </div>
+                  <div className="text-lg font-bold text-right">{formatTripTime(trip.arrivalTime, true, "pretty")}</div>
+                </div>
+
                 {/* Mensaje descriptivo para viajes que cruzan la medianoche */}
                 {(extractDayIndicator(trip.departureTime) > 0 || extractDayIndicator(trip.arrivalTime) > 0) && (
-                  <div className="mt-2 mb-3">
+                  <div className="mb-3">
                     <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded-md flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="10"></circle>
@@ -327,55 +368,57 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                     </div>
                   </div>
                 )}
-                
-                <div className="border-t border-gray-200 pt-3 mt-2">
 
-
-
-
-                  {/* Puntos específicos de abordaje y llegada */}
-                  <div className="border-2 border-dashed border-gray-200 rounded-md p-2 mb-3">
-                    <div className="text-xs font-medium text-gray-600 mb-1">
-                      <span className="inline-flex items-center">
-                        <MapPinIcon className="h-3 w-3 mr-1" />
-                        Puntos específicos de este viaje
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 gap-3">
-                      <div>
-                        <div className="text-xs font-semibold text-gray-600">Punto de abordaje</div>
-                        <div className="text-sm font-medium text-green-700 flex items-start">
-                          <div className="w-2 h-2 rounded-full bg-green-600 mr-2 mt-1 flex-shrink-0"></div>
-                          <div className="break-words">
-                            {trip.isSubTrip 
-                              ? (trip.segmentOrigin || trip.route?.origin || "Origen no especificado")
-                              : (trip.route?.origin || "Origen no especificado")
-                            }
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-xs text-muted-foreground text-center">↓</div>
-                      <div>
-                        <div className="text-xs font-semibold text-gray-600">Punto de llegada</div>
-                        <div className="text-sm font-medium text-red-700 flex items-start">
-                          <div className="w-2 h-2 rounded-full bg-red-600 mr-2 mt-1 flex-shrink-0"></div>
-                          <div className="break-words">
-                            {trip.isSubTrip 
-                              ? (trip.segmentDestination || trip.route?.destination || "Destino no especificado")
-                              : (trip.route?.destination || "Destino no especificado")
-                            }
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                {/* Origen y destino */}
+                <div className="flex justify-between items-center text-sm text-gray-600 mb-4">
+                  <div className="flex-1 truncate">
+                    {trip.isSubTrip 
+                      ? (trip.segmentOrigin || trip.route?.origin || "Origen no especificado")
+                      : (trip.route?.origin || "Origen no especificado")
+                    }
                   </div>
-                  
-
-
-
+                  <div className="flex-1 text-right truncate">
+                    {trip.isSubTrip 
+                      ? (trip.segmentDestination || trip.route?.destination || "Destino no especificado")
+                      : (trip.route?.destination || "Destino no especificado")
+                    }
+                  </div>
                 </div>
+
+                {/* Botón de selección */}
+                <div className="flex justify-between items-center">
+                  <div></div>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTripSelect(trip.id);
+                    }}
+                  >
+                    Seleccionar
+                  </Button>
+                </div>
+
+                {/* Información adicional de sub-viajes */}
+                {trip.isSubTrip && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <span className="flex items-center text-xs text-gray-500">
+                      <span className="inline-block h-2 w-2 rounded-full bg-indigo-500 mr-2"></span>
+                      Sub-viaje de {trip.route?.name}
+                    </span>
+                  </div>
+                )}
+
+                {!trip.isSubTrip && trip.numStops > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <span className="text-xs text-gray-500">
+                      {trip.numStops} paradas en ruta
+                    </span>
+                  </div>
+                )}
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}
