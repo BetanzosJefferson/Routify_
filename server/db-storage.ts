@@ -4519,24 +4519,13 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getTransactionsByCompanyExcludingUser(companyId: string, excludeUserId: number): Promise<any[]> {
+  async getTransactionsByCompanyExcludingUser(companyId: string, excludeUserId: number): Promise<schema.Transaccion[]> {
     try {
-      console.log(`[getTransactionsByCompanyExcludingUser] EJECUTANDO CONSULTA FRESCA - Compañía ${companyId}, excluyendo usuario ${excludeUserId}`);
+      console.log(`[getTransactionsByCompanyExcludingUser] Obteniendo transacciones de compañía ${companyId}, excluyendo usuario ${excludeUserId}`);
       
       const transacciones = await db
-        .select({
-          id: schema.transacciones.id,
-          user_id: schema.transacciones.user_id,
-          detalles: schema.transacciones.detalles,
-          createdAt: schema.transacciones.createdAt,
-          companyId: schema.transacciones.companyId,
-          // Información del usuario
-          userName: sql`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as('userName'),
-          userFirstName: schema.users.firstName,
-          userLastName: schema.users.lastName
-        })
+        .select()
         .from(schema.transacciones)
-        .leftJoin(schema.users, eq(schema.transacciones.user_id, schema.users.id))
         .where(
           and(
             eq(schema.transacciones.companyId, companyId),
@@ -4546,17 +4535,6 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(schema.transacciones.createdAt));
       
       console.log(`[getTransactionsByCompanyExcludingUser] Se encontraron ${transacciones.length} transacciones de otros usuarios en la compañía ${companyId}`);
-      
-      // Debug: mostrar los primeros datos para verificar el JOIN
-      if (transacciones.length > 0) {
-        console.log('[getTransactionsByCompanyExcludingUser] Ejemplo de datos obtenidos:', {
-          user_id: transacciones[0].user_id,
-          userName: transacciones[0].userName,
-          userFirstName: transacciones[0].userFirstName,
-          userLastName: transacciones[0].userLastName
-        });
-      }
-      
       return transacciones;
     } catch (error) {
       console.error('[getTransactionsByCompanyExcludingUser] Error al obtener transacciones:', error);
