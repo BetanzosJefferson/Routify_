@@ -172,7 +172,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   Bitácora
                 </NavItem>
               )}
-              {canAccess("reservations") && (
+              {canAccess("cash-box") && (
                 <NavItem 
                   icon={<ReceiptIcon className="h-5 w-5" />} 
                   active={location === "/cash-box"}
@@ -181,7 +181,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   Caja
                 </NavItem>
               )}
-              {canAccess("reservations") && (
+              {canAccess("cutoff-history") && (
                 <NavItem 
                   icon={<ClipboardListIcon className="h-5 w-5" />} 
                   active={location === "/cutoff-history"}

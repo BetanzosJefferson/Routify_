@@ -24,6 +24,8 @@ export const ALL_SECTIONS: Section[] = [
   { id: "coupons", name: "Cupones", description: "Gestión de cupones de descuento" },
   { id: "packages", name: "Paqueterías", description: "Gestión de envío de paquetes" },
   { id: "cash-register", name: "Caja", description: "Registro de pagos realizados" },
+  { id: "cash-box", name: "Caja", description: "Gestión de transacciones en caja" },
+  { id: "cutoff-history", name: "Historial de Cortes", description: "Historial de cortes de caja realizados" },
   /* Temporalmente deshabilitado
   { id: "passenger-transfer", name: "Transferencia de pasajeros", description: "Gestión de transferencias de pasajeros entre viajes" },
   */
@@ -49,6 +51,8 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "coupons",
     "packages",
     "cash-register",
+    "cash-box",
+    "cutoff-history",
     "passenger-transfer"
   ],
   [UserRole.ADMIN]: [
@@ -65,6 +69,8 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "notifications",
     "packages",
     "cash-register",
+    "cash-box",
+    "cutoff-history",
     "passenger-transfer"
   ],
   [UserRole.CALL_CENTER]: [
@@ -73,13 +79,17 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "boarding-list",
     "reservation-requests",
     "notifications",
-    "packages"
+    "packages",
+    "cash-box",
+    "cutoff-history"
   ],
   [UserRole.CHECKER]: [
     "boarding-list",
     "notifications",
     "packages",
-    "cash-register"
+    "cash-register",
+    "cash-box",
+    "cutoff-history"
   ],
   // Permisos para rol DRIVER (conductor) - ya incluye el alias español 'chofer'
   [UserRole.DRIVER]: [
@@ -87,7 +97,9 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "boarding-list",
     "notifications",
     "packages",
-    "cash-register"
+    "cash-register",
+    "cash-box",
+    "cutoff-history"
     // Quitamos acceso a "trips" y "reservations" para conductor
   ],
   [UserRole.TICKET_OFFICE]: [
@@ -95,14 +107,18 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "reservations",
     "notifications",
     "packages",
-    "cash-register"
+    "cash-register",
+    "cash-box",
+    "cutoff-history"
   ],
   // Permisos para el nuevo rol COMISIONISTA
   [UserRole.COMMISSIONER]: [
     "trips",
     "my-commissions",
     "reservation-requests",
-    "notifications"
+    "notifications",
+    "cash-box",
+    "cutoff-history"
   ]
 };
 
