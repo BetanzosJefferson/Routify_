@@ -334,6 +334,9 @@ export function UserCashBoxesPage() {
                         <div className="text-left">
                           <h3 className="font-semibold">{userBox.userName}</h3>
                           <p className="text-sm text-muted-foreground">
+                            {userBox.userRole} • {userBox.userEmail}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
                             {userBox.transactionCount} transacciones
                           </p>
                         </div>
