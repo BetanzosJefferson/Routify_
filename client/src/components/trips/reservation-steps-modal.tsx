@@ -404,41 +404,160 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
   };
   
   // Handle downloading the ticket as PDF
-  const handleDownloadTicket = () => {
-    if (!reservationId) {
+  const handleDownloadTicket = async () => {
+    if (!submittedReservation) {
       toast({
         title: "Error",
-        description: "No se encontró el ID de la reservación",
+        description: "No se encontró la información de la reservación",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      // Abrir el boleto en una nueva ventana para descarga/impresión
-      const ticketUrl = `/reservation-details?id=${reservationId}&print=true`;
-      const downloadWindow = window.open(ticketUrl, '_blank');
+      const { jsPDF } = await import('jspdf');
       
-      if (!downloadWindow) {
-        toast({
-          title: "Error",
-          description: "No se pudo abrir la ventana de descarga. Por favor, desactive el bloqueador de ventanas emergentes.",
-          variant: "destructive",
-        });
-        return;
+      // Crear nuevo documento PDF
+      const doc = new jsPDF();
+      
+      // Configuración del documento
+      const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
+      
+      // Colores
+      const primaryColor = [59, 130, 246]; // blue-500
+      const grayColor = [107, 114, 128]; // gray-500
+      const darkColor = [17, 24, 39]; // gray-900
+      
+      // Fondo del ticket (rectángulo redondeado simulado)
+      doc.setFillColor(248, 250, 252);
+      doc.rect(20, 20, pageWidth - 40, pageHeight - 40, 'F');
+      
+      // Encabezado
+      doc.setFontSize(16);
+      doc.setTextColor(...darkColor);
+      doc.text('Passenger', 30, 40);
+      
+      // Nombre del pasajero
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${passengers[0]?.firstName || ''} ${passengers[0]?.lastName || ''}`, 30, 55);
+      
+      // Información de compra y proveedor
+      doc.setFontSize(10);
+      doc.setTextColor(...grayColor);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Purchased', 30, 70);
+      doc.text('Provider', 120, 70);
+      
+      doc.setFontSize(12);
+      doc.setTextColor(...darkColor);
+      const purchaseDate = new Date().toLocaleDateString('es-ES', { 
+        day: '2-digit', 
+        month: 'long', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      doc.text(purchaseDate, 30, 82);
+      doc.text('TransRoute', 120, 82);
+      
+      // Línea punteada decorativa
+      doc.setLineDash([2, 2]);
+      doc.setDrawColor(...grayColor);
+      doc.line(30, 100, pageWidth - 30, 100);
+      doc.setLineDash([]);
+      
+      // Código QR (simulado como rectángulo por ahora)
+      const qrSize = 60;
+      const qrX = (pageWidth - qrSize) / 2;
+      const qrY = 120;
+      
+      if (qrCodeUrl) {
+        try {
+          doc.addImage(qrCodeUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+        } catch (e) {
+          // Si falla la imagen, dibujar un rectángulo
+          doc.setFillColor(0, 0, 0);
+          doc.rect(qrX, qrY, qrSize, qrSize, 'F');
+        }
+      } else {
+        doc.setFillColor(0, 0, 0);
+        doc.rect(qrX, qrY, qrSize, qrSize, 'F');
       }
       
-      toast({
-        title: "Boleto abierto",
-        description: "Se abrió el boleto en una nueva ventana. Puedes imprimirlo o guardarlo como PDF.",
+      // Información del ticket
+      doc.setFontSize(10);
+      doc.setTextColor(...grayColor);
+      doc.text('Ticket', 30, 200);
+      
+      doc.setFontSize(14);
+      doc.setTextColor(...primaryColor);
+      doc.setFont('helvetica', 'bold');
+      const routeName = `${trip?.route?.origin || trip?.segmentOrigin || ''} - ${trip?.route?.destination || trip?.segmentDestination || ''}`;
+      doc.text(routeName, 30, 215);
+      
+      // Proveedor
+      doc.setFontSize(10);
+      doc.setTextColor(...grayColor);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Provider', 30, 230);
+      
+      doc.setFontSize(12);
+      doc.setTextColor(...darkColor);
+      doc.text('TransRoute', 30, 242);
+      
+      // Fecha de vencimiento
+      doc.setFontSize(10);
+      doc.setTextColor(...grayColor);
+      doc.text('Expires', 30, 257);
+      
+      doc.setFontSize(12);
+      doc.setTextColor(...darkColor);
+      const tripDate = new Date(trip?.departureDate || '').toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
       });
-    } catch (error) {
-      console.error("Error al abrir boleto:", error);
+      doc.text(tripDate, 30, 269);
+      
+      // Email de envío
+      doc.setFontSize(10);
+      doc.setTextColor(...grayColor);
+      doc.text(`Sent to - ${email || 'N/A'}`, 30, 290);
+      
+      // ID de reservación en la esquina superior derecha
+      doc.setFontSize(10);
+      doc.setTextColor(...grayColor);
+      doc.text(`#R-${String(submittedReservation.id).padStart(6, '0')}`, pageWidth - 60, 35);
+      
+      // Guardar el PDF
+      doc.save(`boleto-${submittedReservation.id}.pdf`);
+      
       toast({
-        title: "Error al abrir boleto",
-        description: "Ocurrió un error al intentar abrir el boleto. Por favor, intente nuevamente.",
+        title: "PDF generado",
+        description: "El boleto se ha descargado exitosamente como PDF.",
+      });
+      
+    } catch (error) {
+      console.error("Error al generar PDF:", error);
+      toast({
+        title: "Error al generar PDF",
+        description: "Ocurrió un error al generar el PDF. Intentando método alternativo...",
         variant: "destructive",
       });
+      
+      // Método alternativo: abrir en nueva ventana
+      try {
+        const ticketUrl = `/reservation-details?id=${submittedReservation.id}&print=true`;
+        window.open(ticketUrl, '_blank');
+      } catch (fallbackError) {
+        toast({
+          title: "Error",
+          description: "No se pudo generar el boleto. Por favor, intente nuevamente.",
+          variant: "destructive",
+        });
+      }
     }
   };
   
