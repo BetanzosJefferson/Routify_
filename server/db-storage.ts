@@ -4518,6 +4518,29 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
   }
+
+  async getTransactionsByCompanyExcludingUser(companyId: string, excludeUserId: number): Promise<schema.Transaccion[]> {
+    try {
+      console.log(`[getTransactionsByCompanyExcludingUser] Obteniendo transacciones de compañía ${companyId}, excluyendo usuario ${excludeUserId}`);
+      
+      const transacciones = await db
+        .select()
+        .from(schema.transacciones)
+        .where(
+          and(
+            eq(schema.transacciones.companyId, companyId),
+            not(eq(schema.transacciones.user_id, excludeUserId))
+          )
+        )
+        .orderBy(desc(schema.transacciones.createdAt));
+      
+      console.log(`[getTransactionsByCompanyExcludingUser] Se encontraron ${transacciones.length} transacciones de otros usuarios en la compañía ${companyId}`);
+      return transacciones;
+    } catch (error) {
+      console.error('[getTransactionsByCompanyExcludingUser] Error al obtener transacciones:', error);
+      return [];
+    }
+  }
   
   async updateTransaccion(id: number, data: Partial<schema.Transaccion>, userId?: number): Promise<schema.Transaccion | null> {
     try {
