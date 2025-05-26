@@ -6741,15 +6741,21 @@ function setupPackageRoutes(app: Express) {
 
   // Ruta para obtener transacciones de otros usuarios de la misma compañía (para cajas de usuarios)
   app.get(apiRouter("/transactions/user-cash-boxes"), isAuthenticated, async (req: Request, res: Response) => {
+    console.log("[GET /transactions/user-cash-boxes] Inicio de endpoint");
+    
     try {
       const { user } = req as any;
       
       if (!user) {
+        console.log("[GET /transactions/user-cash-boxes] Usuario no autenticado");
         return res.status(401).json({ error: "Usuario no autenticado" });
       }
 
+      console.log(`[GET /transactions/user-cash-boxes] Usuario autenticado: ${user.firstName} ${user.lastName} (ID: ${user.id}), Rol: ${user.role}`);
+
       // Verificar que el usuario tenga permisos (solo dueño y admin)
-      if (user.role !== UserRole.OWNER && user.role !== UserRole.ADMIN) {
+      if (user.role !== "dueño" && user.role !== "admin") {
+        console.log(`[GET /transactions/user-cash-boxes] Acceso denegado para rol: ${user.role}`);
         return res.status(403).json({ error: "No tienes permisos para acceder a esta información" });
       }
 
@@ -6761,18 +6767,26 @@ function setupPackageRoutes(app: Express) {
         companyId: user.companyId || user.company // Solo transacciones de la misma compañía
       };
 
-      console.log(`[GET /transactions/user-cash-boxes] Usuario: ${user.firstName} ${user.lastName} (ID: ${user.id})`);
-      console.log(`[GET /transactions/user-cash-boxes] Rol: ${user.role}, CompañíaID: ${user.companyId || user.company}`);
       console.log(`[GET /transactions/user-cash-boxes] Filtros aplicados:`, filters);
       
       const transacciones = await storage.getTransaccionesUserCashBoxes(filters);
       
-      console.log(`[GET /transactions/user-cash-boxes] Encontradas ${transacciones.length} transacciones de otros usuarios de la misma compañía`);
+      console.log(`[GET /transactions/user-cash-boxes] Encontradas ${transacciones.length} transacciones`);
       
-      res.json(transacciones);
+      // Asegurar que siempre se devuelve JSON
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(200).json(transacciones);
+      
     } catch (error) {
-      console.error("[GET /transactions/user-cash-boxes] Error:", error);
-      res.status(500).json({ error: "Error al obtener transacciones de cajas de usuarios" });
+      console.error("[GET /transactions/user-cash-boxes] Error completo:", error);
+      console.error("[GET /transactions/user-cash-boxes] Stack trace:", error instanceof Error ? error.stack : 'No stack available');
+      
+      // Asegurar que siempre se devuelve JSON incluso en errores
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(500).json({ 
+        error: "Error al obtener transacciones de cajas de usuarios",
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
     }
   });
 
