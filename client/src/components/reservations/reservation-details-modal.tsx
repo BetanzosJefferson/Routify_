@@ -478,11 +478,7 @@ export default function ReservationDetailsModal({
                         </a>
                         
                         <Button
-                          onClick={() => {
-                            // Abrir el boleto en una nueva ventana para imprimir/descargar
-                            const ticketUrl = `/reservation-details?id=${reservation.id}&print=true`;
-                            window.open(ticketUrl, '_blank');
-                          }}
+                          onClick={() => {test}
                           variant="default"
                           size="sm"
                           className="bg-blue-600 hover:bg-blue-700 text-white"
