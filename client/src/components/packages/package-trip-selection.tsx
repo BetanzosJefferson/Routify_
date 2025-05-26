@@ -341,19 +341,30 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                         Puntos específicos de este viaje
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3">
                       <div>
                         <div className="text-xs font-semibold text-gray-600">Punto de abordaje</div>
-                        <div className="text-sm font-medium text-green-700 flex items-center">
-                          <div className="w-2 h-2 rounded-full bg-green-600 mr-2"></div>
-                          {trip.segmentOrigin || trip.originTerminal || "Terminal principal"}
+                        <div className="text-sm font-medium text-green-700 flex items-start">
+                          <div className="w-2 h-2 rounded-full bg-green-600 mr-2 mt-1 flex-shrink-0"></div>
+                          <div className="break-words">
+                            {trip.isSubTrip 
+                              ? (trip.segmentOrigin || trip.route?.origin || "Origen no especificado")
+                              : (trip.route?.origin || "Origen no especificado")
+                            }
+                          </div>
                         </div>
                       </div>
+                      <div className="text-xs text-muted-foreground text-center">↓</div>
                       <div>
                         <div className="text-xs font-semibold text-gray-600">Punto de llegada</div>
-                        <div className="text-sm font-medium text-red-700 flex items-center">
-                          <div className="w-2 h-2 rounded-full bg-red-600 mr-2"></div>
-                          {trip.segmentDestination || trip.destinationTerminal || "Terminal principal"}
+                        <div className="text-sm font-medium text-red-700 flex items-start">
+                          <div className="w-2 h-2 rounded-full bg-red-600 mr-2 mt-1 flex-shrink-0"></div>
+                          <div className="break-words">
+                            {trip.isSubTrip 
+                              ? (trip.segmentDestination || trip.route?.destination || "Destino no especificado")
+                              : (trip.route?.destination || "Destino no especificado")
+                            }
+                          </div>
                         </div>
                       </div>
                     </div>
