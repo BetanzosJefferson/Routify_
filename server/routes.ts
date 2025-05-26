@@ -6745,6 +6745,10 @@ function setupPackageRoutes(app: Express) {
       const { user } = req as any;
       const { companyFilter } = req.body || {};
       
+      console.log(`[POST /box/cutoff] Request body:`, req.body);
+      console.log(`[POST /box/cutoff] Usuario: ${user?.firstName} ${user?.lastName}, Rol: ${user?.role}`);
+      console.log(`[POST /box/cutoff] CompanyFilter recibido:`, companyFilter);
+      
       if (!user) {
         return res.status(401).json({ error: "Usuario no autenticado" });
       }

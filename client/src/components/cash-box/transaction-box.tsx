@@ -146,7 +146,10 @@ const TransactionBox: React.FC = () => {
       const requestBody: any = {};
       if (user?.role === "taquilla" && selectedCompany !== "all") {
         requestBody.companyFilter = selectedCompany;
+        console.log("Enviando filtro de empresa al backend:", selectedCompany);
       }
+      
+      console.log("Request body que se enviará:", requestBody);
       
       const response = await fetch('/api/box/cutoff', {
         method: 'POST',
