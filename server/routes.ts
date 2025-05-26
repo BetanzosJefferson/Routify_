@@ -6739,6 +6739,35 @@ function setupPackageRoutes(app: Express) {
     }
   });
 
+  // Endpoint para obtener transacciones de otros usuarios de la misma compañía
+  app.get(apiRouter("/transactions/user-cash-boxes"), async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ error: "Usuario no autenticado" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ error: "Usuario sin compañía asignada" });
+      }
+      
+      console.log(`[GET /transactions/user-cash-boxes] Solicitando transacciones de otros usuarios para compañía ${user.companyId}, usuario actual: ${user.id}`);
+      
+      // Obtener transacciones donde:
+      // - user_id sea diferente al usuario actual
+      // - company_id sea igual a la compañía del usuario actual
+      const transacciones = await storage.getTransactionsByCompanyExcludingUser(user.companyId, user.id);
+      
+      console.log(`[GET /transactions/user-cash-boxes] Encontradas ${transacciones.length} transacciones de otros usuarios para compañía ${user.companyId}`);
+      
+      res.json(transacciones);
+    } catch (error) {
+      console.error("[GET /transactions/user-cash-boxes] Error:", error);
+      res.status(500).json({ error: "Failed to fetch user cash box transactions" });
+    }
+  });
+
   // Ruta para crear un nuevo corte de caja
   app.post(apiRouter("/box/cutoff"), async (req: Request, res: Response) => {
     try {
