@@ -164,23 +164,12 @@ const TransactionBox: React.FC = () => {
         variant: "default",
       });
       
-      console.log("Generando PDF para corte:", data.cutoff.id);
-      
-      // Generar el PDF directamente con las transacciones capturadas
-      try {
-        await generateTicketPDF(data.cutoff, data.capturedTransactions);
-      } catch (error) {
-        console.error("Error al generar PDF:", error);
-        toast({
-          title: "Error al generar el ticket",
-          description: "El corte se realizó pero no se pudo generar el PDF",
-          variant: "destructive",
-        });
-      }
-      
       // Invalidar consulta para recargar las transacciones
       queryClient.invalidateQueries({ queryKey: ['/api/transactions/current'] });
       setIsCreatingCutoff(false);
+      
+      // Redirigir al historial de cortes
+      window.location.href = '/cutoff-history';
     },
     onError: (error) => {
       toast({
