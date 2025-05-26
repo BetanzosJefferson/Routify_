@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, Users, DollarSign, CreditCard, Calendar, RefreshCw, Eye, EyeOff, Filter } from "lucide-react"; // Añadido Filter icon
+import { AlertCircle, Users, DollarSign, CreditCard, Calendar, RefreshCw, Eye, EyeOff, Filter, Scissors, ArrowRight } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -275,135 +275,116 @@ export function UserCashBoxesPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Cajas de usuarios</h1>
-                    <p className="text-muted-foreground">
-                        Gestión de cajas individuales por usuario
-                    </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                    {/* Filtro por usuario */}
-                    <Select value={selectedUserFilter} onValueChange={setSelectedUserFilter}>
-                        <SelectTrigger className="w-[180px] flex items-center gap-2">
-                            <Filter className="h-4 w-4 text-muted-foreground" />
-                            <SelectValue placeholder="Filtrar por usuario" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Todos los usuarios</SelectItem>
-                            {allUserCashBoxes.map(userBox => (
-                                <SelectItem key={userBox.userId} value={userBox.userId.toString()}>
-                                    {userBox.userName}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-
-                    {/* Filtro por estado de corte */}
-                    <Select value={selectedCutoffFilter} onValueChange={setSelectedCutoffFilter}>
-                        <SelectTrigger className="w-[180px] flex items-center gap-2">
-                            <Filter className="h-4 w-4 text-muted-foreground" />
-                            <SelectValue placeholder="Estado de corte" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Todos los estados</SelectItem>
-                            <SelectItem value="pending">Corte pendiente</SelectItem>
-                            <SelectItem value="completed">Corte realizado</SelectItem>
-                        </SelectContent>
-                    </Select>
-
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={toggleAmountVisibility}
-                        className="flex items-center space-x-2"
-                    >
-                        {showAmounts ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        <span>{showAmounts ? "Ocultar montos" : "Mostrar montos"}</span>
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleRefresh}
-                        disabled={isLoading}
-                        className="flex items-center space-x-2"
-                    >
-                        <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                        <span>Actualizar</span>
-                    </Button>
-                </div>
-            </div>
-
-            {/* Resumen general */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Usuarios</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{filteredUserCashBoxes.length}</div> {/* Usar filteredUserCashBoxes */}
-                        <p className="text-xs text-muted-foreground">
-                            {filteredUserCashBoxes.length === 1 ? 'usuario activo' : 'usuarios activos'}
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Efectivo</CardTitle>
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {formatCurrency(filteredUserCashBoxes.reduce((sum, user) => sum + user.totalCash, 0))}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Total en efectivo
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Transferencias</CardTitle>
-                        <CreditCard className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {formatCurrency(filteredUserCashBoxes.reduce((sum, user) => sum + user.totalTransfer, 0))}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Total en transferencias
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total General</CardTitle>
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {formatCurrency(filteredUserCashBoxes.reduce((sum, user) => sum + user.totalAmount, 0))}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            {filteredUserCashBoxes.reduce((sum, user) => sum + user.transactionCount, 0)} transacciones
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Lista de usuarios y sus cajas */}
-            <Card>
+            <Card className="w-full">
                 <CardHeader>
-                    <CardTitle>Cajas por Usuario</CardTitle>
-                    <CardDescription>
-                        Detalle de transacciones y balances por cada usuario
-                    </CardDescription>
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+                        <div>
+                            <CardTitle className="flex items-center">
+                                <Users className="mr-2 h-6 w-6" />
+                                Cajas de usuarios
+                            </CardTitle>
+                            <CardDescription>
+                                Gestión de cajas individuales por usuario
+                            </CardDescription>
+                        </div>
+                        <div className="flex items-center space-x-2 mt-4 md:mt-0">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={toggleAmountVisibility}
+                                title={showAmounts ? "Ocultar montos" : "Mostrar montos"}
+                            >
+                                {showAmounts ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={handleRefresh}
+                                disabled={isLoading}
+                                title="Actualizar"
+                            >
+                                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                            </Button>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
+                    {/* Filtros */}
+                    <div className="flex flex-col md:flex-row gap-4 mb-6">
+                        <div className="flex items-center gap-2">
+                            <Filter className="h-4 w-4 text-muted-foreground" />
+                            <Select value={selectedUserFilter} onValueChange={setSelectedUserFilter}>
+                                <SelectTrigger className="w-[180px]">
+                                    <SelectValue placeholder="Filtrar por usuario" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todos los usuarios</SelectItem>
+                                    {allUserCashBoxes.map(userBox => (
+                                        <SelectItem key={userBox.userId} value={userBox.userId.toString()}>
+                                            {userBox.userName}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <Scissors className="h-4 w-4 text-muted-foreground" />
+                            <Select value={selectedCutoffFilter} onValueChange={setSelectedCutoffFilter}>
+                                <SelectTrigger className="w-[180px]">
+                                    <SelectValue placeholder="Estado de corte" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todos los estados</SelectItem>
+                                    <SelectItem value="pending">Corte pendiente</SelectItem>
+                                    <SelectItem value="completed">Corte realizado</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    {/* Resumen de totales */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
+                        <div className="flex items-center justify-between md:justify-center">
+                            <div className="flex items-center">
+                                <DollarSign className="h-6 w-6 mr-2 text-primary" />
+                                <div>
+                                    <p className="text-sm font-medium">Total</p>
+                                    <p className="text-xl font-bold">
+                                        {formatCurrency(filteredUserCashBoxes.reduce((sum, user) => sum + user.totalAmount, 0))}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between md:justify-center">
+                            <div className="flex items-center">
+                                <ArrowRight className="h-6 w-6 mr-2 text-green-500" />
+                                <div>
+                                    <p className="text-sm font-medium">Efectivo</p>
+                                    <p className="text-xl font-bold">
+                                        {formatCurrency(filteredUserCashBoxes.reduce((sum, user) => sum + user.totalCash, 0))}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between md:justify-center">
+                            <div className="flex items-center">
+                                <CreditCard className="h-6 w-6 mr-2 text-blue-500" />
+                                <div>
+                                    <p className="text-sm font-medium">Transferencia</p>
+                                    <p className="text-xl font-bold">
+                                        {formatCurrency(filteredUserCashBoxes.reduce((sum, user) => sum + user.totalTransfer, 0))}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Sección de usuarios */}
+                    <div className="mb-8">
+                        <div className="flex items-center mb-4">
+                            <h3 className="text-lg font-semibold">Cajas por Usuario ({filteredUserCashBoxes.length})</h3>
+                        </div>
                     {filteredUserCashBoxes.length === 0 ? ( // Usar filteredUserCashBoxes
                         <Alert>
                             <AlertCircle className="h-4 w-4" />
