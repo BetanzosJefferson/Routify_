@@ -2863,6 +2863,87 @@ export class DatabaseStorage implements IStorage {
           // No fallamos aquí para no interrumpir el proceso principal
         }
         
+        // Crear una transacción si hay anticipo
+        if (currentRequest.advanceAmount && currentRequest.advanceAmount > 0) {
+          try {
+            console.log(`[updateReservationRequestStatus] Creando transacción para anticipo de $${currentRequest.advanceAmount}`);
+            
+            // Obtener información del comisionista (requester)
+            const [requester] = await db
+              .select()
+              .from(schema.users)
+              .where(eq(schema.users.id, currentRequest.requesterId));
+            
+            // Obtener información del viaje para los detalles de la transacción
+            const tripWithRouteInfo = await this.getTripWithRouteInfo(trip.id);
+            
+            // Verificar si el viaje es un sub-viaje para determinar origen y destino correctos
+            let origen = "";
+            let destino = "";
+            
+            if (tripWithRouteInfo?.isSubTrip && tripWithRouteInfo.segmentOrigin && tripWithRouteInfo.segmentDestination) {
+              origen = tripWithRouteInfo.segmentOrigin;
+              destino = tripWithRouteInfo.segmentDestination;
+            } else if (tripWithRouteInfo?.route) {
+              origen = tripWithRouteInfo.route.origin;
+              destino = tripWithRouteInfo.route.destination;
+            }
+            
+            if (tripWithRouteInfo && (tripWithRouteInfo.route || (origen && destino))) {
+              // Obtener los pasajeros para los detalles
+              const passengerNames = passengersData.map(p => `${p.firstName} ${p.lastName}`).join(", ");
+              
+              // Crear los detalles de la transacción en formato JSON
+              const detallesTransaccion = {
+                type: "reservation",
+                details: {
+                  id: reservation.id,
+                  tripId: reservation.tripId,
+                  isSubTrip: tripWithRouteInfo.isSubTrip || false,
+                  pasajeros: passengerNames,
+                  contacto: {
+                    email: reservation.email,
+                    telefono: reservation.phone
+                  },
+                  origen: origen,
+                  destino: destino,
+                  monto: currentRequest.advanceAmount,
+                  metodoPago: currentRequest.advancePaymentMethod || "efectivo",
+                  notas: reservation.notes,
+                  companyId: currentRequest.companyId,
+                  dateCreated: new Date().toISOString(),
+                  // Información del comisionista que solicitó la reservación
+                  commissioner: requester ? {
+                    id: requester.id,
+                    name: `${requester.first_name} ${requester.last_name}`,
+                    email: requester.email,
+                    company: requester.company_id,
+                    role: requester.role
+                  } : null
+                }
+              };
+              
+              console.log(`[updateReservationRequestStatus] Creando transacción con información del comisionista:`, JSON.stringify(detallesTransaccion, null, 2));
+              
+              // Crear la transacción en la base de datos asociada al usuario que aprobó (reviewedBy)
+              const transaccionData = {
+                detalles: detallesTransaccion,
+                user_id: reviewedBy, // La transacción se asocia al usuario que aprobó la solicitud
+                cutoff_id: null, // Inicialmente NULL, se actualizará cuando se haga un corte de caja
+                companyId: currentRequest.companyId
+              };
+              
+              const transaccion = await this.createTransaccion(transaccionData);
+              console.log(`[updateReservationRequestStatus] Transacción creada exitosamente con ID: ${transaccion.id}`);
+            } else {
+              console.log(`[updateReservationRequestStatus] No se pudo obtener información completa del viaje para crear la transacción`);
+            }
+          } catch (error) {
+            console.error(`[updateReservationRequestStatus] Error al crear transacción:`, error);
+            // Continuamos aunque falle la creación de la transacción para no afectar la aprobación de la solicitud
+          }
+        }
+        
         // Crear notificación para el comisionista
         const notification: InsertNotification = {
           userId: currentRequest.requesterId,
