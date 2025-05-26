@@ -199,6 +199,16 @@ const TransactionBox: React.FC = () => {
       });
       return;
     }
+
+    // Validación específica para usuarios con rol "taquilla"
+    if (user?.role === "taquilla" && selectedCompany === "all") {
+      toast({
+        title: "Debe seleccionar una empresa",
+        description: "Para realizar un corte, primero debe seleccionar una empresa específica en el filtro",
+        variant: "destructive",
+      });
+      return;
+    }
     
     createCutoffMutation.mutate();
   };
@@ -509,11 +519,10 @@ const TransactionBox: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas las empresas</SelectItem>
-                    {/* Obtener empresas únicas de las transacciones */}
+                    {/* Obtener empresas únicas de TODAS las transacciones sin filtrar */}
                     {Array.from(
                       new Set([
-                        ...reservationTransactions.map(t => t.companyId).filter(Boolean),
-                        ...packageTransactions.map(t => t.companyId).filter(Boolean)
+                        ...(data || []).filter(t => t.companyId).map(t => t.companyId)
                       ])
                     ).map((companyId) => (
                       <SelectItem key={companyId} value={companyId}>
