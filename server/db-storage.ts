@@ -30,7 +30,7 @@ import {
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db } from "./db";
-import { eq, ne, and, gte, lt, like, or, sql, desc, isNull, not, inArray } from "drizzle-orm";
+import { eq, and, gte, lt, like, or, sql, desc, isNull, not, inArray } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   // Implementación de métodos para presupuestos de viajes (operadores)
@@ -4594,46 +4594,6 @@ export class DatabaseStorage implements IStorage {
       return cortes;
     } catch (error) {
       console.error(`[getBoxCutoffsByUser] Error al obtener cortes para usuario ${userId}:`, error);
-      return [];
-    }
-  }
-
-  // Nueva función para obtener transacciones de otros usuarios de la misma compañía
-  async getTransaccionesUserCashBoxes(filters: { 
-    not_usuario_id: number,
-    companyId: string
-  }): Promise<schema.Transaccion[]> {
-    try {
-      console.log(`[getTransaccionesUserCashBoxes] Iniciando consulta con filtros:`, filters);
-      
-      // Crear array de condiciones de filtro
-      const conditions = [];
-      
-      // Filtro 1: Excluir transacciones del usuario actual (user_id diferente)
-      if (filters.not_usuario_id) {
-        conditions.push(ne(schema.transacciones.user_id, filters.not_usuario_id));
-        console.log(`[getTransaccionesUserCashBoxes] Excluyendo transacciones del usuario: ${filters.not_usuario_id}`);
-      }
-      
-      // Filtro 2: Solo transacciones de la misma compañía
-      if (filters.companyId) {
-        conditions.push(eq(schema.transacciones.companyId, filters.companyId));
-        console.log(`[getTransaccionesUserCashBoxes] Filtrando por compañía: ${filters.companyId}`);
-      }
-      
-      // Construir query con filtros combinados
-      const query = db.select()
-        .from(schema.transacciones)
-        .where(and(...conditions))
-        .orderBy(desc(schema.transacciones.createdAt));
-      
-      const transacciones = await query;
-      console.log(`[getTransaccionesUserCashBoxes] Encontradas ${transacciones.length} transacciones de otros usuarios de la misma compañía`);
-      
-      return transacciones;
-    } catch (error) {
-      console.error('[getTransaccionesUserCashBoxes] Error al obtener transacciones:', error);
-      console.error('[getTransaccionesUserCashBoxes] Stack trace:', error instanceof Error ? error.stack : 'No stack available');
       return [];
     }
   }
