@@ -133,16 +133,17 @@ async function generateCutoffTicketPDF(
     cutoffGroup.transactions.forEach(transaction => {
       if (transaction.detalles.type.includes("package")) {
         // Paquetes tienen más detalles: origen-destino, remitente, destinatario, descripción
-        extraHeight += 20; // 20mm adicionales por paquete
+        extraHeight += 25; // 25mm adicionales por paquete
       } else if (transaction.detalles.type.includes("reservation")) {
         // Reservas tienen: origen-destino, pasajeros
-        extraHeight += 12; // 12mm adicionales por reserva
+        extraHeight += 18; // 18mm adicionales por reserva
       } else {
-        extraHeight += 8; // Altura mínima por transacción básica
+        extraHeight += 10; // Altura mínima por transacción básica
       }
     });
     
-    const docHeight = 80 + extraHeight; // Altura base + altura dinámica
+    // Altura base más generosa + altura dinámica + margen adicional
+    const docHeight = Math.max(120, 100 + extraHeight); // Mínimo 120mm, o más según contenido
     console.log(`Generando PDF con altura calculada: ${docHeight}mm para ${transactionCount} transacciones`);
     
     // Crear un documento PDF con las dimensiones de un ticket térmico
