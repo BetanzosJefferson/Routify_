@@ -2896,8 +2896,17 @@ export class DatabaseStorage implements IStorage {
           console.log(`[updateReservationRequestStatus] passengersData.length: ${passengersData.length}`);
 
 
+          // Verificar si el anticipo cubre el 100% del viaje
+          const isFullPaymentWithAdvance = currentRequest.advanceAmount && 
+                                         currentRequest.totalAmount && 
+                                         currentRequest.advanceAmount >= currentRequest.totalAmount;
+
           if (currentRequest.advanceAmount && currentRequest.advanceAmount > 0) {
-            console.log(`[updateReservationRequestStatus] Condición de anticipo CUMPLIDA. Creando transacción de anticipo por ${currentRequest.advanceAmount}`);
+            const transactionNote = isFullPaymentWithAdvance 
+              ? `Pago completo de reservación #${reservation.id} (Solicitud #${id})` 
+              : `Anticipo de reservación #${reservation.id} (Solicitud #${id})`;
+            
+            console.log(`[updateReservationRequestStatus] Condición de anticipo CUMPLIDA. Creando transacción de ${isFullPaymentWithAdvance ? 'pago completo' : 'anticipo'} por ${currentRequest.advanceAmount}`);
 
             const advanceTransactionData = {
               detalles: {
@@ -2905,7 +2914,7 @@ export class DatabaseStorage implements IStorage {
                 details: {
                   id: reservation.id,
                   monto: currentRequest.advanceAmount,
-                  notas: `Anticipo de reservación #${reservation.id} (Solicitud #${id})`,
+                  notas: transactionNote,
                   origen: trip.route?.origin || "Origen no especificado",
                   destino: trip.route?.destination || "Destino no especificado",
                   tripId: currentRequest.tripId,
@@ -2931,7 +2940,8 @@ export class DatabaseStorage implements IStorage {
 
           console.log(`[updateReservationRequestStatus] Verificando pago completo: paymentStatus=${currentRequest.paymentStatus}, totalAmount=${currentRequest.totalAmount}, advanceAmount=${currentRequest.advanceAmount}`);
 
-          if (currentRequest.paymentStatus === "pagado" && currentRequest.totalAmount > (currentRequest.advanceAmount || 0)) {
+          // Solo crear transacción de pago completo si hay un monto restante (no cubierto por el anticipo)
+          if (currentRequest.paymentStatus === "pagado" && currentRequest.totalAmount > (currentRequest.advanceAmount || 0) && !isFullPaymentWithAdvance) {
             const remainingAmount = currentRequest.totalAmount - (currentRequest.advanceAmount || 0);
 
             console.log(`[updateReservationRequestStatus] Condición de pago completo CUMPLIDA. Creando transacción de pago completo por ${remainingAmount}`);
