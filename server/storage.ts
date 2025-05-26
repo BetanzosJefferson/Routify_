@@ -168,6 +168,9 @@ export interface IStorage {
   createTransaccion(transaccionData: schema.InsertTransaccion): Promise<schema.Transaccion>;
   getTransacciones(filters?: { usuario_id?: number, id_corte?: number }): Promise<schema.Transaccion[]>;
   getTransactionsByCompanyExcludingUser(companyId: string, excludeUserId: number): Promise<schema.Transaccion[]>;
+  
+  // Cajas de usuarios methods
+  getUserCashBoxes(currentUserId: number, companyId: string): Promise<any[]>;
 }
 
 export class MemStorage implements IStorage {

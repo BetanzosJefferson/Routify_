@@ -4620,4 +4620,52 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
   }
+
+  // Método para obtener cajas de usuarios con información del usuario asociado
+  async getUserCashBoxes(currentUserId: number, companyId: string): Promise<any[]> {
+    console.log(`[getUserCashBoxes] Consultando transacciones para usuario ${currentUserId} y compañía ${companyId}`);
+    
+    try {
+      // Consultar transacciones con información del usuario mediante JOIN
+      // donde user_id es diferente al usuario actual y company_id coincide con la compañía del usuario actual
+      const result = await db
+        .select({
+          // Campos de la transacción
+          id: schema.transactions.id,
+          details: schema.transactions.details,
+          user_id: schema.transactions.user_id,
+          cutoff_id: schema.transactions.cutoff_id,
+          createdAt: schema.transactions.created_at,
+          updatedAt: schema.transactions.updated_at,
+          companyId: schema.transactions.company_id,
+          // Información del usuario
+          user: {
+            id: schema.users.id,
+            firstName: schema.users.first_name,
+            lastName: schema.users.last_name,
+            email: schema.users.email,
+            role: schema.users.role,
+            company: schema.users.company,
+            profilePicture: schema.users.profile_picture,
+            companyId: schema.users.company_id,
+            commissionPercentage: schema.users.commission_percentage
+          }
+        })
+        .from(schema.transactions)
+        .innerJoin(schema.users, eq(schema.transactions.user_id, schema.users.id))
+        .where(
+          and(
+            ne(schema.transactions.user_id, currentUserId),
+            eq(schema.transactions.company_id, companyId)
+          )
+        )
+        .orderBy(desc(schema.transactions.created_at));
+
+      console.log(`[getUserCashBoxes] Encontradas ${result.length} transacciones con información de usuario`);
+      return result;
+    } catch (error) {
+      console.error('[getUserCashBoxes] Error al consultar transacciones:', error);
+      throw error;
+    }
+  }
 }

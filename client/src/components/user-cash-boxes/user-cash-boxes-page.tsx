@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 interface Transaction {
   id: number;
   user_id: number;
-  detalles: {
+  details: {
     type: string;
     details: {
       id: number;
@@ -30,11 +30,26 @@ interface Transaction {
   };
   createdAt: string;
   companyId: string;
+  user: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: string;
+    company: string;
+    profilePicture?: string;
+    companyId: string;
+    commissionPercentage: number;
+  };
 }
 
 interface UserCashBoxData {
   userId: number;
   userName: string;
+  userEmail: string;
+  userRole: string;
+  userCompany: string;
+  userProfilePicture?: string;
   transactions: Transaction[];
   totalCash: number;
   totalTransfer: number;
