@@ -4124,8 +4124,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const currentUser = req.user as any;
+      console.log(`[POST /reservation-requests/${requestId}/update-status] Usuario actual:`, currentUser);
+      console.log(`[POST /reservation-requests/${requestId}/update-status] ID del usuario:`, currentUser?.id);
+      
       if (!currentUser) {
         return res.status(401).json({ message: "No autenticado" });
+      }
+      
+      if (!currentUser.id) {
+        console.error(`[POST /reservation-requests/${requestId}/update-status] Error: currentUser.id es undefined`);
+        return res.status(401).json({ message: "Usuario sin ID válido" });
       }
       
       // Verificar que el usuario tenga permisos para aprobar/rechazar
