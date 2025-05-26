@@ -6887,6 +6887,8 @@ function setupPackageRoutes(app: Express) {
 
       // Preparar filtros
       const filters: any = {
+        // Solo queremos transacciones que NO están asociadas a un corte (cutoff_id es NULL)
+        id_corte: null,
         // Filtrar por empresa
         companyId: user.company || user.companyId
       };
@@ -6897,9 +6899,6 @@ function setupPackageRoutes(app: Express) {
         if (userId !== user.id) {
           filters.usuario_id = userId;
         }
-      } else {
-        // Si es "all", obtener todos los usuarios EXCEPTO el actual
-        // Esto lo manejaremos después de obtener las transacciones
       }
 
       // Aplicar filtro de tiempo
