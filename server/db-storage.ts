@@ -4519,13 +4519,24 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getTransactionsByCompanyExcludingUser(companyId: string, excludeUserId: number): Promise<schema.Transaccion[]> {
+  async getTransactionsByCompanyExcludingUser(companyId: string, excludeUserId: number): Promise<any[]> {
     try {
       console.log(`[getTransactionsByCompanyExcludingUser] Obteniendo transacciones de compañía ${companyId}, excluyendo usuario ${excludeUserId}`);
       
       const transacciones = await db
-        .select()
+        .select({
+          id: schema.transacciones.id,
+          user_id: schema.transacciones.user_id,
+          detalles: schema.transacciones.detalles,
+          createdAt: schema.transacciones.createdAt,
+          companyId: schema.transacciones.companyId,
+          // Información del usuario
+          userName: sql`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as('userName'),
+          userFirstName: schema.users.firstName,
+          userLastName: schema.users.lastName
+        })
         .from(schema.transacciones)
+        .leftJoin(schema.users, eq(schema.transacciones.user_id, schema.users.id))
         .where(
           and(
             eq(schema.transacciones.companyId, companyId),

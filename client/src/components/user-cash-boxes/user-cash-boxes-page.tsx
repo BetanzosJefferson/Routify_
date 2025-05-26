@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, Users, DollarSign, CreditCard, Calendar, RefreshCw, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, Users, DollarSign, CreditCard, Calendar, RefreshCw, Eye, EyeOff, Filter } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +14,9 @@ import { useToast } from "@/hooks/use-toast";
 interface Transaction {
   id: number;
   user_id: number;
+  userName: string;
+  userFirstName: string;
+  userLastName: string;
   detalles: {
     type: string;
     details: {
@@ -46,6 +50,7 @@ export function UserCashBoxesPage() {
   const { toast } = useToast();
   const [expandedUsers, setExpandedUsers] = useState<Set<number>>(new Set());
   const [showAmounts, setShowAmounts] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<string>("all");
 
   // Consultar transacciones de otros usuarios
   const { data: transactions, isLoading, error, refetch } = useQuery({
@@ -201,6 +206,20 @@ export function UserCashBoxesPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
+          <Select value={selectedUser} onValueChange={setSelectedUser}>
+            <SelectTrigger className="w-48">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Filtrar por usuario" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los usuarios</SelectItem>
+              {uniqueUsers.map((user) => (
+                <SelectItem key={user.userId} value={user.userId.toString()}>
+                  {user.userName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button
             variant="outline"
             size="sm"
@@ -233,7 +252,10 @@ export function UserCashBoxesPage() {
           <CardContent>
             <div className="text-2xl font-bold">{userCashBoxes.length}</div>
             <p className="text-xs text-muted-foreground">
-              {userCashBoxes.length === 1 ? 'usuario activo' : 'usuarios activos'}
+              {selectedUser === "all" 
+                ? `${userCashBoxes.length === 1 ? 'usuario activo' : 'usuarios activos'}` 
+                : 'usuario filtrado'
+              }
             </p>
           </CardContent>
         </Card>
