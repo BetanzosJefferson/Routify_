@@ -3985,7 +3985,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               paymentStatus, advanceAmount, advancePaymentMethod, 
               paymentMethod, notes } = req.body;
       
-      if (!tripId || !passengersData || !totalAmount || !email || !phone) {
+      if (!tripId || !passengersData || !totalAmount || !phone) {
         return res.status(400).json({ 
           message: "Faltan datos obligatorios para la solicitud de reservación" 
         });

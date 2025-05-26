@@ -721,7 +721,7 @@ export const reservationRequests = pgTable("reservation_requests", {
   tripId: integer("trip_id").notNull(),
   passengersData: jsonb("passengers_data").notNull(),
   totalAmount: doublePrecision("total_amount").notNull(),
-  email: text("email").notNull(),
+  email: text("email"),
   phone: text("phone").notNull(),
   paymentStatus: text("payment_status").notNull().default(PaymentStatus.PENDING),
   advanceAmount: doublePrecision("advance_amount").default(0),
