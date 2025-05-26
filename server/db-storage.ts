@@ -4461,7 +4461,8 @@ export class DatabaseStorage implements IStorage {
     id_corte?: number | null,
     id_corte_not_null?: boolean,
     startDate?: Date,
-    endDate?: Date 
+    endDate?: Date,
+    companyId?: string
   }): Promise<schema.Transaccion[]> {
     try {
       let query = db.select().from(schema.transacciones);
@@ -4498,6 +4499,12 @@ export class DatabaseStorage implements IStorage {
       if (filters?.endDate) {
         query = query.where(lte(schema.transacciones.createdAt, filters.endDate));
         console.log(`[getTransacciones] Filtrando transacciones hasta: ${filters.endDate.toISOString()}`);
+      }
+      
+      // Filtrar por companyId si se especifica (para usuarios taquilla)
+      if (filters?.companyId) {
+        query = query.where(eq(schema.transacciones.companyId, filters.companyId));
+        console.log(`[getTransacciones] Filtrando transacciones por companyId: ${filters.companyId}`);
       }
       
       // Ordenar por fecha de creación descendente (más recientes primero)

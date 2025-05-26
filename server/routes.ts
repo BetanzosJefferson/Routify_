@@ -6765,6 +6765,7 @@ function setupPackageRoutes(app: Express) {
         console.log(`[POST /box/cutoff] Usuario taquilla filtrando por empresa: ${companyFilter}`);
       }
       
+      console.log(`[POST /box/cutoff] Filtros aplicados:`, filters);
       const transacciones = await storage.getTransacciones(filters);
 
       if (transacciones.length === 0) {
