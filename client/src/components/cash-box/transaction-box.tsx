@@ -514,9 +514,9 @@ const TransactionBox: React.FC = () => {
                   <TableHead>Fecha</TableHead>
                   <TableHead>Origen-Destino</TableHead>
                   <TableHead>Pasajeros</TableHead>
-                  {user?.role === "taquilla" && <TableHead>Empresa</TableHead>}
                   <TableHead>Método</TableHead>
                   <TableHead>Monto</TableHead>
+                  {user?.role === "taquilla" && <TableHead>Empresa</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -536,6 +536,12 @@ const TransactionBox: React.FC = () => {
                           </div>
                         </TableCell>
                         <TableCell>{details.pasajeros || 'N/A'}</TableCell>
+                        <TableCell>
+                          <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
+                            {details.metodoPago || "N/A"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
                         {user?.role === "taquilla" && (
                           <TableCell>
                             <div className="text-xs font-mono">
@@ -543,12 +549,6 @@ const TransactionBox: React.FC = () => {
                             </div>
                           </TableCell>
                         )}
-                        <TableCell>
-                          <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
-                            {details.metodoPago || "N/A"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
                       </TableRow>
                     );
                   } catch (error) {
@@ -581,9 +581,9 @@ const TransactionBox: React.FC = () => {
                   <TableHead>Origen-Destino</TableHead>
                   <TableHead>Remitente/Destinatario</TableHead>
                   <TableHead>Descripción</TableHead>
-                  {user?.role === "taquilla" && <TableHead>Empresa</TableHead>}
                   <TableHead>Método</TableHead>
                   <TableHead>Monto</TableHead>
+                  {user?.role === "taquilla" && <TableHead>Empresa</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -618,6 +618,12 @@ const TransactionBox: React.FC = () => {
                             )}
                           </div>
                         </TableCell>
+                        <TableCell>
+                          <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
+                            {details.metodoPago || "N/A"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
                         {user?.role === "taquilla" && (
                           <TableCell>
                             <div className="text-xs font-mono">
@@ -625,12 +631,6 @@ const TransactionBox: React.FC = () => {
                             </div>
                           </TableCell>
                         )}
-                        <TableCell>
-                          <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
-                            {details.metodoPago || "N/A"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
                       </TableRow>
                     );
                   } catch (error) {
