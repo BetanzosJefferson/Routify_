@@ -4546,6 +4546,17 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(schema.transacciones.createdAt));
       
       console.log(`[getTransactionsByCompanyExcludingUser] Se encontraron ${transacciones.length} transacciones de otros usuarios en la compañía ${companyId}`);
+      
+      // Debug: mostrar los primeros datos para verificar el JOIN
+      if (transacciones.length > 0) {
+        console.log('[getTransactionsByCompanyExcludingUser] Ejemplo de datos obtenidos:', {
+          user_id: transacciones[0].user_id,
+          userName: transacciones[0].userName,
+          userFirstName: transacciones[0].userFirstName,
+          userLastName: transacciones[0].userLastName
+        });
+      }
+      
       return transacciones;
     } catch (error) {
       console.error('[getTransactionsByCompanyExcludingUser] Error al obtener transacciones:', error);
