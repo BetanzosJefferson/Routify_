@@ -2884,6 +2884,7 @@ export class DatabaseStorage implements IStorage {
         // === BLOQUE DE TRANSACCIONES (donde nos habíamos enfocado antes) ===
         try {
           console.log(`[updateReservationRequestStatus] === INICIANDO CREACIÓN DE TRANSACCIONES ===`);
+          console.log(`[updateReservationRequestStatus] DEPURACIÓN CRÍTICA - currentRequest.requesterId: ${currentRequest.requesterId}, reviewedBy: ${reviewedBy}`);
           console.log(`[updateReservationRequestStatus] currentRequest.advanceAmount: ${currentRequest.advanceAmount}`);
           console.log(`[updateReservationRequestStatus] currentRequest.paymentStatus: ${currentRequest.paymentStatus}`);
           console.log(`[updateReservationRequestStatus] currentRequest.totalAmount: ${currentRequest.totalAmount}`);
