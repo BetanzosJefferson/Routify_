@@ -6740,7 +6740,7 @@ function setupPackageRoutes(app: Express) {
   });
 
   // Ruta para obtener transacciones de otros usuarios de la misma compañía (para cajas de usuarios)
-  app.get(apiRouter("/transactions/user-cash-boxes"), async (req: Request, res: Response) => {
+  app.get(apiRouter("/transactions/user-cash-boxes"), isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { user } = req as any;
       
