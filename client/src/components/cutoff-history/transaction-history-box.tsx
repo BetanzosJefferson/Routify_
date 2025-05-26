@@ -121,7 +121,8 @@ async function generateCutoffTicketPDF(
     reservationCount: number;
     packageCount: number;
   },
-  companyName: string
+  companyName: string,
+  userName?: string
 ) {
   try {
     // Calcular altura del documento basado en la cantidad de transacciones y sus detalles
@@ -188,6 +189,12 @@ async function generateCutoffTicketPDF(
     doc.setFontSize(8);
     const currentDate = new Date();
     doc.text(formatDate(currentDate), 29, y, { align: "center" });
+    
+    // Nombre del usuario
+    if (userName) {
+      y += 4;
+      doc.text(`Usuario: ${userName}`, 29, y, { align: "center" });
+    }
     
     // Resumen de transacciones
     y += 6;
@@ -592,7 +599,8 @@ const TransactionHistoryBox: React.FC = () => {
       });
       
       // Generar el ticket en formato térmico
-      await generateCutoffTicketPDF(cutoffGroup, user?.company || "TransRoute");
+      const userName = user ? `${user.firstName} ${user.lastName}` : undefined;
+      await generateCutoffTicketPDF(cutoffGroup, user?.company || "TransRoute", userName);
     } catch (error) {
       console.error("Error al generar el ticket del corte:", error);
       toast({
