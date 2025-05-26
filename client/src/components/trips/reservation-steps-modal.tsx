@@ -405,35 +405,38 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
   
   // Handle downloading the ticket as PDF
   const handleDownloadTicket = () => {
-    const content = ticketRef.current;
-    if (!content) {
+    if (!reservationId) {
       toast({
         title: "Error",
-        description: "No se pudo generar el ticket",
+        description: "No se encontró el ID de la reservación",
         variant: "destructive",
       });
       return;
     }
-    
+
     try {
-      // Utilizamos la misma función que para imprimir, ya que el navegador
-      // permite guardar como PDF al imprimir
-      setTimeout(() => {
-        const printWindow = openPrintWindow(content.innerHTML);
-        if (!printWindow) {
-          toast({
-            title: "Error",
-            description: "No se pudo abrir la ventana de impresión. Por favor, desactive el bloqueador de ventanas emergentes.",
-            variant: "destructive",
-          });
-          return;
-        }
-      }, 100);
-    } catch (error) {
-      console.error("Error al generar PDF:", error);
+      // Abrir el boleto en una nueva ventana para descarga/impresión
+      const ticketUrl = `/reservation-details?id=${reservationId}&print=true`;
+      const downloadWindow = window.open(ticketUrl, '_blank');
+      
+      if (!downloadWindow) {
+        toast({
+          title: "Error",
+          description: "No se pudo abrir la ventana de descarga. Por favor, desactive el bloqueador de ventanas emergentes.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       toast({
-        title: "Error al generar PDF",
-        description: "Ocurrió un error al intentar generar el PDF. Por favor, intente nuevamente.",
+        title: "Boleto abierto",
+        description: "Se abrió el boleto en una nueva ventana. Puedes imprimirlo o guardarlo como PDF.",
+      });
+    } catch (error) {
+      console.error("Error al abrir boleto:", error);
+      toast({
+        title: "Error al abrir boleto",
+        description: "Ocurrió un error al intentar abrir el boleto. Por favor, intente nuevamente.",
         variant: "destructive",
       });
     }
