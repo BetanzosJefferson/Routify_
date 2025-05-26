@@ -2612,10 +2612,21 @@ export class DatabaseStorage implements IStorage {
           
           // Calcular precios por segmento para la ruta
           let segmentPrices = [];
+          let isSubTrip = false;
+          let parentTripId = null;
+          let segmentOrigin = "";
+          let segmentDestination = "";
+          
           if (tripResult && tripResult.route && tripResult.route.stops) {
             const { trip, route } = tripResult;
             const stops = route.stops || [];
             const allLocations = [route.origin, ...stops, route.destination];
+            
+            // Determinar si es un sub-viaje basándose en los campos del viaje
+            isSubTrip = trip.isSubTrip || false;
+            parentTripId = trip.parentTripId || null;
+            segmentOrigin = trip.segmentOrigin || route.origin;
+            segmentDestination = trip.segmentDestination || route.destination;
             
             // Crear segmentos con precios estimados basados en el precio total del viaje
             const totalSegments = allLocations.length - 1;
@@ -2707,6 +2718,10 @@ export class DatabaseStorage implements IStorage {
             tripDepartureTime,
             advancePaymentInfo,
             segmentPrices,
+            isSubTrip,
+            parentTripId,
+            segmentOrigin,
+            segmentDestination,
             // Solo datos seguros del requester
             requester: requester ? {
               id: requester.id,
