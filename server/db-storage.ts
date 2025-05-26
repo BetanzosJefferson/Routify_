@@ -2878,6 +2878,7 @@ export class DatabaseStorage implements IStorage {
       
       // Si fue aprobada, crear una reservación real
       if (status === "aprobada") {
+        console.log(`[updateReservationRequestStatus] ENTRANDO EN BLOQUE APROBADA - Solicitud ID: ${id}`);
         console.log(`[updateReservationRequestStatus] Aprobando solicitud ID ${id}. Creando reservación en tabla reservations.`);
         
         // Obtener información del viaje para almacenar más detalles
