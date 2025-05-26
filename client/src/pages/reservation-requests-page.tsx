@@ -548,7 +548,7 @@ function RequestCard({ request, isProcessed, onReview, isHighlighted }: RequestC
   };
 
   return (
-    <Card className={request.status === "rechazada" ? "border-red-200 bg-red-50" : ""}>
+    <Card className={`${request.status === "rechazada" ? "border-red-200 bg-red-50" : ""} ${isHighlighted ? "ring-2 ring-blue-500 ring-opacity-50 bg-blue-50/30 transition-all duration-500" : ""}`}>
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
           <div>
