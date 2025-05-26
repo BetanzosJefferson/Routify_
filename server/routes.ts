@@ -6752,16 +6752,16 @@ function setupPackageRoutes(app: Express) {
         return res.status(400).json({ error: "Usuario sin compañía asignada" });
       }
       
-      console.log(`[GET /transactions/user-cash-boxes] Solicitando transacciones de otros usuarios para compañía ${user.companyId}, usuario actual: ${user.id}`);
+      console.log(`[GET /transactions/user-cash-boxes] Solicitando transacciones con información de usuarios para compañía ${user.companyId}, usuario actual: ${user.id}`);
       
-      // Obtener transacciones donde:
+      // Obtener transacciones con información del usuario mediante JOIN
       // - user_id sea diferente al usuario actual
       // - company_id sea igual a la compañía del usuario actual
-      const transacciones = await storage.getTransactionsByCompanyExcludingUser(user.companyId, user.id);
+      const transaccionesConUsuarios = await storage.getUserCashBoxes(user.id, user.companyId);
       
-      console.log(`[GET /transactions/user-cash-boxes] Encontradas ${transacciones.length} transacciones de otros usuarios para compañía ${user.companyId}`);
+      console.log(`[GET /transactions/user-cash-boxes] Encontradas ${transaccionesConUsuarios.length} transacciones con información de usuarios para compañía ${user.companyId}`);
       
-      res.json(transacciones);
+      res.json(transaccionesConUsuarios);
     } catch (error) {
       console.error("[GET /transactions/user-cash-boxes] Error:", error);
       res.status(500).json({ error: "Failed to fetch user cash box transactions" });
