@@ -2610,9 +2610,15 @@ export class DatabaseStorage implements IStorage {
             );
           }
           
-          // Obtener información del comisionista
+          // Obtener información del comisionista (solo datos seguros)
           const [requester] = await db
-            .select()
+            .select({
+              id: schema.users.id,
+              firstName: schema.users.firstName,
+              lastName: schema.users.lastName,
+              email: schema.users.email,
+              role: schema.users.role
+            })
             .from(schema.users)
             .where(eq(schema.users.id, request.requesterId));
           
@@ -2620,7 +2626,13 @@ export class DatabaseStorage implements IStorage {
           let reviewer = null;
           if (request.reviewedBy) {
             [reviewer] = await db
-              .select()
+              .select({
+                id: schema.users.id,
+                firstName: schema.users.firstName,
+                lastName: schema.users.lastName,
+                email: schema.users.email,
+                role: schema.users.role
+              })
               .from(schema.users)
               .where(eq(schema.users.id, request.reviewedBy));
           }
@@ -2641,19 +2653,51 @@ export class DatabaseStorage implements IStorage {
             `${passenger.firstName || ''} ${passenger.lastName || ''}`
           ).filter(name => name.trim() !== '');
           
+          // Construir respuesta limpia sin información sensible
           return {
-            ...request,
-            trip: tripResult?.trip,
-            route: tripResult?.route,
+            id: request.id,
+            tripId: request.tripId,
+            passengersData: request.passengersData,
+            passengerNames,
+            requesterId: request.requesterId,
+            requesterName,
+            companyId: request.companyId,
+            totalAmount: request.totalAmount,
+            email: request.email,
+            phone: request.phone,
+            paymentStatus: request.paymentStatus,
+            advanceAmount: request.advanceAmount,
+            advancePaymentMethod: request.advancePaymentMethod,
+            paymentMethod: request.paymentMethod,
+            notes: request.notes,
+            status: request.status,
+            createdAt: request.createdAt,
+            updatedAt: request.updatedAt,
+            reviewedBy: request.reviewedBy,
+            reviewNotes: request.reviewNotes,
+            reviewedAt: request.reviewedAt,
+            // Información adicional enriquecida
             tripOrigin,
             tripDestination,
             tripDate,
             tripDepartureTime,
-            requester,
-            requesterName,
-            reviewer,
             advancePaymentInfo,
-            passengerNames
+            // Solo datos seguros del requester
+            requester: requester ? {
+              id: requester.id,
+              firstName: requester.firstName,
+              lastName: requester.lastName,
+              email: requester.email,
+              role: requester.role
+            } : null,
+            // Solo datos seguros del reviewer
+            reviewer: reviewer ? {
+              id: reviewer.id,
+              firstName: reviewer.firstName,
+              lastName: reviewer.lastName,
+              email: reviewer.email,
+              role: reviewer.role
+            } : null
           };
         })
       );
@@ -2708,9 +2752,15 @@ export class DatabaseStorage implements IStorage {
         );
       }
       
-      // Obtener información del comisionista
+      // Obtener información del comisionista (solo datos seguros)
       const [requester] = await db
-        .select()
+        .select({
+          id: schema.users.id,
+          firstName: schema.users.firstName,
+          lastName: schema.users.lastName,
+          email: schema.users.email,
+          role: schema.users.role
+        })
         .from(schema.users)
         .where(eq(schema.users.id, request.requesterId));
       
@@ -2718,14 +2768,20 @@ export class DatabaseStorage implements IStorage {
       let reviewer = null;
       if (request.reviewedBy) {
         [reviewer] = await db
-          .select()
+          .select({
+            id: schema.users.id,
+            firstName: schema.users.firstName,
+            lastName: schema.users.lastName,
+            email: schema.users.email,
+            role: schema.users.role
+          })
           .from(schema.users)
           .where(eq(schema.users.id, request.reviewedBy));
       }
       
       // Información de pago formateada para mostrar
       let advancePaymentInfo = "";
-      if (request.advanceAmount > 0) {
+      if (request.advanceAmount && request.advanceAmount > 0) {
         const method = request.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia';
         advancePaymentInfo = `${request.advanceAmount} (${method})`;
         console.log(`[getReservationRequest] Anticipo para solicitud ${request.id}: ${advancePaymentInfo}`);
@@ -2739,19 +2795,51 @@ export class DatabaseStorage implements IStorage {
         `${passenger.firstName || ''} ${passenger.lastName || ''}`
       ).filter(name => name.trim() !== '');
       
+      // Construir respuesta limpia sin información sensible
       return {
-        ...request,
-        trip: tripResult?.trip,
-        route: tripResult?.route,
+        id: request.id,
+        tripId: request.tripId,
+        passengersData: request.passengersData,
+        passengerNames,
+        requesterId: request.requesterId,
+        requesterName,
+        companyId: request.companyId,
+        totalAmount: request.totalAmount,
+        email: request.email,
+        phone: request.phone,
+        paymentStatus: request.paymentStatus,
+        advanceAmount: request.advanceAmount,
+        advancePaymentMethod: request.advancePaymentMethod,
+        paymentMethod: request.paymentMethod,
+        notes: request.notes,
+        status: request.status,
+        createdAt: request.createdAt,
+        updatedAt: request.updatedAt,
+        reviewedBy: request.reviewedBy,
+        reviewNotes: request.reviewNotes,
+        reviewedAt: request.reviewedAt,
+        // Información adicional enriquecida
         tripOrigin,
         tripDestination,
         tripDate,
         tripDepartureTime,
-        requester,
-        requesterName,
-        reviewer,
         advancePaymentInfo,
-        passengerNames
+        // Solo datos seguros del requester
+        requester: requester ? {
+          id: requester.id,
+          firstName: requester.firstName,
+          lastName: requester.lastName,
+          email: requester.email,
+          role: requester.role
+        } : null,
+        // Solo datos seguros del reviewer
+        reviewer: reviewer ? {
+          id: reviewer.id,
+          firstName: reviewer.firstName,
+          lastName: reviewer.lastName,
+          email: reviewer.email,
+          role: reviewer.role
+        } : null
       };
     } catch (error) {
       console.error(`Error al obtener solicitud de reservación ${id}:`, error);
