@@ -25,13 +25,7 @@ import { TabType } from "@/hooks/use-active-tab";
 function extractCityName(fullAddress?: string): string {
   if (!fullAddress) return "";
   
-  // Si la dirección contiene el patrón "Ciudad, Estado - Lugar específico"
-  // extraemos solo la ciudad (antes de la primera coma)
-  const cityMatch = fullAddress.match(/^([^,]+)/);
-  if (cityMatch && cityMatch[1]) {
-    return cityMatch[1].trim();
-  }
-  
+  // Retornar el valor completo en lugar de solo la ciudad
   return fullAddress;
 }
 
