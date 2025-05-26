@@ -4552,17 +4552,21 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Guardar la transacción en la base de datos
-      // IMPORTANTE: Usar type assertion para forzar el campo detalles
+      // IMPORTANTE: El esquema mapea detalles->details, entonces usar directamente el objeto con el nombre BD
+      const insertData = {
+        details: transaccionData.detalles, // Usar 'details' que es el nombre real en BD
+        user_id: transaccionData.user_id,
+        cutoff_id: transaccionData.cutoff_id,
+        company_id: transaccionData.companyId, // También corregir este campo
+        created_at: new Date(),
+        updated_at: new Date()
+      };
+      
+      console.log(`[createTransaccion] Datos a insertar en BD: ${JSON.stringify(insertData, null, 2)}`);
+      
       const [newTransaccion] = await db
         .insert(schema.transacciones)
-        .values({
-          detalles: transaccionData.detalles,
-          user_id: transaccionData.user_id,
-          cutoff_id: transaccionData.cutoff_id,
-          companyId: transaccionData.companyId,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        } as any) // Forzar el tipo para que acepte detalles
+        .values(insertData as any)
         .returning();
       
       console.log(`[createTransaccion] Transacción creada con ID: ${newTransaccion.id}, CompanyId: ${transaccionData.companyId || 'No especificado'}`);
