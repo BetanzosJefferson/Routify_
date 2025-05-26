@@ -2594,6 +2594,10 @@ export class DatabaseStorage implements IStorage {
           let tripDestination = "";
           let tripDate = "";
           let tripDepartureTime = "";
+          let isSubTrip = false;
+          let parentTripId = null;
+          let segmentOrigin = "";
+          let segmentDestination = "";
           
           if (tripResult) {
             const { trip, route } = tripResult;
@@ -2601,6 +2605,12 @@ export class DatabaseStorage implements IStorage {
             tripDestination = route?.destination || "";
             tripDate = trip.departureDate ? trip.departureDate.toISOString().split('T')[0] : "";
             tripDepartureTime = trip.departureTime || "";
+            
+            // Información de sub-viaje
+            isSubTrip = trip.isSubTrip || false;
+            parentTripId = trip.parentTripId || null;
+            segmentOrigin = trip.segmentOrigin || "";
+            segmentDestination = trip.segmentDestination || "";
             
             console.log(`[getReservationRequests] Información de viaje para solicitud ${request.id}: 
               Origen: ${tripOrigin}
@@ -2612,39 +2622,25 @@ export class DatabaseStorage implements IStorage {
           
           // Calcular precios por segmento para la ruta
           let segmentPrices = [];
-          let isSubTrip = false;
-          let parentTripId = null;
-          let segmentOrigin = "";
-          let segmentDestination = "";
-          
-          if (tripResult) {
+          if (tripResult && tripResult.route && tripResult.route.stops) {
             const { trip, route } = tripResult;
+            const stops = route.stops || [];
+            const allLocations = [route.origin, ...stops, route.destination];
             
-            // Determinar si es un sub-viaje basándose en los campos del viaje
-            isSubTrip = trip.isSubTrip || false;
-            parentTripId = trip.parentTripId || null;
-            segmentOrigin = trip.segmentOrigin || (route?.origin || "");
-            segmentDestination = trip.segmentDestination || (route?.destination || "");
+            // Crear segmentos con precios estimados basados en el precio total del viaje
+            const totalSegments = allLocations.length - 1;
+            const basePrice = trip.price || 120; // Precio base si no hay precio definido
             
-            if (route && route.stops) {
-              const stops = route.stops || [];
-              const allLocations = [route.origin, ...stops, route.destination];
+            for (let i = 0; i < totalSegments; i++) {
+              const segmentPrice = Math.round(basePrice / totalSegments);
               
-              // Crear segmentos con precios estimados basados en el precio total del viaje
-              const totalSegments = allLocations.length - 1;
-              const basePrice = trip.price || 120; // Precio base si no hay precio definido
-              
-              for (let i = 0; i < totalSegments; i++) {
-                const segmentPrice = Math.round(basePrice / totalSegments);
-                
-                segmentPrices.push({
-                  origin: allLocations[i],
-                  destination: allLocations[i + 1],
-                  price: segmentPrice,
-                  departureTime: trip.departureTime || "10:00 AM",
-                  arrivalTime: trip.arrivalTime || "12:00 PM"
-                });
-              }
+              segmentPrices.push({
+                origin: allLocations[i],
+                destination: allLocations[i + 1],
+                price: segmentPrice,
+                departureTime: trip.departureTime || "10:00 AM",
+                arrivalTime: trip.arrivalTime || "12:00 PM"
+              });
             }
           }
           
