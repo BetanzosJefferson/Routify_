@@ -1440,64 +1440,88 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    // Obtener detalles para cada reserva
+    // OPTIMIZACIÓN: Obtener todos los datos relacionados en lotes para mejorar el rendimiento
+    const reservationIds = reservations.map(r => r.id);
+    const tripIds = [...new Set(reservations.map(r => r.tripId))];
+    const userIds = [...new Set([
+      ...reservations.map(r => r.createdBy).filter(Boolean),
+      ...reservations.map(r => r.checkedBy).filter(Boolean),
+      ...reservations.map(r => r.paidBy).filter(Boolean)
+    ])];
+    
+    console.log(`[getReservations] Optimización: Cargando ${tripIds.length} viajes, ${userIds.length} usuarios y pasajeros de ${reservationIds.length} reservas en lotes`);
+    
+    // Cargar todos los pasajeros en una consulta
+    const allPassengers = await db
+      .select()
+      .from(schema.passengers)
+      .where(sql`reservation_id = ANY(${reservationIds})`);
+    
+    // Cargar todos los usuarios en una consulta
+    const allUsers = await db
+      .select()
+      .from(schema.users)
+      .where(sql`id = ANY(${userIds})`);
+    
+    // Cargar todos los viajes y rutas en una consulta optimizada
+    const allTripsWithRoutes = await db
+      .select({
+        trip: schema.trips,
+        route: schema.routes
+      })
+      .from(schema.trips)
+      .leftJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
+      .where(sql`trips.id = ANY(${tripIds})`);
+    
+    // Crear mapas para búsqueda rápida
+    const passengersMap = new Map<number, schema.Passenger[]>();
+    allPassengers.forEach(passenger => {
+      if (!passengersMap.has(passenger.reservationId)) {
+        passengersMap.set(passenger.reservationId, []);
+      }
+      passengersMap.get(passenger.reservationId)!.push(passenger);
+    });
+    
+    const usersMap = new Map<number, schema.User>();
+    allUsers.forEach(user => {
+      usersMap.set(user.id, user);
+    });
+    
+    const tripsMap = new Map<number, TripWithRouteInfo>();
+    allTripsWithRoutes.forEach(({ trip, route }) => {
+      if (route) {
+        tripsMap.set(trip.id, {
+          ...trip,
+          route,
+          numStops: route.stops?.length || 0
+        });
+      }
+    });
+    
+    // Procesar reservaciones usando los mapas (mucho más rápido)
     const reservationsWithDetails: ReservationWithDetails[] = [];
     
     for (const reservation of reservations) {
-      // Obtener información del viaje asociado 
-      // NOTA: getTripWithRouteInfo ya incluye sus propias verificaciones de seguridad
-      const trip = await this.getTripWithRouteInfo(reservation.tripId);
+      const trip = tripsMap.get(reservation.tripId);
       if (!trip) {
         console.log(`[getReservations] No se encontró el viaje ${reservation.tripId} asociado a la reserva ${reservation.id}`);
         continue;
       }
       
-      // Obtener pasajeros
-      const passengers = await this.getPassengers(reservation.id);
+      const passengers = passengersMap.get(reservation.id) || [];
+      const createdByUser = reservation.createdBy ? usersMap.get(reservation.createdBy) : undefined;
+      const checkedByUser = reservation.checkedBy ? usersMap.get(reservation.checkedBy) : undefined;
+      const paidByUser = reservation.paidBy ? usersMap.get(reservation.paidBy) : undefined;
       
-      // Obtener información del usuario que creó la reservación
-      let createdByUser: schema.User | undefined = undefined;
-      if (reservation.createdBy) {
-        // Buscar el usuario por ID
-        const [user] = await db
-          .select()
-          .from(schema.users)
-          .where(eq(schema.users.id, reservation.createdBy));
-        
-        if (user) {
-          createdByUser = user;
-          console.log(`[getReservations] Reserva ${reservation.id} creada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
-        }
+      // Log simplificado para mejor rendimiento
+      if (createdByUser) {
+        console.log(`[getReservations] Reserva ${reservation.id} creada por usuario ${createdByUser.firstName} ${createdByUser.lastName} (ID: ${createdByUser.id})`);
       }
-      
-      // Obtener información del usuario que escaneó el ticket
-      let checkedByUser: schema.User | undefined = undefined;
-      if (reservation.checkedBy) {
-        // Buscar el usuario por ID
-        const [user] = await db
-          .select()
-          .from(schema.users)
-          .where(eq(schema.users.id, reservation.checkedBy));
-        
-        if (user) {
-          checkedByUser = user;
-          console.log(`[getReservations] Reserva ${reservation.id} escaneada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
-        }
+      if (checkedByUser) {
+        console.log(`[getReservations] Reserva ${reservation.id} escaneada por usuario ${checkedByUser.firstName} ${checkedByUser.lastName} (ID: ${checkedByUser.id})`);
       }
-      
-      // Obtener información del usuario que marcó como pagado el ticket
-      let paidByUser: schema.User | undefined = undefined;
-      if (reservation.paidBy) {
-        // Buscar el usuario por ID
-        const [user] = await db
-          .select()
-          .from(schema.users)
-          .where(eq(schema.users.id, reservation.paidBy));
-        
-        if (user) {
-          paidByUser = user;
-          console.log(`[getReservations] Reserva ${reservation.id} marcada como pagada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
-        }
+      if (paidByUser) {
+        console.log(`[getReservations] Reserva ${reservation.id} marcada como pagada por usuario ${paidByUser.firstName} ${paidByUser.lastName} (ID: ${paidByUser.id})`);
       }
       
       // Agregar a los resultados
@@ -1505,9 +1529,9 @@ export class DatabaseStorage implements IStorage {
         ...reservation,
         trip,
         passengers,
-        createdByUser, // Añadimos el usuario creador
-        checkedByUser, // Añadimos el usuario que escaneó el ticket
-        paidByUser     // Añadimos el usuario que marcó como pagado el ticket
+        createdByUser,
+        checkedByUser,
+        paidByUser
       });
     }
     
