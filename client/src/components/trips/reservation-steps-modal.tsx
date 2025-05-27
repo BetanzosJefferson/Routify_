@@ -533,22 +533,42 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       y += 4;
       doc.setFontSize(8);
       doc.setFont("courier", "normal");
+      
+      // Subtotal (precio original)
       doc.text(`Subtotal: ${formatPrice(totalPrice)}`, 5, y);
       
-      y += 3;
-      if (advanceAmount && advanceAmount > 0) {
-        doc.text(`Anticipo: ${formatPrice(advanceAmount)}`, 5, y);
+      // Cupón de descuento (si existe)
+      if (couponVerified && couponDiscount > 0) {
         y += 3;
-        doc.text(`Metodo: ${advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}`, 5, y);
+        doc.text(`Cupon aplicado: ${couponCode}`, 5, y);
+        y += 3;
+        doc.text(`Descuento: -${formatPrice(couponDiscount)}`, 5, y);
+        y += 3;
+        doc.text(`Total con descuento: ${formatPrice(totalPrice - couponDiscount)}`, 5, y);
+      }
+      
+      y += 3;
+      
+      // Calcular el precio final después del descuento
+      const finalPrice = couponVerified && couponDiscount > 0 ? totalPrice - couponDiscount : totalPrice;
+      
+      if (advanceAmount && advanceAmount > 0) {
+        // Anticipo con método de pago en la misma línea
+        doc.text(`Anticipo: ${formatPrice(advanceAmount)} (${advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})`, 5, y);
         
-        if (advanceAmount < totalPrice) {
+        if (advanceAmount < finalPrice) {
           y += 3;
-          doc.text(`Restante: ${formatPrice(totalPrice - advanceAmount)}`, 5, y);
-          y += 3;
-          doc.text(`Metodo: ${paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}`, 5, y);
+          const restante = finalPrice - advanceAmount;
+          doc.text(`Restante: ${formatPrice(restante)} (${paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})`, 5, y);
         }
+        
+        y += 3;
+        doc.text(`Total: ${formatPrice(finalPrice)}`, 5, y);
       } else {
+        // Sin anticipo - mostrar método de pago y total
         doc.text(`Metodo de pago: ${paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}`, 5, y);
+        y += 3;
+        doc.text(`Total: ${formatPrice(finalPrice)}`, 5, y);
       }
       
       // Estado de pago
@@ -556,7 +576,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       doc.text("Estado:", 5, y);
       y += 3;
       doc.setFont("courier", "bold");
-      const isPaid = advanceAmount >= totalPrice;
+      const isPaid = advanceAmount >= finalPrice;
       doc.text(isPaid ? "PAGADO" : "PENDIENTE", 5, y);
       
       // Pie de página
