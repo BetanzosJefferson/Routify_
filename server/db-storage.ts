@@ -659,6 +659,7 @@ export class DatabaseStorage implements IStorage {
     origin?: string;
     destination?: string;
     date?: string;
+    dateRange?: string[]; // Nuevo parámetro para filtrar por múltiples fechas
     seats?: number;
     companyId?: string;  // Añadido para filtrar por compañía
     companyIds?: string[]; // Añadido para filtrar por múltiples compañías (taquilleros)
@@ -755,9 +756,47 @@ export class DatabaseStorage implements IStorage {
       condiciones.push(sql`available_seats >= ${params.seats}`);
     }
     
-    // Aplicar filtro de fecha
-    if (params.date) {
-      console.log(`[searchTrips-v2] Filtro de fecha original: ${params.date}`);
+    // Aplicar filtro de fecha o rango de fechas
+    if (params.dateRange && params.dateRange.length > 0) {
+      console.log(`[searchTrips-v2] Filtro por rango de fechas optimizado:`, params.dateRange);
+      
+      try {
+        // Crear condiciones OR para cada fecha en el rango
+        const dateConditions = params.dateRange.map(date => {
+          let formattedDate = date;
+          
+          // Si la fecha incluye tiempo (T o espacio), extraer solo la parte de la fecha
+          if (date.includes('T') || date.includes(' ')) {
+            formattedDate = date.split(/[T ]/)[0];
+          }
+          
+          return sql`DATE(departure_date) = ${formattedDate}`;
+        });
+        
+        // Combinar todas las condiciones de fecha con OR
+        if (dateConditions.length === 1) {
+          condiciones.push(dateConditions[0]);
+        } else {
+          let dateOrCondition = sql`(`;
+          
+          for (let i = 0; i < dateConditions.length; i++) {
+            dateOrCondition = sql`${dateOrCondition}${dateConditions[i]}`;
+            
+            if (i < dateConditions.length - 1) {
+              dateOrCondition = sql`${dateOrCondition} OR `;
+            }
+          }
+          
+          dateOrCondition = sql`${dateOrCondition})`;
+          condiciones.push(dateOrCondition);
+        }
+        
+        console.log(`[searchTrips-v2] Aplicando filtro de rango de fechas para ${params.dateRange.length} fechas`);
+      } catch (error) {
+        console.error(`[searchTrips-v2] Error al procesar rango de fechas:`, error);
+      }
+    } else if (params.date) {
+      console.log(`[searchTrips-v2] Filtro de fecha individual: ${params.date}`);
       
       try {
         // Asegurarnos de que la fecha está en el formato YYYY-MM-DD para la consulta SQL
