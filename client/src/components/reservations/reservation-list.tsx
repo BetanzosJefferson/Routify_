@@ -376,17 +376,32 @@ export function ReservationList() {
     const advanceAmountNum = parseFloat(advanceAmount) || 0;
     const remainingAmountNum = parseFloat(remainingAmount) || 0;
     
-    // Validar que la suma sea igual al total
-    if (advanceAmountNum + remainingAmountNum !== editingReservation.totalAmount) {
+    // Validar que el anticipo no sea mayor al total original
+    if (advanceAmountNum > editingReservation.totalAmount) {
+      toast({
+        title: "Error en el anticipo",
+        description: `El anticipo no puede ser mayor al precio del boleto (${formatPrice(editingReservation.totalAmount)})`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar que ambos montos sean positivos
+    if (advanceAmountNum < 0 || remainingAmountNum < 0) {
       toast({
         title: "Error en las cantidades",
-        description: `La suma del anticipo y restante debe ser igual al total (${formatPrice(editingReservation.totalAmount)})`,
+        description: "Las cantidades no pueden ser negativas",
         variant: "destructive",
       });
       return;
     }
 
     updates.advanceAmount = advanceAmountNum;
+    // Actualizar el total amount si el restante es mayor (para casos de exceso de equipaje)
+    const newTotal = advanceAmountNum + remainingAmountNum;
+    if (newTotal !== editingReservation.totalAmount) {
+      updates.totalAmount = newTotal;
+    }
 
     // Enviamos todas las actualizaciones
     editReservationMutation.mutate({
@@ -1274,11 +1289,18 @@ export function ReservationList() {
                           value={advanceAmount}
                           onChange={(e) => {
                             const value = e.target.value;
-                            setAdvanceAmount(value);
-                            // Calcular automáticamente el restante
                             const advance = parseFloat(value) || 0;
-                            const remaining = editingReservation.totalAmount - advance;
-                            setRemainingAmount(remaining.toString());
+                            
+                            // Validar que el anticipo no sea mayor al total original
+                            if (advance > editingReservation.totalAmount) {
+                              // No permitir anticipo mayor al total
+                              return;
+                            }
+                            
+                            setAdvanceAmount(value);
+                            // El restante puede ser mayor al total original (para exceso de equipaje)
+                            const currentRemaining = parseFloat(remainingAmount) || 0;
+                            // Mantener el restante actual, solo cambiar el anticipo
                           }}
                           placeholder="0"
                           className="h-8 w-20 text-xs"
@@ -1314,15 +1336,13 @@ export function ReservationList() {
                           onChange={(e) => {
                             const value = e.target.value;
                             setRemainingAmount(value);
-                            // Calcular automáticamente el anticipo
-                            const remaining = parseFloat(value) || 0;
-                            const advance = editingReservation.totalAmount - remaining;
-                            setAdvanceAmount(advance.toString());
+                            // No calculamos automáticamente el anticipo desde aquí
+                            // porque el "resta" puede ser mayor al total para exceso de equipaje
                           }}
                           placeholder="0"
                           className="h-8 w-20 text-xs"
                           min="0"
-                          max={editingReservation.totalAmount}
+                          // Sin límite máximo para permitir exceso de equipaje
                         />
                       </div>
                     </div>
@@ -1343,11 +1363,18 @@ export function ReservationList() {
                   </div>
                 </div>
 
-                {/* Mostrar el total */}
+                {/* Mostrar el total dinámico */}
                 <div className="border-t pt-2">
                   <div className="flex justify-between items-center">
                     <Label className="text-gray-700 font-medium text-sm">TOTAL</Label>
-                    <div className="text-lg font-semibold">{formatPrice(editingReservation.totalAmount)}</div>
+                    <div className="text-lg font-semibold">
+                      {formatPrice((parseFloat(advanceAmount) || 0) + (parseFloat(remainingAmount) || 0))}
+                      {((parseFloat(advanceAmount) || 0) + (parseFloat(remainingAmount) || 0)) !== editingReservation.totalAmount && (
+                        <span className="text-xs text-gray-500 ml-2">
+                          (Original: {formatPrice(editingReservation.totalAmount)})
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
