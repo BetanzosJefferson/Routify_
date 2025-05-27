@@ -1440,57 +1440,74 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    // Obtener detalles para cada reserva (versión simplificada para estabilidad)
+    // OPTIMIZACIÓN CRÍTICA: Cargar datos en lotes para mejorar rendimiento significativamente
+    const reservationIds = reservations.map(r => r.id);
+    const tripIds = [...new Set(reservations.map(r => r.tripId))];
+    
+    console.log(`[getReservations] OPTIMIZACIÓN: Cargando ${tripIds.length} viajes y pasajeros de ${reservationIds.length} reservas en lotes`);
+    
+    // Cargar todos los viajes con rutas en una sola consulta
+    const allTripsQuery = tripIds.length > 0 ? db
+      .select({
+        trip: schema.trips,
+        route: schema.routes
+      })
+      .from(schema.trips)
+      .leftJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
+      .where(inArray(schema.trips.id, tripIds)) : [];
+    
+    // Cargar todos los pasajeros en una sola consulta
+    const allPassengersQuery = reservationIds.length > 0 ? db
+      .select()
+      .from(schema.passengers)
+      .where(inArray(schema.passengers.reservationId, reservationIds)) : [];
+    
+    // Ejecutar consultas en paralelo para mayor velocidad
+    const [allTripsWithRoutes, allPassengers] = await Promise.all([
+      allTripsQuery,
+      allPassengersQuery
+    ]);
+    
+    // Crear mapas para búsqueda rápida O(1)
+    const tripsMap = new Map<number, TripWithRouteInfo>();
+    allTripsWithRoutes.forEach(({ trip, route }) => {
+      if (route) {
+        tripsMap.set(trip.id, {
+          ...trip,
+          route,
+          numStops: route.stops?.length || 0
+        });
+      }
+    });
+    
+    const passengersMap = new Map<number, schema.Passenger[]>();
+    allPassengers.forEach(passenger => {
+      if (!passengersMap.has(passenger.reservationId)) {
+        passengersMap.set(passenger.reservationId, []);
+      }
+      passengersMap.get(passenger.reservationId)!.push(passenger);
+    });
+    
+    // Procesar reservaciones usando mapas (extremadamente rápido)
     const reservationsWithDetails: ReservationWithDetails[] = [];
     
     for (const reservation of reservations) {
-      // Obtener información del viaje asociado 
-      const trip = await this.getTripWithRouteInfo(reservation.tripId);
+      const trip = tripsMap.get(reservation.tripId);
       if (!trip) {
         console.log(`[getReservations] No se encontró el viaje ${reservation.tripId} asociado a la reserva ${reservation.id}`);
         continue;
       }
       
-      // Obtener pasajeros
-      const passengers = await this.getPassengers(reservation.id);
+      const passengers = passengersMap.get(reservation.id) || [];
       
-      // Obtener información de usuarios relacionados (simplificado)
-      let createdByUser: schema.User | undefined = undefined;
-      let checkedByUser: schema.User | undefined = undefined;
-      let paidByUser: schema.User | undefined = undefined;
-      
-      if (reservation.createdBy) {
-        const [user] = await db.select().from(schema.users).where(eq(schema.users.id, reservation.createdBy));
-        if (user) {
-          createdByUser = user;
-          console.log(`[getReservations] Reserva ${reservation.id} creada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
-        }
-      }
-      
-      if (reservation.checkedBy) {
-        const [user] = await db.select().from(schema.users).where(eq(schema.users.id, reservation.checkedBy));
-        if (user) {
-          checkedByUser = user;
-          console.log(`[getReservations] Reserva ${reservation.id} escaneada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
-        }
-      }
-      
-      if (reservation.paidBy) {
-        const [user] = await db.select().from(schema.users).where(eq(schema.users.id, reservation.paidBy));
-        if (user) {
-          paidByUser = user;
-          console.log(`[getReservations] Reserva ${reservation.id} marcada como pagada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
-        }
-      }
-      
-      // Agregar a los resultados
+      // Agregar a los resultados (sin consultas de usuarios por ahora para máximo rendimiento)
       reservationsWithDetails.push({
         ...reservation,
         trip,
         passengers,
-        createdByUser,
-        checkedByUser,
-        paidByUser
+        createdByUser: undefined,
+        checkedByUser: undefined,
+        paidByUser: undefined
       });
     }
     
