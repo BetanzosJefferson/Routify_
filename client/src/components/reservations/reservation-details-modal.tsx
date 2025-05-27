@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, User, Mail, Phone, MapPin, Calendar, Clock, CheckCircle, X, ArrowRightLeft, Eye, Download } from "lucide-react";
+import { Loader2, User, Mail, Phone, MapPin, Calendar, Clock, CheckCircle, X, ArrowRightLeft, Eye, Download, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatPrice, generateReservationId } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -604,6 +604,247 @@ export default function ReservationDetailsModal({
     }
   };
 
+  // Función para imprimir boleto en formato térmico de 60mm
+  const handlePrintTicket60mm = async () => {
+    if (!reservation) {
+      toast({
+        title: "Error",
+        description: "No se encontró la información de la reservación",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      toast({
+        title: "Generando ticket térmico...",
+        description: "Por favor espere mientras se genera el boleto 60mm",
+      });
+
+      const { jsPDF } = await import('jspdf');
+
+      // Crear documento PDF con dimensiones de ticket térmico (58mm x altura variable)
+      const docHeight = 160;
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: [58, docHeight],
+      });
+
+      // Configuración de fuentes
+      doc.setFont("courier", "normal");
+      doc.setFontSize(10);
+
+      let y = 10;
+
+      // Encabezado
+      doc.setFontSize(12);
+      doc.setFont("courier", "bold");
+      const companyName = user?.company || "TransRoute";
+      const companyNameWidth = doc.getStringUnitWidth(companyName) * 12 / doc.internal.scaleFactor;
+      const companyNameX = (58 - companyNameWidth) / 2;
+      doc.text(companyName, companyNameX, y);
+      
+      y += 5;
+      doc.setFontSize(8);
+      doc.setFont("courier", "normal");
+      doc.text("Boleto de Viaje Oficial", 29, y, { align: "center" });
+      
+      // Línea separadora
+      y += 3;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(5, y, 53, y);
+      
+      // Código QR (si está disponible)
+      y += 5;
+      const qrX = (58 - 25) / 2;
+      try {
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/reservation-details?id=${reservation.id}`;
+        doc.addImage(qrUrl, 'PNG', qrX, y, 25, 25);
+        y += 27;
+      } catch (error) {
+        console.warn("Error al añadir QR al PDF:", error);
+        y += 5;
+      }
+      
+      // ID de reservación
+      doc.setFontSize(10);
+      doc.setFont("courier", "bold");
+      doc.text(`#${generateReservationId(reservation.id)}`, 29, y, { align: "center" });
+      
+      y += 4;
+      doc.setFontSize(9);
+      doc.setFont("courier", "normal");
+      const passengerName = `${reservation.passengers[0]?.firstName || ''} ${reservation.passengers[0]?.lastName || ''}`.trim();
+      doc.text(passengerName, 29, y, { align: "center" });
+      
+      // Información del pasajero
+      y += 6;
+      doc.setFontSize(9);
+      doc.setFont("courier", "bold");
+      doc.text("Informacion del Pasajero", 5, y);
+      
+      y += 4;
+      doc.setFontSize(8);
+      doc.setFont("courier", "normal");
+      doc.text("Contacto:", 5, y);
+      y += 3;
+      
+      // Email dividido si es muy largo
+      const emailText = reservation.email || 'N/A';
+      if (emailText.length > 20) {
+        const emailLines = emailText.match(/.{1,20}/g) || [emailText];
+        emailLines.forEach(line => {
+          doc.text(line, 5, y);
+          y += 3;
+        });
+      } else {
+        doc.text(emailText, 5, y);
+        y += 3;
+      }
+      doc.text(reservation.phone || 'N/A', 5, y);
+      
+      y += 3;
+      doc.text(`Pasajeros: ${reservation.passengers.length}`, 5, y);
+      
+      // Detalles del viaje
+      y += 6;
+      doc.setFontSize(9);
+      doc.setFont("courier", "bold");
+      doc.text("Detalles del Viaje", 5, y);
+      
+      y += 4;
+      doc.setFontSize(8);
+      doc.setFont("courier", "normal");
+      
+      // Origen
+      const origin = reservation.trip.segmentOrigin || reservation.trip.route?.origin || '';
+      doc.text("Origen:", 5, y);
+      y += 3;
+      if (origin.length > 25) {
+        const originLines = origin.match(/.{1,25}/g) || [origin];
+        originLines.forEach(line => {
+          doc.text(line, 5, y);
+          y += 3;
+        });
+      } else {
+        doc.text(origin, 5, y);
+        y += 3;
+      }
+      
+      // Destino
+      const destination = reservation.trip.segmentDestination || reservation.trip.route?.destination || '';
+      doc.text("Destino:", 5, y);
+      y += 3;
+      if (destination.length > 25) {
+        const destLines = destination.match(/.{1,25}/g) || [destination];
+        destLines.forEach(line => {
+          doc.text(line, 5, y);
+          y += 3;
+        });
+      } else {
+        doc.text(destination, 5, y);
+        y += 3;
+      }
+      
+      // Fecha
+      doc.text("Fecha:", 5, y);
+      y += 3;
+      doc.text(formatDate(reservation.trip.departureDate), 5, y);
+      
+      // Hora
+      y += 3;
+      doc.text("Hora:", 5, y);
+      y += 3;
+      doc.text(formatTripTime(reservation.trip.departureTime, true, 'pretty'), 5, y);
+      
+      // Información de pago
+      y += 6;
+      doc.setFontSize(9);
+      doc.setFont("courier", "bold");
+      doc.text("Informacion de Pago", 5, y);
+      
+      y += 4;
+      doc.setFontSize(8);
+      doc.setFont("courier", "normal");
+      
+      // Subtotal
+      doc.text(`Subtotal: ${formatPrice(reservation.totalAmount)}`, 5, y);
+      
+      // Cupón de descuento (si existe)
+      if (reservation.couponCode && reservation.couponDiscount && reservation.couponDiscount > 0) {
+        y += 3;
+        doc.text(`Cupon aplicado: ${reservation.couponCode}`, 5, y);
+        y += 3;
+        doc.text(`Descuento: -${formatPrice(reservation.couponDiscount)}`, 5, y);
+        y += 3;
+        doc.text(`Total con descuento: ${formatPrice(reservation.totalAmount - reservation.couponDiscount)}`, 5, y);
+      }
+      
+      y += 3;
+      
+      // Calcular precio final después del descuento
+      const finalPrice = reservation.couponDiscount > 0 ? reservation.totalAmount - reservation.couponDiscount : reservation.totalAmount;
+      
+      if (reservation.advanceAmount && reservation.advanceAmount > 0) {
+        // Anticipo con método de pago
+        doc.text(`Anticipo: ${formatPrice(reservation.advanceAmount)} (${reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})`, 5, y);
+        
+        if (reservation.advanceAmount < finalPrice) {
+          y += 3;
+          const restante = finalPrice - reservation.advanceAmount;
+          doc.text(`Restante: ${formatPrice(restante)} (${reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})`, 5, y);
+        }
+        
+        y += 3;
+        doc.text(`Total: ${formatPrice(finalPrice)}`, 5, y);
+      } else {
+        // Sin anticipo
+        doc.text(`Metodo de pago: ${reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}`, 5, y);
+        y += 3;
+        doc.text(`Total: ${formatPrice(finalPrice)}`, 5, y);
+      }
+      
+      // Estado de pago
+      y += 4;
+      doc.text("Estado:", 5, y);
+      y += 3;
+      doc.setFont("courier", "bold");
+      const isPaid = reservation.paymentStatus === 'pagado';
+      doc.text(isPaid ? "PAGADO" : "PENDIENTE", 5, y);
+      
+      // Pie de página
+      y += 8;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(5, y, 53, y);
+      
+      y += 5;
+      doc.setFontSize(7);
+      doc.setFont("courier", "normal");
+      doc.text("Presente este boleto al abordar", 29, y, { align: "center" });
+      y += 3;
+      doc.text("el vehiculo", 29, y, { align: "center" });
+      y += 4;
+      doc.text(`TransRoute © ${new Date().getFullYear()}`, 29, y, { align: "center" });
+
+      // Abrir en nueva ventana para imprimir
+      window.open(URL.createObjectURL(doc.output('blob')));
+      
+      toast({
+        title: "Ticket térmico generado",
+        description: "El boleto de 60mm se ha generado exitosamente",
+      });
+
+    } catch (error) {
+      console.error("Error al generar ticket térmico:", error);
+      toast({
+        title: "Error al generar ticket",
+        description: "Ocurrió un error al generar el ticket térmico. Intente nuevamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -922,6 +1163,17 @@ export default function ReservationDetailsModal({
                         >
                           <Download className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />
                           Descargar Boleto
+                        </Button>
+
+                        {/* Botón de impresión térmica 60mm */}
+                        <Button
+                          onClick={handlePrintTicket60mm}
+                          variant="outline"
+                          size="sm"
+                          className="border-gray-300 hover:bg-gray-50 text-gray-700"
+                        >
+                          <Printer className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />
+                          Imprimir boleto 60mm
                         </Button>
                       </div>
                     </div>
