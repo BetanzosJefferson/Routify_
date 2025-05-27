@@ -1332,11 +1332,12 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getReservations(companyId?: string, tripId?: number, companyIds?: string[]): Promise<ReservationWithDetails[]> {
+  async getReservations(companyId?: string, tripId?: number, companyIds?: string[], page: number = 1, limit: number = 20): Promise<ReservationWithDetails[]> {
     console.time('getReservations-optimized');
     
     // NUEVA IMPLEMENTACIÓN CON FILTRADO DE COMPAÑÍA Y VIAJE
-    console.log(`[getReservations] Iniciando búsqueda${companyId ? ` para compañía ${companyId}` : ''}${companyIds && companyIds.length > 0 ? ` para compañías [${companyIds.join(', ')}]` : ''}${tripId ? ` para viaje ${tripId}` : ''}`);
+    const offset = (page - 1) * limit;
+    console.log(`[getReservations] Iniciando búsqueda${companyId ? ` para compañía ${companyId}` : ''}${companyIds && companyIds.length > 0 ? ` para compañías [${companyIds.join(', ')}]` : ''}${tripId ? ` para viaje ${tripId}` : ''} - PAGINACIÓN: página ${page}, límite ${limit}, offset ${offset}`);
     
     // Construir condiciones de filtrado como array
     const condiciones = [];
@@ -1418,13 +1419,20 @@ export class DatabaseStorage implements IStorage {
         whereClause = sql`${whereClause} AND ${condiciones[i]}`;
       }
       
-      // Ejecutar consulta con filtros
-      console.log(`[getReservations] Ejecutando consulta CON filtros`);
-      reservations = await db.select().from(schema.reservations).where(whereClause);
+      // Ejecutar consulta con filtros Y PAGINACIÓN
+      console.log(`[getReservations] Ejecutando consulta CON filtros Y PAGINACIÓN`);
+      reservations = await db.select().from(schema.reservations)
+        .where(whereClause)
+        .orderBy(desc(schema.reservations.createdAt))
+        .limit(limit)
+        .offset(offset);
     } else {
-      // Sin filtros (solo superAdmin debería llegar aquí)
-      console.log(`[getReservations] Ejecutando consulta SIN filtros`);
-      reservations = await db.select().from(schema.reservations);
+      // Sin filtros (solo superAdmin debería llegar aquí) PERO CON PAGINACIÓN
+      console.log(`[getReservations] Ejecutando consulta SIN filtros PERO CON PAGINACIÓN`);
+      reservations = await db.select().from(schema.reservations)
+        .orderBy(desc(schema.reservations.createdAt))
+        .limit(limit)
+        .offset(offset);
     }
     
     console.log(`[getReservations] Encontradas ${reservations.length} reservas`);
