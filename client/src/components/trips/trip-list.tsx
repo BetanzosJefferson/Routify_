@@ -105,6 +105,10 @@ export function TripList() {
   // Obtener la fecha actual formateada como YYYY-MM-DD en hora local
   const today = formatDateForInput(new Date());
   
+  // Calcular fechas permitidas (ayer, hoy, mañana)
+  const yesterday = formatDateForInput(new Date(Date.now() - 24 * 60 * 60 * 1000));
+  const tomorrow = formatDateForInput(new Date(Date.now() + 24 * 60 * 60 * 1000));
+  
   const [searchParams, setSearchParams] = useState<SearchParams>({ date: today });
   const [selectedTrip, setSelectedTrip] = useState<TripWithRouteInfo | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -116,11 +120,13 @@ export function TripList() {
   const [date, setDate] = useState(today);
   const [seats, setSeats] = useState("");
   
-  // Query for all trips to build autocomplete options
+  // Query optimizada para traer solo viajes de ayer, hoy y mañana para opciones de autocomplete
   const { data: allTrips, isLoading: isLoadingAll } = useQuery({
-    queryKey: ["/api/trips"],
+    queryKey: ["/api/trips", "limited-dates"],
     queryFn: async () => {
-      const response = await fetch("/api/trips");
+      // Construir parámetros para traer solo viajes de las fechas permitidas
+      const dateRange = `${yesterday},${today},${tomorrow}`;
+      const response = await fetch(`/api/trips?dateRange=${encodeURIComponent(dateRange)}&visibility=publicado`);
       if (!response.ok) throw new Error("Failed to fetch trips");
       return await response.json() as TripWithRouteInfo[];
     },
@@ -315,6 +321,8 @@ export function TripList() {
                   type="date"
                   className="pl-10"
                   value={date}
+                  min={yesterday}
+                  max={tomorrow}
                   onChange={(e) => setDate(e.target.value)}
                 />
               </div>

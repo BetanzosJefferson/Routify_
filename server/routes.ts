@@ -574,13 +574,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Parámetros de búsqueda desde la query
-      const { origin, destination, date, seats, driverId } = req.query;
+      const { origin, destination, date, dateRange, seats, driverId, visibility } = req.query;
       const searchParams: any = {};
       
       // Agregar parámetros de búsqueda si existen
       if (origin) searchParams.origin = origin as string;
       if (destination) searchParams.destination = destination as string;
-      if (date) searchParams.date = date as string;
+      
+      // Manejar fecha o rango de fechas
+      if (dateRange) {
+        // Si se especifica un rango de fechas (ayer,hoy,mañana), usar ese rango
+        searchParams.dateRange = (dateRange as string).split(',');
+        console.log(`[GET /trips] Usando rango de fechas optimizado:`, searchParams.dateRange);
+      } else if (date) {
+        // Si solo se especifica una fecha, usar esa fecha
+        searchParams.date = date as string;
+      }
+      
+      // Agregar filtro de visibilidad si se especifica
+      if (visibility) {
+        searchParams.visibility = visibility as string;
+      }
+      
       if (seats && !isNaN(parseInt(seats as string, 10))) {
         searchParams.seats = parseInt(seats as string, 10);
       }
