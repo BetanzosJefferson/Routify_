@@ -2306,8 +2306,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[GET /reservations] TAQUILLERO: Aplicando filtro de ${companyIds.length} compañías`);
           reservations = await storage.getReservations(undefined, tripId || undefined, companyIds);
         } else {
-          // Filtro normal por compañía para otros roles
-          reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
+          // Filtro normal por compañía para otros roles CON PAGINACIÓN
+          const page = parseInt(req.query.page as string) || 1;
+          const limit = parseInt(req.query.limit as string) || 20;
+          reservations = await storage.getReservations(companyId || undefined, tripId || undefined, undefined, page, limit);
         }
       }
       
