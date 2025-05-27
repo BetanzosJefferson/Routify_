@@ -366,15 +366,27 @@ export function ReservationList() {
     // Preparamos las actualizaciones básicas que siempre se envían
     const updates: Partial<Reservation> = {
       paymentMethod,
+      advancePaymentMethod,
       notes,
       email,
       phone
     };
 
-    // Si hay anticipo, también actualizamos el método de pago del anticipo
-    if (editingReservation.advanceAmount && editingReservation.advanceAmount > 0) {
-      updates.advancePaymentMethod = advancePaymentMethod;
+    // Agregar los montos editables
+    const advanceAmountNum = parseFloat(advanceAmount) || 0;
+    const remainingAmountNum = parseFloat(remainingAmount) || 0;
+    
+    // Validar que la suma sea igual al total
+    if (advanceAmountNum + remainingAmountNum !== editingReservation.totalAmount) {
+      toast({
+        title: "Error en las cantidades",
+        description: `La suma del anticipo y restante debe ser igual al total (${formatPrice(editingReservation.totalAmount)})`,
+        variant: "destructive",
+      });
+      return;
     }
+
+    updates.advanceAmount = advanceAmountNum;
 
     // Enviamos todas las actualizaciones
     editReservationMutation.mutate({
