@@ -380,43 +380,69 @@ export default function ReservationDetails({ params }: { params?: { id?: string 
               </>
             ) : (
               <>
-                <div className="grid grid-cols-2 items-center mb-3">
-                  <div className="text-sm text-gray-500 font-medium">TOTAL</div>
-                  <div className="text-right font-medium">{formatPrice(reservation.totalAmount)}</div>
-                </div>
-                
-                <div className="grid grid-cols-2 items-center mb-3">
-                  <div className="text-sm text-gray-500 font-medium">MÉTODO DE PAGO</div>
-                  <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-                </div>
-                
-                {(reservation.advanceAmount && reservation.advanceAmount > 0) && (
-                  <>
-                    <div className="grid grid-cols-2 items-center mb-3">
-                      <div className="text-sm text-gray-500 font-medium">ANTICIPO</div>
-                      <div className="text-right font-medium">{formatPrice(reservation.advanceAmount)}</div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 items-center mb-3">
-                      <div className="text-sm text-gray-500 font-medium">MÉTODO ANTICIPO</div>
-                      <div className="text-right">{reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-                    </div>
-                    
-                    {reservation.advanceAmount < reservation.totalAmount && (
+                {/* NUEVO FORMATO MEJORADO PARA INFORMACIÓN DE PAGO */}
+                {(() => {
+                  const hasAdvance = reservation.advanceAmount && reservation.advanceAmount > 0;
+                  const isPaid = reservation.paymentStatus === 'pagado';
+                  const remainingAmount = reservation.totalAmount - (reservation.advanceAmount || 0);
+                  
+                  if (hasAdvance && isPaid) {
+                    // Escenario 3: Hay anticipo Y ya está pagado completamente
+                    return (
                       <>
                         <div className="grid grid-cols-2 items-center mb-3">
-                          <div className="text-sm text-gray-500 font-medium">PENDIENTE DE PAGO</div>
-                          <div className="text-right font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))}</div>
+                          <div className="text-sm text-gray-500 font-medium">ANTICIPO</div>
+                          <div className="text-right font-medium">{formatPrice(reservation.advanceAmount)} ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
                         </div>
                         
-                        <div className="grid grid-cols-2 items-center">
-                          <div className="text-sm text-gray-500 font-medium">MÉTODO PAGO FINAL</div>
-                          <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
+                        <div className="grid grid-cols-2 items-center mb-3">
+                          <div className="text-sm text-gray-500 font-medium">PAGÓ</div>
+                          <div className="text-right font-medium">{formatPrice(remainingAmount)} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 items-center font-semibold">
+                          <div className="text-sm text-gray-700 font-medium">TOTAL</div>
+                          <div className="text-right">{formatPrice(reservation.totalAmount)}</div>
                         </div>
                       </>
-                    )}
-                  </>
-                )}
+                    );
+                  } else if (hasAdvance && !isPaid) {
+                    // Escenario 1: Hay anticipo PERO el restante no está pagado aún
+                    return (
+                      <>
+                        <div className="grid grid-cols-2 items-center mb-3">
+                          <div className="text-sm text-gray-500 font-medium">ANTICIPO</div>
+                          <div className="text-right font-medium">{formatPrice(reservation.advanceAmount)} ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 items-center mb-3">
+                          <div className="text-sm text-gray-500 font-medium">RESTA</div>
+                          <div className="text-right font-medium">{formatPrice(remainingAmount)} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 items-center font-semibold">
+                          <div className="text-sm text-gray-700 font-medium">TOTAL</div>
+                          <div className="text-right">{formatPrice(reservation.totalAmount)}</div>
+                        </div>
+                      </>
+                    );
+                  } else {
+                    // Escenario 2: NO existe anticipo
+                    return (
+                      <>
+                        <div className="grid grid-cols-2 items-center mb-3">
+                          <div className="text-sm text-gray-500 font-medium">RESTA</div>
+                          <div className="text-right font-medium">{formatPrice(reservation.totalAmount)} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 items-center font-semibold">
+                          <div className="text-sm text-gray-700 font-medium">TOTAL</div>
+                          <div className="text-right">{formatPrice(reservation.totalAmount)}</div>
+                        </div>
+                      </>
+                    );
+                  }
+                })()}
               </>
             )}
             
