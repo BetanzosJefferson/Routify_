@@ -469,12 +469,6 @@ export default function ReservationDetailsModal({
                   <div className="bg-gray-50 p-3 sm:p-4 rounded-md">
                     <h3 className="font-medium text-sm sm:text-base border-b pb-2 mb-3 sm:mb-4">Detalles del viaje</h3>
                     <div className="space-y-3 sm:space-y-4">
-                      <div>
-                        <div className="text-sm text-gray-500 font-medium">RUTA</div>
-                        <div>
-                          {reservation.trip.route?.name || `${reservation.trip.segmentOrigin} - ${reservation.trip.segmentDestination}`}
-                        </div>
-                      </div>
 
                       <div>
                         <div className="text-sm text-gray-500 font-medium">ORIGEN</div>
@@ -647,7 +641,9 @@ export default function ReservationDetailsModal({
                         Escanea para ver o compartir el boleto.
                       </p>
 
-                      <div className="mt-2 sm:mt-4 flex justify-center">
+                      <div className="mt-2 sm:mt-4 flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
+
+
                         {/* Botón de descarga actualizado para usar handleDownloadTicket */}
                         <Button
                           onClick={handleDownloadTicket} // <-- Aquí se usa la nueva función
