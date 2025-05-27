@@ -2293,25 +2293,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('[GET /reservations] Error al obtener viajes relacionados:', error);
           // Si hay error, caer al comportamiento normal (solo el viaje solicitado)
           // Usando filtro de compañías para taquilleros o filtro normal para otros roles
-          const page = parseInt(req.query.page as string) || 1;
-          const limit = parseInt(req.query.limit as string) || 20;
           if (user.role === UserRole.TICKET_OFFICE && companyIds && companyIds.length > 0) {
             console.log(`[GET /reservations] TAQUILLERO: Aplicando filtro de ${companyIds.length} compañías tras error`);
-            reservations = await storage.getReservations(undefined, tripId || undefined, companyIds, page, limit);
+            reservations = await storage.getReservations(undefined, tripId || undefined, companyIds);
           } else {
-            reservations = await storage.getReservations(companyId || undefined, tripId || undefined, undefined, page, limit);
+            reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
           }
         }
       } else {
-        // Ejecutar la consulta con los filtros apropiados CON PAGINACIÓN PARA TODOS
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 20;
+        // Ejecutar la consulta con los filtros apropiados
         if (user.role === UserRole.TICKET_OFFICE && companyIds && companyIds.length > 0) {
-          console.log(`[GET /reservations] TAQUILLERO: Aplicando filtro de ${companyIds.length} compañías CON PAGINACIÓN`);
-          reservations = await storage.getReservations(undefined, tripId || undefined, companyIds, page, limit);
+          console.log(`[GET /reservations] TAQUILLERO: Aplicando filtro de ${companyIds.length} compañías`);
+          reservations = await storage.getReservations(undefined, tripId || undefined, companyIds);
         } else {
-          // Filtro normal por compañía para otros roles CON PAGINACIÓN
-          reservations = await storage.getReservations(companyId || undefined, tripId || undefined, undefined, page, limit);
+          // Filtro normal por compañía para otros roles
+          reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
         }
       }
       

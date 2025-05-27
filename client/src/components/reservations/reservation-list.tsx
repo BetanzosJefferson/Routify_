@@ -19,9 +19,7 @@ import {
   ExternalLink,
   Building2,
   ArrowRightLeft,
-  Check as CheckIcon,
-  ChevronLeft, // Import for pagination
-  ChevronRight, // Import for pagination
+  Check as CheckIcon
 } from "lucide-react";
 import { useReservations } from "@/hooks/use-reservations";
 import { useAuth } from "@/hooks/use-auth";
@@ -78,16 +76,12 @@ export function ReservationList() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   // Por defecto mostramos las reservaciones actuales/futuras
   const [activeTab, setActiveTab] = useState("upcoming");
-
+  
   // Estados adicionales para mejorar la UX
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showLoadingDelay, setShowLoadingDelay] = useState(false);
   const [hasError, setHasError] = useState(false);
-
-  // Pagination states
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-
+  
   // Obtener información del usuario actual
   const { user } = useAuth();
 
@@ -108,59 +102,59 @@ export function ReservationList() {
       setHasError(!!reservationsError);
     }
   }, [isLoading, reservationsError]);
-
+  
   // Ahora usamos funciones inline para manejar las comparaciones de fechas
-
+  
   // Separar reservaciones en actuales, archivadas y canceladas
   // Primero, separamos las canceladas (tendrán su propia pestaña)
   const canceledReservations = reservations?.filter(
     (reservation) => reservation.status === 'canceled'
   ) || [];
-
+  
   // Definir la fecha actual del sistema (20/05/2025) - Fecha fija para el sistema
   const SYSTEM_DATE = new Date('2025-05-20T12:00:00.000Z');
   console.log(`[SISTEMA] Fecha actual del sistema fijada en: ${SYSTEM_DATE.toISOString()}`);
-
+  
   // Luego filtramos las reservaciones actuales/futuras (que no estén canceladas)
   const upcomingReservations = reservations?.filter(
     (reservation) => {
       // Solo incluir reservaciones confirmadas (no canceladas)
       if (reservation.status !== 'confirmed') return false;
-
+      
       // Usar normalizeToStartOfDay para obtener la fecha normalizada del viaje
       const tripDate = normalizeToStartOfDay(reservation.trip.departureDate);
       // Normalizar la fecha actual del sistema para una comparación correcta
       const today = normalizeToStartOfDay(SYSTEM_DATE);
-
+      
       console.log(`[Clasificación] Evaluando reservación ${reservation.id} para 'Actuales y Futuras'`);
       console.log(`[Clasificación] Fecha viaje: ${tripDate.toISOString()}, Fecha sistema: ${today.toISOString()}`);
       console.log(`[Clasificación] ¿Es actual o futura? ${tripDate >= today ? 'SÍ' : 'NO'}`);
-
+      
       // Las reservaciones con fecha igual o posterior a hoy se consideran "actuales o futuras"
       return tripDate >= today;
     }
   ) || [];
-
+  
   const archivedReservations = reservations?.filter(
     (reservation) => {
       // Solo incluir reservaciones confirmadas (no canceladas)
       if (reservation.status !== 'confirmed') return false;
-
+      
       // Usar normalizeToStartOfDay para obtener la fecha normalizada del viaje
       const tripDate = normalizeToStartOfDay(reservation.trip.departureDate);
       // Usar la misma fecha del sistema declarada arriba
       const today = normalizeToStartOfDay(SYSTEM_DATE);
-
+      
       console.log(`[Clasificación] Evaluando reservación ${reservation.id} para 'Archivadas'`);
       console.log(`[Clasificación] Fecha viaje: ${tripDate.toISOString()}, Fecha sistema: ${today.toISOString()}`);
       console.log(`[Clasificación] ¿Es archivada? ${tripDate < today ? 'SÍ' : 'NO'}`);
-
+      
       // Cambiamos a 'estrictamente menor que' para que las reservaciones del día actual
       // NO se consideren archivadas sino actuales
       return tripDate < today;
     }
   ) || [];
-
+  
   // Obtener las reservaciones según la pestaña activa
   const activeReservations = 
     activeTab === "upcoming" 
@@ -168,7 +162,7 @@ export function ReservationList() {
       : activeTab === "archived" 
         ? archivedReservations 
         : canceledReservations;
-
+  
   // Filter reservations based on search term and date filter
   const filteredReservations = activeReservations.filter((reservation) => {
     // Aplicar filtro de búsqueda
@@ -181,7 +175,7 @@ export function ReservationList() {
       ).join(" ");
       const email = (reservation.email || '').toLowerCase();
       const phone = (reservation.phone || '').toLowerCase();
-
+      
       matchesSearch = (
         routeName.includes(searchLower) ||
         passengerNames.includes(searchLower) ||
@@ -189,7 +183,7 @@ export function ReservationList() {
         phone.includes(searchLower)
       );
     }
-
+    
     // Aplicar filtro de fecha usando nuestras utilidades de normalización
     let matchesDate = true;
     if (dateFilter) {
@@ -198,25 +192,10 @@ export function ReservationList() {
       const filterDate = normalizeToStartOfDay(dateFilter);
       matchesDate = isSameLocalDay(tripDate, filterDate);
     }
-
+    
     return matchesSearch && matchesDate;
   });
-
-  // Pagination Logic
-  const totalPages = Math.ceil(filteredReservations.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedReservations = filteredReservations.slice(startIndex, endIndex);
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const handleItemsPerPageChange = (value: string) => {
-    setItemsPerPage(Number(value));
-    setCurrentPage(1); // Reset to first page when items per page changes
-  };
-
+  
   // Cancel reservation mutation (soft delete)
   const cancelReservationMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -226,12 +205,12 @@ export function ReservationList() {
           'Content-Type': 'application/json',
         },
       });
-
+      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Error al cancelar la reservación');
       }
-
+      
       return await response.json();
     },
     onSuccess: () => {
@@ -239,11 +218,11 @@ export function ReservationList() {
         title: "Reservación cancelada",
         description: "La reservación ha sido cancelada exitosamente. Los asientos han sido liberados.",
       });
-
+      
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
-
+      
       // Close confirmation dialog
       setConfirmingDelete(null);
     },
@@ -255,7 +234,7 @@ export function ReservationList() {
       });
     },
   });
-
+  
   // Delete reservation mutation (hard delete)
   const deleteReservationMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -266,13 +245,13 @@ export function ReservationList() {
           'Content-Type': 'application/json',
         },
       });
-
+      
       if (!response.ok) {
         // Si hay un error, intentamos extraer el mensaje
         const errorData = response.status !== 204 ? await response.json() : { error: 'Unknown error' };
         throw new Error(errorData.error || 'Failed to delete reservation completely');
       }
-
+      
       // Retornamos un valor simple ya que la respuesta no tiene cuerpo
       return true;
     },
@@ -281,11 +260,11 @@ export function ReservationList() {
         title: "Reservación eliminada",
         description: "La reservación ha sido eliminada completamente del sistema.",
       });
-
+      
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
-
+      
       // Close confirmation dialog
       setConfirmingDelete(null);
     },
@@ -297,7 +276,7 @@ export function ReservationList() {
       });
     },
   });
-
+  
   // Estados adicionales para el formulario de edición
   const [email, setEmail] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
@@ -321,11 +300,11 @@ export function ReservationList() {
         title: "Reservación actualizada",
         description: "La reservación ha sido actualizada exitosamente.",
       });
-
+      
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
-
+      
       // Close edit modal
       setIsEditModalOpen(false);
       setEditingReservation(null);
@@ -338,7 +317,7 @@ export function ReservationList() {
       });
     },
   });
-
+  
   // Edit handlers
   const openEditModal = (reservation: ReservationWithDetails) => {
     setEditingReservation(reservation);
@@ -350,15 +329,15 @@ export function ReservationList() {
     setPhone(reservation.phone || "");
     setIsEditModalOpen(true);
   };
-
+  
   const closeEditModal = () => {
     setIsEditModalOpen(false);
     setEditingReservation(null);
   };
-
+  
   const handleSaveEdit = () => {
     if (!editingReservation) return;
-
+    
     // Preparamos las actualizaciones básicas que siempre se envían
     const updates: Partial<Reservation> = {
       paymentMethod,
@@ -366,27 +345,27 @@ export function ReservationList() {
       email,
       phone
     };
-
+    
     // Si hay anticipo, también actualizamos el método de pago del anticipo
     if (editingReservation.advanceAmount && editingReservation.advanceAmount > 0) {
       updates.advancePaymentMethod = advancePaymentMethod;
     }
-
+    
     // Enviamos todas las actualizaciones
     editReservationMutation.mutate({
       id: editingReservation.id,
       updates
     });
   };
-
+  
   // Confirmation dialog handlers
   const [confirmationType, setConfirmationType] = useState<'cancel' | 'delete'>('cancel');
-
+  
   const openDeleteConfirm = (id: number, type: 'cancel' | 'delete' = 'cancel') => {
     setConfirmingDelete(id);
     setConfirmationType(type);
   };
-
+  
   const handleDeleteConfirm = () => {
     if (confirmingDelete !== null) {
       if (confirmationType === 'cancel') {
@@ -396,12 +375,11 @@ export function ReservationList() {
       }
     }
   };
-
+  
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset to first page on search
   };
-
+  
   return (
     <div className="py-6">
       <div className="flex items-center mb-4">
@@ -410,7 +388,7 @@ export function ReservationList() {
         </div>
         <h2 className="text-xl font-semibold text-gray-800">Reservations</h2>
       </div>
-
+      
       <Card className="mb-6">
         <CardContent className="p-6">
           <div className="space-y-6">
@@ -432,7 +410,7 @@ export function ReservationList() {
                   />
                 </div>
               </div>
-
+              
               <div className="flex-1">
                 <Label htmlFor="dateFilter" className="mb-2 block text-sm font-medium">
                   Filtrar por fecha
@@ -446,21 +424,15 @@ export function ReservationList() {
                     className="pl-10"
                     type="date"
                     value={dateFilter}
-                    onChange={(e) => {
-                      setDateFilter(e.target.value);
-                      setCurrentPage(1); // Reset to first page on date filter change
-                    }}
+                    onChange={(e) => setDateFilter(e.target.value)}
                   />
                 </div>
               </div>
             </div>
-
+            
             <div className="border-b border-gray-200 mb-3">
               <div className="text-lg font-semibold mb-2">Ver reservaciones:</div>
-              <Tabs value={activeTab} onValueChange={(value) => {
-                setActiveTab(value);
-                setCurrentPage(1); // Reset to first page on tab change
-              }} className="w-full">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="w-full bg-transparent border-b border-gray-100 p-0 mb-0">
                   <TabsTrigger 
                     value="upcoming" 
@@ -492,7 +464,7 @@ export function ReservationList() {
           </div>
         </CardContent>
       </Card>
-
+      
       <Card>
         <CardHeader className="pb-0 pt-4 px-4">
           <div className="flex items-center gap-2">
@@ -521,7 +493,7 @@ export function ReservationList() {
                 : "Mostrando reservaciones que han sido canceladas"}
           </CardDescription>
         </CardHeader>
-
+        
         {/* Vista para Desktop: Tabla tradicional */}
         <div className="hidden md:block overflow-x-auto">
           {isLoading && showLoadingDelay ? (
@@ -533,7 +505,7 @@ export function ReservationList() {
             <div className="text-center p-8 text-red-500">
               Error al cargar las reservaciones. Por favor intenta de nuevo.
             </div>
-          ) : paginatedReservations && paginatedReservations.length > 0 ? (
+          ) : filteredReservations && filteredReservations.length > 0 ? (
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -561,7 +533,7 @@ export function ReservationList() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedReservations.map((reservation) => (
+                {filteredReservations.map((reservation) => (
                   <tr 
                     key={reservation.id} 
                     className={`cursor-pointer hover:bg-gray-50 ${
@@ -625,7 +597,7 @@ export function ReservationList() {
                                 <>
                                   {/* Si está pendiente, mostrar el valor total tachado */}
                                   <span className="text-sm font-medium line-through text-gray-500">{formatPrice(reservation.totalAmount)}</span>
-
+                                  
                                   {/* Si tiene anticipo mostrar ese valor, si no mostrar $0 */}
                                   {reservation.advanceAmount > 0 ? (
                                     <span className="text-sm font-medium ml-1">{formatPrice(reservation.advanceAmount)}</span>
@@ -647,7 +619,7 @@ export function ReservationList() {
                             {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
                           </Badge>
                         </div>
-
+                        
                         {(!reservation.advanceAmount || reservation.advanceAmount <= 0) ? (
                           activeTab === "canceled" ? (
                             <div className="flex text-xs">
@@ -669,7 +641,7 @@ export function ReservationList() {
                                 <span className="font-normal">({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
                               </span>
                             </div>
-
+                            
                             {reservation.advanceAmount < reservation.totalAmount && (
                               <div className="text-xs flex">
                                 <span className="text-gray-500">{reservation.paymentStatus === 'pagado' ? 'Pagó:' : 'Resta:'}</span>
@@ -802,7 +774,7 @@ export function ReservationList() {
             </div>
           )}
         </div>
-
+        
         {/* Vista para Móvil: Tarjetas */}
         <div className="md:hidden">
           {isLoading && showLoadingDelay ? (
@@ -814,9 +786,9 @@ export function ReservationList() {
             <div className="text-center p-8 text-red-500">
               Error al cargar las reservaciones. Por favor intenta de nuevo.
             </div>
-          ) : paginatedReservations && paginatedReservations.length > 0 ? (
+          ) : filteredReservations && filteredReservations.length > 0 ? (
             <div className="divide-y divide-gray-200">
-              {paginatedReservations.map((reservation) => (
+              {filteredReservations.map((reservation) => (
                 <div 
                   key={reservation.id} 
                   className={`p-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors duration-150 ${
@@ -851,7 +823,7 @@ export function ReservationList() {
                         </Badge>
                       </div>
                     </div>
-
+                    
                     {user?.role !== "taquilla" && (
                       <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                         <Button 
@@ -893,7 +865,7 @@ export function ReservationList() {
                       </div>
                     )}
                   </div>
-
+                  
                   <div className="grid grid-cols-2 gap-y-2 text-sm">
                     <div className="col-span-2">
                       <div className="font-medium text-gray-900">
@@ -907,29 +879,29 @@ export function ReservationList() {
                         Tel: {reservation.phone}
                       </div>
                     </div>
-
+                    
                     <div className="col-span-2 mt-1">
                       <div className="font-medium">{reservation.trip.route.name}</div>
                       <div className="text-gray-500 text-xs">
                         {reservation.trip.segmentOrigin || reservation.trip.route.origin} → {reservation.trip.segmentDestination || reservation.trip.route.destination}
                       </div>
                     </div>
-
+                    
                     <div>
                       <div className="text-xs text-gray-500">Fecha</div>
                       <div>{formatDate(reservation.trip.departureDate)}</div>
                     </div>
-
+                    
                     <div>
                       <div className="text-xs text-gray-500">Hora</div>
                       <div>{formatTripTime(reservation.trip.departureTime, true, 'pretty')}</div>
                     </div>
-
+                    
                     <div>
                       <div className="text-xs text-gray-500">Pasajeros</div>
                       <div>{reservation.passengers.length}</div>
                     </div>
-
+                    
                     <div className="text-right">
                       <div className="text-xs text-gray-500">Total</div>
                       {activeTab === "canceled" ? (
@@ -951,7 +923,7 @@ export function ReservationList() {
                         <div className="font-medium">{formatPrice(reservation.totalAmount)}</div>
                       )}
                     </div>
-
+                    
                     {/* Información del creador para móvil */}
                     {user?.role !== "taquilla" && reservation.createdByUser && (
                       <div className="col-span-2 mt-2">
@@ -962,7 +934,7 @@ export function ReservationList() {
                         </div>
                       </div>
                     )}
-
+                    
                     {/* Información de la empresa para móvil (solo para taquilla) */}
                     {user?.role === "taquilla" && reservation.companyInfo && (
                       <div className="col-span-2 mt-2">
@@ -977,7 +949,7 @@ export function ReservationList() {
                         )}
                       </div>
                     )}
-
+                    
                     {/* Información de pago para móvil */}
                     <div className="col-span-2 mt-2 bg-gray-50 p-2 rounded-md border border-gray-100 text-xs">
                       <div className="grid grid-cols-2 gap-2">
@@ -1022,7 +994,7 @@ export function ReservationList() {
                                 <span className="font-normal">({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</span>
                               </div>
                             </div>
-
+                            
                             {reservation.advanceAmount < reservation.totalAmount && (
                               <div className="col-span-2">
                                 <div className="text-gray-500">{reservation.paymentStatus === 'pagado' ? 'Pagó' : 'Resta'}</div>
@@ -1039,7 +1011,7 @@ export function ReservationList() {
                                 )}
                               </div>
                             )}
-
+                            
 
                           </>
                         )}
@@ -1057,42 +1029,17 @@ export function ReservationList() {
             </div>
           )}
         </div>
-
-        {/* Pagination controls */}
+        
+        {/* Pagination (placeholder, would be implemented with actual data) */}
         <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between">
-            <div className="text-sm text-gray-700 mb-2 sm:mb-0">
-              Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, filteredReservations.length)}</span> of <span className="font-medium">{filteredReservations.length}</span> results
-            </div>
-            <div className="flex items-center space-x-3">
-              <Select onValueChange={handleItemsPerPageChange} value={String(itemsPerPage)}>
-                <SelectTrigger className="w-[120px] h-9">
-                  <SelectValue placeholder="Items per page" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5 per page</SelectItem>
-                  <SelectItem value="10">10 per page</SelectItem>
-                  <SelectItem value="20">20 per page</SelectItem>
-                  <SelectItem value="50">50 per page</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm font-medium">Page {currentPage} of {totalPages}</span>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+          <div className="flex justify-between items-center">
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredReservations?.length || 0}</span> of <span className="font-medium">{filteredReservations?.length || 0}</span> results
+                </p>
+              </div>
+              {/* Pagination controls would go here if needed */}
             </div>
           </div>
         </div>
@@ -1106,7 +1053,7 @@ export function ReservationList() {
           onOpenChange={setIsDetailsModalOpen}
         />
       )}
-
+      
       {/* Confirmation Dialog */}
       <AlertDialog open={confirmingDelete !== null} onOpenChange={() => setConfirmingDelete(null)}>
         <AlertDialogContent>
@@ -1135,7 +1082,7 @@ export function ReservationList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
+      
       {/* Edit Reservation Dialog */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="sm:max-w-[500px] p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
@@ -1145,7 +1092,7 @@ export function ReservationList() {
               Actualiza los detalles de esta reservación.
             </DialogDescription>
           </DialogHeader>
-
+          
           {editingReservation && (
             <div className="grid gap-3 sm:gap-4 py-2 sm:py-4">
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
@@ -1153,7 +1100,7 @@ export function ReservationList() {
                   <Label htmlFor="reservation-id" className="text-gray-500 text-xs">CÓDIGO DE RESERVACIÓN</Label>
                   <div id="reservation-id" className="text-sm font-medium">#{generateReservationId(editingReservation?.id || 0)}</div>
                 </div>
-
+                
                 <div>
                   <Label htmlFor="created-by" className="text-gray-500 text-xs">CREADA POR</Label>
                   <div id="created-by" className="text-sm">
@@ -1168,11 +1115,11 @@ export function ReservationList() {
                   </div>
                 </div>
               </div>
-
+              
               {/* Información de contacto */}
               <div className="space-y-2 sm:space-y-3 mt-1 sm:mt-2">
                 <h3 className="text-xs sm:text-sm font-medium border-b pb-1">Información de contacto</h3>
-
+                
                 <div className="grid grid-cols-1 gap-2">
                   <Label htmlFor="passenger-name" className="text-gray-500 text-xs">PASAJEROS</Label>
                   <div id="passenger-name" className="text-sm">
@@ -1180,7 +1127,7 @@ export function ReservationList() {
                     {editingReservation.passengers.length > 1 && ` +${editingReservation.passengers.length - 1}`}
                   </div>
                 </div>
-
+                
                 <div className="grid grid-cols-1 gap-2">
                   <Label htmlFor="email" className="text-gray-500 text-xs">EMAIL</Label>
                   <div className="relative">
@@ -1194,7 +1141,7 @@ export function ReservationList() {
                     />
                   </div>
                 </div>
-
+                
                 <div className="grid grid-cols-1 gap-2">
                   <Label htmlFor="phone" className="text-gray-500 text-xs">TELÉFONO</Label>
                   <div className="relative">
@@ -1209,11 +1156,11 @@ export function ReservationList() {
                   </div>
                 </div>
               </div>
-
+              
               {/* Información del viaje */}
               <div className="space-y-2 sm:space-y-3 mt-1 sm:mt-2">
                 <h3 className="text-xs sm:text-sm font-medium border-b pb-1">Información del viaje</h3>
-
+                
                 <div className="grid grid-cols-1 gap-2">
                   <Label htmlFor="route-info" className="text-gray-500 text-xs">RUTA</Label>
                   <div id="route-info" className="text-sm">
@@ -1233,11 +1180,11 @@ export function ReservationList() {
                   </div>
                 </div>
               </div>
-
+              
               {/* Información de pago */}
               <div className="space-y-2 sm:space-y-3 mt-1 sm:mt-2">
                 <h3 className="text-xs sm:text-sm font-medium border-b pb-1">Información de pago</h3>
-
+                
                 {/* Mostrar la información diferente según si hay anticipo o no */}
                 {editingReservation.advanceAmount && editingReservation.advanceAmount > 0 ? (
                   // Caso 1: Tiene anticipo (pago en 2 exhibiciones)
@@ -1261,7 +1208,7 @@ export function ReservationList() {
                         </Select>
                       </div>
                     </div>
-
+                    
                     <div className="flex items-center justify-between">
                       <Label htmlFor="payment-method" className="text-gray-500 text-xs font-medium">
                         RESTA: {formatPrice(editingReservation.totalAmount - editingReservation.advanceAmount)}
@@ -1305,7 +1252,7 @@ export function ReservationList() {
                   </div>
                 )}
               </div>
-
+              
               {/* Notas adicionales */}
               <div className="grid grid-cols-1 gap-2 mt-1 sm:mt-2">
                 <Label htmlFor="notes" className="text-gray-500 text-xs">NOTAS ADICIONALES</Label>
@@ -1319,7 +1266,7 @@ export function ReservationList() {
               </div>
             </div>
           )}
-
+          
           <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
             <Button className="w-full sm:w-auto order-2 sm:order-1" variant="outline" onClick={closeEditModal}>Cancelar</Button>
             <Button 

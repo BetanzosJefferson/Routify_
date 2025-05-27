@@ -1332,12 +1332,11 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getReservations(companyId?: string, tripId?: number, companyIds?: string[], page: number = 1, limit: number = 20): Promise<ReservationWithDetails[]> {
+  async getReservations(companyId?: string, tripId?: number, companyIds?: string[]): Promise<ReservationWithDetails[]> {
     console.time('getReservations-optimized');
     
     // NUEVA IMPLEMENTACIÓN CON FILTRADO DE COMPAÑÍA Y VIAJE
-    const offset = (page - 1) * limit;
-    console.log(`[getReservations] Iniciando búsqueda${companyId ? ` para compañía ${companyId}` : ''}${companyIds && companyIds.length > 0 ? ` para compañías [${companyIds.join(', ')}]` : ''}${tripId ? ` para viaje ${tripId}` : ''} - PAGINACIÓN: página ${page}, límite ${limit}, offset ${offset}`);
+    console.log(`[getReservations] Iniciando búsqueda${companyId ? ` para compañía ${companyId}` : ''}${companyIds && companyIds.length > 0 ? ` para compañías [${companyIds.join(', ')}]` : ''}${tripId ? ` para viaje ${tripId}` : ''}`);
     
     // Construir condiciones de filtrado como array
     const condiciones = [];
@@ -1419,20 +1418,13 @@ export class DatabaseStorage implements IStorage {
         whereClause = sql`${whereClause} AND ${condiciones[i]}`;
       }
       
-      // Ejecutar consulta con filtros Y PAGINACIÓN
-      console.log(`[getReservations] Ejecutando consulta CON filtros Y PAGINACIÓN`);
-      reservations = await db.select().from(schema.reservations)
-        .where(whereClause)
-        .orderBy(desc(schema.reservations.createdAt))
-        .limit(limit)
-        .offset(offset);
+      // Ejecutar consulta con filtros
+      console.log(`[getReservations] Ejecutando consulta CON filtros`);
+      reservations = await db.select().from(schema.reservations).where(whereClause);
     } else {
-      // Sin filtros (solo superAdmin debería llegar aquí) PERO CON PAGINACIÓN
-      console.log(`[getReservations] Ejecutando consulta SIN filtros PERO CON PAGINACIÓN`);
-      reservations = await db.select().from(schema.reservations)
-        .orderBy(desc(schema.reservations.createdAt))
-        .limit(limit)
-        .offset(offset);
+      // Sin filtros (solo superAdmin debería llegar aquí)
+      console.log(`[getReservations] Ejecutando consulta SIN filtros`);
+      reservations = await db.select().from(schema.reservations);
     }
     
     console.log(`[getReservations] Encontradas ${reservations.length} reservas`);
@@ -1448,74 +1440,74 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    // OPTIMIZACIÓN CRÍTICA: Cargar datos en lotes para mejorar rendimiento significativamente
-    const reservationIds = reservations.map(r => r.id);
-    const tripIds = [...new Set(reservations.map(r => r.tripId))];
-    
-    console.log(`[getReservations] OPTIMIZACIÓN: Cargando ${tripIds.length} viajes y pasajeros de ${reservationIds.length} reservas en lotes`);
-    
-    // Cargar todos los viajes con rutas en una sola consulta
-    const allTripsQuery = tripIds.length > 0 ? db
-      .select({
-        trip: schema.trips,
-        route: schema.routes
-      })
-      .from(schema.trips)
-      .leftJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
-      .where(inArray(schema.trips.id, tripIds)) : [];
-    
-    // Cargar todos los pasajeros en una sola consulta
-    const allPassengersQuery = reservationIds.length > 0 ? db
-      .select()
-      .from(schema.passengers)
-      .where(inArray(schema.passengers.reservationId, reservationIds)) : [];
-    
-    // Ejecutar consultas en paralelo para mayor velocidad
-    const [allTripsWithRoutes, allPassengers] = await Promise.all([
-      allTripsQuery,
-      allPassengersQuery
-    ]);
-    
-    // Crear mapas para búsqueda rápida O(1)
-    const tripsMap = new Map<number, TripWithRouteInfo>();
-    allTripsWithRoutes.forEach(({ trip, route }) => {
-      if (route) {
-        tripsMap.set(trip.id, {
-          ...trip,
-          route,
-          numStops: route.stops?.length || 0
-        });
-      }
-    });
-    
-    const passengersMap = new Map<number, schema.Passenger[]>();
-    allPassengers.forEach(passenger => {
-      if (!passengersMap.has(passenger.reservationId)) {
-        passengersMap.set(passenger.reservationId, []);
-      }
-      passengersMap.get(passenger.reservationId)!.push(passenger);
-    });
-    
-    // Procesar reservaciones usando mapas (extremadamente rápido)
+    // Obtener detalles para cada reserva
     const reservationsWithDetails: ReservationWithDetails[] = [];
     
     for (const reservation of reservations) {
-      const trip = tripsMap.get(reservation.tripId);
+      // Obtener información del viaje asociado 
+      // NOTA: getTripWithRouteInfo ya incluye sus propias verificaciones de seguridad
+      const trip = await this.getTripWithRouteInfo(reservation.tripId);
       if (!trip) {
         console.log(`[getReservations] No se encontró el viaje ${reservation.tripId} asociado a la reserva ${reservation.id}`);
         continue;
       }
       
-      const passengers = passengersMap.get(reservation.id) || [];
+      // Obtener pasajeros
+      const passengers = await this.getPassengers(reservation.id);
       
-      // Agregar a los resultados (sin consultas de usuarios por ahora para máximo rendimiento)
+      // Obtener información del usuario que creó la reservación
+      let createdByUser: schema.User | undefined = undefined;
+      if (reservation.createdBy) {
+        // Buscar el usuario por ID
+        const [user] = await db
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.id, reservation.createdBy));
+        
+        if (user) {
+          createdByUser = user;
+          console.log(`[getReservations] Reserva ${reservation.id} creada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
+        }
+      }
+      
+      // Obtener información del usuario que escaneó el ticket
+      let checkedByUser: schema.User | undefined = undefined;
+      if (reservation.checkedBy) {
+        // Buscar el usuario por ID
+        const [user] = await db
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.id, reservation.checkedBy));
+        
+        if (user) {
+          checkedByUser = user;
+          console.log(`[getReservations] Reserva ${reservation.id} escaneada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
+        }
+      }
+      
+      // Obtener información del usuario que marcó como pagado el ticket
+      let paidByUser: schema.User | undefined = undefined;
+      if (reservation.paidBy) {
+        // Buscar el usuario por ID
+        const [user] = await db
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.id, reservation.paidBy));
+        
+        if (user) {
+          paidByUser = user;
+          console.log(`[getReservations] Reserva ${reservation.id} marcada como pagada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
+        }
+      }
+      
+      // Agregar a los resultados
       reservationsWithDetails.push({
         ...reservation,
         trip,
         passengers,
-        createdByUser: undefined,
-        checkedByUser: undefined,
-        paidByUser: undefined
+        createdByUser, // Añadimos el usuario creador
+        checkedByUser, // Añadimos el usuario que escaneó el ticket
+        paidByUser     // Añadimos el usuario que marcó como pagado el ticket
       });
     }
     
