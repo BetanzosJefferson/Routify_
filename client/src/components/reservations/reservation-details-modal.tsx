@@ -244,11 +244,11 @@ export default function ReservationDetailsModal({
 
       // Colores del tema
       const colors = {
-        primary: [59, 130, 246],    // blue-500
-        text: [51, 51, 51],         // text-gray-800
-        muted: [102, 102, 102],     // text-gray-500
-        accent: [34, 139, 34],      // green-600
-        border: [180, 180, 180],    // border-gray-300
+        primary: [59, 130, 246],   // blue-500
+        text: [51, 51, 51],        // text-gray-800
+        muted: [102, 102, 102],    // text-gray-500
+        accent: [34, 139, 34],     // green-600
+        border: [180, 180, 180],   // border-gray-300
         background: [255, 255, 255] // white
       };
 
@@ -292,9 +292,9 @@ export default function ReservationDetailsModal({
       doc.setFontSize(9);
       doc.setTextColor(...colors.muted);
       doc.text(
-        `ID: ${generateReservationId(reservation.id)}`, 
-        pageWidth - outerMargin - innerPadding, 
-        currentY, 
+        `ID: ${generateReservationId(reservation.id)}`,
+        pageWidth - outerMargin - innerPadding,
+        currentY,
         { align: 'right' }
       );
       currentY += 8;
@@ -367,14 +367,24 @@ export default function ReservationDetailsModal({
       infoY += 5;
       infoY = drawSection('INFORMACIÓN DEL VIAJE', col2X, infoY, colWidth);
 
-      // Ruta
+      // Ruta - Actualización aquí
       doc.setFontSize(10);
       doc.setTextColor(...colors.muted);
-      doc.text('Ruta:', col2X, infoY);
+
+      const origin = reservation.trip.segmentOrigin || reservation.trip.route?.origin;
+      const destination = reservation.trip.segmentDestination || reservation.trip.route?.destination;
+
+      doc.text('Origen:', col2X, infoY);
       doc.setTextColor(...colors.text);
-      const routeText = `${reservation.trip.segmentOrigin || reservation.trip.route?.origin} → ${reservation.trip.segmentDestination || reservation.trip.route?.destination}`;
-      infoY = drawTextWithWrap(routeText, col2X + 20, infoY, colWidth - 20, 10);
-      infoY += 3;
+      infoY = drawTextWithWrap(origin, col2X + 25, infoY, colWidth - 25, 10);
+
+      doc.setTextColor(...colors.muted);
+      doc.text('Destino:', col2X, infoY + 5);
+      doc.setTextColor(...colors.text);
+      infoY = drawTextWithWrap(destination, col2X + 25, infoY + 5, colWidth - 25, 10);
+
+      infoY += 3; // Ajusta el salto de línea final según sea necesario
+
 
       // Fecha
       doc.setTextColor(...colors.muted);
@@ -464,8 +474,8 @@ export default function ReservationDetailsModal({
 
         doc.setFont('helvetica', 'bold');
         doc.text(
-          reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE', 
-          paymentX + 22, 
+          reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE',
+          paymentX + 22,
           paymentY
         );
 
@@ -505,9 +515,9 @@ export default function ReservationDetailsModal({
         doc.setFontSize(8);
         doc.setTextColor(...colors.muted);
         doc.text(
-          'Conserve este boleto durante todo el viaje', 
-          pageWidth / 2, 
-          pageHeight - outerMargin - 5, 
+          'Conserve este boleto durante todo el viaje',
+          pageWidth / 2,
+          pageHeight - outerMargin - 5,
           { align: 'center' }
         );
 
@@ -732,8 +742,7 @@ export default function ReservationDetailsModal({
                   <div className="bg-gray-50 p-3 sm:p-4 rounded-md">
                     <h3 className="font-medium text-sm sm:text-base border-b pb-2 mb-3 sm:mb-4">Información de pago</h3>
                     <div className="space-y-2 sm:space-y-3">
-                      {/* Estado de reservación eliminado como solicitado */}
-
+                      {/* Estado de pago */}
                       <div className="grid grid-cols-2 items-center">
                         <div className="text-sm text-gray-500 font-medium">ESTADO DE PAGO</div>
                         <div className="text-right">
@@ -747,27 +756,72 @@ export default function ReservationDetailsModal({
                         </div>
                       </div>
 
-                      {(reservation.advanceAmount && reservation.advanceAmount > 0) && (
+                      {/* NUEVO FORMATO MEJORADO PARA INFORMACIÓN DE PAGO */}
+                      {reservation.status !== 'canceled' ? (
                         <>
-                          <div className="grid grid-cols-2 items-center">
-                            <div className="text-sm text-gray-500 font-medium">ANTICIPÓ</div>
-                            <div className="text-right font-medium">{formatPrice(reservation.advanceAmount)} ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
-                          </div>
-
-                          {reservation.advanceAmount < reservation.totalAmount && (
+                          {(() => {
+                            const hasAdvance = reservation.advanceAmount && reservation.advanceAmount > 0;
+                            const isPaid = reservation.paymentStatus === 'pagado';
+                            const remainingAmount = reservation.totalAmount - (reservation.advanceAmount || 0);
+                            
+                            if (hasAdvance && isPaid) {
+                              // Escenario 3: Hay anticipo Y ya está pagado completamente
+                              return (
+                                <>
+                                  <div className="grid grid-cols-2 items-center">
+                                    <div className="text-sm text-gray-500 font-medium">ANTICIPO</div>
+                                    <div className="text-right font-medium">{formatPrice(reservation.advanceAmount)} ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-2 items-center">
+                                    <div className="text-sm text-gray-500 font-medium">PAGÓ</div>
+                                    <div className="text-right font-medium">{formatPrice(remainingAmount)} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
+                                  </div>
+                                </>
+                              );
+                            } else if (hasAdvance && !isPaid) {
+                              // Escenario 1: Hay anticipo PERO el restante no está pagado aún
+                              return (
+                                <>
+                                  <div className="grid grid-cols-2 items-center">
+                                    <div className="text-sm text-gray-500 font-medium">ANTICIPO</div>
+                                    <div className="text-right font-medium">{formatPrice(reservation.advanceAmount)} ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-2 items-center">
+                                    <div className="text-sm text-gray-500 font-medium">RESTA</div>
+                                    <div className="text-right font-medium">{formatPrice(remainingAmount)} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
+                                  </div>
+                                </>
+                              );
+                            } else {
+                              // Escenario 2: NO existe anticipo
+                              return (
+                                <div className="grid grid-cols-2 items-center">
+                                  <div className="text-sm text-gray-500 font-medium">RESTA</div>
+                                  <div className="text-right font-medium">{formatPrice(reservation.totalAmount)} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
+                                </div>
+                              );
+                            }
+                          })()}
+                        </>
+                      ) : (
+                        // Para reservaciones canceladas, mantener formato original
+                        <>
+                          {(reservation.advanceAmount && reservation.advanceAmount > 0) && (
                             <div className="grid grid-cols-2 items-center">
-                              <div className="text-sm text-gray-500 font-medium">RESTA</div>
-                              <div className="text-right font-medium">{formatPrice(reservation.totalAmount - (reservation.advanceAmount || 0))} ({reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
+                              <div className="text-sm text-gray-500 font-medium">ANTICIPO RETENIDO</div>
+                              <div className="text-right font-medium">{formatPrice(reservation.advanceAmount)} ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})</div>
+                            </div>
+                          )}
+                          
+                          {(!reservation.advanceAmount || reservation.advanceAmount <= 0) && (
+                            <div className="grid grid-cols-2 items-center">
+                              <div className="text-sm text-gray-500 font-medium">MÉTODO DE PAGO</div>
+                              <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
                             </div>
                           )}
                         </>
-                      )}
-
-                      {(!reservation.advanceAmount || reservation.advanceAmount <= 0) && (
-                        <div className="grid grid-cols-2 items-center">
-                          <div className="text-sm text-gray-500 font-medium">MÉTODO DE PAGO</div>
-                          <div className="text-right">{reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'}</div>
-                        </div>
                       )}
 
                       {/* Información de descuento si hay cupón aplicado */}
@@ -798,9 +852,9 @@ export default function ReservationDetailsModal({
                         </>
                       )}
 
-                      <div className="grid grid-cols-2 items-center border-t border-gray-200 pt-2 mt-2">
-                        <div className="text-sm text-gray-500 font-medium">TOTAL</div>
-                        <div className="text-right font-medium">{formatPrice(reservation.totalAmount)}</div>
+                      <div className="grid grid-cols-2 items-center border-t border-gray-200 pt-2 mt-2 font-semibold">
+                        <div className="text-sm text-gray-700 font-medium">TOTAL</div>
+                        <div className="text-right">{formatPrice(reservation.totalAmount)}</div>
                       </div>
 
                       {user && reservation.paymentStatus !== 'pagado' && reservation.status === 'confirmed' && (

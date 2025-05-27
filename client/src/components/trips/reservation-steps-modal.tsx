@@ -405,8 +405,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
   
   // Handle downloading the ticket as PDF
   const handleDownloadTicket = async () => {
-    // 1. Validar la existencia de la información de la reservación
-    if (!reservation) {
+    if (!submittedReservation) {
       toast({
         title: "Error",
         description: "No se encontró la información de la reservación",
@@ -416,409 +415,143 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
     }
 
     try {
-      // 2. Mostrar mensaje de carga mientras se genera el PDF
-      toast({
-        title: "Generando PDF...",
-        description: "Por favor espera mientras se genera el boleto",
-      });
-
-      // 3. Importar jsPDF dinámicamente
       const { jsPDF } = await import('jspdf');
-
-      // 4. Inicializar documento PDF
+      
+      // Crear nuevo documento PDF
       const doc = new jsPDF();
+      
+      // Configuración del documento
       const pageWidth = doc.internal.pageSize.width;
       const pageHeight = doc.internal.pageSize.height;
-      const outerMargin = 10;
-      const innerPadding = 15;
-      const ticketWidth = pageWidth - (outerMargin * 2);
-      const ticketHeight = pageHeight - (outerMargin * 2);
-
-      // 5. Definición de colores para el tema del boleto
-      const colors = {
-        primary: [59, 130, 246],    // blue-500
-        text: [51, 51, 51],         // text-gray-800
-        muted: [102, 102, 102],     // text-gray-500
-        accent: [34, 139, 34],      // green-600
-        border: [180, 180, 180],    // border-gray-300
-        background: [255, 255, 255] // white
-      };
-
-      // 6. Funciones auxiliares para dibujar en el PDF
-      // Función para dibujar texto con ajuste automático (word wrap)
-      const drawTextWithWrap = (text, x, y, maxWidth, fontSize = 10) => {
-        doc.setFontSize(fontSize);
-        // `splitTextToSize` es un método de jsPDF que divide el texto para que quepa en un ancho dado
-        const splitText = doc.splitTextToSize(text, maxWidth);
-        doc.text(splitText, x, y);
-        return y + (splitText.length * (fontSize * 0.35)); // Retorna la nueva posición Y después del texto
-      };
-
-      // Función para dibujar una sección con título y una línea divisoria
-      const drawSection = (title, x, y, width) => {
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...colors.text);
-        doc.text(title, x, y);
-
-        doc.setDrawColor(...colors.border);
-        doc.line(x, y + 2, x + width, y + 2); // Línea debajo del título
-
-        return y + 10; // Retorna la posición inicial para el contenido de la sección
-      };
-
-      // Función para generar el ID de la reservación (ajusta según tu lógica)
-      const generateReservationId = (id) => `R-${String(id).padStart(6, '0')}`;
-
-      // Función para formatear fechas
-      const formatDate = (dateString) => {
-        if (!dateString) return 'N/A';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      };
-
-      // Función para formatear horas de viaje
-      const formatTripTime = (timeString, showAmPm = true, style = 'short') => {
-        if (!timeString) return 'N/A';
-        // jsPDF tiene problemas con fechas sin día/mes/año, así que creamos una fecha dummy
-        const date = new Date(`2000/01/01 ${timeString}`);
-        if (isNaN(date.getTime())) return 'N/A'; // Validar si la fecha es inválida
-
-        if (style === 'pretty') {
-          return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: showAmPm });
-        }
-        return timeString; // Opcional: retornar solo la cadena si no se necesita formato
-      };
-
-      // Función para formatear precios
-      const formatPrice = (price) => {
-        if (typeof price !== 'number') return 'N/A';
-        return price.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
-      };
-
-      // 7. Lógica principal para dibujar el contenido del ticket
-      const drawTicketContent = () => {
-        // Dibujar borde del boleto con esquinas redondeadas simuladas
-        doc.setDrawColor(...colors.border);
-        doc.setFillColor(...colors.background);
-        doc.setLineWidth(1);
-        doc.rect(outerMargin, outerMargin, ticketWidth, ticketHeight, 'FD'); // Dibuja y rellena el rectángulo principal
-
-        // Establecer la posición Y inicial para el contenido
-        let currentY = outerMargin + innerPadding;
-
-        // ID de reservación (esquina superior derecha)
-        doc.setFontSize(9);
-        doc.setTextColor(...colors.muted);
-        doc.text(
-          `ID: ${generateReservationId(reservation.id)}`,
-          pageWidth - outerMargin - innerPadding,
-          currentY,
-          { align: 'right' }
-        );
-        currentY += 8;
-
-        // Título principal centrado
-        doc.setFontSize(22);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...colors.primary);
-        doc.text('BOLETO DE VIAJE', pageWidth / 2, currentY, { align: 'center' });
-        currentY += 15;
-
-        // Estado de la reservación si está cancelada
-        if (reservation.status === 'canceled') {
-          doc.setFontSize(14);
-          doc.setTextColor(220, 53, 69); // red-600
-          doc.text('*** CANCELADA ***', pageWidth / 2, currentY, { align: 'center' });
-          currentY += 12;
-        }
-
-        // 8. División en dos columnas para el contenido principal
-        const col1X = outerMargin + innerPadding;
-        const col2X = pageWidth / 2 + 5;
-        const colWidth = (ticketWidth / 2) - innerPadding - 5;
-
-        // --- COLUMNA IZQUIERDA: Código QR ---
-        const qrSize = 80;
-        const qrX = col1X + (colWidth / 2) - (qrSize / 2); // Centrar QR en la columna
-        const qrY = currentY;
-
-        // Dibujar la imagen QR (o el placeholder si no se cargó)
-        // (La lógica de carga/dibujo del QR se maneja fuera de esta función principal)
-
-        // --- COLUMNA DERECHA: Información Principal ---
-        let infoY = currentY; // Posición Y para el contenido de la columna derecha
-
-        // Información del pasajero
-        infoY = drawSection('INFORMACIÓN DEL PASAJERO', col2X, infoY, colWidth);
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(...colors.muted);
-        doc.text('Nombre:', col2X, infoY);
-        doc.setTextColor(...colors.text);
-        doc.setFont('helvetica', 'bold');
-        const passengerName = `${reservation.passengers[0]?.firstName || ''} ${reservation.passengers[0]?.lastName || ''}`.trim();
-        doc.text(passengerName, col2X + 25, infoY);
-        infoY += 8;
-
-        // Pasajeros adicionales (si existen)
-        if (reservation.passengers.length > 1) {
-          doc.setFont('helvetica', 'normal');
-          reservation.passengers.slice(1).forEach((p, idx) => {
-            const name = `${p.firstName || ''} ${p.lastName || ''}`.trim();
-            if (name) {
-              doc.text(name, col2X + 25, infoY);
-              infoY += 6;
-            }
-          });
-        }
-        infoY += 5;
-
-        // Cantidad de asientos
-        doc.setTextColor(...colors.muted);
-        doc.text('Asientos:', col2X, infoY);
-        doc.setTextColor(...colors.text);
-        doc.text(`${reservation.passengers.length}`, col2X + 25, infoY);
-        infoY += 8;
-
-        // Información del viaje
-        infoY += 5; // Espacio antes de la siguiente sección
-        infoY = drawSection('INFORMACIÓN DEL VIAJE', col2X, infoY, colWidth);
-
-        // Ruta (Origen - Destino)
-        doc.setFontSize(10);
-        doc.setTextColor(...colors.muted);
-
-        const origin = reservation.trip.segmentOrigin || reservation.trip.route?.origin || 'N/A';
-        const destination = reservation.trip.segmentDestination || reservation.trip.route?.destination || 'N/A';
-
-        doc.text('Origen:', col2X, infoY);
-        doc.setTextColor(...colors.text);
-        infoY = drawTextWithWrap(origin, col2X + 25, infoY, colWidth - 25, 10);
-
-        doc.setTextColor(...colors.muted);
-        doc.text('Destino:', col2X, infoY + 5);
-        doc.setTextColor(...colors.text);
-        infoY = drawTextWithWrap(destination, col2X + 25, infoY + 5, colWidth - 25, 10);
-        infoY += 3; // Ajusta el salto de línea final según sea necesario
-
-        // Fecha del viaje
-        doc.setTextColor(...colors.muted);
-        doc.text('Fecha:', col2X, infoY);
-        doc.setTextColor(...colors.text);
-        doc.text(formatDate(reservation.trip.departureDate), col2X + 20, infoY);
-        infoY += 8;
-
-        // Hora de salida
-        doc.setTextColor(...colors.muted);
-        doc.text('Salida:', col2X, infoY);
-        doc.setTextColor(...colors.text);
-        doc.text(formatTripTime(reservation.trip.departureTime, true, 'pretty'), col2X + 20, infoY);
-        infoY += 8;
-
-        // Hora de llegada (si existe)
-        if (reservation.trip.arrivalTime) {
-          doc.setTextColor(...colors.muted);
-          doc.text('Llegada:', col2X, infoY);
-          doc.setTextColor(...colors.text);
-          doc.text(formatTripTime(reservation.trip.arrivalTime, true, 'pretty'), col2X + 20, infoY);
-          infoY += 8;
-        }
-
-        // 9. Línea divisoria horizontal
-        // Asegurar que la línea esté por debajo de ambas columnas
-        currentY = Math.max(qrY + qrSize + 10, infoY + 10);
-        doc.setDrawColor(...colors.border);
-        doc.line(outerMargin + innerPadding, currentY, pageWidth - outerMargin - innerPadding, currentY);
-        currentY += 15; // Espacio después de la línea
-
-        // --- SECCIÓN INFERIOR: PAGO Y TÉRMINOS ---
-        const paymentX = outerMargin + innerPadding;
-        const termsX = pageWidth / 2 + 5;
-
-        // Información de pago
-        let paymentY = drawSection('INFORMACIÓN DE PAGO', paymentX, currentY, colWidth);
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-
-        // Detalles del pago (anticipo vs. total)
-        if (reservation.advanceAmount && reservation.advanceAmount > 0) {
-          doc.setTextColor(...colors.muted);
-          doc.text('Anticipo:', paymentX, paymentY);
-          doc.setTextColor(...colors.text);
-          doc.text(`${formatPrice(reservation.advanceAmount)} (${reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})`, paymentX + 25, paymentY);
-          paymentY += 8;
-
-          if (reservation.advanceAmount < reservation.totalAmount) {
-            doc.setTextColor(...colors.muted);
-            doc.text('Restante:', paymentX, paymentY);
-            doc.setTextColor(...colors.text);
-            doc.text(`${formatPrice(reservation.totalAmount - reservation.advanceAmount)} (${reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})`, paymentX + 25, paymentY);
-            paymentY += 8;
-          }
-        } else {
-          doc.setTextColor(...colors.muted);
-          doc.text('Método:', paymentX, paymentY);
-          doc.setTextColor(...colors.text);
-          doc.text(reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia', paymentX + 25, paymentY);
-          paymentY += 8;
-        }
-
-        // Monto Total
-        doc.setTextColor(...colors.muted);
-        doc.text('Total:', paymentX, paymentY);
-        doc.setTextColor(...colors.text);
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text(formatPrice(reservation.totalAmount), paymentX + 20, paymentY);
-        paymentY += 10;
-
-        // Estado de pago
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(...colors.muted);
-        doc.text('Estado:', paymentX, paymentY);
-
-        if (reservation.paymentStatus === 'pagado') {
-          doc.setTextColor(...colors.accent);
-        } else {
-          doc.setTextColor(255, 140, 0); // Naranja para pendiente
-        }
-
-        doc.setFont('helvetica', 'bold');
-        doc.text(
-          reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE',
-          paymentX + 22,
-          paymentY
-        );
-
-        // Términos y condiciones
-        let termsY = drawSection('TÉRMINOS Y CONDICIONES', termsX, currentY, colWidth);
-
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(...colors.muted);
-
-        const terms = [
-          '• Llegar 15 min antes de la salida',
-          '• Llevar cambio exacto para pagos en efectivo',
-          '• Máximo 1 maleta mediana por persona',
-          '• Solo artículos personales (ropa, calzado, higiene)',
-          '• Cajas/bolsas grandes tienen cargo extra',
-          '• Prohibido alcohol y fumar en la unidad',
-          '• No responsables por objetos perdidos',
-          '• Verificar pertenencias al descender',
-          '• Cancelación 5hrs antes: 100% devolución',
-          '• Cancelación 3hrs antes: 50% devolución',
-          '• Menos de 2hrs: Sin devolución'
-        ];
-
-        const lineHeight = 4; // Espacio entre líneas para los términos
-        const maxTermsY = pageHeight - outerMargin - innerPadding - 10; // Límite inferior para los términos
-
-        terms.forEach(term => {
-          if (termsY + lineHeight < maxTermsY) { // Asegurar que no se salga de la página
-            const splitText = doc.splitTextToSize(term, colWidth - 5);
-            doc.text(splitText, termsX, termsY);
-            termsY += splitText.length * lineHeight + 1;
-          }
-        });
-
-        // Pie de página
-        doc.setFontSize(8);
-        doc.setTextColor(...colors.muted);
-        doc.text(
-          'Conserve este boleto durante todo el viaje',
-          pageWidth / 2,
-          pageHeight - outerMargin - 5,
-          { align: 'center' }
-        );
-
-        // 10. Guardar el PDF
-        const fileName = `boleto-${generateReservationId(reservation.id)}.pdf`;
-        doc.save(fileName);
-
-        // 11. Mostrar notificación de éxito
-        toast({
-          title: "PDF generado exitosamente",
-          description: `El boleto ${generateReservationId(reservation.id)} se ha descargado`,
-        });
-      }; // Fin de drawTicketContent
-
-      // 12. Generar URL del QR (asumiendo que `window.location.origin` está disponible)
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.origin + '/reservation-details?id=' + reservation.id)}`;
-
-      // 13. Intentar cargar la imagen del QR
-      const img = new Image();
-      img.crossOrigin = 'anonymous'; // Necesario para evitar problemas CORS
-
-      img.onload = () => {
+      
+      // Colores
+      const primaryColor = [59, 130, 246]; // blue-500
+      const grayColor = [107, 114, 128]; // gray-500
+      const darkColor = [17, 24, 39]; // gray-900
+      
+      // Fondo del ticket (rectángulo redondeado simulado)
+      doc.setFillColor(248, 250, 252);
+      doc.rect(20, 20, pageWidth - 40, pageHeight - 40, 'F');
+      
+      // Encabezado
+      doc.setFontSize(16);
+      doc.setTextColor(...darkColor);
+      doc.text('Passenger', 30, 40);
+      
+      // Nombre del pasajero
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${passengers[0]?.firstName || ''} ${passengers[0]?.lastName || ''}`, 30, 55);
+      
+      // Información de compra y proveedor
+      doc.setFontSize(10);
+      doc.setTextColor(...grayColor);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Purchased', 30, 70);
+      doc.text('Provider', 120, 70);
+      
+      doc.setFontSize(12);
+      doc.setTextColor(...darkColor);
+      const purchaseDate = new Date().toLocaleDateString('es-ES', { 
+        day: '2-digit', 
+        month: 'long', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      doc.text(purchaseDate, 30, 82);
+      doc.text('TransRoute', 120, 82);
+      
+      // Línea punteada decorativa
+      doc.setLineDash([2, 2]);
+      doc.setDrawColor(...grayColor);
+      doc.line(30, 100, pageWidth - 30, 100);
+      doc.setLineDash([]);
+      
+      // Código QR (simulado como rectángulo por ahora)
+      const qrSize = 60;
+      const qrX = (pageWidth - qrSize) / 2;
+      const qrY = 120;
+      
+      if (qrCodeUrl) {
         try {
-          // Si la imagen carga correctamente, la añadimos al PDF
-          doc.addImage(img, 'PNG', qrX, qrY, qrSize, qrSize);
-          drawTicketContent(); // Una vez el QR está listo, se dibuja el resto del contenido
-        } catch (error) {
-          console.warn('Error al insertar imagen QR:', error);
-          // Si hay un error al añadir la imagen (ej. corrupción), dibujar placeholder
-          drawQRPlaceholder();
-          drawTicketContent();
+          doc.addImage(qrCodeUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+        } catch (e) {
+          // Si falla la imagen, dibujar un rectángulo
+          doc.setFillColor(0, 0, 0);
+          doc.rect(qrX, qrY, qrSize, qrSize, 'F');
         }
-      };
-
-      img.onerror = () => {
-        // Si la imagen no carga, dibujar un placeholder para el QR
-        console.warn('Error al cargar QR code, usando placeholder');
-        drawQRPlaceholder();
-        drawTicketContent();
-      };
-
-      // 14. Función para dibujar el placeholder del QR
-      const drawQRPlaceholder = () => {
-        doc.setFillColor(100, 100, 100); // Color gris oscuro
-        doc.rect(qrX, qrY, qrSize, qrSize, 'F'); // Dibuja un rectángulo
-        doc.setFontSize(8);
-        doc.setTextColor(255, 255, 255); // Texto blanco
-        doc.text('QR CODE', qrX + qrSize / 2, qrY + qrSize / 2 - 3, { align: 'center' });
-        doc.text('NO DISPONIBLE', qrX + qrSize / 2, qrY + qrSize / 2 + 3, { align: 'center' });
-      };
-
-      // 15. Asignar la URL a la imagen para que comience la carga
-      img.src = qrUrl;
-
-      // 16. Implementar un timeout para manejar casos en los que el QR no carga
-      // Esto asegura que el PDF se genere incluso si el servicio de QR falla
-      setTimeout(() => {
-        if (!img.complete && img.src === qrUrl) { // Solo si la imagen no se ha completado y es la misma URL
-          img.onerror(); // Forzar el error para dibujar el placeholder
-        }
-      }, 5000); // 5 segundos de espera para la carga del QR
-
+      } else {
+        doc.setFillColor(0, 0, 0);
+        doc.rect(qrX, qrY, qrSize, qrSize, 'F');
+      }
+      
+      // Información del ticket
+      doc.setFontSize(10);
+      doc.setTextColor(...grayColor);
+      doc.text('Ticket', 30, 200);
+      
+      doc.setFontSize(14);
+      doc.setTextColor(...primaryColor);
+      doc.setFont('helvetica', 'bold');
+      const routeName = `${trip?.route?.origin || trip?.segmentOrigin || ''} - ${trip?.route?.destination || trip?.segmentDestination || ''}`;
+      doc.text(routeName, 30, 215);
+      
+      // Proveedor
+      doc.setFontSize(10);
+      doc.setTextColor(...grayColor);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Provider', 30, 230);
+      
+      doc.setFontSize(12);
+      doc.setTextColor(...darkColor);
+      doc.text('TransRoute', 30, 242);
+      
+      // Fecha de vencimiento
+      doc.setFontSize(10);
+      doc.setTextColor(...grayColor);
+      doc.text('Expires', 30, 257);
+      
+      doc.setFontSize(12);
+      doc.setTextColor(...darkColor);
+      const tripDate = new Date(trip?.departureDate || '').toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+      doc.text(tripDate, 30, 269);
+      
+      // Email de envío
+      doc.setFontSize(10);
+      doc.setTextColor(...grayColor);
+      doc.text(`Sent to - ${email || 'N/A'}`, 30, 290);
+      
+      // ID de reservación en la esquina superior derecha
+      doc.setFontSize(10);
+      doc.setTextColor(...grayColor);
+      doc.text(`#R-${String(submittedReservation.id).padStart(6, '0')}`, pageWidth - 60, 35);
+      
+      // Guardar el PDF
+      doc.save(`boleto-${submittedReservation.id}.pdf`);
+      
+      toast({
+        title: "PDF generado",
+        description: "El boleto se ha descargado exitosamente como PDF.",
+      });
+      
     } catch (error) {
-      // 17. Manejo de errores generales al generar el PDF
-      console.error('Error general al generar PDF:', error);
-
+      console.error("Error al generar PDF:", error);
       toast({
         title: "Error al generar PDF",
-        description: "Ocurrió un error. Intentando método alternativo...",
+        description: "Ocurrió un error al generar el PDF. Intentando método alternativo...",
         variant: "destructive",
       });
-
-      // 18. Método alternativo: abrir la página de detalles de la reservación en una nueva ventana para imprimir
+      
+      // Método alternativo: abrir en nueva ventana
       try {
-        const ticketUrl = `/reservation-details?id=${reservation.id}&print=true`;
-        const printWindow = window.open(ticketUrl, '_blank', 'width=800,height=600');
-
-        if (printWindow) {
-          printWindow.onload = () => {
-            setTimeout(() => {
-              printWindow.print(); // Intentar imprimir automáticamente
-            }, 1000); // Pequeño retraso para asegurar que la página se cargue
-          };
-        }
+        const ticketUrl = `/reservation-details?id=${submittedReservation.id}&print=true`;
+        window.open(ticketUrl, '_blank');
       } catch (fallbackError) {
-        // Si el método alternativo también falla
         toast({
           title: "Error",
           description: "No se pudo generar el boleto. Por favor, intente nuevamente.",
