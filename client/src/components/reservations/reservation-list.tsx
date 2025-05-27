@@ -71,6 +71,9 @@ export function ReservationList() {
   const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
   const [editingReservation, setEditingReservation] = useState<ReservationWithDetails | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
+  const [advancePaymentMethod, setAdvancePaymentMethod] = useState<string>("cash");
+  const [advanceAmount, setAdvanceAmount] = useState<string>("");
+  const [remainingAmount, setRemainingAmount] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   // Modal de detalles de reservación
@@ -301,7 +304,6 @@ export function ReservationList() {
   // Estados adicionales para el formulario de edición
   const [email, setEmail] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
-  const [advancePaymentMethod, setAdvancePaymentMethod] = useState<string>("efectivo");
 
   // Edit reservation mutation
   const editReservationMutation = useMutation({
@@ -345,6 +347,8 @@ export function ReservationList() {
     // Inicializar todos los campos del formulario con los valores actuales
     setPaymentMethod(reservation.paymentMethod || "efectivo");
     setAdvancePaymentMethod(reservation.advancePaymentMethod || "efectivo");
+    setAdvanceAmount((reservation.advanceAmount || 0).toString());
+    setRemainingAmount((reservation.totalAmount - (reservation.advanceAmount || 0)).toString());
     setNotes(reservation.notes || "");
     setEmail(reservation.email || "");
     setPhone(reservation.phone || "");
@@ -1173,11 +1177,19 @@ export function ReservationList() {
               <div className="space-y-2 sm:space-y-3 mt-1 sm:mt-2">
                 <h3 className="text-xs sm:text-sm font-medium border-b pb-1">Información de contacto</h3>
 
-                <div className="grid grid-cols-1 gap-2">
-                  <Label htmlFor="passenger-name" className="text-gray-500 text-xs">PASAJEROS</Label>
-                  <div id="passenger-name" className="text-sm">
-                    {editingReservation.passengers[0]?.firstName} {editingReservation.passengers[0]?.lastName}
-                    {editingReservation.passengers.length > 1 && ` +${editingReservation.passengers.length - 1}`}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label htmlFor="passenger-name" className="text-gray-500 text-xs">PASAJEROS</Label>
+                    <div id="passenger-name" className="text-sm">
+                      {editingReservation.passengers[0]?.firstName} {editingReservation.passengers[0]?.lastName}
+                      {editingReservation.passengers.length > 1 && ` +${editingReservation.passengers.length - 1}`}
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="seats" className="text-gray-500 text-xs">ASIENTOS</Label>
+                    <div id="seats" className="text-sm font-medium">
+                      {editingReservation.passengers.length}
+                    </div>
                   </div>
                 </div>
 
@@ -1238,72 +1250,86 @@ export function ReservationList() {
               <div className="space-y-2 sm:space-y-3 mt-1 sm:mt-2">
                 <h3 className="text-xs sm:text-sm font-medium border-b pb-1">Información de pago</h3>
 
-                {/* Mostrar la información diferente según si hay anticipo o no */}
-                {editingReservation.advanceAmount && editingReservation.advanceAmount > 0 ? (
-                  // Caso 1: Tiene anticipo (pago en 2 exhibiciones)
-                  <>
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="advance-payment-method" className="text-gray-500 text-xs font-medium">
-                        ANTICIPÓ: {formatPrice(editingReservation.advanceAmount)}
-                      </Label>
-                      <div className="w-1/2">
-                        <Select
-                          value={advancePaymentMethod}
-                          onValueChange={setAdvancePaymentMethod}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue placeholder="Seleccionar" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="efectivo">Efectivo</SelectItem>
-                            <SelectItem value="transferencia">Transferencia bancaria</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="payment-method" className="text-gray-500 text-xs font-medium">
-                        RESTA: {formatPrice(editingReservation.totalAmount - editingReservation.advanceAmount)}
-                      </Label>
-                      <div className="w-1/2">
-                        <Select
-                          value={paymentMethod}
-                          onValueChange={setPaymentMethod}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue placeholder="Seleccionar" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="efectivo">Efectivo</SelectItem>
-                            <SelectItem value="transferencia">Transferencia bancaria</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  // Caso 2: No tiene anticipo (pago en una sola exhibición)
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="payment-method" className="text-gray-500 text-xs font-medium">
-                      {formatPrice(editingReservation.totalAmount)}
-                    </Label>
-                    <div className="w-1/2">
+                {/* Campos editables para anticipo y resto */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="advance-amount" className="text-gray-500 text-xs font-medium">ANTICIPO</Label>
+                    <div className="flex flex-col gap-2">
+                      <Input
+                        id="advance-amount"
+                        type="number"
+                        value={advanceAmount}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setAdvanceAmount(value);
+                          // Calcular automáticamente el restante
+                          const advance = parseFloat(value) || 0;
+                          const remaining = editingReservation.totalAmount - advance;
+                          setRemainingAmount(remaining.toString());
+                        }}
+                        placeholder="0"
+                        className="h-9"
+                        min="0"
+                        max={editingReservation.totalAmount}
+                      />
                       <Select
-                        value={paymentMethod}
-                        onValueChange={setPaymentMethod}
+                        value={advancePaymentMethod}
+                        onValueChange={setAdvancePaymentMethod}
                       >
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder="Seleccionar" />
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Método" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="efectivo">Efectivo</SelectItem>
-                          <SelectItem value="transferencia">Transferencia bancaria</SelectItem>
+                          <SelectItem value="transferencia">Transferencia</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
-                )}
+
+                  <div>
+                    <Label htmlFor="remaining-amount" className="text-gray-500 text-xs font-medium">RESTA</Label>
+                    <div className="flex flex-col gap-2">
+                      <Input
+                        id="remaining-amount"
+                        type="number"
+                        value={remainingAmount}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setRemainingAmount(value);
+                          // Calcular automáticamente el anticipo
+                          const remaining = parseFloat(value) || 0;
+                          const advance = editingReservation.totalAmount - remaining;
+                          setAdvanceAmount(advance.toString());
+                        }}
+                        placeholder="0"
+                        className="h-9"
+                        min="0"
+                        max={editingReservation.totalAmount}
+                      />
+                      <Select
+                        value={paymentMethod}
+                        onValueChange={setPaymentMethod}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Método" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="efectivo">Efectivo</SelectItem>
+                          <SelectItem value="transferencia">Transferencia</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mostrar el total */}
+                <div className="border-t pt-2">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-gray-700 font-medium text-sm">TOTAL</Label>
+                    <div className="text-lg font-semibold">{formatPrice(editingReservation.totalAmount)}</div>
+                  </div>
+                </div>
               </div>
 
               {/* Notas adicionales */}
