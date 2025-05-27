@@ -1262,28 +1262,32 @@ export function ReservationList() {
               <div className="space-y-2 sm:space-y-3 mt-1 sm:mt-2">
                 <h3 className="text-xs sm:text-sm font-medium border-b pb-1">Información de pago</h3>
 
-                {/* Campos editables para anticipo y resto */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="advance-amount" className="text-gray-500 text-xs font-medium">ANTICIPO</Label>
-                    <div className="flex flex-col gap-2">
-                      <Input
-                        id="advance-amount"
-                        type="number"
-                        value={advanceAmount}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setAdvanceAmount(value);
-                          // Calcular automáticamente el restante
-                          const advance = parseFloat(value) || 0;
-                          const remaining = editingReservation.totalAmount - advance;
-                          setRemainingAmount(remaining.toString());
-                        }}
-                        placeholder="0"
-                        className="h-9"
-                        min="0"
-                        max={editingReservation.totalAmount}
-                      />
+                {/* Campos editables manteniendo la estructura original */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-gray-500 text-xs font-medium whitespace-nowrap">ANTICIPO:</Label>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs">$</span>
+                        <Input
+                          type="number"
+                          value={advanceAmount}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setAdvanceAmount(value);
+                            // Calcular automáticamente el restante
+                            const advance = parseFloat(value) || 0;
+                            const remaining = editingReservation.totalAmount - advance;
+                            setRemainingAmount(remaining.toString());
+                          }}
+                          placeholder="0"
+                          className="h-8 w-20 text-xs"
+                          min="0"
+                          max={editingReservation.totalAmount}
+                        />
+                      </div>
+                    </div>
+                    <div className="w-32">
                       <Select
                         value={advancePaymentMethod}
                         onValueChange={setAdvancePaymentMethod}
@@ -1299,26 +1303,30 @@ export function ReservationList() {
                     </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="remaining-amount" className="text-gray-500 text-xs font-medium">RESTA</Label>
-                    <div className="flex flex-col gap-2">
-                      <Input
-                        id="remaining-amount"
-                        type="number"
-                        value={remainingAmount}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setRemainingAmount(value);
-                          // Calcular automáticamente el anticipo
-                          const remaining = parseFloat(value) || 0;
-                          const advance = editingReservation.totalAmount - remaining;
-                          setAdvanceAmount(advance.toString());
-                        }}
-                        placeholder="0"
-                        className="h-9"
-                        min="0"
-                        max={editingReservation.totalAmount}
-                      />
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-gray-500 text-xs font-medium whitespace-nowrap">RESTA:</Label>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs">$</span>
+                        <Input
+                          type="number"
+                          value={remainingAmount}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setRemainingAmount(value);
+                            // Calcular automáticamente el anticipo
+                            const remaining = parseFloat(value) || 0;
+                            const advance = editingReservation.totalAmount - remaining;
+                            setAdvanceAmount(advance.toString());
+                          }}
+                          placeholder="0"
+                          className="h-8 w-20 text-xs"
+                          min="0"
+                          max={editingReservation.totalAmount}
+                        />
+                      </div>
+                    </div>
+                    <div className="w-32">
                       <Select
                         value={paymentMethod}
                         onValueChange={setPaymentMethod}
