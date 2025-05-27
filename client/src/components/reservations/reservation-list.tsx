@@ -1298,9 +1298,15 @@ export function ReservationList() {
                             }
                             
                             setAdvanceAmount(value);
-                            // El restante puede ser mayor al total original (para exceso de equipaje)
-                            const currentRemaining = parseFloat(remainingAmount) || 0;
-                            // Mantener el restante actual, solo cambiar el anticipo
+                            
+                            // Si el anticipo cubre el monto original, poner restante en 0
+                            if (advance >= editingReservation.totalAmount) {
+                              setRemainingAmount("0");
+                            } else {
+                              // Si el anticipo es menor, calcular el restante automáticamente
+                              const remaining = editingReservation.totalAmount - advance;
+                              setRemainingAmount(remaining.toString());
+                            }
                           }}
                           placeholder="0"
                           className="h-8 w-20 text-xs"
