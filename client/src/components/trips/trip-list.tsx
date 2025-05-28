@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2Icon, MapPinIcon, CalendarIcon } from "lucide-react"; // Removed unused FilterIcon, ChevronLeftIcon, ChevronRightIcon
-import { DatePicker } from "@/components/ui/date-picker"; // Keep if used elsewhere or plan to re-add
-import { formatDate, formatPrice } from "@/lib/utils"; // Keep if used elsewhere or plan to re-add
-import { format } from "date-fns"; // Keep if used elsewhere or plan to re-add
+import { Loader2Icon, MapPinIcon, CalendarIcon } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
+import { formatDate, formatPrice } from "@/lib/utils";
+import { format } from "date-fns";
 import { extractLocationsFromTrips, formatTripTime, extractDayIndicator } from "@/lib/trip-utils";
 
 // Función para abreviar ubicaciones en móvil
@@ -98,7 +98,7 @@ interface SearchParams {
   date?: string;
   seats?: number;
   isSubTrip?: 'true' | 'false'; // Explicitly define as 'true' or 'false' string
-  visibility?: 'publicado'; // Added visibility to SearchParams for clarity
+  visibility?: 'publicado';
 }
 
 import { normalizeToStartOfDay, formatDateForInput, formatDateForApiQuery } from "@/lib/utils";
@@ -111,12 +111,12 @@ export function TripList() {
   const yesterday = formatDateForInput(new Date(Date.now() - 24 * 60 * 60 * 1000));
   const tomorrow = formatDateForInput(new Date(Date.now() + 24 * 60 * 60 * 1000));
 
-  // Initialize searchParams with null to avoid auto-loading
-  const [searchParams, setSearchParams] = useState<SearchParams | null>(null);
+  // Initialize searchParams. Default to isSubTrip: 'false' for initial load.
+  // This will be conditionally removed if a specific search is performed.
+  const [searchParams, setSearchParams] = useState<SearchParams>({ date: today, isSubTrip: 'false' });
   const [selectedTrip, setSelectedTrip] = useState<TripWithRouteInfo | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [sortMethod, setSortMethod] = useState<"departure" | "price" | "duration">("departure");
-  const [hasSearched, setHasSearched] = useState(false);
 
   // Form state
   const [origin, setOrigin] = useState("");
@@ -125,25 +125,25 @@ export function TripList() {
   const [seats, setSeats] = useState("");
 
   // Query optimizada para traer solo viajes de ayer, hoy y mañana para opciones de autocomplete
+  // This query fetches ALL trips (including subtrips) for autocomplete to ensure comprehensive options.
+  // The filtering for isSubTrip is then done in the `useMemo` for `locationOptions`.
   const { data: allTrips, isLoading: isLoadingAll } = useQuery<TripWithRouteInfo[]>({
-    queryKey: ["/api/trips", "limited-dates"],
+    queryKey: ["/api/trips", "limited-dates", "all"], // Changed key to distinguish from filtered trips
     queryFn: async () => {
-      // Construct parameters to bring only trips from allowed dates and explicitly not subtrips
       const dateRange = `${yesterday},${today},${tomorrow}`;
-      const response = await fetch(`/api/trips?dateRange=${encodeURIComponent(dateRange)}&visibility=publicado&isSubTrip=false`);
+      // Fetch all trips for autocomplete, don't filter by isSubTrip here
+      const response = await fetch(`/api/trips?dateRange=${encodeURIComponent(dateRange)}&visibility=publicado`);
       if (!response.ok) throw new Error("Failed to fetch trips");
       return await response.json();
     },
   });
 
-  // Filter trips based on search parameters - only when searchParams is set
+  // Filter trips based on search parameters
   const { data: trips, isLoading, isError } = useQuery<TripWithRouteInfo[]>({
     queryKey: ["/api/trips", searchParams],
     queryFn: async () => {
-      if (!searchParams) return [];
-      
-      // Add the published visibility filter and isSubTrip=false to the search parameters
-      const paramsToFetch = { ...searchParams, visibility: 'publicado', isSubTrip: 'false' };
+      // Add the published visibility filter
+      const paramsToFetch = { ...searchParams, visibility: 'publicado' };
 
       const queryString = new URLSearchParams(
         Object.entries(paramsToFetch).filter(([_, v]) => v !== undefined) as [string, string][]
@@ -153,29 +153,50 @@ export function TripList() {
       if (!response.ok) throw new Error("Failed to fetch trips");
       return await response.json();
     },
-    enabled: !!searchParams // Only run when searchParams exists
+    enabled: true // Always run the query based on searchParams
   });
 
   // Extract unique locations for autocomplete
   const locationOptions = useMemo(() => {
     if (!allTrips) return [];
-    // Ensure that location options are also extracted only from non-subtrips if desired
-    return extractLocationsFromTrips(allTrips.filter(trip => !trip.isSubTrip));
+    // Extract locations from ALL fetched trips, as a user might search for a subtrip origin/destination
+    return extractLocationsFromTrips(allTrips);
   }, [allTrips]);
 
-  // Handle search button click
-  const handleSearch = () => {
-    const params: SearchParams = { isSubTrip: 'false' }; // Always include isSubTrip: 'false'
-    if (origin) params.origin = origin;
-    if (destination) params.destination = destination;
-    if (date) params.date = formatDateForApiQuery(date);
-    if (seats && !isNaN(parseInt(seats, 10))) {
-      params.seats = parseInt(seats, 10);
-    }
+  // Update search params in real-time as the user types
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      const newParams: SearchParams = {};
+      newParams.date = formatDateForApiQuery(date); // Date always included
 
-    setSearchParams(params);
-    setHasSearched(true);
-  };
+      let hasUserSearchInput = false;
+
+      if (origin) {
+        newParams.origin = origin;
+        hasUserSearchInput = true;
+      }
+      if (destination) {
+        newParams.destination = destination;
+        hasUserSearchInput = true;
+      }
+      if (seats && !isNaN(parseInt(seats, 10))) {
+        newParams.seats = parseInt(seats, 10);
+        hasUserSearchInput = true;
+      }
+
+      // If no specific origin, destination, or seats are entered,
+      // default to showing only non-subtrips.
+      // Otherwise, if the user is searching for something specific,
+      // allow all trip types to be returned by the API.
+      if (!hasUserSearchInput) {
+        newParams.isSubTrip = 'false';
+      }
+
+      setSearchParams(newParams);
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(debounceTimer);
+  }, [origin, destination, date, seats]);
 
   // Handler for reservation button click
   const handleReserve = (trip: TripWithRouteInfo) => {
@@ -189,12 +210,24 @@ export function TripList() {
     setSelectedTrip(null);
   };
 
-  // Función para ordenar los viajes según el criterio seleccionado
-  const sortedTrips = useMemo(() => {
-    // Ensure that only non-subtrips are considered for sorting and display
-    const filteredAndSorted = (trips || []).filter(trip => !trip.isSubTrip);
+  // Función para ordenar y filtrar los viajes según el criterio seleccionado
+  const sortedAndFilteredTrips = useMemo(() => {
+    // The `trips` data already contains the `isSubTrip` filter from the API call if no specific search is active.
+    // If a search is active, it contains all relevant trips (subtrips included if they match search criteria).
+    if (!trips) return [];
 
-    return [...filteredAndSorted].sort((a, b) => {
+    // Filter `trips` only if there's no active origin/destination/seats search AND `isSubTrip` is explicitly 'false' in searchParams.
+    // This handles the default view to only show non-subtrips.
+    // If a search is active, the API should return what matches, including subtrips if they fit the search.
+    let currentTrips = trips;
+    if (!origin && !destination && !seats && searchParams.isSubTrip === 'false') {
+        currentTrips = trips.filter(trip => !trip.isSubTrip);
+    }
+    // If origin/destination/seats are provided, we assume the API already returned relevant subtrips if they match.
+    // So, no extra filter needed here based on `isSubTrip` if a search is active.
+
+
+    return [...currentTrips].sort((a, b) => {
       if (sortMethod === "departure") {
         const getTimeValue = (timeStr: string) => {
           const [time, period] = timeStr.split(' ');
@@ -208,8 +241,13 @@ export function TripList() {
       }
 
       if (sortMethod === "price") {
-        const priceA = a.price; // For non-subtrips, price is directly on trip
-        const priceB = b.price;
+        // Use the correct price for the trip, considering segment prices for subtrips if applicable
+        const priceA = a.isSubTrip && Array.isArray(a.segmentPrices) && a.segmentPrices.length > 0
+          ? a.segmentPrices[0]?.price || a.price
+          : a.price;
+        const priceB = b.isSubTrip && Array.isArray(b.segmentPrices) && b.segmentPrices.length > 0
+          ? b.segmentPrices[0]?.price || b.price
+          : b.price;
         return priceA - priceB;
       }
 
@@ -236,7 +274,7 @@ export function TripList() {
       }
       return 0;
     });
-  }, [trips, sortMethod]);
+  }, [trips, sortMethod, origin, destination, seats, searchParams.isSubTrip]); // Added dependencies
 
   return (
     <div className="py-6">
@@ -319,78 +357,50 @@ export function TripList() {
                 onChange={(e) => setSeats(e.target.value)}
               />
             </div>
-            <div className="flex items-end">
-              <Button 
-                onClick={handleSearch}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
-                disabled={isLoadingAll}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2Icon className="h-4 w-4 animate-spin mr-2" />
-                    Buscando...
-                  </>
-                ) : (
-                  "Buscar viaje"
-                )}
-              </Button>
-            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Opciones de ordenamiento - solo mostrar cuando hay resultados */}
-      {hasSearched && sortedTrips && sortedTrips.length > 0 && (
-        <div className="mb-6">
-          <div className="flex flex-col md:flex-row gap-2 items-start">
-            <div className="text-sm font-medium text-gray-700">Ordenar por:</div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                  sortMethod === "departure"
-                    ? "bg-blue-50 text-blue-600"
-                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-                }`}
-                onClick={() => setSortMethod("departure")}
-              >
-                Salida más temprana
-              </button>
-              <button
-                className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                  sortMethod === "price"
-                    ? "bg-blue-50 text-blue-600"
-                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-                }`}
-                onClick={() => setSortMethod("price")}
-              >
-                Precio más bajo
-              </button>
-              <button
-                className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                  sortMethod === "duration"
-                    ? "bg-blue-50 text-blue-600"
-                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-                }`}
-                onClick={() => setSortMethod("duration")}
-              >
-                Duración más corta
-              </button>
-            </div>
+      {/* Opciones de ordenamiento */}
+      <div className="mb-6">
+        <div className="flex flex-col md:flex-row gap-2 items-start">
+          <div className="text-sm font-medium text-gray-700">Ordenar por:</div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                sortMethod === "departure"
+                  ? "bg-blue-50 text-blue-600"
+                  : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              }`}
+              onClick={() => setSortMethod("departure")}
+            >
+              Salida más temprana
+            </button>
+            <button
+              className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                sortMethod === "price"
+                  ? "bg-blue-50 text-blue-600"
+                  : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              }`}
+              onClick={() => setSortMethod("price")}
+            >
+              Precio más bajo
+            </button>
+            <button
+              className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                sortMethod === "duration"
+                  ? "bg-blue-50 text-blue-600"
+                  : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              }`}
+              onClick={() => setSortMethod("duration")}
+            >
+              Duración más corta
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
-      {!hasSearched ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="text-center text-gray-500 mb-4">
-              <MapPinIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-lg">Selecciona origen, destino y fecha para buscar viajes disponibles.</p>
-              <p className="text-sm mt-2">Usa el botón "Buscar viaje" para encontrar las mejores opciones de transporte.</p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : isLoading ? (
+      {isLoading ? (
         <div className="flex justify-center items-center p-8">
           <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
           <span className="ml-2">Cargando viajes...</span>
@@ -399,13 +409,12 @@ export function TripList() {
         <div className="text-center p-8 text-red-500">
           Error al cargar los viajes. Por favor, inténtalo de nuevo.
         </div>
-      ) : sortedTrips && sortedTrips.length > 0 ? ( // Use sortedTrips here
+      ) : sortedAndFilteredTrips && sortedAndFilteredTrips.length > 0 ? (
         <div className="grid grid-cols-1 gap-4">
-          {sortedTrips.map((trip) => (
+          {sortedAndFilteredTrips.map((trip) => (
             <div key={trip.id} className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-white">
               <div className="border-b border-gray-100 p-3 flex justify-between items-center">
                 <div className="flex items-center">
-                  {/* Logo de la compañía con fallback a icono predeterminado */}
                   <div className="mr-3 h-8 w-8 flex-shrink-0">
                     {trip.companyLogo ? (
                       <img
@@ -426,20 +435,24 @@ export function TripList() {
                     )}
                   </div>
                   <div className="flex flex-col">
-                    {/* Nombre de la compañía */}
                     {trip.companyName && (
                       <span className="text-xs text-gray-600 mb-1">
                         {trip.companyName}
                       </span>
                     )}
-                    {/* Información del viaje */}
                     <div className="text-sm font-medium">
-                      <span>Directo · {trip.availableSeats} asientos disponibles</span>
+                      {trip.isSubTrip ? (
+                        <span>Conexión · {trip.availableSeats} asientos disponibles</span>
+                      ) : (
+                        <span>Directo · {trip.availableSeats} asientos disponibles</span>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="text-base font-medium">
-                  {formatPrice(trip.price)}
+                  {formatPrice(trip.isSubTrip && Array.isArray(trip.segmentPrices) && trip.segmentPrices.length > 0
+                    ? trip.segmentPrices[0]?.price || trip.price
+                    : trip.price)}
                   <span className="text-xs text-gray-500 ml-1">MXN</span>
                 </div>
               </div>
@@ -451,7 +464,7 @@ export function TripList() {
                       {formatTripTime(trip.departureTime, true, 'pretty')}
                     </div>
                     <div className="text-sm text-gray-500 mt-1">
-                      {trip.route.origin}
+                      {trip.isSubTrip ? trip.segmentOrigin : trip.route.origin}
                     </div>
                   </div>
 
@@ -475,7 +488,7 @@ export function TripList() {
                       {formatTripTime(trip.arrivalTime, true, 'pretty')}
                     </div>
                     <div className="text-sm text-gray-500 mt-1 text-right">
-                      {trip.route.destination}
+                      {trip.isSubTrip ? trip.segmentDestination : trip.route.destination}
                     </div>
                   </div>
                 </div>
@@ -509,8 +522,7 @@ export function TripList() {
                   </Button>
                 </div>
 
-
-                {trip.numStops > 0 && (
+                {!trip.isSubTrip && trip.numStops > 0 && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
                     <span className="text-xs text-gray-500">
                       {trip.numStops} paradas en ruta
