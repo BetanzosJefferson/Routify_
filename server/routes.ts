@@ -2540,6 +2540,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validationResult = createReservationValidationSchema.safeParse(formData);
       
       if (!validationResult.success) {
+        console.log("[POST /reservations] Validación fallida:");
+        console.log("Datos recibidos:", JSON.stringify(formData, null, 2));
+        console.log("Errores de validación:", JSON.stringify(validationResult.error.format(), null, 2));
         return res.status(400).json({ 
           error: "Invalid reservation data", 
           details: validationResult.error.format() 

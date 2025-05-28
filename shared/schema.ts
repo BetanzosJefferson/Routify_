@@ -265,7 +265,12 @@ export const createReservationValidationSchema = z.object({
       lastName: z.string().min(1, "Apellido es requerido")
     })
   ),
-  email: z.string().email("Correo electrónico válido es requerido").optional().or(z.literal("")).or(z.null()),
+  email: z.union([
+    z.string().email("Correo electrónico válido es requerido"),
+    z.literal(""),
+    z.null(),
+    z.undefined()
+  ]).optional(),
   phone: z.string().min(1, "Número de teléfono es requerido"),
   totalAmount: z.number().min(0, "El monto total debe ser un número positivo"),
   // Nuevos campos
