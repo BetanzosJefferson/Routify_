@@ -3561,11 +3561,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   // PACKAGE METHODS
-  async getPackages(filters?: { companyId?: string, companyIds?: string[], tripId?: number, tripIds?: number[] }): Promise<schema.Package[]> {
+  async getPackages(filters?: { companyId?: string, companyIds?: string[], tripId?: number, tripIds?: number[] }): Promise<any[]> {
     try {
       console.log(`[getPackages] Buscando paqueterías con filtros:`, filters);
       
-      let query = db.select().from(schema.packages);
+      // Hacer JOIN con la tabla de empresas para obtener el nombre
+      let query = db
+        .select({
+          ...schema.packages,
+          companyName: schema.companies.name
+        })
+        .from(schema.packages)
+        .leftJoin(schema.companies, eq(schema.packages.companyId, schema.companies.identifier));
       
       // Aplicar filtros de seguridad
       if (filters) {
