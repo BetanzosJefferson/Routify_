@@ -267,78 +267,155 @@ export function UsersPage() {
                   <p className="text-red-500">Error al cargar usuarios</p>
                 </div>
               ) : usersQuery.data && usersQuery.data.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="px-4 py-2 text-left">Foto</th>
-                        <th className="px-4 py-2 text-left">Nombre</th>
-                        <th className="px-4 py-2 text-left">Correo</th>
-                        <th className="px-4 py-2 text-left">Rol</th>
-                        <th className="px-4 py-2 text-left">Fecha Registro</th>
-                        <th className="px-4 py-2 text-left">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {usersQuery.data.map((user) => (
-                        <tr key={user.id} className="border-b hover:bg-muted/50">
-                          <td className="px-4 py-2">
-                            <Avatar className="h-10 w-10">
-                              {user.profilePicture ? (
-                                <AvatarImage src={user.profilePicture} alt={`${user.firstName} ${user.lastName}`} />
-                              ) : (
-                                <AvatarFallback className="bg-primary/5 text-primary">
-                                  {user.firstName.charAt(0)}{user.lastName.charAt(0)}
-                                </AvatarFallback>
-                              )}
-                            </Avatar>
-                          </td>
-                          <td className="px-4 py-2">
-                            {user.firstName} {user.lastName}
-                            {user.role === UserRole.COMMISSIONER && user.commissionPercentage !== null && (
-                              <div className="text-xs text-muted-foreground mt-1">
-                                Comisión: {user.commissionPercentage}%
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-2">{user.email}</td>
-                          <td className="px-4 py-2">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                              {getRoleDisplayName(user.role)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2">
-                            {new Date(user.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-4 py-2 space-x-2">
-                            {/* Botones de acción */}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditUser(user)}
-                              title="Editar usuario"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            
-                            {/* Botón de eliminar solo visible para superAdmin o Dueño */}
-                            {(currentUser?.role === UserRole.SUPER_ADMIN || currentUser?.role === UserRole.OWNER) && (
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleDeleteUser(user.id)}
-                                disabled={deleteUserMutation.isPending || (user.id === currentUser.id)}
-                                title={user.id === currentUser.id ? "No puedes eliminar tu propia cuenta" : "Eliminar usuario"}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </td>
+                <>
+                  {/* Vista de escritorio - Tabla */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="px-4 py-2 text-left">Foto</th>
+                          <th className="px-4 py-2 text-left">Nombre</th>
+                          <th className="px-4 py-2 text-left">Correo</th>
+                          <th className="px-4 py-2 text-left">Rol</th>
+                          <th className="px-4 py-2 text-left">Fecha Registro</th>
+                          <th className="px-4 py-2 text-left">Acciones</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {usersQuery.data.map((user) => (
+                          <tr key={user.id} className="border-b hover:bg-muted/50">
+                            <td className="px-4 py-2">
+                              <Avatar className="h-10 w-10">
+                                {user.profilePicture ? (
+                                  <AvatarImage src={user.profilePicture} alt={`${user.firstName} ${user.lastName}`} />
+                                ) : (
+                                  <AvatarFallback className="bg-primary/5 text-primary">
+                                    {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                                  </AvatarFallback>
+                                )}
+                              </Avatar>
+                            </td>
+                            <td className="px-4 py-2">
+                              {user.firstName} {user.lastName}
+                              {user.role === UserRole.COMMISSIONER && user.commissionPercentage !== null && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  Comisión: {user.commissionPercentage}%
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-2">{user.email}</td>
+                            <td className="px-4 py-2">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                                {getRoleDisplayName(user.role)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2">
+                              {new Date(user.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="px-4 py-2 space-x-2">
+                              {/* Botones de acción */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditUser(user)}
+                                title="Editar usuario"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              
+                              {/* Botón de eliminar solo visible para superAdmin o Dueño */}
+                              {(currentUser?.role === UserRole.SUPER_ADMIN || currentUser?.role === UserRole.OWNER) && (
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleDeleteUser(user.id)}
+                                  disabled={deleteUserMutation.isPending || (user.id === currentUser.id)}
+                                  title={user.id === currentUser.id ? "No puedes eliminar tu propia cuenta" : "Eliminar usuario"}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Vista móvil - Tarjetas */}
+                  <div className="md:hidden space-y-4">
+                    {usersQuery.data.map((user) => (
+                      <Card key={user.id} className="border border-gray-200 shadow-sm">
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-12 w-12">
+                                {user.profilePicture ? (
+                                  <AvatarImage src={user.profilePicture} alt={`${user.firstName} ${user.lastName}`} />
+                                ) : (
+                                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                                    {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                                  </AvatarFallback>
+                                )}
+                              </Avatar>
+                              <div className="flex-1">
+                                <div className="font-semibold text-gray-900">
+                                  {user.firstName} {user.lastName}
+                                </div>
+                                <div className="text-sm text-gray-600">{user.email}</div>
+                                {user.role === UserRole.COMMISSIONER && user.commissionPercentage !== null && (
+                                  <div className="text-xs text-blue-600 mt-1">
+                                    Comisión: {user.commissionPercentage}%
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditUser(user)}
+                                className="h-8 w-8"
+                                title="Editar usuario"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              
+                              {/* Botón de eliminar solo visible para superAdmin o Dueño */}
+                              {(currentUser?.role === UserRole.SUPER_ADMIN || currentUser?.role === UserRole.OWNER) && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteUser(user.id)}
+                                  disabled={deleteUserMutation.isPending || (user.id === currentUser.id)}
+                                  className="h-8 w-8"
+                                  title={user.id === currentUser.id ? "No puedes eliminar tu propia cuenta" : "Eliminar usuario"}
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">Rol</span>
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                                {getRoleDisplayName(user.role)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">Fecha de registro</span>
+                              <span className="text-sm font-medium">
+                                {new Date(user.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </>)
               ) : (
                 <div className="flex justify-center items-center h-32">
                   <p className="text-muted-foreground">

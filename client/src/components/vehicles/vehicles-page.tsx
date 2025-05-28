@@ -388,11 +388,6 @@ export function VehiclesPage() {
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-blue-600 font-bold text-sm">
-                              {vehicle.economicNumber || vehicle.plates.slice(-2)}
-                            </span>
-                          </div>
                           <div>
                             <div className="font-semibold text-gray-900">{vehicle.plates}</div>
                             <div className="text-sm text-gray-600">

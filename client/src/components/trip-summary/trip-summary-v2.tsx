@@ -791,12 +791,6 @@ export default function TripSummary({ className }: TripSummaryProps) {
 
   return (
     <div className={`py-6 ${className}`}>
-      <div className="flex items-center mb-4">
-        <div className="rounded-full bg-primary bg-opacity-10 p-2 mr-3">
-          <ClipboardListIcon className="h-6 w-6 text-primary" />
-        </div>
-        <h2 className="text-xl font-semibold text-gray-800">Bitácora</h2>
-      </div>
 
       {/* Selector de fecha */}
       <div className="flex justify-between items-center mb-6">
@@ -830,9 +824,6 @@ export default function TripSummary({ className }: TripSummaryProps) {
                     }
                   }}
                 />
-              </div>
-              <div className="text-sm font-medium text-gray-700 mt-2">
-                {formatHeaderDate(currentDate)}
               </div>
             </div>
           </div>
