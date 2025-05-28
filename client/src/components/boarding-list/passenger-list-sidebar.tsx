@@ -21,7 +21,8 @@ import {
   ClipboardCopy,
   LockIcon,
   DollarSign,
-  Wallet
+  Wallet,
+  Package
 } from "lucide-react";
 import { formatTripTime } from "@/lib/trip-utils";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,7 @@ import { useDriverTrips, Trip } from "@/hooks/use-driver-trips";
 import { useDriverReservations, Reservation, Passenger } from "@/hooks/use-driver-reservations";
 import { useTripBudget } from "@/hooks/use-trip-budget";
 import { useTripExpenses, TripExpense } from "@/hooks/use-trip-expenses";
+import { useTripPackages } from "@/hooks/use-trip-packages";
 import { normalizeToStartOfDay, formatPrice } from "@/lib/utils";
 import { AddExpenseModal } from "./add-expense-modal";
 import { ExpenseButton } from "./expense-button";
@@ -138,6 +140,13 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
     isLoading: isLoadingExpenses,
     error: expensesError
   } = useTripExpenses(tripId);
+  
+  // Cargar las paqueterías del viaje
+  const {
+    data: tripPackages,
+    isLoading: isLoadingPackages,
+    error: packagesError
+  } = useTripPackages(tripId);
 
   // Función para formatear fecha
   const formatDisplayDate = (dateString: string | Date) => {
@@ -795,6 +804,103 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
             </p>
           </div>
         )}
+
+        {/* Sección de Paqueterías */}
+        <div className="mt-6">
+          <Separator className="mb-4" />
+          <div className="flex items-center gap-2 mb-4">
+            <Package className="h-5 w-5 text-orange-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Paqueterías del Viaje</h3>
+          </div>
+          
+          {isLoadingPackages ? (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600 mx-auto"></div>
+              <p className="text-sm text-gray-500 mt-2">Cargando paqueterías...</p>
+            </div>
+          ) : packagesError ? (
+            <div className="text-center py-4 text-red-600">
+              <p className="text-sm">Error al cargar paqueterías</p>
+            </div>
+          ) : tripPackages && tripPackages.length > 0 ? (
+            <div className="space-y-3">
+              <div className="flex items-center bg-orange-50 p-3 rounded-lg border border-orange-100">
+                <div className="rounded-full bg-orange-100 p-2 mr-3">
+                  <Package className="h-4 w-4 text-orange-600" />
+                </div>
+                <div>
+                  <div className="text-xs text-orange-600">Total de paquetes</div>
+                  <div className="text-lg font-bold text-orange-700">{tripPackages.length}</div>
+                </div>
+              </div>
+              
+              <div className="max-h-48 overflow-y-auto space-y-2">
+                {tripPackages.map((pkg) => (
+                  <Card key={pkg.id} className="border border-gray-200">
+                    <CardContent className="p-3">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm text-gray-900">
+                            {pkg.senderName} → {pkg.recipientName}
+                          </p>
+                          <p className="text-xs text-gray-600 truncate">
+                            {pkg.description}
+                          </p>
+                        </div>
+                        <Badge 
+                          variant={pkg.isPaid ? "default" : "secondary"}
+                          className={pkg.isPaid ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}
+                        >
+                          {pkg.isPaid ? "Pagado" : "Pendiente"}
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex justify-between items-center text-xs text-gray-500">
+                        <span>{pkg.weight}kg</span>
+                        <span className="font-medium text-gray-900">
+                          {formatPrice(pkg.amount)}
+                        </span>
+                      </div>
+                      
+                      {pkg.fragile && (
+                        <div className="mt-1">
+                          <Badge variant="outline" className="text-xs border-red-200 text-red-600">
+                            Frágil
+                          </Badge>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              
+              <div className="pt-2 border-t border-gray-200">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Total ingresos:</span>
+                  <span className="font-semibold text-green-600">
+                    {formatPrice(tripPackages.reduce((sum, pkg) => sum + pkg.amount, 0))}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Pagados:</span>
+                  <span className="font-medium text-gray-900">
+                    {formatPrice(tripPackages.filter(pkg => pkg.isPaid).reduce((sum, pkg) => sum + pkg.amount, 0))}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 bg-gray-50 rounded-xl border border-gray-200">
+              <div className="rounded-full bg-gray-100 p-3 mx-auto w-12 h-12 mb-3 flex items-center justify-center">
+                <Package className="h-6 w-6 text-gray-400" />
+              </div>
+              <h4 className="text-sm font-medium mb-1 text-gray-800">Sin paqueterías</h4>
+              <p className="text-gray-500 text-xs max-w-xs mx-auto">
+                Este viaje no tiene paquetes registrados en el sistema.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
