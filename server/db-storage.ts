@@ -1002,6 +1002,17 @@ export class DatabaseStorage implements IStorage {
                     route.stops.some(stop => stop.toLowerCase().includes(searchDest));
       }
       
+      // NUEVA LÓGICA: Si se está filtrando por origen O destino específicos, excluir viajes padre
+      // Solo mostrar viajes padre cuando NO hay filtros de origen/destino
+      const hasOriginOrDestinationFilter = params.origin || params.destination;
+      const isMainTrip = !trip.isSubTrip;
+      
+      // Si hay filtro de origen/destino y es un viaje padre, saltarlo
+      if (hasOriginOrDestinationFilter && isMainTrip) {
+        console.log(`[searchTrips-v2] Excluyendo viaje padre ${trip.id} debido a filtro de origen/destino específico`);
+        continue;
+      }
+      
       if (originMatch && destMatch) {
         tripsWithRouteInfo.push({
           ...trip,
