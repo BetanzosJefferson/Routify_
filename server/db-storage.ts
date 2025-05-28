@@ -1398,11 +1398,11 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getReservations(companyId?: string, tripId?: number, companyIds?: string[]): Promise<ReservationWithDetails[]> {
+  async getReservations(companyId?: string, tripId?: number, companyIds?: string[], dateFilter?: string): Promise<ReservationWithDetails[]> {
     console.time('getReservations-optimized');
     
-    // NUEVA IMPLEMENTACIÓN CON FILTRADO DE COMPAÑÍA Y VIAJE
-    console.log(`[getReservations] Iniciando búsqueda${companyId ? ` para compañía ${companyId}` : ''}${companyIds && companyIds.length > 0 ? ` para compañías [${companyIds.join(', ')}]` : ''}${tripId ? ` para viaje ${tripId}` : ''}`);
+    // NUEVA IMPLEMENTACIÓN CON FILTRADO DE COMPAÑÍA, VIAJE Y FECHA
+    console.log(`[getReservations] Iniciando búsqueda${companyId ? ` para compañía ${companyId}` : ''}${companyIds && companyIds.length > 0 ? ` para compañías [${companyIds.join(', ')}]` : ''}${tripId ? ` para viaje ${tripId}` : ''}${dateFilter ? ` para fecha ${dateFilter}` : ''}`);
     
     // Construir condiciones de filtrado como array
     const condiciones = [];
@@ -1469,9 +1469,46 @@ export class DatabaseStorage implements IStorage {
       
       // Aplicar filtro directo como SQL
       condiciones.push(sql`company_id = ${companyId}`);
-    } else if (!tripId) {
-      // Solo mostramos la advertencia si tampoco hay filtro por viaje
-      console.log(`[getReservations] ADVERTENCIA: Obteniendo TODAS las reservas sin filtro de compañía ni viaje`);
+    } else if (!tripId && !dateFilter) {
+      // Solo mostramos la advertencia si tampoco hay filtro por viaje ni fecha
+      console.log(`[getReservations] ADVERTENCIA: Obteniendo TODAS las reservas sin filtro de compañía, viaje ni fecha`);
+    }
+    
+    // FILTRO POR FECHA (basado en la fecha de partida de los viajes)
+    if (dateFilter) {
+      console.log(`[getReservations] FILTRO POR FECHA: ${dateFilter}`);
+      
+      // Primero obtenemos todos los viajes de la fecha especificada
+      const tripsOnDate = await db
+        .select({ id: schema.trips.id })
+        .from(schema.trips)
+        .where(sql`DATE(departure_date) = ${dateFilter}`);
+      
+      const tripIdsOnDate = tripsOnDate.map(trip => trip.id);
+      console.log(`[getReservations] Encontrados ${tripIdsOnDate.length} viajes para la fecha ${dateFilter}: [${tripIdsOnDate.join(', ')}]`);
+      
+      if (tripIdsOnDate.length > 0) {
+        // Crear condición para filtrar reservas de esos viajes
+        if (tripIdsOnDate.length === 1) {
+          condiciones.push(sql`trip_id = ${tripIdsOnDate[0]}`);
+        } else {
+          // Múltiples viajes - crear condición OR
+          let tripConditionSql = sql`(`;
+          for (let i = 0; i < tripIdsOnDate.length; i++) {
+            tripConditionSql = sql`${tripConditionSql}trip_id = ${tripIdsOnDate[i]}`;
+            if (i < tripIdsOnDate.length - 1) {
+              tripConditionSql = sql`${tripConditionSql} OR `;
+            }
+          }
+          tripConditionSql = sql`${tripConditionSql})`;
+          condiciones.push(tripConditionSql);
+        }
+      } else {
+        // No hay viajes en esta fecha, no habrá reservas
+        console.log(`[getReservations] No hay viajes para la fecha ${dateFilter}, devolviendo lista vacía`);
+        console.timeEnd('getReservations-optimized');
+        return [];
+      }
     }
     
     // Ejecutar consulta
