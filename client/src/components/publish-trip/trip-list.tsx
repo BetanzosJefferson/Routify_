@@ -127,9 +127,10 @@ interface Trip {
 
 type TripListProps = {
   onEditTrip: (tripId: number) => void;
+  title?: string;
 };
 
-export default function TripList({ onEditTrip }: TripListProps) {
+export default function TripList({ onEditTrip, title = "Publicación de Viajes" }: TripListProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
@@ -474,7 +475,7 @@ export default function TripList({ onEditTrip }: TripListProps) {
     <Card>
       <CardHeader className="bg-primary/5">
         <div className="flex flex-wrap items-center justify-between">
-          <CardTitle className="text-xl">Publicación de Viajes</CardTitle>
+          <CardTitle className="text-xl">{title}</CardTitle>
         </div>
       </CardHeader>
 

@@ -142,12 +142,6 @@ export function RouteList() {
   return (
     <div className="py-6">
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center">
-          <div className="rounded-full bg-primary bg-opacity-10 p-2 mr-3">
-            <MapIcon className="h-6 w-6 text-primary" />
-          </div>
-          <h2 className="text-xl font-semibold text-gray-800">Rutas</h2>
-        </div>
         <Button 
           onClick={handleCreateNewRoute}
           className="bg-primary hover:bg-primary-dark text-white"
