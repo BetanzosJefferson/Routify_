@@ -3561,40 +3561,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // PACKAGE METHODS
-  async getPackages(filters?: { companyId?: string, companyIds?: string[], tripId?: number, tripIds?: number[] }): Promise<any[]> {
+  async getPackages(filters?: { companyId?: string, companyIds?: string[], tripId?: number, tripIds?: number[] }): Promise<schema.Package[]> {
     try {
       console.log(`[getPackages] Buscando paqueterías con filtros:`, filters);
       
-      // Hacer JOIN con la tabla de empresas para obtener el nombre
-      let query = db
-        .select({
-          id: schema.packages.id,
-          tripId: schema.packages.tripId,
-          senderName: schema.packages.senderName,
-          senderLastName: schema.packages.senderLastName,
-          senderPhone: schema.packages.senderPhone,
-          recipientName: schema.packages.recipientName,
-          recipientLastName: schema.packages.recipientLastName,
-          recipientPhone: schema.packages.recipientPhone,
-          packageDescription: schema.packages.packageDescription,
-          price: schema.packages.price,
-          isPaid: schema.packages.isPaid,
-          paymentMethod: schema.packages.paymentMethod,
-          deliveryStatus: schema.packages.deliveryStatus,
-          usesSeats: schema.packages.usesSeats,
-          seatsQuantity: schema.packages.seatsQuantity,
-          segmentOrigin: schema.packages.segmentOrigin,
-          segmentDestination: schema.packages.segmentDestination,
-          createdAt: schema.packages.createdAt,
-          updatedAt: schema.packages.updatedAt,
-          companyId: schema.packages.companyId,
-          createdBy: schema.packages.createdBy,
-          paidBy: schema.packages.paidBy,
-          deliveredBy: schema.packages.deliveredBy,
-          companyName: schema.companies.name
-        })
-        .from(schema.packages)
-        .leftJoin(schema.companies, eq(schema.packages.companyId, schema.companies.identifier));
+      let query = db.select().from(schema.packages);
       
       // Aplicar filtros de seguridad
       if (filters) {
