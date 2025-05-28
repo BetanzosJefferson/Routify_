@@ -506,6 +506,7 @@ export class DatabaseStorage implements IStorage {
         // Verificar que los datos de la compañía estén presentes
         console.log(`Viaje ${trip.id} - companyName: ${tripWithInfo.companyName}, companyLogo: ${tripWithInfo.companyLogo}`);
         
+        console.log(`[PUSH-1] Agregando viaje ${trip.id} (isSubTrip: ${trip.isSubTrip}) - params.origin: ${params.origin}`);
         tripsWithRouteInfo.push(tripWithInfo);
       }
       // Si no se encuentra la ruta, simplemente no incluimos este viaje
@@ -999,7 +1000,7 @@ export class DatabaseStorage implements IStorage {
         console.log(`[searchTrips-v2] SubTrip ${trip.id}: ${trip.segmentOrigin} -> ${trip.segmentDestination}, originMatch: ${originMatch}, destMatch: ${destMatch}`);
         
         if (originMatch && destMatch) {
-          console.log(`[searchTrips-v2] Incluyendo subTrip ${trip.id}: ${trip.segmentOrigin} -> ${trip.segmentDestination}`);
+          console.log(`[PUSH-2] Agregando subTrip ${trip.id} (isSubTrip: ${trip.isSubTrip}) - params.origin: ${params.origin}`);
           tripsWithRouteInfo.push({
             ...trip,
             route,
@@ -1038,6 +1039,7 @@ export class DatabaseStorage implements IStorage {
       
       // Solo procesar si coinciden origen y destino
       if (originMatch && destMatch) {
+        console.log(`[PUSH-3] Agregando mainTrip ${trip.id} (isSubTrip: ${trip.isSubTrip}) - params.origin: ${params.origin}`);
         tripsWithRouteInfo.push({
           ...trip,
           route,
