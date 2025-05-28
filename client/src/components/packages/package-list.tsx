@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +42,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Link } from "wouter";
 import {
@@ -56,6 +58,9 @@ import {
   Loader2,
   Plus,
   Share2,
+  Search,
+  Filter,
+  X,
 } from "lucide-react";
 
 // Importar componentes relacionados con paquetes
@@ -75,6 +80,14 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
   const [packageToDetail, setPackageToDetail] = useState<any | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
   
+  // Estados para filtros
+  const [filters, setFilters] = useState({
+    origin: "",
+    destination: "",
+    date: "",
+  });
+  const [showFilters, setShowFilters] = useState(false);
+  
   // Determinar si el usuario puede añadir/editar paquetes
   const canCreateEdit = user ? hasRoleAccess(user.role, [UserRole.OWNER, UserRole.ADMIN, UserRole.CALL_CENTER, UserRole.CHECKER]) : false;
   
@@ -92,6 +105,45 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
       return response.json();
     },
   });
+
+  // Filtrar paquetes basado en los filtros aplicados
+  const filteredPackages = useMemo(() => {
+    if (!packagesQuery.data) return [];
+    
+    return packagesQuery.data.filter((pkg: any) => {
+      // Filtro por origen
+      if (filters.origin && !pkg.tripOrigin?.toLowerCase().includes(filters.origin.toLowerCase())) {
+        return false;
+      }
+      
+      // Filtro por destino
+      if (filters.destination && !pkg.tripDestination?.toLowerCase().includes(filters.destination.toLowerCase())) {
+        return false;
+      }
+      
+      // Filtro por fecha
+      if (filters.date) {
+        const packageDate = new Date(pkg.createdAt).toISOString().split('T')[0];
+        if (packageDate !== filters.date) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [packagesQuery.data, filters]);
+
+  // Función para limpiar filtros
+  const clearFilters = () => {
+    setFilters({
+      origin: "",
+      destination: "",
+      date: "",
+    });
+  };
+
+  // Contar filtros activos
+  const activeFiltersCount = Object.values(filters).filter(value => value !== "").length;
   
   // Mutación para marcar un paquete como entregado
   const markAsDeliveredMutation = useMutation({
@@ -242,22 +294,99 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-xl font-bold">
-            Paquetes ({packagesQuery.data.length})
+            Paquetes ({filteredPackages.length})
           </h2>
+          {activeFiltersCount > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {activeFiltersCount} filtro{activeFiltersCount > 1 ? 's' : ''} aplicado{activeFiltersCount > 1 ? 's' : ''}
+            </p>
+          )}
         </div>
-        {canCreateEdit && (
-          <Button onClick={onAddPackage}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nuevo Paquete
+        <div className="flex gap-2">
+          <Button
+            variant={showFilters ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <Filter className="mr-2 h-4 w-4" />
+            Filtros
+            {activeFiltersCount > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {activeFiltersCount}
+              </Badge>
+            )}
           </Button>
-        )}
+          {canCreateEdit && (
+            <Button onClick={onAddPackage}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nuevo Paquete
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Sección de filtros */}
+      {showFilters && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center justify-between">
+              <div className="flex items-center">
+                <Search className="mr-2 h-5 w-5" />
+                Filtros de búsqueda
+              </div>
+              {activeFiltersCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="mr-1 h-4 w-4" />
+                  Limpiar filtros
+                </Button>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="filter-origin">Origen</Label>
+                <Input
+                  id="filter-origin"
+                  placeholder="Buscar por origen..."
+                  value={filters.origin}
+                  onChange={(e) => setFilters(prev => ({ ...prev, origin: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="filter-destination">Destino</Label>
+                <Input
+                  id="filter-destination"
+                  placeholder="Buscar por destino..."
+                  value={filters.destination}
+                  onChange={(e) => setFilters(prev => ({ ...prev, destination: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="filter-date">Fecha</Label>
+                <Input
+                  id="filter-date"
+                  type="date"
+                  value={filters.date}
+                  onChange={(e) => setFilters(prev => ({ ...prev, date: e.target.value }))}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>ID</TableHead>
+              <TableHead>Descripción</TableHead>
               <TableHead>Remitente</TableHead>
               <TableHead>Destinatario</TableHead>
               <TableHead>Origen</TableHead>
@@ -271,7 +400,7 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {packagesQuery.data.map((pkg: any) => (
+            {filteredPackages.map((pkg: any) => (
               <TableRow 
                 key={pkg.id} 
                 className="cursor-pointer hover:bg-muted/50"
