@@ -9,15 +9,15 @@ import { extractLocationsFromTrips, formatTripTime, extractDayIndicator } from "
 // Función para abreviar ubicaciones en móvil
 function abbreviateLocation(location: string): string {
   if (!location) return '';
-  
+
   // Si ya es corto, dejarlo como está
   if (location.length <= 8) return location;
-  
+
   // Si tiene comas, tomar solo la primera parte
   if (location.includes(',')) {
     return location.split(',')[0].trim();
   }
-  
+
   // Si tiene espacios, tomar primeras letras de cada palabra
   if (location.includes(' ')) {
     const words = location.split(' ');
@@ -25,7 +25,7 @@ function abbreviateLocation(location: string): string {
       return words.map(word => word.charAt(0)).join('');
     }
   }
-  
+
   // Si todo falla, cortar a 8 caracteres
   return location.substring(0, 7) + '.';
 }
@@ -33,46 +33,46 @@ function abbreviateLocation(location: string): string {
 // Función para calcular la duración entre horas, considerando indicadores de día siguiente
 function calculateDuration(departureTime: string, arrivalTime: string): string {
   if (!departureTime || !arrivalTime) return "1h";
-  
+
   // Primero, limpiar los posibles indicadores de día para extraer solo el tiempo
   const cleanDepartureTime = departureTime.replace(/\s*\+\d+d$/, '');
   const cleanArrivalTime = arrivalTime.replace(/\s*\+\d+d$/, '');
-  
+
   // Extraer el número de días adicionales, si existe
   const departureExtraDays = departureTime.match(/\+(\d+)d$/) ? 
     parseInt(departureTime.match(/\+(\d+)d$/)![1], 10) : 0;
   const arrivalExtraDays = arrivalTime.match(/\+(\d+)d$/) ? 
     parseInt(arrivalTime.match(/\+(\d+)d$/)![1], 10) : 0;
-  
+
   // Convertir a formato 24 horas para cálculos
   const parseTime = (time: string) => {
     let [hourMin, period] = time.split(' ');
     let [hours, minutes] = hourMin.split(':').map(Number);
-    
+
     // Convertir a formato 24 horas
     if (period === 'PM' && hours < 12) hours += 12;
     if (period === 'AM' && hours === 12) hours = 0;
-    
+
     return { hours, minutes };
   };
-  
+
   const departure = parseTime(cleanDepartureTime);
   const arrival = parseTime(cleanArrivalTime);
-  
+
   // Calcular diferencia en minutos, considerando días adicionales
   let totalMinutesDeparture = (departure.hours * 60 + departure.minutes) + (departureExtraDays * 24 * 60);
   let totalMinutesArrival = (arrival.hours * 60 + arrival.minutes) + (arrivalExtraDays * 24 * 60);
-  
+
   // Si no hay indicadores de día explícitos y la llegada parece ser antes que la salida,
   // asumimos que cruza medianoche
   if (arrivalExtraDays === 0 && departureExtraDays === 0 && totalMinutesArrival < totalMinutesDeparture) {
     totalMinutesArrival += 24 * 60; // Agregar 24 horas en minutos
   }
-  
+
   const diffMinutes = totalMinutesArrival - totalMinutesDeparture;
   const hours = Math.floor(diffMinutes / 60);
   const minutes = diffMinutes % 60;
-  
+
   // Formatear el resultado
   if (hours === 0) {
     return `${minutes}m`;
@@ -97,6 +97,7 @@ interface SearchParams {
   destination?: string;
   date?: string;
   seats?: number;
+  parentOnly?: 'true' | 'false'; // Añadir parentOnly a la interfaz
 }
 
 import { normalizeToStartOfDay, formatDateForInput, formatDateForApiQuery } from "@/lib/utils";
@@ -104,22 +105,22 @@ import { normalizeToStartOfDay, formatDateForInput, formatDateForApiQuery } from
 export function TripList() {
   // Obtener la fecha actual formateada como YYYY-MM-DD en hora local
   const today = formatDateForInput(new Date());
-  
+
   // Calcular fechas permitidas (ayer, hoy, mañana)
   const yesterday = formatDateForInput(new Date(Date.now() - 24 * 60 * 60 * 1000));
   const tomorrow = formatDateForInput(new Date(Date.now() + 24 * 60 * 60 * 1000));
-  
-  const [searchParams, setSearchParams] = useState<SearchParams>({ date: today, parentOnly: 'true' } as any);
+
+  const [searchParams, setSearchParams] = useState<SearchParams>({ date: today, parentOnly: 'true' });
   const [selectedTrip, setSelectedTrip] = useState<TripWithRouteInfo | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [sortMethod, setSortMethod] = useState<"departure" | "price" | "duration">("departure");
-  
+
   // Form state
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
   const [date, setDate] = useState(today);
   const [seats, setSeats] = useState("");
-  
+
   // Query optimizada para traer solo viajes de ayer, hoy y mañana para opciones de autocomplete
   const { data: allTrips, isLoading: isLoadingAll } = useQuery({
     queryKey: ["/api/trips", "limited-dates"],
@@ -131,42 +132,38 @@ export function TripList() {
       return await response.json() as TripWithRouteInfo[];
     },
   });
-  
+
   // Filter trips based on search parameters
   const { data: trips, isLoading, isError } = useQuery({
     queryKey: ["/api/trips", searchParams],
     queryFn: async () => {
       // Añadir el filtro de visibilidad publicado a los parámetros de búsqueda
       const paramsWithVisibility = { ...searchParams, visibility: 'publicado' };
-      
-      // Solo buscar sub-viajes si el usuario ha especificado origen Y destino
-      const hasOriginAndDestination = searchParams.origin && searchParams.destination;
-      if (!hasOriginAndDestination) {
-        // Si no hay filtros de origen/destino, solo mostrar viajes padre
-        (paramsWithVisibility as any).parentOnly = 'true';
-      }
-      
+
+      // La lógica para parentOnly ahora se manejará completamente en el useEffect,
+      // así que no necesitamos modificarla aquí basada en hasOriginAndDestination.
+      // Simplemente enviamos los parámetros como están.
+
       // Debug: mostrar los parámetros que se van a enviar
       console.log('[TripList Debug] Parámetros finales:', paramsWithVisibility);
-      console.log('[TripList Debug] hasOriginAndDestination:', hasOriginAndDestination);
-      
+
       const queryString = new URLSearchParams(
         Object.entries(paramsWithVisibility).filter(([_, v]) => v !== undefined) as [string, string][]
       ).toString();
-      
+
       const response = await fetch(`/api/trips${queryString ? `?${queryString}` : ''}`);
       if (!response.ok) throw new Error("Failed to fetch trips");
       return await response.json() as TripWithRouteInfo[];
     },
-    enabled: true // Siempre ejecutar para mostrar viajes padre por defecto
+    enabled: true // Siempre ejecutar para mostrar viajes padre por defecto o filtrados
   });
-  
+
   // Extract unique locations for autocomplete
   const locationOptions = useMemo(() => {
     if (!allTrips) return [];
     return extractLocationsFromTrips(allTrips);
   }, [allTrips]);
-  
+
   // Update search params in real-time as the user types
   useEffect(() => {
     // Small debounce function to avoid too many requests
@@ -178,24 +175,28 @@ export function TripList() {
       if (seats && !isNaN(parseInt(seats, 10))) {
         params.seats = parseInt(seats, 10);
       }
-      
-      // Si no hay filtros de origen y destino, solo mostrar viajes padre
-      if (!origin && !destination) {
-        (params as any).parentOnly = 'true';
+
+      // Lógica actualizada para parentOnly
+      if (origin || destination) {
+        // Si se proporciona origen o destino, busca todos los viajes coincidentes (incluidos los subtrips)
+        params.parentOnly = 'false';
+      } else {
+        // Si no se proporciona ni origen ni destino, muestra solo los viajes padre
+        params.parentOnly = 'true';
       }
-      
+
       setSearchParams(params);
     }, 300); // 300ms debounce
-    
+
     return () => clearTimeout(debounceTimer);
   }, [origin, destination, date, seats]);
-  
+
   // Handler for reservation button click
   const handleReserve = (trip: TripWithRouteInfo) => {
     setSelectedTrip(trip);
     setShowModal(true);
   };
-  
+
   // Close modal handler
   const handleCloseModal = () => {
     setShowModal(false);
@@ -205,7 +206,7 @@ export function TripList() {
   // Función para ordenar los viajes según el criterio seleccionado
   const sortedTrips = useMemo(() => {
     if (!trips) return [];
-    
+
     return [...trips].sort((a, b) => {
       // Ordenar por hora de salida (más temprano primero)
       if (sortMethod === "departure") {
@@ -218,60 +219,60 @@ export function TripList() {
           if (period === 'AM' && hours === 12) value = minutes;
           return value;
         };
-        
+
         return getTimeValue(a.departureTime) - getTimeValue(b.departureTime);
       }
-      
+
       // Ordenar por precio (más barato primero)
       if (sortMethod === "price") {
         const priceA = a.isSubTrip && Array.isArray(a.segmentPrices) && a.segmentPrices.length > 0 
           ? a.segmentPrices[0]?.price || a.price 
           : a.price;
-        
+
         const priceB = b.isSubTrip && Array.isArray(b.segmentPrices) && b.segmentPrices.length > 0 
           ? b.segmentPrices[0]?.price || b.price 
           : b.price;
-          
+
         return priceA - priceB;
       }
-      
+
       // Ordenar por duración (más corto primero)
       if (sortMethod === "duration") {
         // Calcular duración en minutos
         const getDuration = (departureTime: string, arrivalTime: string) => {
           if (!departureTime || !arrivalTime) return 0;
-          
+
           const parseTime = (time: string) => {
             let [hourMin, period] = time.split(' ');
             let [hours, minutes] = hourMin.split(':').map(Number);
-            
+
             if (period === 'PM' && hours < 12) hours += 12;
             if (period === 'AM' && hours === 12) hours = 0;
-            
+
             return hours * 60 + minutes;
           };
-          
+
           let departure = parseTime(departureTime);
           let arrival = parseTime(arrivalTime);
-          
+
           // Si la llegada es antes que la salida, sumar 24 horas
           if (arrival < departure) {
             arrival += 24 * 60;
           }
-          
+
           return arrival - departure;
         };
-        
+
         const durationA = getDuration(a.departureTime, a.arrivalTime);
         const durationB = getDuration(b.departureTime, b.arrivalTime);
-        
+
         return durationA - durationB;
       }
-      
+
       return 0;
     });
   }, [trips, sortMethod]);
-  
+
   return (
     <div className="py-6">
       <div className="flex items-center mb-4">
@@ -280,7 +281,7 @@ export function TripList() {
         </div>
         <h2 className="text-xl font-semibold text-gray-800">Viajes</h2>
       </div>
-      
+
       <Card className="mb-6">
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -353,11 +354,11 @@ export function TripList() {
                 onChange={(e) => setSeats(e.target.value)}
               />
             </div>
-    
+
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Opciones de ordenamiento */}
       <div className="mb-6">
         <div className="flex flex-col md:flex-row gap-2 items-start">
@@ -469,7 +470,7 @@ export function TripList() {
                       {trip.isSubTrip ? trip.segmentOrigin : trip.route.origin}
                     </div>
                   </div>
-                  
+
                   <div className="flex flex-col items-center justify-center">
                     <div className="text-xs text-gray-500 mb-1">
                       {calculateDuration(trip.departureTime, trip.arrivalTime)}
@@ -484,7 +485,7 @@ export function TripList() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex flex-col items-end">
                     <div className="text-lg font-bold">
                       {formatTripTime(trip.arrivalTime, true, 'pretty')}
@@ -494,7 +495,7 @@ export function TripList() {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Mostrar mensaje descriptivo para viajes que cruzan la medianoche */}
                 {(extractDayIndicator(trip.departureTime) > 0 || extractDayIndicator(trip.arrivalTime) > 0) ? (
                   <div className="mt-2 text-xs text-amber-600 bg-amber-50 p-2 rounded-md flex items-center">
@@ -506,14 +507,14 @@ export function TripList() {
                     {formatTripTime(trip.departureTime, true, 'descriptive', trip.departureDate)}
                   </div>
                 ) : null}
-                
+
                 <div className="mt-4 flex items-center justify-between">
                   {trip.vehicle?.name && (
                     <div className="text-sm">
                       <span className="capitalize">{trip.vehicle.name}</span>
                     </div>
                   )}
-                  
+
                   <Button
                     variant="default"
                     size="sm"
@@ -523,9 +524,9 @@ export function TripList() {
                     Reservar
                   </Button>
                 </div>
-                
-        
-                
+
+
+
                 {!trip.isSubTrip && trip.numStops > 0 && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
                     <span className="text-xs text-gray-500">
@@ -533,7 +534,7 @@ export function TripList() {
                     </span>
                   </div>
                 )}
-                
+
                 {/* Se ha eliminado la información de visibilidad y estado del viaje de esta sección */}
               </div>
             </div>
@@ -550,7 +551,7 @@ export function TripList() {
           </CardContent>
         </Card>
       )}
-      
+
       {/* Reservation Modal */}
       {selectedTrip && (
         <ReservationStepsModal
