@@ -140,7 +140,7 @@ export function LocationSelector({
       </Button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-white shadow-lg">
+        <div className="absolute z-50 mt-1 w-full min-w-[350px] max-w-[500px] rounded-md border bg-white shadow-lg">
           <div className="p-2">
             <input
               type="text"
@@ -166,19 +166,26 @@ export function LocationSelector({
                   {locations.map((location) => (
                     <div
                       key={location.value}
-                      className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-100 transition-colors"
+                      className="flex items-center px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors"
                       onClick={() => handleSelect(location.value)}
                     >
-                      <div className="mr-2 flex h-4 w-4 items-center justify-center">
+                      <div className="mr-3 flex h-4 w-4 items-center justify-center">
                         <Check
                           className={cn(
-                            "h-4 w-4",
+                            "h-4 w-4 text-blue-600",
                             value === location.value ? "opacity-100" : "opacity-0"
                           )}
                         />
                       </div>
-                      <div className="flex flex-col flex-1 min-w-0">
-                        <span className="text-sm truncate">{location.place}</span>
+                      <div className="flex flex-col flex-1">
+                        <span className="text-sm font-medium text-gray-900 leading-relaxed">
+                          {location.place}
+                        </span>
+                        {location.place !== "Todas las paradas" && (
+                          <span className="text-xs text-gray-500 mt-0.5">
+                            {location.city}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
