@@ -834,61 +834,58 @@ export function ReservationList() {
           )}
         </div>
 
-        {/* Vista para Móvil: Tarjetas */}
+        {/* Vista para Móvil: Tarjetas Minimalistas */}
         <div className="md:hidden">
           {isLoading && showLoadingDelay ? (
             <div className="flex justify-center items-center p-8">
-              <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-2">Cargando reservaciones...</span>
+              <Loader2Icon className="h-6 w-6 animate-spin text-primary" />
+              <span className="ml-2 text-sm">Cargando...</span>
             </div>
           ) : hasError && !isInitialLoad ? (
-            <div className="text-center p-8 text-red-500">
-              Error al cargar las reservaciones. Por favor intenta de nuevo.
+            <div className="text-center p-6 text-red-500 text-sm">
+              Error al cargar las reservaciones.
             </div>
           ) : paginatedReservations && paginatedReservations.length > 0 ? (
-            <div className="divide-y divide-gray-200">
+            <div className="space-y-3">
               {paginatedReservations.map((reservation) => (
                 <div 
                   key={reservation.id} 
-                  className={`p-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors duration-150 ${
-                    reservation.status === 'canceled' ? 'bg-gray-50 border-l-4 border-red-300' : ''
+                  className={`bg-white rounded-lg border shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow duration-200 ${
+                    reservation.status === 'canceled' ? 'border-red-200 bg-red-50' : 'border-gray-200'
                   }`}
                   onClick={() => {
                     setSelectedReservationId(reservation.id);
                     setIsDetailsModalOpen(true);
                   }}
                 >
+                  {/* Header con ID y estado */}
                   <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-bold text-gray-900">
                         #{generateReservationId(reservation.id)}
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <Badge 
-                          variant={reservation.paymentStatus === 'pagado' ? "outline" : "secondary"}
-                          className={reservation.paymentStatus === 'pagado' 
-                            ? "bg-green-100 text-green-800 border-green-200" 
-                            : "bg-amber-100 text-amber-800 border-amber-200"}
-                        >
-                          {reservation.paymentStatus === 'pagado' ? 'PAGADO' : 'PENDIENTE'}
-                        </Badge>
-                        <Badge 
-                          variant="outline"
-                          className={reservation.status === 'confirmed' 
-                            ? "bg-blue-100 text-blue-800 border-blue-200" 
-                            : "bg-red-100 text-red-800 border-red-200"}
-                        >
-                          {reservation.status === 'confirmed' ? 'CONFIRMADA' : 'CANCELADA'}
-                        </Badge>
+                      </span>
+                      <div className="flex space-x-1">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          reservation.paymentStatus === 'pagado' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {reservation.paymentStatus === 'pagado' ? 'Pagado' : 'Pendiente'}
+                        </span>
+                        {reservation.status === 'canceled' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Cancelada
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     {user?.role !== "taquilla" && (
-                      <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex space-x-1" onClick={(e) => e.stopPropagation()}>
                         <Button 
                           size="sm"
-                          variant="link" 
-                          className="text-blue-600 hover:text-blue-800 p-0"
+                          variant="ghost" 
+                          className="h-8 px-2 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                           onClick={(e) => {
                             e.stopPropagation();
                             openEditModal(reservation);
@@ -899,8 +896,8 @@ export function ReservationList() {
                         {reservation.status === 'canceled' ? (
                           <Button 
                             size="sm"
-                            variant="link" 
-                            className="text-red-800 hover:text-red-900 p-0"
+                            variant="ghost" 
+                            className="h-8 px-2 text-xs text-red-600 hover:text-red-800 hover:bg-red-50"
                             onClick={(e) => {
                               e.stopPropagation();
                               openDeleteConfirm(reservation.id, 'delete');
@@ -911,8 +908,8 @@ export function ReservationList() {
                         ) : (
                           <Button 
                             size="sm"
-                            variant="link" 
-                            className="text-amber-600 hover:text-amber-800 p-0"
+                            variant="ghost" 
+                            className="h-8 px-2 text-xs text-yellow-600 hover:text-yellow-800 hover:bg-yellow-50"
                             onClick={(e) => {
                               e.stopPropagation();
                               openDeleteConfirm(reservation.id, 'cancel');
@@ -925,74 +922,51 @@ export function ReservationList() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-y-2 text-sm">
-                    <div className="col-span-2">
-                      <div className="font-medium text-gray-900">
-                        {reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}
-                        {reservation.passengers.length > 1 && ` +${reservation.passengers.length - 1}`}
-                      </div>
-                      <div className="text-gray-500 truncate" title={reservation.email}>
-                        {reservation.email}
-                      </div>
-                      <div className="text-gray-500 truncate" title={reservation.phone}>
-                        Tel: {reservation.phone}
-                      </div>
-                    </div>
-
-                    <div className="col-span-2 mt-1">
-                      <div className="font-medium">{reservation.trip.route.name}</div>
-                      <div className="text-gray-500 text-xs">
-                        {reservation.trip.segmentOrigin || reservation.trip.route.origin} → {reservation.trip.segmentDestination || reservation.trip.route.destination}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-xs text-gray-500">Fecha</div>
-                      <div>{formatDate(reservation.trip.departureDate)}</div>
-                    </div>
-
-                    <div>
-                      <div className="text-xs text-gray-500">Hora</div>
-                      <div>{formatTripTime(reservation.trip.departureTime, true, 'pretty')}</div>
-                    </div>
-
-                    <div>
-                      <div className="text-xs text-gray-500">Pasajeros</div>
-                      <div>{reservation.passengers.length}</div>
-                    </div>
-
-                    <div className="text-right">
-                      <div className="text-xs text-gray-500">Total</div>
-                      {activeTab === "canceled" ? (
-                        <div className="font-medium">
-                          {reservation.paymentStatus === 'pagado' ? (
-                            <span>{formatPrice(reservation.totalAmount)}</span>
-                          ) : (
-                            <>
-                              <span className="line-through text-gray-500">{formatPrice(reservation.totalAmount)}</span>
-                              {reservation.advanceAmount > 0 ? (
-                                <span className="ml-1">{formatPrice(reservation.advanceAmount)}</span>
-                              ) : (
-                                <span className="ml-1">{formatPrice(0)}</span>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="font-medium">{formatPrice(reservation.totalAmount)}</div>
+                  {/* Información del pasajero */}
+                  <div className="mb-3">
+                    <div className="font-medium text-gray-900 text-sm">
+                      {reservation.passengers[0]?.firstName} {reservation.passengers[0]?.lastName}
+                      {reservation.passengers.length > 1 && (
+                        <span className="text-gray-500"> +{reservation.passengers.length - 1}</span>
                       )}
                     </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {reservation.phone}
+                    </div>
+                  </div>
 
-                    {/* Información del creador para móvil */}
-                    {user?.role !== "taquilla" && reservation.createdByUser && (
-                      <div className="col-span-2 mt-2">
-                        <div className="text-xs text-gray-500">Creado por:</div>
-                        <div className="text-sm">
-                          {reservation.createdByUser.firstName} {reservation.createdByUser.lastName}
-                          <span className="text-xs text-gray-500 ml-1">({reservation.createdByUser.role})</span>
-                        </div>
-                      </div>
-                    )}
+                  {/* Información del viaje */}
+                  <div className="mb-3">
+                    <div className="text-sm font-medium text-gray-900 mb-1">
+                      {reservation.trip.route.name}
+                    </div>
+                    <div className="text-xs text-gray-600 truncate">
+                      {reservation.trip.segmentOrigin || reservation.trip.route.origin} → {reservation.trip.segmentDestination || reservation.trip.route.destination}
+                    </div>
+                  </div>
+
+                  {/* Footer con fecha y precio */}
+                  <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                    <div className="text-xs text-gray-500">
+                      <span>{formatDate(reservation.trip.departureDate)}</span>
+                      <span className="mx-1">•</span>
+                      <span>{formatTripTime(reservation.trip.departureTime)}</span>
+                    </div>
+                    <div className="text-sm font-bold text-gray-900">
+                      {formatPrice(reservation.totalAmount)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center p-8 text-gray-500 text-sm">
+              {activeTab === "upcoming" 
+                ? "No hay reservaciones actuales o futuras disponibles."
+                : "No hay reservaciones archivadas disponibles."}
+            </div>
+          )}
+        </div>
 
                     {/* Información de la empresa para móvil (solo para taquilla) */}
                     {user?.role === "taquilla" && reservation.companyInfo && (
