@@ -139,6 +139,13 @@ export function TripList() {
       // Añadir el filtro de visibilidad publicado a los parámetros de búsqueda
       const paramsWithVisibility = { ...searchParams, visibility: 'publicado' };
       
+      // Solo buscar sub-viajes si el usuario ha especificado origen Y destino
+      const hasOriginAndDestination = origin && destination;
+      if (!hasOriginAndDestination) {
+        // Si no hay filtros de origen/destino, solo mostrar viajes padre
+        (paramsWithVisibility as any).parentOnly = 'true';
+      }
+      
       const queryString = new URLSearchParams(
         Object.entries(paramsWithVisibility).filter(([_, v]) => v !== undefined) as [string, string][]
       ).toString();
@@ -337,14 +344,7 @@ export function TripList() {
                 onChange={(e) => setSeats(e.target.value)}
               />
             </div>
-            <div className="flex items-end">
-              <div className="w-full p-2 border rounded-md bg-gray-50 text-center">
-                <div className="flex items-center justify-center">
-                  <FilterIcon className="h-4 w-4 mr-2 text-gray-500" />
-                  <span className="text-sm text-gray-500">Búsqueda en tiempo real...</span>
-                </div>
-              </div>
-            </div>
+    
           </div>
         </CardContent>
       </Card>
@@ -515,14 +515,7 @@ export function TripList() {
                   </Button>
                 </div>
                 
-                {trip.isSubTrip && (
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    <span className="flex items-center text-xs text-gray-500">
-                      <span className="inline-block h-2 w-2 rounded-full bg-indigo-500 mr-2"></span>
-                      Sub-viaje de {trip.route.name}
-                    </span>
-                  </div>
-                )}
+        
                 
                 {!trip.isSubTrip && trip.numStops > 0 && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
