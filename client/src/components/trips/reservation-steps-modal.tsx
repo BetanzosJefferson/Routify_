@@ -1887,7 +1887,7 @@ Aquí tienes tu boleto de viaje:
               </Button>
               <Button 
                 onClick={handleSendWhatsApp}
-                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white"
+                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white border-0"
               >
                 <MessageCircleIcon className="w-4 h-4 mr-2" />
                 Enviar por WhatsApp
