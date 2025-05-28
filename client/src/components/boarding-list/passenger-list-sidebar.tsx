@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useAuth } from "@/hooks/use-auth";
@@ -73,11 +73,31 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
   // Estado para la búsqueda de pasajeros
   const [searchQuery, setSearchQuery] = useState("");
   
+  // Ref para el contenedor del sidebar
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  
   // Obtener información del usuario actual para restricciones por rol
   const { user } = useAuth();
   
   // Query client para refrescar datos después de agregar gastos
   const queryClient = useQueryClient();
+
+  // Efecto para detectar clics fuera del sidebar
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    // Agregar el event listener cuando el componente se monta
+    document.addEventListener('mousedown', handleClickOutside);
+
+    // Limpiar el event listener cuando el componente se desmonta
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [onClose]);
   
   // Función para verificar si el usuario puede ver números telefónicos
   const canViewPhoneNumbers = () => {
@@ -388,6 +408,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
 
   return (
     <div 
+      ref={sidebarRef}
       className="fixed inset-y-0 right-0 w-full md:w-[500px] lg:w-[550px] bg-white shadow-2xl overflow-y-auto transition-all duration-300 ease-in-out z-50 border-l border-gray-200 max-w-[95%]"
       style={{ 
         boxShadow: "-10px 0 15px -3px rgba(0, 0, 0, 0.1), -4px 0 6px -2px rgba(0, 0, 0, 0.05)",
