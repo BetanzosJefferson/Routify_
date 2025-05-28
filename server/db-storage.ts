@@ -971,7 +971,10 @@ export class DatabaseStorage implements IStorage {
         const originMatch = !params.origin || trip.segmentOrigin.toLowerCase().includes(params.origin.toLowerCase());
         const destMatch = !params.destination || trip.segmentDestination.toLowerCase().includes(params.destination.toLowerCase());
         
+        console.log(`[searchTrips-v2] SubTrip ${trip.id}: ${trip.segmentOrigin} -> ${trip.segmentDestination}, originMatch: ${originMatch}, destMatch: ${destMatch}`);
+        
         if (originMatch && destMatch) {
+          console.log(`[searchTrips-v2] Incluyendo subTrip ${trip.id}: ${trip.segmentOrigin} -> ${trip.segmentDestination}`);
           tripsWithRouteInfo.push({
             ...trip,
             route,
@@ -1007,12 +1010,15 @@ export class DatabaseStorage implements IStorage {
       const hasOriginOrDestinationFilter = params.origin || params.destination;
       const isMainTrip = !trip.isSubTrip;
       
-      // Si hay filtro de origen/destino y es un viaje padre, saltarlo
+      console.log(`[searchTrips-v2] Viaje ${trip.id}: isSubTrip=${trip.isSubTrip}, hasFilter=${hasOriginOrDestinationFilter}, isMainTrip=${isMainTrip}`);
+      
+      // Si hay filtro de origen/destino y es un viaje padre, saltarlo ANTES de verificar matches
       if (hasOriginOrDestinationFilter && isMainTrip) {
-        console.log(`[searchTrips-v2] Excluyendo viaje padre ${trip.id} debido a filtro de origen/destino específico`);
+        console.log(`[searchTrips-v2] Excluyendo viaje padre ${trip.id} (${trip.isSubTrip ? 'subtrip' : 'main'}) debido a filtro de origen/destino específico`);
         continue;
       }
       
+      // Solo procesar si NO es un viaje padre cuando hay filtros activos
       if (originMatch && destMatch) {
         tripsWithRouteInfo.push({
           ...trip,
