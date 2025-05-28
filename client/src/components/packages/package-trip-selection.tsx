@@ -180,13 +180,11 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
           <ArrowLeft className="w-4 h-4 mr-2" />
           Volver
         </Button>
-        <h2 className="text-xl font-bold">Selecciona un viaje para el paquete</h2>
       </div>
       
       {/* Filtros */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-lg">Busca el viaje ideal para tu paquete</CardTitle>
           <CardDescription>
             Filtra por origen, destino y fecha para encontrar el viaje
           </CardDescription>
@@ -336,11 +334,7 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                     </div>
                   </div>
                 </div>
-                
-                <div className="text-right">
-                  <div className="text-lg font-bold">${trip.price}</div>
-                  <div className="text-xs text-gray-500">MXN</div>
-                </div>
+              
               </div>
 
               {/* Contenido principal */}
