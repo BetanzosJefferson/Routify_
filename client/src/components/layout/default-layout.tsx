@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
-import { MobileNav } from "@/components/layout/mobile-nav";
 import { Topbar } from "@/components/layout/topbar";
 import { TabType } from "@/hooks/use-active-tab";
 
@@ -20,7 +19,6 @@ function DefaultLayout({
       <Sidebar activeTab={activeTab} onTabChange={onTabChange} />
       
       <div className="flex flex-col flex-1 w-0 overflow-hidden">
-        <MobileNav activeTab={activeTab} onTabChange={onTabChange} />
         <Topbar />
         
         <div className="flex-1 overflow-auto focus:outline-none">

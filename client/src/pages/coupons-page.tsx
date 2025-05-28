@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
-import { MobileNav } from "@/components/layout/mobile-nav";
 import { Topbar } from "@/components/layout/topbar";
 import CouponsPage from "@/components/coupons/coupons-page";
 import { useAuth } from "@/hooks/use-auth";
@@ -28,7 +27,6 @@ export default function CouponsPageContainer() {
       <Sidebar activeTab={activeTab} onTabChange={handleTabChange} />
       
       <div className="flex flex-col flex-1 w-0 overflow-hidden">
-        <MobileNav activeTab={activeTab} onTabChange={handleTabChange} />
         <Topbar />
         
         <div className="flex-1 overflow-auto focus:outline-none">
