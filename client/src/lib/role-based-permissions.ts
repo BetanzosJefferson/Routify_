@@ -87,6 +87,7 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
     "cutoff-history"
   ],
   [UserRole.CHECKER]: [
+    "trips",
     "boarding-list",
     "notifications",
     "packages",
