@@ -1014,6 +1014,12 @@ export class DatabaseStorage implements IStorage {
         continue;
       }
       
+      // Para viajes principales: Si hay filtro de origen/destino, EXCLUIR viajes padre completamente
+      if ((params.origin || params.destination) && !trip.isSubTrip) {
+        console.log(`[searchTrips-FINAL] *** EXCLUYENDO VIAJE PADRE ${trip.id} (isSubTrip: ${trip.isSubTrip}) debido a filtro específico de origen/destino ***`);
+        continue;
+      }
+      
       // For main trips, check all stops for matching origin and destination
       let originMatch = !params.origin;
       let destMatch = !params.destination;
