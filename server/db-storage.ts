@@ -666,7 +666,6 @@ export class DatabaseStorage implements IStorage {
     driverId?: number;   // Añadido para filtrar viajes de un conductor específico
     visibility?: string; // Añadido para filtrar por visibilidad (publicado/oculto/cancelado)
     includeAllVisibilities?: boolean; // Nuevo parámetro para incluir todos los estados de visibilidad
-    parentOnly?: string; // Nuevo parámetro para mostrar solo viajes padre
   }): Promise<TripWithRouteInfo[]> {
     console.time('searchTrips-optimized');
     
@@ -833,12 +832,6 @@ export class DatabaseStorage implements IStorage {
       console.log(`[searchTrips-v2] Verificación: Existen ${viajesContador} viajes asignados al conductor ID ${params.driverId}`);
     }
     
-    // Aplicar filtro de solo viajes padre (parentOnly)
-    if (params.parentOnly === 'true') {
-      console.log(`[searchTrips-v2] Filtro: Solo viajes PADRE (excluyendo sub-viajes)`);
-      condiciones.push(sql`is_sub_trip = false OR is_sub_trip IS NULL`);
-    }
-    
     // CONSULTA FINAL: Construir y ejecutar la consulta SQL con todas las condiciones
     let trips;
     
@@ -950,6 +943,19 @@ export class DatabaseStorage implements IStorage {
       const route = routeMap.get(trip.routeId);
       if (!route) continue;
       
+      // NUEVA LÓGICA: Si se está filtrando por origen O destino específicos, excluir viajes padre
+      // Solo mostrar viajes padre cuando NO hay filtros de origen/destino
+      const hasOriginOrDestinationFilter = params.origin || params.destination;
+      const isMainTrip = !trip.isSubTrip;
+      
+      console.log(`[searchTrips-v2] Viaje ${trip.id}: isSubTrip=${trip.isSubTrip}, hasFilter=${hasOriginOrDestinationFilter}, isMainTrip=${isMainTrip}, params.origin=${params.origin}`);
+      
+      // Si hay filtro de origen/destino y es un viaje padre, saltarlo ANTES de cualquier procesamiento
+      if (hasOriginOrDestinationFilter && isMainTrip) {
+        console.log(`[searchTrips-v2] *** EXCLUYENDO VIAJE PADRE ${trip.id} (isSubTrip: ${trip.isSubTrip}) debido a filtro de origen/destino específico ***`);
+        continue;
+      }
+      
       // Ya no se calcula el estado del viaje (tripStatus), esta funcionalidad ha sido eliminada
       
       // Buscar información de la compañía si existe
@@ -975,10 +981,14 @@ export class DatabaseStorage implements IStorage {
       
       // For subtrips, check against segment origin and destination
       if (trip.isSubTrip && trip.segmentOrigin && trip.segmentDestination) {
+        console.log(`[SUBTRIP-DEBUG] Procesando subTrip ${trip.id}: ${trip.segmentOrigin} -> ${trip.segmentDestination}`);
         const originMatch = !params.origin || trip.segmentOrigin.toLowerCase().includes(params.origin.toLowerCase());
         const destMatch = !params.destination || trip.segmentDestination.toLowerCase().includes(params.destination.toLowerCase());
         
+        console.log(`[SUBTRIP-DEBUG] SubTrip ${trip.id}: originMatch=${originMatch}, destMatch=${destMatch}, params.origin=${params.origin}`);
+        
         if (originMatch && destMatch) {
+          console.log(`[PUSH-2] *** AGREGANDO SUBTRIP ${trip.id} (isSubTrip: ${trip.isSubTrip}) - params.origin: ${params.origin} ***`);
           tripsWithRouteInfo.push({
             ...trip,
             route,
@@ -989,7 +999,15 @@ export class DatabaseStorage implements IStorage {
             assignedVehicle,
             assignedDriver
           });
+        } else {
+          console.log(`[SUBTRIP-DEBUG] *** NO AGREGANDO SUBTRIP ${trip.id} - no coincide con filtros ***`);
         }
+        continue;
+      }
+      
+      // Para viajes principales: Si hay filtro de origen/destino, EXCLUIR viajes padre completamente
+      if ((params.origin || params.destination) && !trip.isSubTrip) {
+        console.log(`[searchTrips-FINAL] *** EXCLUYENDO VIAJE PADRE ${trip.id} (isSubTrip: ${trip.isSubTrip}) debido a filtro específico de origen/destino ***`);
         continue;
       }
       
@@ -1009,7 +1027,9 @@ export class DatabaseStorage implements IStorage {
                     route.stops.some(stop => stop.toLowerCase().includes(searchDest));
       }
       
+      // Solo procesar si coinciden origen y destino
       if (originMatch && destMatch) {
+        console.log(`[PUSH-3] Agregando mainTrip ${trip.id} (isSubTrip: ${trip.isSubTrip}) - params.origin: ${params.origin}`);
         tripsWithRouteInfo.push({
           ...trip,
           route,
