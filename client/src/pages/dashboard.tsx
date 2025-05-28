@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Sidebar } from "@/components/layout/sidebar";
-import { MobileNav } from "@/components/layout/mobile-nav";
+
 import { Topbar } from "@/components/layout/topbar";
 import { RouteList } from "@/components/create-route/route-list";
 import { PublishTripForm } from "@/components/publish-trip/publish-trip-form";
@@ -81,8 +81,7 @@ export default function Dashboard() {
       <Sidebar activeTab={activeTab} onTabChange={handleTabChange} />
       
       <div className="flex flex-col flex-1 w-0 overflow-hidden">
-        <MobileNav activeTab={activeTab} onTabChange={handleTabChange} />
-        <Topbar />
+        <Topbar activeTab={activeTab} onTabChange={handleTabChange} />
         
         <div className="flex-1 overflow-auto focus:outline-none">
           <main className="relative z-0 flex-1 overflow-y-auto py-6 px-4 sm:px-6 lg:px-8">
