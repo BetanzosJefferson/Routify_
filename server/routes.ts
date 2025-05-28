@@ -3873,10 +3873,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[GET /commissions/my-commissions] Encontradas ${myApprovedReservations.length} reservaciones aprobadas del comisionista`);
       
+      // Agregar timestamp para evitar caché del navegador
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      
       // Transformar datos para incluir más detalles
       const myCommissions = myApprovedReservations.map(reservation => {
         const commissionPercentage = user.commissionPercentage || 10; // Porcentaje predeterminado si no está definido
-        const totalPrice = reservation.totalAmount || reservation.totalPrice || 0;
+        const totalPrice = reservation.totalAmount || 0;
         const commissionAmount = (totalPrice * commissionPercentage) / 100;
         
         // Obtener nombres de pasajeros correctamente
