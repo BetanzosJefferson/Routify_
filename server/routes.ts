@@ -3876,15 +3876,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Transformar datos para incluir más detalles
       const myCommissions = myApprovedReservations.map(reservation => {
         const commissionPercentage = user.commissionPercentage || 10; // Porcentaje predeterminado si no está definido
-        const commissionAmount = (reservation.totalPrice * commissionPercentage) / 100;
+        
+        // Obtener el precio total correctamente de totalAmount
+        const totalPrice = reservation.totalAmount || 0;
+        const commissionAmount = (totalPrice * commissionPercentage) / 100;
+        
+        // Obtener el nombre del pasajero correctamente
+        let passengerName = "Sin nombre";
+        if (reservation.passengers && reservation.passengers.length > 0) {
+          const firstPassenger = reservation.passengers[0];
+          if (firstPassenger.firstName && firstPassenger.lastName) {
+            passengerName = `${firstPassenger.firstName} ${firstPassenger.lastName}`;
+          } else if (firstPassenger.firstName) {
+            passengerName = firstPassenger.firstName;
+          }
+        }
         
         return {
           id: reservation.id,
-          passengerName: reservation.passengers?.[0]?.name || "Sin nombre",
+          passengerName: passengerName,
           routeName: reservation.trip?.route?.name || "Ruta desconocida",
           tripId: reservation.tripId,
           departureDate: reservation.trip?.departureDate,
-          totalPrice: reservation.totalPrice,
+          totalPrice: totalPrice,
           commissionPercentage: commissionPercentage,
           commissionAmount: commissionAmount,
           commissionPaid: reservation.commissionPaid || false
