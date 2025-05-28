@@ -171,18 +171,30 @@ export function CommandCombobox({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full justify-between overflow-hidden",
+            "w-full justify-between overflow-hidden cursor-pointer",
             className
           )}
-          onClick={() => {
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
             setOpen(!open)
             // Limpiar búsqueda al hacer clic para mostrar todas las opciones
             if (!open) {
               setSearchValue("")
             }
           }}
+          onMouseDown={(e) => {
+            e.preventDefault()
+          }}
+          onTouchStart={(e) => {
+            e.preventDefault()
+            setOpen(!open)
+            if (!open) {
+              setSearchValue("")
+            }
+          }}
         >
-          <div className="flex items-center truncate">
+          <div className="flex items-center truncate pointer-events-none">
             {value ? (
               <>
                 <MapPin className="mr-2 h-4 w-4 shrink-0 text-gray-500" />
@@ -222,10 +234,23 @@ export function CommandCombobox({
                         setOpen(false)
                         setSearchValue("")
                       }}
-                      className="flex py-2 cursor-pointer hover:bg-gray-100"
+                      className="flex py-2 cursor-pointer hover:bg-gray-100 touch-manipulation"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        onChange(location.value)
+                        setOpen(false)
+                        setSearchValue("")
+                      }}
                       onMouseDown={(e) => {
-                        // Prevenir el comportamiento por defecto para evitar que se pierda el foco
-                        e.preventDefault();
+                        e.preventDefault()
+                        onChange(location.value)
+                        setOpen(false)
+                        setSearchValue("")
+                      }}
+                      onTouchEnd={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
                         onChange(location.value)
                         setOpen(false)
                         setSearchValue("")
