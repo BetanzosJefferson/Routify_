@@ -109,11 +109,14 @@ export const ROLE_SECTION_PERMISSIONS: Record<string, string[]> = {
   [UserRole.TICKET_OFFICE]: [
     "trips",
     "reservations",
+    "boarding-list",
+    "trip-summary",
     "notifications",
     "packages",
     "cash-register",
     "cash-box",
-    "cutoff-history"
+    "cutoff-history",
+    "passenger-transfer"
   ],
   // Permisos para el nuevo rol COMISIONISTA
   [UserRole.COMMISSIONER]: [

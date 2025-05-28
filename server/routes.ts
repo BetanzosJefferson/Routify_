@@ -3884,19 +3884,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const totalPrice = reservation.totalAmount || 0;
         const commissionAmount = (totalPrice * commissionPercentage) / 100;
         
-        // DEBUG: Log de los datos de la reservación
-        console.log(`[DEBUG] Procesando reservación ${reservation.id}:`);
-        console.log(`[DEBUG] - totalAmount: ${reservation.totalAmount}`);
-        console.log(`[DEBUG] - passengers:`, reservation.passengers);
-        console.log(`[DEBUG] - trip.route:`, reservation.trip?.route);
-        
         // Obtener nombres de pasajeros correctamente
         const passengerNames = [];
         if (reservation.passengers && reservation.passengers.length > 0) {
           passengerNames.push(...reservation.passengers.map(p => `${p.firstName} ${p.lastName}`.trim()));
         }
-        
-        console.log(`[DEBUG] - passengerNames procesados:`, passengerNames);
         
         // Obtener origen y destino del viaje
         let origin = "Origen no especificado";
@@ -3906,8 +3898,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           origin = reservation.trip.route.origin || origin;
           destination = reservation.trip.route.destination || destination;
         }
-        
-        console.log(`[DEBUG] - origin: ${origin}, destination: ${destination}`);
         
         return {
           id: reservation.id,
