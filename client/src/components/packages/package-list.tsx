@@ -533,6 +533,7 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
               <TableHead>Destinatario</TableHead>
               <TableHead>Origen</TableHead>
               <TableHead>Destino</TableHead>
+              {user?.role === UserRole.TICKET_OFFICE && <TableHead>Empresa</TableHead>}
               <TableHead>Precio</TableHead>
               <TableHead>Asientos</TableHead>
               <TableHead>Estado Pago</TableHead>
@@ -575,6 +576,13 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                 <TableCell>
                   {pkg.segmentDestination || pkg.tripDestination || "No disponible"}
                 </TableCell>
+                {user?.role === UserRole.TICKET_OFFICE && (
+                  <TableCell>
+                    <div className="text-sm font-medium">
+                      {pkg.companyName || "Sin empresa"}
+                    </div>
+                  </TableCell>
+                )}
                 <TableCell>{formatCurrency(pkg.price)}</TableCell>
                 <TableCell>
                   {pkg.usesSeats ? (
