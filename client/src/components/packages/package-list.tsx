@@ -52,6 +52,7 @@ import {
   MoreVertical,
   MoreHorizontal,
   Edit,
+  Eye,
   Printer,
   Trash,
   Check,
@@ -169,6 +170,22 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
 
   // Contar filtros activos
   const activeFiltersCount = Object.values(filters).filter(value => value !== "").length;
+  
+  // Función para imprimir ticket de paquete
+  const printPackageTicket = (pkg: any) => {
+    // Importar la función de generación de PDF de manera dinámica
+    import('./package-ticket').then(({ generatePackageTicketPDF }) => {
+      // Generar el PDF con dimensiones de ticket térmico (58mm x 160mm)
+      generatePackageTicketPDF(pkg, user?.company || "TransRoute");
+    }).catch(error => {
+      console.error("Error al generar el ticket PDF:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo generar el ticket",
+        variant: "destructive",
+      });
+    });
+  };
   
   // Mutación para marcar un paquete como entregado
   const markAsDeliveredMutation = useMutation({
@@ -825,7 +842,7 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                     <Printer className="mr-2 h-4 w-4" />
                     Imprimir ticket
                   </DropdownMenuItem>
-                  {(hasRoleAccess(user?.role as UserRole, ['admin', 'dueño']) ||
+                  {(hasRoleAccess(user?.role as any, ['admin', 'dueño']) ||
                     (user?.role === 'taquilla' && pkg.createdBy === user?.id)) && (
                     <DropdownMenuItem
                       onClick={(e) => {
@@ -837,7 +854,7 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                       Editar
                     </DropdownMenuItem>
                   )}
-                  {hasRoleAccess(user?.role as UserRole, ['admin', 'dueño']) && (
+                  {hasRoleAccess(user?.role as any, ['admin', 'dueño']) && (
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();
