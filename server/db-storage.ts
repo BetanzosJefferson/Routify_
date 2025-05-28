@@ -33,6 +33,8 @@ import { db } from "./db";
 import { eq, and, gte, lt, like, or, sql, desc, isNull, not, inArray, ne } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
+  // Cache simple para evitar consultas duplicadas simultáneas
+  private reservationsCache = new Map<string, { promise: Promise<ReservationWithDetails[]>, timestamp: number }>();
   // Implementación de métodos para presupuestos de viajes (operadores)
   async getTripBudget(tripId: number): Promise<TripBudget | undefined> {
     try {
