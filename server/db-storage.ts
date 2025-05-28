@@ -3561,7 +3561,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // PACKAGE METHODS
-  async getPackages(filters?: { companyId?: string, tripId?: number, tripIds?: number[] }): Promise<schema.Package[]> {
+  async getPackages(filters?: { companyId?: string, companyIds?: string[], tripId?: number, tripIds?: number[] }): Promise<schema.Package[]> {
     try {
       console.log(`[getPackages] Buscando paqueterías con filtros:`, filters);
       
@@ -3569,10 +3569,15 @@ export class DatabaseStorage implements IStorage {
       
       // Aplicar filtros de seguridad
       if (filters) {
-        // Filtro por compañía (aislamiento de datos)
-        if (filters.companyId) {
+        // Filtro por múltiples compañías (para taquilleros)
+        if (filters.companyIds && filters.companyIds.length > 0) {
+          query = query.where(inArray(schema.packages.companyId, filters.companyIds));
+          console.log(`[getPackages] Aplicando filtro de múltiples compañías: [${filters.companyIds.join(', ')}]`);
+        }
+        // Filtro por compañía única (aislamiento de datos)
+        else if (filters.companyId) {
           query = query.where(eq(schema.packages.companyId, filters.companyId));
-          console.log(`[getPackages] Aplicando filtro de compañía: ${filters.companyId}`);
+          console.log(`[getPackages] Aplicando filtro de compañía única: ${filters.companyId}`);
         }
         
         // Filtro por viaje único
