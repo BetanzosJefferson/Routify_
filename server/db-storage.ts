@@ -666,7 +666,6 @@ export class DatabaseStorage implements IStorage {
     driverId?: number;   // Añadido para filtrar viajes de un conductor específico
     visibility?: string; // Añadido para filtrar por visibilidad (publicado/oculto/cancelado)
     includeAllVisibilities?: boolean; // Nuevo parámetro para incluir todos los estados de visibilidad
-    parentOnly?: string; // Nuevo parámetro para mostrar solo viajes padre
   }): Promise<TripWithRouteInfo[]> {
     console.time('searchTrips-optimized');
     
@@ -831,12 +830,6 @@ export class DatabaseStorage implements IStorage {
       
       const viajesContador = Number(testQuery.rows?.[0]?.count || 0);
       console.log(`[searchTrips-v2] Verificación: Existen ${viajesContador} viajes asignados al conductor ID ${params.driverId}`);
-    }
-    
-    // Aplicar filtro de solo viajes padre (parentOnly)
-    if (params.parentOnly === 'true') {
-      console.log(`[searchTrips-v2] Filtro: Solo viajes PADRE (excluyendo sub-viajes)`);
-      condiciones.push(sql`is_sub_trip = false OR is_sub_trip IS NULL`);
     }
     
     // CONSULTA FINAL: Construir y ejecutar la consulta SQL con todas las condiciones

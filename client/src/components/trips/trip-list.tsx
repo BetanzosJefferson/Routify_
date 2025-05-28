@@ -109,7 +109,7 @@ export function TripList() {
   const yesterday = formatDateForInput(new Date(Date.now() - 24 * 60 * 60 * 1000));
   const tomorrow = formatDateForInput(new Date(Date.now() + 24 * 60 * 60 * 1000));
   
-  const [searchParams, setSearchParams] = useState<SearchParams>({ date: today, parentOnly: 'true' } as any);
+  const [searchParams, setSearchParams] = useState<SearchParams>({ date: today });
   const [selectedTrip, setSelectedTrip] = useState<TripWithRouteInfo | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [sortMethod, setSortMethod] = useState<"departure" | "price" | "duration">("departure");
@@ -139,17 +139,6 @@ export function TripList() {
       // Añadir el filtro de visibilidad publicado a los parámetros de búsqueda
       const paramsWithVisibility = { ...searchParams, visibility: 'publicado' };
       
-      // Solo buscar sub-viajes si el usuario ha especificado origen Y destino
-      const hasOriginAndDestination = searchParams.origin && searchParams.destination;
-      if (!hasOriginAndDestination) {
-        // Si no hay filtros de origen/destino, solo mostrar viajes padre
-        (paramsWithVisibility as any).parentOnly = 'true';
-      }
-      
-      // Debug: mostrar los parámetros que se van a enviar
-      console.log('[TripList Debug] Parámetros finales:', paramsWithVisibility);
-      console.log('[TripList Debug] hasOriginAndDestination:', hasOriginAndDestination);
-      
       const queryString = new URLSearchParams(
         Object.entries(paramsWithVisibility).filter(([_, v]) => v !== undefined) as [string, string][]
       ).toString();
@@ -158,7 +147,7 @@ export function TripList() {
       if (!response.ok) throw new Error("Failed to fetch trips");
       return await response.json() as TripWithRouteInfo[];
     },
-    enabled: true // Siempre ejecutar para mostrar viajes padre por defecto
+    enabled: Object.keys(searchParams).length > 0 // Only run if there are search params
   });
   
   // Extract unique locations for autocomplete
@@ -177,11 +166,6 @@ export function TripList() {
       if (date) params.date = formatDateForApiQuery(date);
       if (seats && !isNaN(parseInt(seats, 10))) {
         params.seats = parseInt(seats, 10);
-      }
-      
-      // Si no hay filtros de origen y destino, solo mostrar viajes padre
-      if (!origin && !destination) {
-        (params as any).parentOnly = 'true';
       }
       
       setSearchParams(params);
@@ -353,7 +337,14 @@ export function TripList() {
                 onChange={(e) => setSeats(e.target.value)}
               />
             </div>
-    
+            <div className="flex items-end">
+              <div className="w-full p-2 border rounded-md bg-gray-50 text-center">
+                <div className="flex items-center justify-center">
+                  <FilterIcon className="h-4 w-4 mr-2 text-gray-500" />
+                  <span className="text-sm text-gray-500">Búsqueda en tiempo real...</span>
+                </div>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -524,7 +515,14 @@ export function TripList() {
                   </Button>
                 </div>
                 
-        
+                {trip.isSubTrip && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <span className="flex items-center text-xs text-gray-500">
+                      <span className="inline-block h-2 w-2 rounded-full bg-indigo-500 mr-2"></span>
+                      Sub-viaje de {trip.route.name}
+                    </span>
+                  </div>
+                )}
                 
                 {!trip.isSubTrip && trip.numStops > 0 && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
