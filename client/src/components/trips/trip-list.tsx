@@ -154,7 +154,7 @@ export function TripList() {
       if (!response.ok) throw new Error("Failed to fetch trips");
       return await response.json() as TripWithRouteInfo[];
     },
-    enabled: Object.keys(searchParams).length > 0 // Only run if there are search params
+    enabled: true // Siempre ejecutar para mostrar viajes padre por defecto
   });
   
   // Extract unique locations for autocomplete
