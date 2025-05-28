@@ -562,11 +562,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Nueva ruta dedicada para búsqueda precisa de viajes
-  app.get(apiRouter("/search-trips"), async (req: Request, res: Response) => {
+  app.get(apiRouter("/search-trips"), isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { user } = req as any;
       
       if (!user) {
+        console.log(`[GET /search-trips] Error: Usuario no autenticado`);
         return res.status(401).json({ message: 'No autenticado' });
       }
 
@@ -577,6 +578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validar que al menos se proporcione origen o destino
       if (!origin && !destination) {
+        console.log(`[GET /search-trips] Error: No se proporcionó origen ni destino`);
         return res.status(400).json({ 
           message: 'Debe proporcionar al menos un origen o destino para la búsqueda' 
         });
