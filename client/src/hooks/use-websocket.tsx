@@ -51,8 +51,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       setStatus('connecting');
       log('Estableciendo conexión WebSocket...');
       
-      // Crear URL del WebSocket (ws:// o wss:// dependiendo de si es HTTP o HTTPS)
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      // Usar siempre WebSocket Secure (wss://) para mayor seguridad
+      const protocol = 'wss:';
       const wsUrl = `${protocol}//${window.location.host}/ws`;
       
       // Crear nueva conexión
