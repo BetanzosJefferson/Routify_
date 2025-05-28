@@ -6221,53 +6221,9 @@ function setupPackageRoutes(app: Express) {
     res.status(403).json({ message: 'No tiene permisos para modificar paquetes' });
   }
   
-  // GET /api/packages - Obtener lista de paquetes
-  app.get(apiRouter('/packages'), isAuthenticated, hasPackageAccess, async (req, res) => {
-    try {
-      const tripId = req.query.tripId ? parseInt(req.query.tripId as string) : undefined;
-      
-      // Filtrar por compañía para asegurar aislamiento de datos
-      let companyFilter = null;
-      if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
-        companyFilter = req.user.company || req.user.companyId;
-      }
-      
-      // Obtener paquetes
-      const packages = await storage.getPackages(companyFilter, tripId);
-      
-      res.json(packages);
-    } catch (error) {
-      console.error('Error al obtener paquetes:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
-    }
-  });
+
   
-  // GET /api/packages/:id - Obtener un paquete específico
-  app.get(apiRouter('/packages/:id'), isAuthenticated, hasPackageAccess, async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      
-      // Obtener el paquete
-      const packageData = await storage.getPackageById(id);
-      
-      if (!packageData) {
-        return res.status(404).json({ message: 'Paquete no encontrado' });
-      }
-      
-      // Verificar acceso a la compañía
-      if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
-        const userCompany = req.user.company || req.user.companyId;
-        if (packageData.companyId !== userCompany) {
-          return res.status(403).json({ message: 'No tiene permisos para ver este paquete' });
-        }
-      }
-      
-      res.json(packageData);
-    } catch (error) {
-      console.error(`Error al obtener paquete con ID ${req.params.id}:`, error);
-      res.status(500).json({ message: 'Error interno del servidor' });
-    }
-  });
+
   
   // POST /api/packages - Crear un nuevo paquete
   app.post(apiRouter('/packages'), isAuthenticated, hasPackageWriteAccess, async (req, res) => {
