@@ -446,6 +446,10 @@ export function TripList() {
                       ) : (
                         <span>Directo · {trip.availableSeats} asientos disponibles</span>
                       )}
+                      {/* Debug info - mostrar ID y tipo de viaje */}
+                      <span className="text-xs text-red-500 ml-2">
+                        (ID: {trip.id}, isSubTrip: {trip.isSubTrip ? 'true' : 'false'})
+                      </span>
                     </div>
                   </div>
                 </div>

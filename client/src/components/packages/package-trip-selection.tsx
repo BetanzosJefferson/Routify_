@@ -337,7 +337,10 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                   </div>
                 </div>
                 
-        
+                <div className="text-right">
+                  <div className="text-lg font-bold">${trip.price}</div>
+                  <div className="text-xs text-gray-500">MXN</div>
+                </div>
               </div>
 
               {/* Contenido principal */}
@@ -396,6 +399,16 @@ export function PackageTripSelection({ onTripSelect, onBack }: PackageTripSelect
                     Seleccionar
                   </Button>
                 </div>
+
+                {/* Información adicional de sub-viajes */}
+                {trip.isSubTrip && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <span className="flex items-center text-xs text-gray-500">
+                      <span className="inline-block h-2 w-2 rounded-full bg-indigo-500 mr-2"></span>
+                      Sub-viaje de {trip.route?.name}
+                    </span>
+                  </div>
+                )}
 
                 {!trip.isSubTrip && trip.numStops > 0 && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
