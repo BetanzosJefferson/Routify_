@@ -31,14 +31,38 @@ import { ProfilePage } from "@/components/profile/profile-page";
 import { TabType } from "@/hooks/use-active-tab";
 import { hasAccessToSection } from "@/lib/role-based-permissions";
 
-export function Topbar() {
+interface TopbarProps {
+  activeTab?: TabType;
+  onTabChange?: (tab: TabType) => void;
+}
+
+export function Topbar({ activeTab, onTabChange }: TopbarProps) {
   const [, setLocation] = useLocation();
   const [profileOpen, setProfileOpen] = useState(false);
-  const [configOpen, setConfigOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { logoutMutation, user } = useAuth();
 
   const handleLogout = () => {
     logoutMutation.mutate();
+  };
+
+  // Función para verificar si el usuario tiene acceso a una sección
+  const canAccess = (sectionId: string): boolean => {
+    if (!user) return false;
+    return hasAccessToSection(user.role, sectionId);
+  };
+
+  const handleNavClick = (tab: TabType) => {
+    if (onTabChange) {
+      onTabChange(tab);
+    }
+    
+    // Actualizar el URL pero sin hacer una redirección completa
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    window.history.pushState({}, '', url.toString());
+    
+    setMobileMenuOpen(false);
   };
   
   // Función para obtener el nombre amigable del rol
@@ -69,8 +93,163 @@ export function Topbar() {
     <>
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 dark:bg-gray-950 dark:border-gray-800">
         <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-          {/* Título de la aplicación */}
-          <div className="flex-1">
+          {/* Menú hamburguesa para móviles */}
+          <div className="flex items-center">
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="md:hidden mr-2" 
+                  aria-label="Menu"
+                >
+                  <MenuIcon className="h-6 w-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[240px] sm:w-[300px] p-0">
+                <div className="px-6 py-6 border-b border-gray-200">
+                  <h2 className="text-xl font-semibold">TransRoute</h2>
+                </div>
+                <nav className="flex flex-col p-4">
+                  {canAccess("routes") && (
+                    <NavLink 
+                      active={activeTab === "create-route"}
+                      onClick={() => handleNavClick("create-route")}
+                    >
+                      Rutas
+                    </NavLink>
+                  )}
+                  {canAccess("publish-trip") && (
+                    <NavLink 
+                      active={activeTab === "publish-trip"}
+                      onClick={() => handleNavClick("publish-trip")}
+                    >
+                      Publicar Viajes
+                    </NavLink>
+                  )}
+                  {canAccess("trips") && (
+                    <NavLink 
+                      active={activeTab === "trips"}
+                      onClick={() => handleNavClick("trips")}
+                    >
+                      Viajes
+                    </NavLink>
+                  )}
+                  {canAccess("reservations") && (
+                    <NavLink 
+                      active={window.location.pathname === "/reservations"}
+                      onClick={() => {
+                        setLocation("/reservations");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Reservaciones
+                    </NavLink>
+                  )}
+                  {canAccess("trip-summary") && (
+                    <NavLink 
+                      active={window.location.pathname === "/trip-log"}
+                      onClick={() => {
+                        setLocation("/trip-log");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Bitácora
+                    </NavLink>
+                  )}
+                  {canAccess("cash-box") && (
+                    <NavLink 
+                      active={window.location.pathname === "/cash-box"}
+                      onClick={() => {
+                        setLocation("/cash-box");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Caja
+                    </NavLink>
+                  )}
+                  {canAccess("cutoff-history") && (
+                    <NavLink 
+                      active={window.location.pathname === "/cutoff-history"}
+                      onClick={() => {
+                        setLocation("/cutoff-history");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Historial de Cortes
+                    </NavLink>
+                  )}
+                  {canAccess("boarding-list") && (
+                    <NavLink 
+                      active={window.location.pathname === "/boarding-list"}
+                      onClick={() => {
+                        setLocation("/boarding-list");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Lista de Abordaje
+                    </NavLink>
+                  )}
+                  {canAccess("users") && (
+                    <NavLink 
+                      active={window.location.pathname === "/users"}
+                      onClick={() => {
+                        setLocation("/users");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Usuarios
+                    </NavLink>
+                  )}
+                  {canAccess("passenger-transfer") && (
+                    <NavLink 
+                      active={window.location.pathname === "/passenger-transfer"}
+                      onClick={() => {
+                        setLocation("/passenger-transfer");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Transferencia de pasajeros
+                    </NavLink>
+                  )}
+                  {canAccess("vehicles") && (
+                    <NavLink 
+                      active={window.location.pathname === "/vehicles"}
+                      onClick={() => {
+                        setLocation("/vehicles");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Unidades
+                    </NavLink>
+                  )}
+                  {canAccess("commissions") && (
+                    <NavLink 
+                      active={window.location.pathname === "/commissions"}
+                      onClick={() => {
+                        setLocation("/commissions");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Gestión de comisiones
+                    </NavLink>
+                  )}
+                  {canAccess("my-commissions") && (
+                    <NavLink 
+                      active={window.location.pathname === "/my-commissions"}
+                      onClick={() => {
+                        setLocation("/my-commissions");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Mis comisiones
+                    </NavLink>
+                  )}
+                </nav>
+              </SheetContent>
+            </Sheet>
+            
+            {/* Título de la aplicación */}
             <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">TransRoute</h1>
           </div>
 
@@ -145,5 +324,26 @@ export function Topbar() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+interface NavLinkProps {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+function NavLink({ active, onClick, children }: NavLinkProps) {
+  return (
+    <div 
+      className={`flex items-center px-2 py-3 text-base font-medium rounded-md cursor-pointer ${
+        active 
+          ? "text-primary bg-gray-50" 
+          : "text-gray-700 hover:bg-gray-100"
+      }`}
+      onClick={onClick}
+    >
+      {children}
+    </div>
   );
 }
