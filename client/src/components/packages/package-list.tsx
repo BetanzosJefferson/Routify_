@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate, formatCurrency } from "@/lib/utils";
+import { format } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
 import { hasRoleAccess } from "@/lib/role-based-permissions";
 import { UserRole } from "@shared/schema";
@@ -49,6 +50,7 @@ import { Link } from "wouter";
 import {
   Package,
   MoreVertical,
+  MoreHorizontal,
   Edit,
   Printer,
   Trash,
@@ -523,7 +525,8 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
         </Card>
       )}
       
-      <div className="rounded-md border">
+      {/* Desktop Table */}
+      <div className="hidden lg:block rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -692,6 +695,110 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
             ))}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="lg:hidden space-y-3">
+        {filteredPackages.map((pkg: any) => (
+          <div 
+            key={pkg.id} 
+            className="border rounded-xl p-4 bg-white cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => {
+              setPackageToDetail(pkg);
+              setIsDetailModalOpen(true);
+            }}
+          >
+            {/* Header con ID y fecha */}
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <h4 className="font-semibold text-gray-900 text-sm">ID #{pkg.id}</h4>
+                <p className="text-xs text-gray-500 mt-1">
+                  {formatDate(pkg.createdAt)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-green-600 text-sm">
+                  {formatCurrency(pkg.price)}
+                </p>
+                <div className="mt-1">
+                  {pkg.isPaid ? (
+                    <Badge className="bg-green-500 hover:bg-green-600 text-xs">
+                      <Check className="mr-1 h-3 w-3" /> Pagado
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs">
+                      <Clock className="mr-1 h-3 w-3" /> Pendiente
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Descripción */}
+            <div className="mb-3">
+              <p className="text-xs text-gray-500">Descripción</p>
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {pkg.packageDescription || "Sin descripción"}
+              </p>
+            </div>
+            
+            {/* Ruta */}
+            <div className="mb-3">
+              <p className="text-xs text-gray-500">Origen - Destino</p>
+              <div className="text-sm">
+                <div className="font-medium text-gray-900 truncate">
+                  {pkg.segmentOrigin || pkg.tripOrigin || "No disponible"}
+                </div>
+                <div className="text-gray-700 truncate">
+                  {pkg.segmentDestination || pkg.tripDestination || "No disponible"}
+                </div>
+              </div>
+            </div>
+            
+            {/* Remitente y Destinatario */}
+            <div className="mb-3">
+              <p className="text-xs text-gray-500">Remitente</p>
+              <p className="text-sm font-medium text-gray-900 truncate">
+                De: {pkg.senderName} {pkg.senderLastName}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Destinatario</p>
+              <p className="text-sm font-medium text-gray-900 truncate">
+                Para: {pkg.recipientName} {pkg.recipientLastName}
+              </p>
+            </div>
+            
+            {/* Estado de entrega y información adicional */}
+            <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+              <div className="flex gap-2 items-center">
+                {pkg.deliveryStatus === "entregado" ? (
+                  <Badge className="bg-green-500 hover:bg-green-600 text-xs">
+                    <Check className="mr-1 h-3 w-3" /> Entregado
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-xs">
+                    <Clock className="mr-1 h-3 w-3" /> Pendiente entrega
+                  </Badge>
+                )}
+                
+                {pkg.usesSeats && (
+                  <Badge className="bg-orange-500 hover:bg-orange-600 text-xs">
+                    {pkg.seatsQuantity} {pkg.seatsQuantity === 1 ? 'asiento' : 'asientos'}
+                  </Badge>
+                )}
+              </div>
+              
+              <div 
+                className="p-1 hover:bg-gray-100 rounded-md transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Aquí puedes agregar acciones adicionales como menú de opciones
+                }}
+              >
+                <MoreHorizontal className="h-4 w-4 text-gray-500" />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
       
       {/* Diálogo de confirmación para eliminar paquete */}
