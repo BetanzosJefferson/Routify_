@@ -1042,6 +1042,19 @@ export class DatabaseStorage implements IStorage {
     }
     
     console.timeEnd('searchTrips-optimized');
+    
+    // Debug logging para mostrar qué viajes se están devolviendo cuando hay filtro por origen
+    if (params.origin) {
+      console.log(`[searchTrips-v2] RESUMEN FINAL - Filtro por origen "${params.origin}":`);
+      tripsWithRouteInfo.forEach(trip => {
+        if (trip.isSubTrip) {
+          console.log(`  - Viaje ${trip.id} (SUB-VIAJE): ${trip.segmentOrigin} → ${trip.segmentDestination}`);
+        } else {
+          console.log(`  - Viaje ${trip.id} (PRINCIPAL): ${trip.route.origin} → ${trip.route.destination}`);
+        }
+      });
+    }
+    
     return tripsWithRouteInfo;
   }
   
