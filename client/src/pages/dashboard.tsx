@@ -26,7 +26,9 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>(
     // Para choferes, la sección por defecto es boarding-list
-    user?.role === 'chofer' ? "boarding-list" : "create-route"
+    // Para comisionistas, la sección por defecto es trips
+    user?.role === 'chofer' ? "boarding-list" : 
+    user?.role === 'comisionista' ? "trips" : "create-route"
   );
   
   // Update active tab when URL changes

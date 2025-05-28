@@ -26,10 +26,16 @@ export default function AuthPage() {
   const { toast } = useToast();
   const { user, loginMutation } = useAuth();
   
-  // Si el usuario ya está autenticado, redirigir a la página principal
+  // Si el usuario ya está autenticado, redirigir según su rol
   useEffect(() => {
     if (user) {
-      setLocation("/");
+      // Si es comisionista, redirigir directamente a la sección de viajes
+      if (user.role === "comisionista") {
+        setLocation("/?tab=trips");
+      } else {
+        // Para otros roles, ir a la página principal
+        setLocation("/");
+      }
     }
   }, [user, setLocation]);
 
