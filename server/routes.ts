@@ -35,20 +35,23 @@ const PACKAGE_ACCESS_ROLES = [
   UserRole.ADMIN, 
   UserRole.CALL_CENTER, 
   UserRole.CHECKER, 
-  UserRole.DRIVER
+  UserRole.DRIVER,
+  UserRole.TICKET_OFFICE
 ];
 
 const PACKAGE_WRITE_ROLES = [
   UserRole.OWNER,
   UserRole.ADMIN,
-  UserRole.CALL_CENTER
+  UserRole.CALL_CENTER,
+  UserRole.TICKET_OFFICE
 ];
 
 const PACKAGE_CREATE_ROLES = [
   UserRole.OWNER,
   UserRole.ADMIN,
   UserRole.CALL_CENTER,
-  UserRole.CHECKER
+  UserRole.CHECKER,
+  UserRole.TICKET_OFFICE
 ];
 
 import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
