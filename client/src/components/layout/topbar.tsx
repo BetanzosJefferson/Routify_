@@ -245,6 +245,83 @@ export function Topbar({ activeTab, onTabChange }: TopbarProps) {
                       Mis comisiones
                     </NavLink>
                   )}
+                  {canAccess("packages") && (
+                    <NavLink 
+                      active={window.location.pathname === "/packages"}
+                      onClick={() => {
+                        setLocation("/packages");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Paqueterías
+                    </NavLink>
+                  )}
+                  {canAccess("trip-expense") && (
+                    <NavLink 
+                      active={window.location.pathname === "/trip-expense"}
+                      onClick={() => {
+                        setLocation("/trip-expense");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Gastos de Viaje
+                    </NavLink>
+                  )}
+                  {canAccess("trip-expense-summary") && (
+                    <NavLink 
+                      active={window.location.pathname === "/trip-expense-summary"}
+                      onClick={() => {
+                        setLocation("/trip-expense-summary");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Resumen de Gastos
+                    </NavLink>
+                  )}
+                  {canAccess("routes") && (
+                    <NavLink 
+                      active={window.location.pathname === "/routes"}
+                      onClick={() => {
+                        setLocation("/routes");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Gestión de Rutas
+                    </NavLink>
+                  )}
+                  {canAccess("companies") && (
+                    <NavLink 
+                      active={window.location.pathname === "/companies"}
+                      onClick={() => {
+                        setLocation("/companies");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Empresas
+                    </NavLink>
+                  )}
+                  {canAccess("global-analytics") && (
+                    <NavLink 
+                      active={window.location.pathname === "/global-analytics"}
+                      onClick={() => {
+                        setLocation("/global-analytics");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Analíticas Globales
+                    </NavLink>
+                  )}
+                  {canAccess("discount-codes") && (
+                    <NavLink 
+                      active={window.location.pathname === "/discount-codes"}
+                      onClick={() => {
+                        setLocation("/discount-codes");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Códigos de Descuento
+                    </NavLink>
+                  )}
                 </nav>
               </SheetContent>
             </Sheet>
