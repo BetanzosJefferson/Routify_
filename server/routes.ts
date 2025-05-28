@@ -317,7 +317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const userCompany = user.companyId || user.company;
         
         if (existingRoute.companyId && existingRoute.companyId !== userCompany) {
-          console.log(`[PUT /routes/${id}] ACCESO DENEGADO: La ruta pertenece a compañía ${existingRoute.companyId} pero el usuario es de ${userCompany}`);
+          // Access denied: route belongs to different company
           return res.status(403).json({ 
             error: "Acceso denegado", 
             details: "No tiene permiso para editar rutas de otra compañía" 
@@ -333,20 +333,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verificar si tenemos stops definidos en la solicitud
       if (routeData.stops === undefined) {
-        console.log("No se recibieron paradas en la actualización, manteniendo las existentes");
+        // No stops received in update, keeping existing ones
         // Si no se especificaron stops en la actualización, mantener los existentes
         routeData.stops = existingRoute.stops;
       } else {
-        console.log("Paradas recibidas para actualización:", routeData.stops);
+        // Stops received for update
       }
       
-      console.log("Datos para actualización de ruta:", {
-        id,
-        nombre: routeData.name,
-        origen: routeData.origin,
-        destino: routeData.destination,
-        paradas: routeData.stops
-      });
+      // Route update data prepared
       
       const updatedRoute = await storage.updateRoute(id, routeData);
       
@@ -376,7 +370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const userCompany = user.companyId || user.company;
         
         if (existingRoute.companyId && existingRoute.companyId !== userCompany) {
-          console.log(`[DELETE /routes/${id}] ACCESO DENEGADO: La ruta pertenece a compañía ${existingRoute.companyId} pero el usuario es de ${userCompany}`);
+          // Access denied: route belongs to different company
           return res.status(403).json({ 
             error: "Acceso denegado", 
             details: "No tiene permiso para eliminar rutas de otra compañía" 
