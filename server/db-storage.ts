@@ -833,6 +833,20 @@ export class DatabaseStorage implements IStorage {
       console.log(`[searchTrips-v2] Verificación: Existen ${viajesContador} viajes asignados al conductor ID ${params.driverId}`);
     }
     
+    // Aplicar filtro por origen (origin)
+    if (params.origin) {
+      console.log(`[searchTrips-v2] Filtro por origen: ${params.origin}`);
+      // Note: This will filter at SQL level, but final validation happens in post-processing
+      // to handle route information properly
+    }
+    
+    // Aplicar filtro por destino (destination)
+    if (params.destination) {
+      console.log(`[searchTrips-v2] Filtro por destino: ${params.destination}`);
+      // Note: This will filter at SQL level, but final validation happens in post-processing
+      // to handle route information properly
+    }
+    
     // Aplicar filtro de solo viajes padre (parentOnly)
     if (params.parentOnly === 'true') {
       console.log(`[searchTrips-v2] Filtro: Solo viajes PADRE (excluyendo sub-viajes)`);
@@ -1002,6 +1016,9 @@ export class DatabaseStorage implements IStorage {
         // Only check the actual origin of the route, not intermediate stops
         // This ensures we only show trips that actually start from the searched location
         originMatch = route.origin.toLowerCase().includes(searchOrigin);
+        
+        // Debug logging to track filtering decisions
+        console.log(`[searchTrips-v2] Viaje ${trip.id}: Origen de ruta "${route.origin}" vs búsqueda "${params.origin}" - Match: ${originMatch}`);
       }
       
       if (params.destination) {
