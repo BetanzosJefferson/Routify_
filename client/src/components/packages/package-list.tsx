@@ -91,6 +91,9 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
   // Determinar si el usuario puede añadir/editar paquetes
   const canCreateEdit = user ? hasRoleAccess(user.role, [UserRole.OWNER, UserRole.ADMIN, UserRole.CALL_CENTER, UserRole.CHECKER]) : false;
   
+  // Determinar si el usuario puede marcar como entregado/pagado (incluye taquilla)
+  const canMarkDelivered = user ? hasRoleAccess(user.role, [UserRole.OWNER, UserRole.ADMIN, UserRole.CALL_CENTER, UserRole.CHECKER, UserRole.TICKET_OFFICE]) : false;
+  
   // Determinar si el usuario puede eliminar paquetes
   const canDelete = user ? hasRoleAccess(user.role, [UserRole.OWNER, UserRole.ADMIN]) : false;
   
@@ -162,6 +165,33 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
       toast({
         title: "Paquete actualizado",
         description: "El paquete ha sido marcado como entregado",
+        variant: "default",
+      });
+      queryClient.invalidateQueries({ queryKey: [packageEndpoint] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Mutación para marcar un paquete como pagado
+  const markAsPaidMutation = useMutation({
+    mutationFn: async (packageId: number) => {
+      const response = await apiRequest("PATCH", `/api/packages/${packageId}/pay`, {});
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al marcar como pagado");
+      }
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Pago registrado",
+        description: "El paquete ha sido marcado como pagado",
         variant: "default",
       });
       queryClient.invalidateQueries({ queryKey: [packageEndpoint] });
@@ -644,7 +674,7 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                         </DialogContent>
                       </Dialog>
                       
-                      {canCreateEdit && pkg.deliveryStatus !== "entregado" && (
+                      {canMarkDelivered && pkg.deliveryStatus !== "entregado" && (
                         <DropdownMenuItem
                           onClick={() => {
                             markAsDeliveredMutation.mutate(pkg.id);
@@ -653,6 +683,18 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                         >
                           <Check className="mr-2 h-4 w-4" />
                           Marcar como Entregado
+                        </DropdownMenuItem>
+                      )}
+                      
+                      {canMarkDelivered && !pkg.isPaid && (
+                        <DropdownMenuItem
+                          onClick={() => {
+                            markAsPaidMutation.mutate(pkg.id);
+                          }}
+                          disabled={markAsPaidMutation.isPending}
+                        >
+                          <DollarSign className="mr-2 h-4 w-4" />
+                          Marcar como Pagado
                         </DropdownMenuItem>
                       )}
                       
