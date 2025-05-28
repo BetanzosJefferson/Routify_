@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeftIcon } from "lucide-react";
 import { Sidebar } from "@/components/layout/sidebar";
-import { MobileNav } from "@/components/layout/mobile-nav";
 import { Topbar } from "@/components/layout/topbar";
 import { TabType } from "@/hooks/use-active-tab";
 
@@ -37,7 +36,6 @@ export default function EditTripPage() {
       <Sidebar activeTab={activeTab} onTabChange={handleTabChange} />
       
       <div className="flex flex-col flex-1 w-0 overflow-hidden">
-        <MobileNav activeTab={activeTab} onTabChange={handleTabChange} />
         <Topbar />
         
         <div className="flex-1 overflow-auto focus:outline-none">

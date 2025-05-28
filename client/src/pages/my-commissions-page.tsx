@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { Sidebar } from "@/components/layout/sidebar";
-import { MobileNav } from "@/components/layout/mobile-nav";
+
 import { Topbar } from "@/components/layout/topbar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -99,7 +99,6 @@ export default function MyCommissionsPage() {
       <Sidebar activeTab={activeTab} onTabChange={handleTabChange} />
       
       <div className="flex flex-col flex-1 w-0 overflow-hidden">
-        <MobileNav activeTab={activeTab} onTabChange={handleTabChange} />
         <Topbar />
         
         <div className="flex-1 overflow-auto focus:outline-none">
