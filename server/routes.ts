@@ -3819,10 +3819,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Endpoint para que los comisionistas vean sus propias reservaciones aprobadas
   app.get(apiRouter("/commissions/my-commissions"), async (req: Request, res: Response) => {
-    // FORCE CACHE BUST
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
     try {
       // Obtener el usuario autenticado
       const { user } = req as any;
@@ -3877,52 +3873,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[GET /commissions/my-commissions] Encontradas ${myApprovedReservations.length} reservaciones aprobadas del comisionista`);
       
-      // DEBUG: Verificar datos del usuario comisionista
-      console.log(`[GET /commissions/my-commissions] Usuario comisionista: ${user.firstName} ${user.lastName} (ID: ${user.id})`);
-      console.log(`[GET /commissions/my-commissions] Porcentaje de comisión configurado: ${user.commissionPercentage}%`);
-      
       // Transformar datos para incluir más detalles
       const myCommissions = myApprovedReservations.map(reservation => {
         const commissionPercentage = user.commissionPercentage || 10; // Porcentaje predeterminado si no está definido
-        
-        // Obtener el precio total correctamente de totalAmount
-        const totalPrice = reservation.totalAmount || 0;
-        const commissionAmount = (totalPrice * commissionPercentage) / 100;
-        
-        // LOG de depuración para entender por qué la comisión es 0
-        console.log(`[GET /commissions/my-commissions] DEPURACIÓN Reservación ${reservation.id}:`);
-        console.log(`  - Usuario: ${user.firstName} ${user.lastName} (ID: ${user.id})`);
-        console.log(`  - Porcentaje de comisión del usuario: ${user.commissionPercentage}%`);
-        console.log(`  - Porcentaje usado: ${commissionPercentage}%`);
-        console.log(`  - Total de la reservación (totalAmount): ${reservation.totalAmount}`);
-        console.log(`  - Total usado para cálculo: ${totalPrice}`);
-        console.log(`  - Comisión calculada: ${commissionAmount}`);
-        
-        // Obtener el nombre del pasajero correctamente
-        let passengerName = "Sin nombre";
-        if (reservation.passengers && reservation.passengers.length > 0) {
-          const firstPassenger = reservation.passengers[0];
-          if (firstPassenger.firstName && firstPassenger.lastName) {
-            passengerName = `${firstPassenger.firstName} ${firstPassenger.lastName}`;
-          } else if (firstPassenger.firstName) {
-            passengerName = firstPassenger.firstName;
-          }
-        }
+        const commissionAmount = (reservation.totalPrice * commissionPercentage) / 100;
         
         return {
           id: reservation.id,
-          passengerName: passengerName,
+          passengerName: reservation.passengers?.[0]?.name || "Sin nombre",
           routeName: reservation.trip?.route?.name || "Ruta desconocida",
           tripId: reservation.tripId,
           departureDate: reservation.trip?.departureDate,
-          totalPrice: totalPrice,
+          totalPrice: reservation.totalPrice,
           commissionPercentage: commissionPercentage,
           commissionAmount: commissionAmount,
           commissionPaid: reservation.commissionPaid || false
         };
       });
       
-      console.log(`[GET /commissions/my-commissions] Enviando respuesta con ${myCommissions.length} comisiones - ${new Date().toISOString()}`);
       res.json(myCommissions);
     } catch (error) {
       console.error(`[GET /commissions/my-commissions] Error: ${error}`);
