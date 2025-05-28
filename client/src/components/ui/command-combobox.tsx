@@ -158,7 +158,13 @@ export function CommandCombobox({
   }, [value, groupedOptions])
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(isOpen) => {
+      setOpen(isOpen)
+      // Cuando se abre el popover, limpiar la búsqueda para mostrar todas las opciones
+      if (isOpen) {
+        setSearchValue("")
+      }
+    }}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -168,6 +174,13 @@ export function CommandCombobox({
             "w-full justify-between overflow-hidden",
             className
           )}
+          onClick={() => {
+            setOpen(!open)
+            // Limpiar búsqueda al hacer clic para mostrar todas las opciones
+            if (!open) {
+              setSearchValue("")
+            }
+          }}
         >
           <div className="flex items-center truncate">
             {value ? (
@@ -188,6 +201,12 @@ export function CommandCombobox({
             placeholder={`Buscar ${placeholder.toLowerCase()}...`} 
             value={searchValue}
             onValueChange={setSearchValue}
+            onFocus={() => {
+              // Cuando el usuario hace foco en el input, limpiar la búsqueda para mostrar todas las opciones
+              if (!searchValue) {
+                setSearchValue("")
+              }
+            }}
           />
           <CommandList className="max-h-[300px]">
             <CommandEmpty>{emptyMessage}</CommandEmpty>
