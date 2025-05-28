@@ -5142,8 +5142,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
       
-      // Obtener paqueterías de todas las empresas del taquillero
-      const packages = await storage.getPackages({ companyIds: companyIds });
+      // Obtener paqueterías con información del viaje de todas las empresas del taquillero
+      const packages = await storage.getPackagesWithTripInfo({ companyIds: companyIds });
       
       console.log(`[GET /taquilla/packages] Encontrados ${packages.length} paquetes para las empresas del taquillero`);
       
