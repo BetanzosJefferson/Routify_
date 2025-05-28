@@ -29,7 +29,8 @@ export default function PackagesPage() {
     UserRole.ADMIN, 
     UserRole.CALL_CENTER, 
     UserRole.CHECKER,
-    UserRole.DRIVER
+    UserRole.DRIVER,
+    UserRole.TICKET_OFFICE
   ]) : false;
   
   // Manejar click en viaje para seleccionarlo
