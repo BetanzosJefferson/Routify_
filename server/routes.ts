@@ -6376,40 +6376,6 @@ function setupPackageRoutes(app: Express) {
     }
   });
   
-  // PATCH /api/packages/:id/pay - Marcar un paquete como pagado
-  app.patch(apiRouter('/packages/:id/pay'), isAuthenticated, hasPackageWriteAccess, async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      
-      // Verificar que el paquete existe
-      const existingPackage = await storage.getPackage(id);
-      if (!existingPackage) {
-        return res.status(404).json({ message: 'Paquete no encontrado' });
-      }
-      
-      // Verificar permisos de compañía
-      if (req.user && req.user.role !== UserRole.SUPER_ADMIN) {
-        const userCompanyId = req.user.company || req.user.companyId;
-        
-        if (existingPackage.companyId !== userCompanyId) {
-          return res.status(403).json({ message: 'No tiene permisos para marcar este paquete como pagado' });
-        }
-      }
-      
-      // Actualizar el estado de pago
-      const updatedPackage = await storage.updatePackage(id, {
-        isPaid: true,
-        paidBy: req.user.id,
-        updatedAt: new Date()
-      });
-      
-      res.json(updatedPackage);
-    } catch (error) {
-      console.error('Error al marcar paquete como pagado:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
-    }
-  });
-  
   // PATCH /api/packages/:id - Actualizar un paquete
   app.patch(apiRouter('/packages/:id'), isAuthenticated, hasPackageWriteAccess, async (req, res) => {
     try {
