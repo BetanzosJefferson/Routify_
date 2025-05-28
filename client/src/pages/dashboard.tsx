@@ -14,7 +14,7 @@ import CommissionsPage from "@/components/commissions/commissions-page";
 import { BoardingList } from "@/components/boarding-list/boarding-list";
 import { PassengerTransferPage } from "@/components/passenger-transfer/passenger-transfer-page";
 import { UserCashBoxesPage } from "@/components/user-cash-boxes/user-cash-boxes-page";
-import { PackagesPage } from "@/pages/packages-page";
+import PackagesPage from "@/pages/packages-page";
 import { TabType } from "@/hooks/use-active-tab";
 import { useAuth } from "@/hooks/use-auth";
 import { hasAccessToSection } from "@/lib/role-based-permissions";
