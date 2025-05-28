@@ -73,21 +73,21 @@ export default function TripSummary({ className }: TripSummaryProps) {
     }
     return today;
   });
-  
+
   // Estado de carga para los datos financieros - desactivado para evitar problemas de carga infinita
   const [isLoadingFinancialData, setIsLoadingFinancialData] = useState(false);
-  
+
   // Estados para datos financieros
   const [operatorBudget, setOperatorBudget] = useState<number>(0);
   const [isLoadingBudget, setIsLoadingBudget] = useState(false);
   const [isSavingBudget, setIsSavingBudget] = useState(false);
-  
+
   // Estado para gastos
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoadingExpenses, setIsLoadingExpenses] = useState(false);
   const [isSavingExpense, setIsSavingExpense] = useState(false);
   const [isRemovingExpense, setIsRemovingExpense] = useState<number | null>(null);
-  
+
   const [newExpense, setNewExpense] = useState<Expense>({
     id: '',
     tripId: 0,
@@ -98,14 +98,14 @@ export default function TripSummary({ className }: TripSummaryProps) {
 
   // Notificaciones
   const { toast } = useToast();
-  
+
   // Total de gastos
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  
+
   // Cargar el presupuesto del viaje
   const loadTripBudget = async (tripId: number) => {
     if (!tripId) return;
-    
+
     setIsLoadingBudget(true);
     try {
       const url = `/api/trips/${tripId}/budget`;
@@ -116,13 +116,13 @@ export default function TripSummary({ className }: TripSummaryProps) {
         },
         credentials: "include"
       });
-      
+
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (data && typeof data.amount === 'number') {
         setOperatorBudget(data.amount);
       } else {
@@ -140,11 +140,11 @@ export default function TripSummary({ className }: TripSummaryProps) {
       setIsLoadingBudget(false);
     }
   };
-  
+
   // Guardar el presupuesto del viaje
   const saveTripBudget = async (tripId: number, amount: number) => {
     if (!tripId) return;
-    
+
     setIsSavingBudget(true);
     try {
       const url = `/api/trips/${tripId}/budget`;
@@ -156,11 +156,11 @@ export default function TripSummary({ className }: TripSummaryProps) {
         body: JSON.stringify({ amount }),
         credentials: "include"
       });
-      
+
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
-      
+
       setOperatorBudget(amount);
       toast({
         title: "Presupuesto guardado",
@@ -178,11 +178,11 @@ export default function TripSummary({ className }: TripSummaryProps) {
       setIsSavingBudget(false);
     }
   };
-  
+
   // Cargar los gastos del viaje
   const loadTripExpenses = async (tripId: number) => {
     if (!tripId) return;
-    
+
     setIsLoadingExpenses(true);
     try {
       const url = `/api/trips/${tripId}/expenses`;
@@ -193,13 +193,13 @@ export default function TripSummary({ className }: TripSummaryProps) {
         },
         credentials: "include"
       });
-      
+
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (Array.isArray(data)) {
         // Adaptar datos del backend (con 'type') al formato del frontend (con 'category')
         const adaptedExpenses = data.map(expense => ({
@@ -227,11 +227,11 @@ export default function TripSummary({ className }: TripSummaryProps) {
       setIsLoadingExpenses(false);
     }
   };
-  
+
   // Función para agregar un nuevo gasto
   const handleAddExpense = async () => {
     if (newExpense.category.trim() === '' || newExpense.amount <= 0 || !selectedTrip) return;
-    
+
     setIsSavingExpense(true);
     try {
       // Preparar el objeto de gasto para la API
@@ -242,7 +242,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
         amount: newExpense.amount,
         tripId: selectedTrip
       };
-      
+
       // Enviar a la API
       const url = `/api/trips/${selectedTrip}/expenses`;
       const response = await fetch(url, {
@@ -253,13 +253,13 @@ export default function TripSummary({ className }: TripSummaryProps) {
         body: JSON.stringify(expenseData),
         credentials: "include"
       });
-      
+
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (data && data.id) {
         // Añadir el nuevo gasto a la lista local, adaptando type a category
         const adaptedExpense = {
@@ -267,7 +267,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
           category: data.type // Añadir category como alias de type
         };
         setExpenses(prevExpenses => [...prevExpenses, adaptedExpense]);
-        
+
         // Actualizar también tripsFinancialData para mantener datos en sincronía
         setTripsFinancialData(prev => {
           const tripData = prev[selectedTrip] || { budget: 0, expenses: [] };
@@ -279,7 +279,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
             }
           };
         });
-        
+
         // Resetear el formulario
         setNewExpense({
           id: '',
@@ -288,7 +288,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
           category: '',
           description: ''
         });
-        
+
         toast({
           title: "Gasto registrado",
           description: "El gasto ha sido añadido correctamente.",
@@ -306,7 +306,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
       setIsSavingExpense(false);
     }
   };
-  
+
   // Función para eliminar un gasto
   const handleRemoveExpense = async (id: number | string) => {
     // Si el ID es un string (gasto local no guardado), simplemente eliminar del estado
@@ -314,18 +314,18 @@ export default function TripSummary({ className }: TripSummaryProps) {
       setExpenses(expenses.filter(expense => expense.id !== id));
       return;
     }
-    
+
     // Si es un ID numérico, eliminar de la base de datos
     setIsRemovingExpense(id as number);
     try {
       // Usar la nueva ruta simplificada para eliminar gastos
       const url = `/api/trips/expenses/remove`;
-      
+
       // Datos básicos para la solicitud (solo necesitamos el ID)
       const expenseData = { 
         expenseId: Number(id)
       };
-      
+
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -334,26 +334,26 @@ export default function TripSummary({ className }: TripSummaryProps) {
         body: JSON.stringify(expenseData),
         credentials: "include"
       });
-      
+
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
-      
+
       // Actualizar lista local
       setExpenses(prevExpenses => prevExpenses.filter(expense => expense.id !== id));
-      
+
       // Actualizar también tripsFinancialData
       setTripsFinancialData(prev => {
         // Buscar a qué viaje pertenece este gasto
         const expense = expenses.find(e => e.id === id);
         if (!expense) return prev;
-        
+
         const tripId = expense.tripId;
         const tripData = prev[tripId];
-        
+
         // Si no hay datos para este viaje, no hay nada que actualizar
         if (!tripData) return prev;
-        
+
         return {
           ...prev,
           [tripId]: {
@@ -362,7 +362,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
           }
         };
       });
-      
+
       toast({
         title: "Gasto eliminado",
         description: "El gasto ha sido eliminado correctamente.",
@@ -379,7 +379,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
       setIsRemovingExpense(null);
     }
   };
-  
+
   // Calculo de ganancias del viaje (ventas totales - gastos totales)
   const tripProfit = totalSales - totalExpenses;
 
@@ -394,7 +394,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
     data: reservations, 
     isLoading: isLoadingReservations 
   } = useReservations();
-  
+
   // Consultar paqueterías solo cuando hay un viaje seleccionado
   const {
     data: packages,
@@ -403,7 +403,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
     tripId: selectedTrip || undefined,
     enabled: !!selectedTrip
   });
-  
+
   // Función helper para procesar fecha de viaje en formato consistente
   const getTripDateStr = (tripDate: any): string => {
     if (typeof tripDate === 'string') {
@@ -429,21 +429,21 @@ export default function TripSummary({ className }: TripSummaryProps) {
   const filteredTrips = trips?.filter(trip => {
     // Filtrar por viajes principales
     if (trip.isSubTrip) return false;
-    
+
     // Obtener fecha del viaje y fecha actual en formato YYYY-MM-DD
     const tripDateStr = getTripDateStr(trip.departureDate);
     const currentDateStr = format(currentDate, 'yyyy-MM-dd');
-    
+
     // Comparar las cadenas de fecha directamente
     return tripDateStr === currentDateStr;
   }) || [];
-  
+
   // Navegación de fecha
   const goToPreviousDay = () => {
     setCurrentDate(prevDate => subDays(prevDate, 1));
     setSelectedTrip(null); // Resetear selección al cambiar de fecha
   };
-  
+
   const goToNextDay = () => {
     setCurrentDate(prevDate => addDays(prevDate, 1));
     setSelectedTrip(null); // Resetear selección al cambiar de fecha
@@ -454,13 +454,13 @@ export default function TripSummary({ className }: TripSummaryProps) {
     budget: number,
     expenses: Expense[]
   }}>({});
-  
+
   // Cargar datos financieros cuando se selecciona un viaje
   useEffect(() => {
     if (selectedTrip) {
       // Cargar presupuesto
       loadTripBudget(selectedTrip);
-      
+
       // Cargar gastos
       loadTripExpenses(selectedTrip);
     } else {
@@ -469,7 +469,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
       setExpenses([]);
     }
   }, [selectedTrip]);
-  
+
   // Definición de estilos para el indicador de carga
   const loadingStyles = `
     .financial-loader {
@@ -482,7 +482,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
       animation: loadingAnimation 1s infinite linear;
       border-radius: 4px;
     }
-    
+
     .profit-loader {
       display: inline-block;
       width: 100%;
@@ -494,7 +494,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
       animation: loadingAnimation 1s infinite linear;
       border-radius: 4px;
     }
-    
+
     @keyframes loadingAnimation {
       0% { background-position: right }
     }
@@ -505,38 +505,38 @@ export default function TripSummary({ className }: TripSummaryProps) {
     const styleElement = document.createElement('style');
     styleElement.textContent = loadingStyles;
     document.head.appendChild(styleElement);
-    
+
     // Limpieza al desmontar
     return () => {
       document.head.removeChild(styleElement);
     };
   }, []);
-  
+
   // Cargar datos financieros para todos los viajes mostrados en la tabla
   useEffect(() => {
     // Solo ejecutar si hay viajes filtrados
     if (filteredTrips.length === 0) return;
-    
+
     // Activar indicador de carga
     setIsLoadingFinancialData(true);
-    
+
     // Para cada viaje, cargar sus datos financieros en paralelo
     const loadAllTripsFinancialData = async () => {
       // Crear un objeto para almacenar los datos financieros
       const financialData: {[tripId: number]: {budget: number, expenses: Expense[]}} = {};
-      
+
       // Inicializar el objeto con valores por defecto para todos los viajes
       filteredTrips.forEach(trip => {
         financialData[trip.id] = { budget: 0, expenses: [] };
       });
-      
+
       // Crear un array para almacenar todas las promesas
       const promises: Promise<{tripId: number, type: string, data: any}>[] = [];
-      
+
       // Preparar todas las promesas para presupuestos y gastos de todos los viajes
       filteredTrips.forEach(trip => {
         const tripId = trip.id;
-        
+
         // Promesa para cargar presupuesto
         const budgetPromise = fetch(`/api/trips/${tripId}/budget`, {
           method: "GET",
@@ -553,7 +553,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
           console.error(`Error al cargar presupuesto para viaje ${tripId}:`, error);
           return { tripId, type: 'budget', data: 0 };
         });
-        
+
         // Promesa para cargar gastos
         const expensesPromise = fetch(`/api/trips/${tripId}/expenses`, {
           method: "GET",
@@ -567,27 +567,27 @@ export default function TripSummary({ className }: TripSummaryProps) {
             ...expense,
             category: expense.type // Añadir category como alias de type
           })) : [];
-          
+
           return { tripId, type: 'expenses', data: expenses };
         })
         .catch(error => {
           console.error(`Error al cargar gastos para viaje ${tripId}:`, error);
           return { tripId, type: 'expenses', data: [] };
         });
-        
+
         // Agregar ambas promesas al array
         promises.push(budgetPromise);
         promises.push(expensesPromise);
       });
-      
+
       try {
         // Esperar a que todas las promesas se resuelvan en paralelo
         const results = await Promise.all(promises);
-        
+
         // Procesar resultados y actualizar el objeto financialData
         results.forEach(result => {
           const { tripId, type, data } = result;
-          
+
           if (type === 'budget') {
             financialData[tripId].budget = data;
           } else if (type === 'expenses') {
@@ -597,29 +597,29 @@ export default function TripSummary({ className }: TripSummaryProps) {
       } catch (error) {
         console.error("Error al cargar datos financieros:", error);
       }
-      
+
       // Actualizar el estado con todos los datos financieros
       setTripsFinancialData(financialData);
-      
+
       // Desactivar indicador de carga después de completar la carga
       setIsLoadingFinancialData(false);
     };
-    
+
     loadAllTripsFinancialData();
-    
+
     // Usar ids como dependencia en lugar de todo el array de objetos
     // Esto evita recargos infinitos cuando cambian propiedades internas
   }, [JSON.stringify(filteredTrips.map(trip => trip.id))]);
-  
+
   // Filter reservations by selected trip
   useEffect(() => {
     if (selectedTrip && reservations) {
       // Filtrar reservas directas para este viaje
       const directReservations = reservations.filter(r => r.tripId === selectedTrip);
-      
+
       // Buscar el viaje seleccionado
       const selectedTripData = trips?.find(t => t.id === selectedTrip);
-      
+
       // Si es un viaje principal, buscar también reservas de sub-viajes relacionados
       const relatedReservations = selectedTripData && !selectedTripData.isSubTrip
         ? reservations.filter(r => {
@@ -627,28 +627,28 @@ export default function TripSummary({ className }: TripSummaryProps) {
             return trip?.parentTripId === selectedTrip;
           })
         : [];
-      
+
       // Combinar reservas directas y relacionadas
       const allReservations = [...directReservations, ...relatedReservations];
-      
+
       // Calcular total de pasajeros
       const passengers = allReservations.reduce((acc, res) => acc + (res.passengers?.length || 0), 0);
-      
+
       // Variables para el cálculo de ventas según nuevos criterios
       let totalSalesAmount = 0;
       let cashSales = 0;
       let transferSales = 0;
-      
+
       // Recorrer cada reserva para calcular correctamente las ventas
       allReservations.forEach(res => {
         const isPaid = res.paymentStatus === 'pagado' || res.paymentStatus === 'paid';
         const hasPendingStatus = res.paymentStatus === 'pendiente' || res.paymentStatus === 'pending';
         const hasAdvance = res.advanceAmount && res.advanceAmount > 0;
-        
+
         if (isPaid) {
           // Si está pagado, sumar el monto total
           totalSalesAmount += res.totalAmount || 0;
-          
+
           // Si la reservación incluye anticipo, usamos el método de pago del anticipo
           // ya que esto refleja cómo se pagó realmente (especialmente para reservaciones pagadas)
           if (hasAdvance) {
@@ -669,7 +669,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
         else if (hasAdvance && !hasPendingStatus) {
           // Si tiene anticipo y no está pendiente, sumar solo el anticipo
           totalSalesAmount += res.advanceAmount || 0;
-          
+
           // Distribuir en métodos de pago según método del anticipo
           if (res.advancePaymentMethod === 'efectivo') {
             cashSales += res.advanceAmount || 0;
@@ -679,7 +679,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
         }
         // Si no está pagado, no tiene anticipo o está pendiente, no se suma nada
       });
-      
+
       setTripReservations(allReservations);
       setTotalPassengers(passengers);
       setTotalSales(totalSalesAmount);
@@ -700,7 +700,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
       // Calcular ventas por paqueterías
       let packageCashSales = 0;
       let packageTransferSales = 0;
-      
+
       // Recorrer cada paquetería para calcular las ventas
       packages.forEach(pkg => {
         if (pkg.isPaid) {
@@ -711,7 +711,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
           }
         }
       });
-      
+
       // Actualizar totales sumando los valores de paqueterías a los totales existentes
       setTotalSales(prevTotal => prevTotal + packageCashSales + packageTransferSales);
       setTotalCashSales(prevCash => prevCash + packageCashSales);
@@ -743,7 +743,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
     } else {
       date = dateString;
     }
-    
+
     return date.toLocaleDateString('es-MX', {
       year: 'numeric',
       month: 'long', 
@@ -751,12 +751,12 @@ export default function TripSummary({ className }: TripSummaryProps) {
       timeZone: 'UTC' // Usar UTC para evitar ajustes de zona horaria
     });
   };
-  
+
   // Función para formatear fecha para el encabezado
   const formatHeaderDate = (date: Date) => {
     return format(date, "d 'de' MMMM, yyyy", { locale: es });
   };
-  
+
   // Función para formatear fecha para input date
   const formatDateForInput = (date: Date) => {
     return format(date, "yyyy-MM-dd");
@@ -765,17 +765,17 @@ export default function TripSummary({ className }: TripSummaryProps) {
   // Calcular número de pasajeros y ventas por viaje
   const getTripStats = (tripId: number) => {
     if (!reservations) return { passengers: 0, sales: 0 };
-    
+
     const tripReservations = reservations.filter(r => r.tripId === tripId);
     const passengers = tripReservations.reduce((acc, res) => acc + (res.passengers?.length || 0), 0);
-    
+
     // Calcular ventas aplicando los mismos criterios de cálculo
     let totalSales = 0;
     tripReservations.forEach(res => {
       const isPaid = res.paymentStatus === 'pagado' || res.paymentStatus === 'paid';
       const hasPendingStatus = res.paymentStatus === 'pendiente' || res.paymentStatus === 'pending';
       const hasAdvance = res.advanceAmount && res.advanceAmount > 0;
-      
+
       if (isPaid) {
         // Si está pagado, sumar el monto total
         totalSales += res.totalAmount || 0;
@@ -785,7 +785,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
       }
       // Si no está pagado, no tiene anticipo o está pendiente, no se suma nada
     });
-    
+
     return { passengers, sales: totalSales };
   };
 
@@ -845,7 +845,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
           <ChevronRightIcon className="h-5 w-5" />
         </Button>
       </div>
-      
+
       {isLoadingTrips || isLoadingReservations ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -903,7 +903,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                       <tbody className="divide-y divide-gray-200 bg-white">
                       {filteredTrips.map(trip => {
                         const { passengers, sales } = getTripStats(trip.id);
-                        
+
                         return (
                           <tr 
                             key={trip.id}
@@ -919,7 +919,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                 // Crear la fecha con ajuste para evitar problemas de zona horaria
                                 let dateStr = trip.departureDate;
                                 let date;
-                                
+
                                 if (typeof dateStr === 'string' && dateStr.includes('T')) {
                                   const datePart = dateStr.split('T')[0];
                                   const [year, month, day] = datePart.split('-').map(Number);
@@ -927,7 +927,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                 } else {
                                   date = new Date(dateStr);
                                 }
-                                
+
                                 return format(date, 'dd/MM/yyyy');
                               })()}
                             </td>
@@ -970,14 +970,14 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                 // Usar datos precargados si existen, o usar el estado local como respaldo
                                 const tripFinancialData = tripsFinancialData[trip.id];
                                 let tripExpenses = 0;
-                                
+
                                 if (tripFinancialData) {
                                   tripExpenses = tripFinancialData.expenses.reduce((sum, e) => sum + e.amount, 0);
                                 } else {
                                   // Usar datos del estado solo cuando se ha seleccionado el viaje
                                   tripExpenses = expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0);
                                 }
-                                
+
                                 const profit = sales - tripExpenses;
                                 if (profit > 0) return "bg-green-50 text-green-600";
                                 if (profit < 0) return "bg-red-50 text-red-600";
@@ -988,14 +988,14 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                 // Usar datos precargados si existen, o usar el estado local como respaldo
                                 const tripFinancialData = tripsFinancialData[trip.id];
                                 let tripExpenses = 0;
-                                
+
                                 if (tripFinancialData) {
                                   tripExpenses = tripFinancialData.expenses.reduce((sum, e) => sum + e.amount, 0);
                                 } else {
                                   // Usar datos del estado solo cuando se ha seleccionado el viaje
                                   tripExpenses = expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0);
                                 }
-                                
+
                                 return (sales - tripExpenses).toFixed(2);
                               })()}
                             </td>
@@ -1005,24 +1005,24 @@ export default function TripSummary({ className }: TripSummaryProps) {
                     </tbody>
                   </table>
                   </div>
-                  
+
                   {/* Mobile Cards */}
                   <div className="lg:hidden space-y-3">
                     {filteredTrips.map(trip => {
                       const { passengers, sales } = getTripStats(trip.id);
-                      
+
                       // Calcular gastos del viaje
                       const tripFinancialData = tripsFinancialData[trip.id];
                       let tripExpenses = 0;
-                      
+
                       if (tripFinancialData) {
                         tripExpenses = tripFinancialData.expenses.reduce((sum, e) => sum + e.amount, 0);
                       } else {
                         tripExpenses = expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0);
                       }
-                      
+
                       const profit = sales - tripExpenses;
-                      
+
                       return (
                         <div
                           key={trip.id}
@@ -1046,7 +1046,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                 {(() => {
                                   let dateStr = trip.departureDate;
                                   let date;
-                                  
+
                                   if (typeof dateStr === 'string' && dateStr.includes('T')) {
                                     const datePart = dateStr.split('T')[0];
                                     const [year, month, day] = datePart.split('-').map(Number);
@@ -1054,7 +1054,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                   } else {
                                     date = new Date(dateStr);
                                   }
-                                  
+
                                   return format(date, 'dd/MM/yyyy');
                                 })()}
                               </p>
@@ -1067,7 +1067,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               ${profit.toFixed(0)}
                             </div>
                           </div>
-                          
+
                           {/* Información principal */}
                           <div className="grid grid-cols-2 gap-3 mb-3">
                             <div>
@@ -1085,7 +1085,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               </p>
                             </div>
                           </div>
-                          
+
                           {/* Métricas financieras */}
                           <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-100">
                             <div className="text-center">
@@ -1184,7 +1184,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                 const vehicles = trips
                                   .map(t => t.assignedVehicle)
                                   .filter(Boolean);
-                                
+
                                 const vehicle = vehicles.find(v => v && v.id === selectedTripData.vehicleId);
                                 if (vehicle) {
                                   return `${vehicle.brand} ${vehicle.model} - ${vehicle.plates}`;
@@ -1211,7 +1211,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                 const drivers = trips
                                   .map(t => t.assignedDriver)
                                   .filter(Boolean);
-                                
+
                                 const driver = drivers.find(d => d && d.id === selectedTripData.driverId);
                                 if (driver) {
                                   return `${driver.firstName} ${driver.lastName}`;
@@ -1262,7 +1262,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Nueva sección de presupuesto y gastos */}
                     <div className="mt-6">
                       <div className="bg-gray-50 rounded-lg p-6">
@@ -1272,28 +1272,30 @@ export default function TripSummary({ className }: TripSummaryProps) {
                           </div>
                           <h3 className="text-lg font-semibold text-gray-800">Presupuesto y Gastos</h3>
                         </div>
-                        
+
                         {/* Presupuesto para el operador */}
                         <div className="mb-6">
                           <Label className="text-gray-700 mb-2">Presupuesto para el operador</Label>
-                          <div className="flex items-center">
-                            <Input
-                              type="number"
-                              min="0"
-                              placeholder="Monto en MXN"
-                              value={operatorBudget || ''}
-                              onChange={(e) => setOperatorBudget(parseFloat(e.target.value) || 0)}
-                              className="flex-1"
-                              disabled={isLoadingBudget || isSavingBudget}
-                            />
-                            <div className="ml-2 mr-2">
-                              <Label>MXN</Label>
+                          {/* MODIFICACIÓN 1: Ajuste de layout para presupuesto */}
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center">
+                            <div className="flex-1 flex items-center mb-2 sm:mb-0">
+                              <Input
+                                type="number"
+                                min="0"
+                                placeholder="Monto en MXN"
+                                value={operatorBudget || ''}
+                                onChange={(e) => setOperatorBudget(parseFloat(e.target.value) || 0)}
+                                className="flex-1"
+                                disabled={isLoadingBudget || isSavingBudget}
+                              />
+                              <span className="ml-2 text-sm text-gray-600">MXN</span> {/* Más compacto */}
                             </div>
                             <Button 
                               variant="outline" 
                               size="sm"
                               onClick={() => selectedTrip && saveTripBudget(selectedTrip, operatorBudget)}
                               disabled={isLoadingBudget || isSavingBudget || !selectedTrip}
+                              className="w-full sm:w-auto sm:ml-2"
                             >
                               {isSavingBudget ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1310,7 +1312,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                             </div>
                           )}
                         </div>
-                        
+
                         {/* Sección de gastos */}
                         <div>
                           <div className="flex items-center mb-4">
@@ -1318,7 +1320,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                             <div className="flex-1 mx-2 h-px bg-gray-200"></div>
                             <div className="text-sm text-gray-500">Total: ${totalExpenses.toFixed(2)}</div>
                           </div>
-                          
+
                           {/* Lista de gastos actuales */}
                           {isLoadingExpenses ? (
                             <div className="py-4 flex justify-center items-center space-x-2">
@@ -1328,15 +1330,18 @@ export default function TripSummary({ className }: TripSummaryProps) {
                           ) : expenses.length > 0 ? (
                             <div className="space-y-2 mb-4">
                               {expenses.map(expense => (
-                                <div key={expense.id} className="flex items-center justify-between bg-white p-3 rounded-md border border-gray-200">
-                                  <div className="flex-1">
-                                    <div className="font-medium">${expense.amount.toFixed(2)} ({expense.category})</div>
+                                <div key={expense.id} className="flex items-start justify-between bg-white p-3 rounded-md border border-gray-200"> {/* Use items-start for better alignment with wrapped text */}
+                                  <div className="flex-1 pr-2"> {/* Added pr-2 for spacing from button */}
+                                    {/* MODIFICACIÓN 2: Mejorar legibilidad de item de gasto */}
+                                    <div className="font-medium text-gray-900 text-base">
+                                      ${expense.amount.toFixed(2)} <span className="font-normal text-gray-700 text-sm">({expense.category})</span>
+                                    </div>
                                     {expense.description && (
-                                      <div className="text-sm text-gray-500">{expense.description}</div>
+                                      <div className="text-sm text-gray-600 mt-1">{expense.description}</div>
                                     )}
                                     {/* Mostrar información de quién registró el gasto */}
                                     {expense.createdBy && (
-                                      <div className="text-xs text-blue-600 mt-1 flex items-center">
+                                      <div className="text-xs text-blue-600 mt-2 flex items-center">
                                         <UserIcon className="h-3 w-3 mr-1" />
                                         Registrado por: {expense.createdBy}
                                       </div>
@@ -1347,6 +1352,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                     size="sm"
                                     onClick={() => handleRemoveExpense(expense.id)}
                                     disabled={isRemovingExpense === expense.id}
+                                    className="flex-shrink-0" /* Prevent button from shrinking */
                                   >
                                     {isRemovingExpense === expense.id ? (
                                       <Loader2 className="h-4 w-4 animate-spin text-red-500" />
@@ -1362,12 +1368,13 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               No hay gastos registrados
                             </div>
                           )}
-                          
+
                           {/* Formulario para agregar nuevo gasto */}
                           <div className="bg-white p-4 rounded-md border border-gray-200 mb-4">
                             <h5 className="text-sm font-medium mb-3 text-gray-700">Agregar nuevo gasto</h5>
-                            <div className="grid grid-cols-12 gap-2 mb-2">
-                              <div className="col-span-7">
+                            {/* MODIFICACIÓN 3: Apilar inputs de categoría y monto en mobile */}
+                            <div className="flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0 mb-2">
+                              <div className="flex-1">
                                 <Select
                                   value={newExpense.category}
                                   onValueChange={(value) => setNewExpense({...newExpense, category: value})}
@@ -1385,17 +1392,15 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                   </SelectContent>
                                 </Select>
                               </div>
-                              <div className="col-span-5">
-                                <div className="flex items-center">
-                                  <Input 
-                                    type="number" 
-                                    min="0"
-                                    placeholder="Monto" 
-                                    value={newExpense.amount || ''}
-                                    onChange={(e) => setNewExpense({...newExpense, amount: parseFloat(e.target.value) || 0})}
-                                  />
-                                  <span className="ml-2">MXN</span>
-                                </div>
+                              <div className="flex items-center sm:w-1/2"> {/* Adjusted width for better fit */}
+                                <Input 
+                                  type="number" 
+                                  min="0"
+                                  placeholder="Monto" 
+                                  value={newExpense.amount || ''}
+                                  onChange={(e) => setNewExpense({...newExpense, amount: parseFloat(e.target.value) || 0})}
+                                />
+                                <span className="ml-2 text-sm text-gray-600">MXN</span>
                               </div>
                             </div>
                             <div className="mb-3">
@@ -1423,16 +1428,17 @@ export default function TripSummary({ className }: TripSummaryProps) {
                               )}
                             </Button>
                           </div>
-                          
+
                           {/* Resumen financiero */}
                           <div className="bg-gray-100 p-4 rounded-md">
-                            <div className="grid grid-cols-2 gap-4">
+                            {/* MODIFICACIÓN 4: Apilar elementos en mobile, enfatizar ganancia */}
+                            <div className="flex flex-col space-y-3">
                               <div>
                                 <div className="text-sm text-gray-600">Ventas Totales</div>
                                 {isLoadingFinancialData ? (
                                   <div className="profit-loader mt-1"></div>
                                 ) : (
-                                  <div className="font-bold text-green-600">${totalSales.toFixed(2)}</div>
+                                  <div className="font-bold text-green-600 text-lg">${totalSales.toFixed(2)}</div>
                                 )}
                               </div>
                               <div>
@@ -1440,17 +1446,17 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                 {isLoadingFinancialData || isLoadingExpenses ? (
                                   <div className="profit-loader mt-1"></div>
                                 ) : (
-                                  <div className="font-bold text-red-600">${totalExpenses.toFixed(2)}</div>
+                                  <div className="font-bold text-red-600 text-lg">${totalExpenses.toFixed(2)}</div>
                                 )}
                               </div>
                             </div>
                             <Separator className="my-3" />
-                            <div className="flex justify-between items-center">
-                              <div className="font-medium">Ganancia del viaje</div>
+                            <div className="flex justify-between items-center mt-3">
+                              <div className="font-medium text-lg">Ganancia del viaje</div>
                               {isLoadingExpenses || isLoadingFinancialData ? (
                                 <div className="profit-loader" style={{width: '120px', height: '30px'}}></div>
                               ) : (
-                                <div className={`text-xl font-bold ${tripProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                <div className={`text-2xl font-bold ${tripProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                                   ${tripProfit.toFixed(2)}
                                 </div>
                               )}
@@ -1466,7 +1472,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                         <UserIcon className="h-5 w-5 mr-2" />
                         Lista de Pasajeros
                       </h3>
-                      
+
                       {tripReservations.length > 0 ? (
                         <div className="overflow-x-auto">
                           <table className="w-full border-collapse">
@@ -1498,21 +1504,21 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                 const isPaid = reservation.paymentStatus === 'pagado' || reservation.paymentStatus === 'paid';
                                 const hasAdvance = reservation.advanceAmount && reservation.advanceAmount > 0;
                                 const remainingAmount = (reservation.totalAmount || 0) - (reservation.advanceAmount || 0);
-                                
+
                                 // Formatear pasajeros (nombre del primer pasajero y número total)
                                 const mainPassenger = reservation.passengers?.[0];
                                 const passengerCount = reservation.passengers?.length || 0;
-                                
+
                                 // Determinar la información detallada de la ruta
                                 const routeName = reservation.trip?.route?.name || 'N/A';
                                 const routeDetails = reservation.trip?.route ? 
                                   `${reservation.trip.route.origin} → ${reservation.trip.route.destination}` : '';
-                                
+
                                 // Formatear fecha y hora
                                 const tripDate = reservation.trip?.departureDate ? 
                                   format(new Date(reservation.trip.departureDate), 'dd/MM/yyyy') : 'N/A';
                                 const tripTime = reservation.trip?.departureTime || 'N/A';
-                                
+
                                 return (
                                   <tr key={`reservation-${reservation.id}`} className="hover:bg-gray-50">
                                     <td className="py-3 px-4 text-sm">
@@ -1535,7 +1541,7 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                       <div className="font-medium text-gray-900">
                                         ${reservation.totalAmount?.toFixed(2) || '0.00'}
                                       </div>
-                                      
+
                                       <div className="mt-1">
                                         {isPaid ? (
                                           <div className="inline-block px-2 py-1 text-xs font-medium rounded-md bg-green-100 text-green-800">
@@ -1547,21 +1553,21 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                           </div>
                                         )}
                                       </div>
-                                      
+
                                       {/* Información de anticipo y resto */}
                                       {hasAdvance && (
                                         <div className="text-xs mt-1">
                                           <div>
                                             Anticipo: ${reservation.advanceAmount?.toFixed(2)} ({reservation.advancePaymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})
                                           </div>
-                                          
+
                                           {/* Solo mostrar "Resta" si está pendiente de pago */}
                                           {!isPaid && remainingAmount > 0 && (
                                             <div>
                                               Resta: ${remainingAmount.toFixed(2)} {reservation.paymentMethod ? `(${reservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia'})` : ''}
                                             </div>
                                           )}
-                                          
+
                                           {/* Si ya está pagado pero tiene advanceAmount diferente del total, mostrar "Pagó" en lugar de "Resta" */}
                                           {isPaid && reservation.advanceAmount < reservation.totalAmount && (
                                             <div>
