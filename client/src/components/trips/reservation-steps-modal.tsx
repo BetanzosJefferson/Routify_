@@ -137,12 +137,16 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       case 1: // Passenger info
         return passengers.every(p => p.firstName.trim() && p.lastName.trim());
       case 2: // Contact info
-        // Email es opcional, si está vacío se considera válido
+        // Email es completamente opcional
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const isEmailValid = email.trim() === '' || emailRegex.test(email);
+        
         // Teléfono flexible - eliminar espacios, guiones y paréntesis antes de validar
-        const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
-        const phoneRegex = /^[0-9]{10}$/;
-        return (email === '' || emailRegex.test(email)) && phoneRegex.test(normalizedPhone);
+        const normalizedPhone = phone.replace(/[\s\-\(\)\+]/g, '');
+        const phoneRegex = /^[0-9]{10,}$/; // Al menos 10 dígitos
+        const isPhoneValid = phoneRegex.test(normalizedPhone);
+        
+        return isEmailValid && isPhoneValid;
       default:
         return true;
     }
@@ -155,16 +159,15 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
         return "Por favor, complete el nombre y apellido de todos los pasajeros";
       case 2:
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        // Normalizar teléfono eliminando espacios, guiones y paréntesis
-        const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
-        const phoneRegex = /^[0-9]{10}$/;
+        const normalizedPhone = phone.replace(/[\s\-\(\)\+]/g, '');
+        const phoneRegex = /^[0-9]{10,}$/;
         
-        // Solo validar email si no está vacío
-        if (email !== '' && !emailRegex.test(email)) 
+        // Email es completamente opcional
+        if (email.trim() !== '' && !emailRegex.test(email)) 
           return "Por favor, ingrese un correo electrónico válido o déjelo en blanco";
         
         if (!phoneRegex.test(normalizedPhone)) 
-          return "Por favor, ingrese un número de teléfono válido de 10 dígitos (se aceptan espacios, guiones o paréntesis)";
+          return "Por favor, ingrese un número de teléfono válido de al menos 10 dígitos";
         
         return "";
       default:
