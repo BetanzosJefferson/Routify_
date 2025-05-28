@@ -673,8 +673,8 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
 
     try {
       toast({
-        title: "Preparando envío por WhatsApp...",
-        description: "Generando boleto y preparando mensaje",
+        title: "Generando PDF para WhatsApp...",
+        description: "Creando boleto y preparando envío",
       });
 
       // Limpiar el número de teléfono (quitar espacios, guiones, etc.)
@@ -688,16 +688,227 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
         formattedPhone = cleanPhone;
       }
 
-      // Crear el mensaje para WhatsApp
-      const reservationId = generateReservationId(submittedReservation.id);
-      const passengerNames = passengers.map(p => `${p.firstName} ${p.lastName}`).join(', ');
+      // Generar el PDF usando la misma lógica que handleDownloadTicket
+      const { jsPDF } = await import('jspdf');
       
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      // Configuración de colores y fuentes (igual que en handleDownloadTicket)
+      const colors = {
+        primary: [41, 128, 185],
+        secondary: [52, 152, 219], 
+        success: [39, 174, 96],
+        warning: [241, 196, 15],
+        danger: [231, 76, 60],
+        dark: [52, 73, 94],
+        muted: [127, 140, 141],
+        light: [236, 240, 241]
+      };
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const outerMargin = 15;
+      const innerPadding = 10;
+      const contentWidth = pageWidth - (2 * outerMargin);
+
+      // Generar QR Code
+      const reservationId = generateReservationId(submittedReservation.id);
+      const reservationUrl = `${window.location.origin}/reservation-details?id=${submittedReservation.id}`;
+      const qrCodeUrl = await QRCode.toDataURL(reservationUrl, {
+        width: 200,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+
+      // Función para dibujar el contenido del ticket
+      const drawTicketContent = () => {
+        // Header
+        doc.setFillColor(...colors.primary);
+        doc.rect(outerMargin, outerMargin, contentWidth, 25, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TransRoute', pageWidth / 2, outerMargin + 10, { align: 'center' });
+        
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Boleto de Viaje Oficial', pageWidth / 2, outerMargin + 17, { align: 'center' });
+
+        let currentY = outerMargin + 35;
+
+        // QR Code y número de boleto
+        const qrSize = 25;
+        const qrX = pageWidth / 2 - qrSize / 2;
+        const qrY = currentY;
+
+        // Dibujar QR code si está disponible
+        if (qrCodeUrl) {
+          try {
+            doc.addImage(qrCodeUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+          } catch (error) {
+            console.warn('Error al insertar QR:', error);
+            // Placeholder para QR
+            doc.setFillColor(100, 100, 100);
+            doc.rect(qrX, qrY, qrSize, qrSize, 'F');
+            doc.setFontSize(8);
+            doc.setTextColor(255, 255, 255);
+            doc.text('QR CODE', qrX + qrSize/2, qrY + qrSize/2, { align: 'center' });
+          }
+        }
+
+        currentY += qrSize + 10;
+
+        // Número de boleto
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...colors.dark);
+        doc.text(`#${reservationId}`, pageWidth / 2, currentY, { align: 'center' });
+
+        currentY += 15;
+
+        // Información del pasajero
+        const passengerNames = passengers.map(p => `${p.firstName} ${p.lastName}`).join(', ');
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(passengerNames, pageWidth / 2, currentY, { align: 'center' });
+
+        currentY += 20;
+
+        // Detalles del viaje en dos columnas
+        const leftCol = outerMargin + innerPadding;
+        const rightCol = pageWidth / 2 + 5;
+        const colWidth = (contentWidth - innerPadding) / 2 - 5;
+
+        // Función helper para crear secciones
+        const drawSection = (title: string, x: number, y: number, width: number) => {
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...colors.primary);
+          doc.text(title, x, y);
+          return y + 8;
+        };
+
+        // Información del Pasajero
+        let leftY = drawSection('Información del Pasajero', leftCol, currentY, colWidth);
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...colors.dark);
+        
+        doc.text('Contacto:', leftCol, leftY);
+        doc.text(phone, leftCol + 20, leftY);
+        leftY += 6;
+        
+        doc.text('Pasajeros:', leftCol, leftY);
+        doc.text('1', leftCol + 20, leftY);
+        leftY += 10;
+
+        // Detalles del Viaje
+        let rightY = drawSection('Detalles del Viaje', rightCol, currentY, colWidth);
+        
+        doc.text('Origen:', rightCol, rightY);
+        const originText = doc.splitTextToSize(trip.route.origin, colWidth - 15);
+        doc.text(originText, rightCol, rightY + 4);
+        rightY += 4 + (originText.length * 4) + 2;
+        
+        doc.text('Destino:', rightCol, rightY);
+        const destText = doc.splitTextToSize(trip.route.destination, colWidth - 15);
+        doc.text(destText, rightCol, rightY + 4);
+        rightY += 4 + (destText.length * 4) + 2;
+
+        doc.text('Fecha:', rightCol, rightY);
+        doc.text(format(new Date(trip.departureDate), "dd 'de' MMMM 'de' yyyy", { locale: es }), rightCol, rightY + 4);
+        rightY += 8;
+
+        doc.text('Hora:', rightCol, rightY);
+        doc.text(formatTripTime(trip.departureTime), rightCol, rightY + 4);
+
+        currentY = Math.max(leftY, rightY) + 10;
+
+        // Información de Pago
+        let paymentY = drawSection('Información de Pago', leftCol, currentY, colWidth);
+        
+        doc.text('Subtotal:', leftCol, paymentY);
+        doc.text(formatPrice(totalPrice), leftCol + 20, paymentY);
+        paymentY += 6;
+        
+        doc.text('Método de pago:', leftCol, paymentY);
+        doc.text(paymentMethod === 'efectivo' ? 'Efectivo' : 'Transferencia', leftCol + 30, paymentY);
+        paymentY += 10;
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...colors.warning);
+        doc.text('Estado:', leftCol, paymentY);
+        doc.text('PENDIENTE', leftCol + 20, paymentY);
+
+        currentY = paymentY + 20;
+
+        // Términos y condiciones
+        let termsY = drawSection('TÉRMINOS Y CONDICIONES', leftCol, currentY, contentWidth);
+
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...colors.muted);
+
+        const terms = [
+          '• Llegar 15 min antes de la salida',
+          '• Llevar cambio exacto para pagos en efectivo',
+          '• Máximo 1 maleta mediana por persona',
+          '• Solo artículos personales (ropa, calzado, higiene)',
+          '• Cajas/bolsas grandes tienen cargo extra',
+          '• Prohibido alcohol y fumar en la unidad',
+          '• No responsables por objetos perdidos',
+          '• Verificar pertenencias al descender',
+          '• Cancelación 5hrs antes: 100% devolución',
+          '• Cancelación 3hrs antes: 50% devolución',
+          '• Menos de 2hrs: Sin devolución'
+        ];
+
+        const maxTermsY = pageHeight - outerMargin - innerPadding - 10;
+        const lineHeight = 4;
+
+        terms.forEach(term => {
+          if (termsY + lineHeight < maxTermsY) {
+            const splitText = doc.splitTextToSize(term, contentWidth - 10);
+            doc.text(splitText, leftCol, termsY);
+            termsY += splitText.length * lineHeight + 1;
+          }
+        });
+
+        // Pie de página
+        doc.setFontSize(8);
+        doc.setTextColor(...colors.muted);
+        doc.text(
+          'Conserve este boleto durante todo el viaje',
+          pageWidth / 2,
+          pageHeight - outerMargin - 5,
+          { align: 'center' }
+        );
+      };
+
+      // Dibujar el contenido
+      drawTicketContent();
+
+      // Convertir PDF a blob y crear URL
+      const pdfBlob = doc.output('blob');
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      
+      // Crear el mensaje para WhatsApp
       const message = `¡Hola! 👋
 
-Aquí tienes tu boleto de viaje:
+Aquí tienes tu boleto de viaje en PDF adjunto.
 
 🎫 *Boleto #${reservationId}*
-👤 *Pasajero(s):* ${passengerNames}
+👤 *Pasajero(s):* ${passengers.map(p => `${p.firstName} ${p.lastName}`).join(', ')}
 🚌 *Ruta:* ${trip.route.name}
 📅 *Fecha:* ${format(new Date(trip.departureDate), "dd/MM/yyyy", { locale: es })}
 🕐 *Hora de salida:* ${formatTripTime(trip.departureTime)}
@@ -719,16 +930,19 @@ Aquí tienes tu boleto de viaje:
       // Abrir WhatsApp en una nueva ventana
       window.open(whatsappUrl, '_blank');
       
+      // También abrir el PDF en una nueva pestaña para que el usuario pueda descargarlo y enviarlo manualmente
+      window.open(pdfUrl, '_blank');
+      
       toast({
         title: "WhatsApp abierto exitosamente",
-        description: "Se ha abierto WhatsApp con el mensaje y datos del boleto preparados",
+        description: "Se abrió WhatsApp con el mensaje y una ventana con el PDF para enviar manualmente",
       });
 
     } catch (error) {
       console.error('Error al preparar envío por WhatsApp:', error);
       toast({
-        title: "Error al abrir WhatsApp",
-        description: "Ocurrió un error al preparar el mensaje. Intente nuevamente.",
+        title: "Error al generar PDF",
+        description: "Ocurrió un error al generar el boleto. Intente nuevamente.",
         variant: "destructive",
       });
     }
