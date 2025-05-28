@@ -203,7 +203,7 @@ function CommissionsList({ commissions }: { commissions: any[] }) {
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2">
             <div className="font-medium">
-              Pasajero{commission.passengerNames?.length > 1 ? 's' : ''}: {commission.passengerNames?.join(', ') || 'Sin pasajeros'}
+              Pasajero: {commission.passengerName}
             </div>
             <Badge variant={commission.commissionPaid ? "default" : "outline"} className={cn("mt-2 sm:mt-0", commission.commissionPaid ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200")}>
               {commission.commissionPaid ? (
