@@ -508,11 +508,17 @@ interface RequestCardProps {
 }
 
 function RequestCard({ request, isProcessed, onReview, isHighlighted }: RequestCardProps) {
+  const { user } = useAuth();
+  
   // Formatear fechas
   const formattedCreatedAt = format(new Date(request.createdAt), "dd MMM yyyy, HH:mm", { locale: es });
   const formattedReviewedAt = request.reviewedAt 
     ? format(new Date(request.reviewedAt), "dd MMM yyyy, HH:mm", { locale: es }) 
     : null;
+
+  // Verificar si el usuario actual puede revisar esta solicitud
+  // Un usuario no puede revisar sus propias solicitudes
+  const canReview = user && user.id !== request.requesterId;
 
   // Determinar el origen y destino basado en si es sub-viaje o viaje principal
   const getRouteInfo = () => {
@@ -560,10 +566,15 @@ function RequestCard({ request, isProcessed, onReview, isHighlighted }: RequestC
               {formattedCreatedAt}
             </CardDescription>
           </div>
-          {!isProcessed && onReview && (
+          {!isProcessed && onReview && canReview && (
             <Button onClick={() => onReview(request)}>
               Revisar
             </Button>
+          )}
+          {!isProcessed && onReview && !canReview && (
+            <div className="text-xs text-muted-foreground italic">
+              No puedes revisar tu propia solicitud
+            </div>
           )}
         </div>
       </CardHeader>
