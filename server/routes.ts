@@ -2531,11 +2531,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(apiRouter("/reservations"), async (req: Request, res: Response) => {
     try {
+      console.log("[POST /reservations] Datos recibidos en req.body:", JSON.stringify(req.body, null, 2));
+      
       // Asegurarnos de que el método de pago está definido (para usuarios que no tengan una versión actualizada del formulario)
       const formData = {
         ...req.body,
         paymentMethod: req.body.paymentMethod || "cash"
       };
+      
+      console.log("[POST /reservations] FormData después del procesamiento:", JSON.stringify(formData, null, 2));
       
       const validationResult = createReservationValidationSchema.safeParse(formData);
       
