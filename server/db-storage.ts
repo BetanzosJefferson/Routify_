@@ -999,8 +999,9 @@ export class DatabaseStorage implements IStorage {
       
       if (params.origin) {
         const searchOrigin = params.origin.toLowerCase();
-        originMatch = route.origin.toLowerCase().includes(searchOrigin) || 
-                      route.stops.some(stop => stop.toLowerCase().includes(searchOrigin));
+        // Only check the actual origin of the route, not intermediate stops
+        // This ensures we only show trips that actually start from the searched location
+        originMatch = route.origin.toLowerCase().includes(searchOrigin);
       }
       
       if (params.destination) {
