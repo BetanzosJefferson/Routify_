@@ -146,11 +146,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Usar la función actualizada que filtra directamente en la base de datos
       const routes = await storage.getRoutes(companyId || undefined);
-      console.log(`[GET /routes] Encontradas ${routes.length} rutas`);
+      // Routes found
       
       res.json(routes);
     } catch (error) {
-      console.error("Error fetching routes:", error);
+      // Error fetching routes
       res.status(500).json({ error: "Failed to fetch routes" });
     }
   });
@@ -212,11 +212,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(apiRouter("/routes"), isAuthenticated, async (req: Request, res: Response) => {
     try {
-      console.log("POST /routes - Request recibido:", req.body);
+      // Request received
       
       // Primero verificamos si los campos requeridos están presentes
       if (!req.body.name || !req.body.origin || !req.body.destination) {
-        console.log("Datos requeridos faltantes:", req.body);
+        // Missing required data
         return res.status(400).json({ 
           error: "Datos incompletos", 
           details: "Se requieren los campos name, origin y destination" 
@@ -230,22 +230,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user) {
         // CRÍTICO: Obtener correctamente la compañía del usuario
         companyId = user.companyId || user.company;
-        console.log(`[POST /routes] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}, CompanyId: ${user.companyId}, Company: ${user.company}`);
+        // User creating route
         
         // Verificar explícitamente si tenemos un valor de companyId
         if (!companyId) {
-          console.log("[POST /routes] ¡ALERTA! Usuario sin companyId/company");
+          // Alert: User without company
           
           // Para superAdmin, dueño y developer, asignar una compañía predeterminada
           if (user.role === UserRole.SUPER_ADMIN) {
             companyId = "viaja-facil-123";
-            console.log(`[POST /routes] Asignando compañía predeterminada ${companyId} para superAdmin`);
+            // Assigning default company for superAdmin
           } else if (user.role === UserRole.OWNER || user.role === UserRole.DEVELOPER) {
             companyId = "bamo-456";
-            console.log(`[POST /routes] Asignando compañía predeterminada ${companyId} para ${user.role}`);
+            // Assigning default company
           } else {
             // Para otros roles, rechazar la solicitud
-            console.log("[POST /routes] ADVERTENCIA: Usuario sin compañía intenta crear una ruta");
+            // Warning: User without company trying to create route
             return res.status(400).json({
               error: "No se puede crear la ruta",
               details: "El usuario no tiene una compañía asignada"
