@@ -3881,6 +3881,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const totalPrice = reservation.totalAmount || 0;
         const commissionAmount = (totalPrice * commissionPercentage) / 100;
         
+        // LOG de depuración para entender por qué la comisión es 0
+        console.log(`[GET /commissions/my-commissions] DEPURACIÓN Reservación ${reservation.id}:`);
+        console.log(`  - Usuario: ${user.firstName} ${user.lastName} (ID: ${user.id})`);
+        console.log(`  - Porcentaje de comisión del usuario: ${user.commissionPercentage}%`);
+        console.log(`  - Porcentaje usado: ${commissionPercentage}%`);
+        console.log(`  - Total de la reservación (totalAmount): ${reservation.totalAmount}`);
+        console.log(`  - Total usado para cálculo: ${totalPrice}`);
+        console.log(`  - Comisión calculada: ${commissionAmount}`);
+        
         // Obtener el nombre del pasajero correctamente
         let passengerName = "Sin nombre";
         if (reservation.passengers && reservation.passengers.length > 0) {
