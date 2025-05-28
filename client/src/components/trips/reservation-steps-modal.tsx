@@ -1229,7 +1229,7 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
                 
                 <div className="border border-gray-200 rounded-md p-4 space-y-4">
                   <div>
-                    <Label htmlFor="email">Correo Electrónico</Label>
+                    <Label htmlFor="email">Correo Electrónico (opcional)</Label>
                     <Input
                       id="email"
                       type="email"
