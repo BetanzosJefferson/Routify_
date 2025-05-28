@@ -36,14 +36,16 @@ const PACKAGE_ACCESS_ROLES = [
   UserRole.CALL_CENTER, 
   UserRole.CHECKER, 
   UserRole.DRIVER,
-  UserRole.TICKET_OFFICE
+  UserRole.TICKET_OFFICE,
+  'taquilla'  // Valor literal del rol en la base de datos
 ];
 
 const PACKAGE_WRITE_ROLES = [
   UserRole.OWNER,
   UserRole.ADMIN,
   UserRole.CALL_CENTER,
-  UserRole.TICKET_OFFICE
+  UserRole.TICKET_OFFICE,
+  'taquilla'
 ];
 
 const PACKAGE_CREATE_ROLES = [
@@ -51,7 +53,8 @@ const PACKAGE_CREATE_ROLES = [
   UserRole.ADMIN,
   UserRole.CALL_CENTER,
   UserRole.CHECKER,
-  UserRole.TICKET_OFFICE
+  UserRole.TICKET_OFFICE,
+  'taquilla'
 ];
 
 import { setupAuthRoutes } from "./auth"; // Mantenemos para compatibilidad
