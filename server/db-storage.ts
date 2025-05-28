@@ -3603,7 +3603,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  async getPackagesWithTripInfo(filters?: { companyId?: string, tripId?: number, tripIds?: number[] }): Promise<(schema.Package & { 
+  async getPackagesWithTripInfo(filters?: { companyId?: string, companyIds?: string[], tripId?: number, tripIds?: number[] }): Promise<(schema.Package & { 
     tripOrigin?: string, 
     tripDestination?: string, 
     segmentOrigin?: string, 
