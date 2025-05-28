@@ -565,7 +565,6 @@ const TransactionBox: React.FC = () => {
                   <TableHead>Pasajeros</TableHead>
                   <TableHead>Método</TableHead>
                   <TableHead>Monto</TableHead>
-                  {user?.role === "taquilla" && <TableHead>Empresa</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -632,7 +631,6 @@ const TransactionBox: React.FC = () => {
                   <TableHead>Descripción</TableHead>
                   <TableHead>Método</TableHead>
                   <TableHead>Monto</TableHead>
-                  {user?.role === "taquilla" && <TableHead>Empresa</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
