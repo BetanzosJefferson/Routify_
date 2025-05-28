@@ -287,6 +287,125 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
       </Card>
     );
   }
+
+  // Renderizar cuando no hay paquetes que coincidan con los filtros
+  if (filteredPackages.length === 0) {
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-xl font-bold">
+              Paquetes ({packagesQuery.data.length})
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {activeFiltersCount} filtro{activeFiltersCount > 1 ? 's' : ''} aplicado{activeFiltersCount > 1 ? 's' : ''}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant={showFilters ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="mr-2 h-4 w-4" />
+              Filtros
+              {activeFiltersCount > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {activeFiltersCount}
+                </Badge>
+              )}
+            </Button>
+            {canCreateEdit && (
+              <Button onClick={onAddPackage}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Paquete
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Sección de filtros */}
+        {showFilters && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center justify-between">
+                <div className="flex items-center">
+                  <Search className="mr-2 h-5 w-5" />
+                  Filtros de búsqueda
+                </div>
+                {activeFiltersCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="mr-1 h-4 w-4" />
+                    Limpiar filtros
+                  </Button>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="filter-origin">Origen</Label>
+                  <Input
+                    id="filter-origin"
+                    placeholder="Buscar por origen..."
+                    value={filters.origin}
+                    onChange={(e) => setFilters(prev => ({ ...prev, origin: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="filter-destination">Destino</Label>
+                  <Input
+                    id="filter-destination"
+                    placeholder="Buscar por destino..."
+                    value={filters.destination}
+                    onChange={(e) => setFilters(prev => ({ ...prev, destination: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="filter-date">Fecha</Label>
+                  <Input
+                    id="filter-date"
+                    type="date"
+                    value={filters.date}
+                    onChange={(e) => setFilters(prev => ({ ...prev, date: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>No se encontraron paquetes</CardTitle>
+            <CardDescription>
+              No hay paquetes que coincidan con los filtros aplicados.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center py-6">
+            <Search className="h-16 w-16 text-muted-foreground opacity-50" />
+          </CardContent>
+          <CardFooter className="flex justify-center gap-2">
+            <Button variant="outline" onClick={clearFilters}>
+              <X className="mr-2 h-4 w-4" />
+              Limpiar filtros
+            </Button>
+            {canCreateEdit && (
+              <Button onClick={onAddPackage}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Paquete
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
   
   // Renderizar la lista de paquetes
   return (
@@ -410,6 +529,11 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                 }}
               >
                 <TableCell className="font-medium">{pkg.id}</TableCell>
+                <TableCell className="max-w-xs">
+                  <div className="truncate" title={pkg.packageDescription}>
+                    {pkg.packageDescription || "Sin descripción"}
+                  </div>
+                </TableCell>
                 <TableCell>
                   {pkg.senderName} {pkg.senderLastName}
                   <div className="text-xs text-muted-foreground">
