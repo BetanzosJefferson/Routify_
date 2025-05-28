@@ -3876,18 +3876,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Transformar datos para incluir más detalles
       const myCommissions = myApprovedReservations.map(reservation => {
         const commissionPercentage = user.commissionPercentage || 10; // Porcentaje predeterminado si no está definido
-        const commissionAmount = (reservation.totalPrice * commissionPercentage) / 100;
+        const totalPrice = reservation.totalAmount || reservation.totalPrice || 0;
+        const commissionAmount = (totalPrice * commissionPercentage) / 100;
+        
+        // Obtener nombres de pasajeros correctamente
+        const passengerNames = [];
+        if (reservation.passengers && reservation.passengers.length > 0) {
+          passengerNames.push(...reservation.passengers.map(p => `${p.firstName} ${p.lastName}`.trim()));
+        }
+        
+        // Obtener origen y destino del viaje
+        let origin = "Origen no especificado";
+        let destination = "Destino no especificado";
+        
+        if (reservation.trip?.route) {
+          origin = reservation.trip.route.origin || origin;
+          destination = reservation.trip.route.destination || destination;
+        }
         
         return {
           id: reservation.id,
-          passengerName: reservation.passengers?.[0]?.name || "Sin nombre",
+          passengerNames: passengerNames.length > 0 ? passengerNames : ["Sin pasajeros"],
+          passengerCount: reservation.passengers?.length || 0,
           routeName: reservation.trip?.route?.name || "Ruta desconocida",
+          origin: origin,
+          destination: destination,
           tripId: reservation.tripId,
           departureDate: reservation.trip?.departureDate,
-          totalPrice: reservation.totalPrice,
+          departureTime: reservation.trip?.departureTime,
+          totalPrice: totalPrice,
           commissionPercentage: commissionPercentage,
-          commissionAmount: commissionAmount,
-          commissionPaid: reservation.commissionPaid || false
+          commissionAmount: parseFloat(commissionAmount.toFixed(2)),
+          commissionPaid: reservation.commissionPaid || false,
+          reservationStatus: reservation.status,
+          createdAt: reservation.createdAt
         };
       });
       
