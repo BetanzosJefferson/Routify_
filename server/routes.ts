@@ -576,6 +576,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { origin, destination, date, seats } = req.query;
 
+      console.log(`[GET /search-trips] Parámetros recibidos - origin: "${origin}", destination: "${destination}", date: "${date}", seats: "${seats}"`);
+
       // Validar que al menos se proporcione origen o destino
       if (!origin && !destination) {
         console.log(`[GET /search-trips] Error: No se proporcionó origen ni destino`);
