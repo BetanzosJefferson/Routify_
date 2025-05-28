@@ -561,18 +561,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Nueva ruta dedicada para búsqueda precisa de viajes
+  // IMPORTANTE: Ruta dedicada para búsqueda precisa de viajes - DEBE ir antes que /trips
   app.get(apiRouter("/search-trips"), isAuthenticated, async (req: Request, res: Response) => {
     try {
+      console.log(`[SEARCH-TRIPS-DEBUG] ========== INICIO SEARCH TRIPS ==========`);
       const { user } = req as any;
       
       if (!user) {
-        console.log(`[GET /search-trips] Error: Usuario no autenticado`);
+        console.log(`[SEARCH-TRIPS-DEBUG] Error: Usuario no autenticado`);
         return res.status(401).json({ message: 'No autenticado' });
       }
 
-      console.log(`[GET /search-trips] Usuario: ${user.firstName} ${user.lastName}`);
-      console.log(`[GET /search-trips] Filtros recibidos:`, req.query);
+      console.log(`[SEARCH-TRIPS-DEBUG] Usuario: ${user.firstName} ${user.lastName}`);
+      console.log(`[SEARCH-TRIPS-DEBUG] Filtros recibidos:`, req.query);
 
       const { origin, destination, date, seats } = req.query;
 
