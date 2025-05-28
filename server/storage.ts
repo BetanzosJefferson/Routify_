@@ -543,7 +543,7 @@ export class MemStorage implements IStorage {
   }
   
   // Reservation methods
-  async getReservations(companyId?: string): Promise<ReservationWithDetails[]> {
+  async getReservations(companyId?: string, tripId?: number, companyIds?: string[], dateFilter?: string): Promise<ReservationWithDetails[]> {
     let reservations = Array.from(this.reservations.values());
     
     // Filtrar por companyId si se proporciona
@@ -551,11 +551,29 @@ export class MemStorage implements IStorage {
       reservations = reservations.filter(reservation => reservation.companyId === companyId);
     }
     
+    // Filtrar por múltiples compañías si se proporciona
+    if (companyIds && companyIds.length > 0) {
+      reservations = reservations.filter(reservation => 
+        reservation.companyId && companyIds.includes(reservation.companyId)
+      );
+    }
+    
+    // Filtrar por viaje específico si se proporciona
+    if (tripId) {
+      reservations = reservations.filter(reservation => reservation.tripId === tripId);
+    }
+    
     const result: ReservationWithDetails[] = [];
     
     for (const reservation of reservations) {
       const tripWithRoute = await this.getTripWithRouteInfo(reservation.tripId);
       if (!tripWithRoute) continue;
+      
+      // Filtrar por fecha si se proporciona
+      if (dateFilter) {
+        const tripDate = tripWithRoute.departureDate.toISOString().split('T')[0];
+        if (tripDate !== dateFilter) continue;
+      }
       
       const passengers = await this.getPassengers(reservation.id);
       
