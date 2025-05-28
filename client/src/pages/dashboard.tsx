@@ -29,10 +29,12 @@ export default function Dashboard() {
     // Para comisionistas, la sección por defecto es trips
     // Para taquilla, la sección por defecto es trips
     // Para checador, la sección por defecto es trips
+    // Para call center, la sección por defecto es trips
     user?.role === 'chofer' ? "boarding-list" : 
     user?.role === 'comisionista' ? "trips" :
     user?.role === 'taquilla' ? "trips" :
-    user?.role === 'checador' ? "trips" : "create-route"
+    user?.role === 'checador' ? "trips" :
+    user?.role === 'callCenter' ? "trips" : "create-route"
   );
   
   // Update active tab when URL changes
