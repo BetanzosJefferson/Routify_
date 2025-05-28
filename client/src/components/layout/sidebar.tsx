@@ -125,8 +125,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("routes") && (
                 <NavItem 
                   icon={<MapIcon className="h-5 w-5" />} 
-                  active={(location === '/' || location === '/dashboard') && activeTab === "create-route"}
-                  onClick={() => handleTabClick("create-route")}
+                  active={location === "/routes"}
+                  onClick={() => setLocation("/routes")}
                 >
                   Rutas
                 </NavItem>
@@ -134,8 +134,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("publish-trip") && (
                 <NavItem 
                   icon={<ClockIcon className="h-5 w-5" />} 
-                  active={(location === '/' || location === '/dashboard') && activeTab === "publish-trip"}
-                  onClick={() => handleTabClick("publish-trip")}
+                  active={location === "/publish-trip"}
+                  onClick={() => setLocation("/publish-trip")}
                 >
                   Publicar Viajes
                 </NavItem>
@@ -143,8 +143,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               {canAccess("trips") && (
                 <NavItem 
                   icon={<BuildingIcon className="h-5 w-5" />} 
-                  active={(location === '/' || location === '/dashboard') && activeTab === "trips"}
-                  onClick={() => handleTabClick("trips")}
+                  active={location === "/trips"}
+                  onClick={() => setLocation("/trips")}
                 >
                   Viajes
                 </NavItem>

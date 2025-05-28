@@ -32,6 +32,9 @@ import TripLogPageRoute from "@/pages/trip-log-page";
 import UsersPageRoute from "@/pages/users-page";
 import VehiclesPageRoute from "@/pages/vehicles-page";
 import ReservationsPageRoute from "@/pages/reservations-page";
+import RoutesPageRoute from "@/pages/routes-page";
+import PublishTripPageRoute from "@/pages/publish-trip-page";
+import TripsPageRoute from "@/pages/trips-page";
 
 function Router() {
   return (
@@ -55,6 +58,9 @@ function Router() {
       <ProtectedRoute path="/users" component={UsersPageRoute} />
       <ProtectedRoute path="/vehicles" component={VehiclesPageRoute} />
       <ProtectedRoute path="/reservations" component={ReservationsPageRoute} />
+      <ProtectedRoute path="/routes" component={RoutesPageRoute} />
+      <ProtectedRoute path="/publish-trip" component={PublishTripPageRoute} />
+      <ProtectedRoute path="/trips" component={TripsPageRoute} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register/:token" component={RegisterPage} />
       <Route path="/reservation-details" component={ReservationDetails} />
