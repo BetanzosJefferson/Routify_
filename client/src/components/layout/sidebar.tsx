@@ -267,8 +267,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             <div className="space-y-1">
               <NavItem 
                 icon={<Wallet className="h-5 w-5" />} 
-                active={(location === '/' || location === '/dashboard') && activeTab === "user-cash-boxes"}
-                onClick={() => handleTabClick("user-cash-boxes")}
+                active={location === "/user-cash-boxes"}
+                onClick={() => setLocation("/user-cash-boxes")}
               >
                 Caja de usuarios
               </NavItem>
