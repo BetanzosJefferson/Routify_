@@ -32,11 +32,17 @@ export default function MyCommissionsPage() {
 
   // Consulta para obtener las comisiones del comisionista actual
   const { data: myCommissions, isLoading, error } = useQuery({
-    queryKey: ['/api/commissions/my-commissions'],
+    queryKey: ['/api/commissions/my-commissions', Date.now()], // Force cache invalidation
     queryFn: async () => {
       try {
         console.log('Consultando mis comisiones...');
-        const response = await fetch('/api/commissions/my-commissions');
+        const response = await fetch('/api/commissions/my-commissions', {
+          cache: 'no-cache',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
         console.log('Respuesta recibida:', response.status);
         if (!response.ok) {
           const errorText = await response.text();

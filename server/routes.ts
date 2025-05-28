@@ -3819,6 +3819,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Endpoint para que los comisionistas vean sus propias reservaciones aprobadas
   app.get(apiRouter("/commissions/my-commissions"), async (req: Request, res: Response) => {
+    // FORCE CACHE BUST
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     try {
       // Obtener el usuario autenticado
       const { user } = req as any;
