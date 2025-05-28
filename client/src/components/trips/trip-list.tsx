@@ -183,8 +183,8 @@ export function TripList() {
       params.seats = parseInt(seats, 10);
     }
 
-    // Use dedicated search endpoint for precise filtering
-    params.useSearchEndpoint = 'true';
+    // Use regular trips endpoint (search endpoint has routing conflict)
+    params.useSearchEndpoint = 'false';
 
     setSearchParams(params);
   };
