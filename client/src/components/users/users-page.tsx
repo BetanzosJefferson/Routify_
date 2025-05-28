@@ -415,7 +415,7 @@ export function UsersPage() {
                       </Card>
                     ))}
                   </div>
-                </>)
+                </>
               ) : (
                 <div className="flex justify-center items-center h-32">
                   <p className="text-muted-foreground">
