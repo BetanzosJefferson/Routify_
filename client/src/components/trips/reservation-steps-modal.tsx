@@ -898,14 +898,16 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
       // Dibujar el contenido
       drawTicketContent();
 
-      // Convertir PDF a blob y crear URL
-      const pdfBlob = doc.output('blob');
-      const pdfUrl = URL.createObjectURL(pdfBlob);
+      // Descargar el PDF automáticamente
+      const fileName = `boleto-${reservationId}.pdf`;
+      doc.save(fileName);
       
       // Crear el mensaje para WhatsApp
       const message = `¡Hola! 👋
 
-Aquí tienes tu boleto de viaje en PDF adjunto.
+Te envío tu boleto de viaje. El archivo PDF se descargó automáticamente en tu computadora como "${fileName}".
+
+Por favor adjúntalo a este chat.
 
 🎫 *Boleto #${reservationId}*
 👤 *Pasajero(s):* ${passengers.map(p => `${p.firstName} ${p.lastName}`).join(', ')}
@@ -930,12 +932,9 @@ Aquí tienes tu boleto de viaje en PDF adjunto.
       // Abrir WhatsApp en una nueva ventana
       window.open(whatsappUrl, '_blank');
       
-      // También abrir el PDF en una nueva pestaña para que el usuario pueda descargarlo y enviarlo manualmente
-      window.open(pdfUrl, '_blank');
-      
       toast({
-        title: "WhatsApp abierto exitosamente",
-        description: "Se abrió WhatsApp con el mensaje y una ventana con el PDF para enviar manualmente",
+        title: "PDF descargado y WhatsApp abierto",
+        description: `El boleto "${fileName}" se descargó automáticamente. Adjúntalo en el chat de WhatsApp que se abrió.`,
       });
 
     } catch (error) {
