@@ -22,7 +22,10 @@ import {
   Users,
   ArrowRightLeft,
   ReceiptIcon,
-  Wallet
+  Wallet,
+  PackageIcon,
+  RouteIcon,
+  Calendar
 } from "lucide-react";
 
 interface SidebarProps {
@@ -41,14 +44,14 @@ function NavItem({ icon, active, onClick, children }: NavItemProps) {
   return (
     <button
       className={cn(
-        "group flex items-center w-full px-3 py-2.5 rounded-md font-medium transition-all duration-200",
+        "group flex items-center w-full px-3 py-2.5 rounded-lg font-medium transition-all duration-200 text-sm",
         active
-          ? "bg-primary text-primary-foreground hover:bg-primary/90"
+          ? "bg-primary text-white shadow-sm"
           : "text-gray-700 dark:text-gray-200 hover:text-primary dark:hover:text-primary hover:bg-primary/10"
       )}
       onClick={onClick}
     >
-      <span className={cn("mr-3 flex-shrink-0", active ? "text-white" : "text-gray-500 dark:text-gray-400 group-hover:text-primary")}>{icon}</span>
+      <span className={cn("mr-3 flex-shrink-0 w-5 h-5", active ? "text-white" : "text-gray-500 dark:text-gray-400 group-hover:text-primary")}>{icon}</span>
       <span className="truncate">{children}</span>
     </button>
   );
@@ -89,7 +92,12 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   // Función para verificar si el usuario tiene acceso a una sección
   const canAccess = (sectionId: string): boolean => {
     if (!user) return false;
-    return hasAccessToSection(user.role, sectionId);
+    const hasAccess = hasAccessToSection(user.role, sectionId);
+    // Debug para ver permisos específicos del role "dueño"
+    if (user.role === "dueño" && sectionId === "packages") {
+      console.log(`Debug: Usuario ${user.role} acceso a ${sectionId}:`, hasAccess);
+    }
+    return hasAccess;
   };
   
   return (
@@ -124,7 +132,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             <NavSection title="Gestión de Rutas">
               {canAccess("routes") && (
                 <NavItem 
-                  icon={<MapIcon className="h-5 w-5" />} 
+                  icon={<RouteIcon className="h-5 w-5" />} 
                   active={(location === '/' || location === '/dashboard') && activeTab === "create-route"}
                   onClick={() => handleTabClick("create-route")}
                 >
@@ -133,7 +141,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               )}
               {canAccess("publish-trip") && (
                 <NavItem 
-                  icon={<ClockIcon className="h-5 w-5" />} 
+                  icon={<Calendar className="h-5 w-5" />} 
                   active={(location === '/' || location === '/dashboard') && activeTab === "publish-trip"}
                   onClick={() => handleTabClick("publish-trip")}
                 >
@@ -283,7 +291,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               )}
               {canAccess("packages") && (
                 <NavItem 
-                  icon={<FileTextIcon className="h-5 w-5" />} 
+                  icon={<PackageIcon className="h-5 w-5" />} 
                   active={location === "/packages"}
                   onClick={() => setLocation("/packages")}
                 >
