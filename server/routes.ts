@@ -3873,6 +3873,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[GET /commissions/my-commissions] Encontradas ${myApprovedReservations.length} reservaciones aprobadas del comisionista`);
       
+      // DEBUG: Verificar datos del usuario comisionista
+      console.log(`[GET /commissions/my-commissions] Usuario comisionista: ${user.firstName} ${user.lastName} (ID: ${user.id})`);
+      console.log(`[GET /commissions/my-commissions] Porcentaje de comisión configurado: ${user.commissionPercentage}%`);
+      
       // Transformar datos para incluir más detalles
       const myCommissions = myApprovedReservations.map(reservation => {
         const commissionPercentage = user.commissionPercentage || 10; // Porcentaje predeterminado si no está definido
@@ -3914,6 +3918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
       
+      console.log(`[GET /commissions/my-commissions] Enviando respuesta con ${myCommissions.length} comisiones - ${new Date().toISOString()}`);
       res.json(myCommissions);
     } catch (error) {
       console.error(`[GET /commissions/my-commissions] Error: ${error}`);
