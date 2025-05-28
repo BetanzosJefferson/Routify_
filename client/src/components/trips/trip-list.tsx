@@ -109,7 +109,7 @@ export function TripList() {
   const yesterday = formatDateForInput(new Date(Date.now() - 24 * 60 * 60 * 1000));
   const tomorrow = formatDateForInput(new Date(Date.now() + 24 * 60 * 60 * 1000));
   
-  const [searchParams, setSearchParams] = useState<SearchParams>({ date: today });
+  const [searchParams, setSearchParams] = useState<SearchParams>({ date: today, parentOnly: 'true' } as any);
   const [selectedTrip, setSelectedTrip] = useState<TripWithRouteInfo | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [sortMethod, setSortMethod] = useState<"departure" | "price" | "duration">("departure");
@@ -140,7 +140,7 @@ export function TripList() {
       const paramsWithVisibility = { ...searchParams, visibility: 'publicado' };
       
       // Solo buscar sub-viajes si el usuario ha especificado origen Y destino
-      const hasOriginAndDestination = origin && destination;
+      const hasOriginAndDestination = searchParams.origin && searchParams.destination;
       if (!hasOriginAndDestination) {
         // Si no hay filtros de origen/destino, solo mostrar viajes padre
         (paramsWithVisibility as any).parentOnly = 'true';
@@ -173,6 +173,11 @@ export function TripList() {
       if (date) params.date = formatDateForApiQuery(date);
       if (seats && !isNaN(parseInt(seats, 10))) {
         params.seats = parseInt(seats, 10);
+      }
+      
+      // Si no hay filtros de origen y destino, solo mostrar viajes padre
+      if (!origin && !destination) {
+        (params as any).parentOnly = 'true';
       }
       
       setSearchParams(params);
