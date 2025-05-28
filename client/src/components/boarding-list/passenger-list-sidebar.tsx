@@ -403,7 +403,7 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
       <div className="p-6">
         {/* Información del viaje */}
         <div className="mb-6 bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
-
+          <h3 className="text-xl font-semibold mb-1">{tripDetails.route?.name}</h3>
           <p className="text-gray-600 font-medium mb-3">
             {tripDetails.segmentOrigin || (tripDetails.route?.origin || 'Origen')} → 
             {tripDetails.segmentDestination || (tripDetails.route?.destination || 'Destino')}

@@ -1263,189 +1263,117 @@ export default function TripSummary({ className }: TripSummaryProps) {
                       </div>
                     </div>
                     
-                    {/* Nueva sección de presupuesto y gastos mejorada */}
-                    <div className="mt-6 space-y-6">
-                      {/* Header de la sección */}
-                      <div className="flex items-center">
-                        <div className="rounded-full bg-purple-100 p-2 mr-3">
-                          <CoinsIcon className="h-6 w-6 text-purple-600" />
+                    {/* Nueva sección de presupuesto y gastos */}
+                    <div className="mt-6">
+                      <div className="bg-gray-50 rounded-lg p-6">
+                        <div className="flex items-center mb-4">
+                          <div className="rounded-full bg-purple-100 p-2 mr-3">
+                            <CoinsIcon className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-800">Presupuesto y Gastos</h3>
                         </div>
-                        <h3 className="text-xl font-semibold text-gray-800">Presupuesto y Gastos</h3>
-                      </div>
-
-                      {/* Grid responsive para las tarjetas principales */}
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         
-                        {/* Tarjeta de Presupuesto */}
-                        <Card className="border-purple-200 bg-purple-50">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-lg flex items-center text-purple-800">
-                              <PiggyBankIcon className="h-5 w-5 mr-2" />
-                              Presupuesto Asignado
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            <div className="text-center">
-                              {isLoadingBudget ? (
-                                <div className="flex items-center justify-center">
-                                  <Loader2 className="h-5 w-5 animate-spin text-purple-600" />
-                                  <span className="ml-2 text-gray-600">Cargando...</span>
-                                </div>
+                        {/* Presupuesto para el operador */}
+                        <div className="mb-6">
+                          <Label className="text-gray-700 mb-2">Presupuesto para el operador</Label>
+                          <div className="flex items-center">
+                            <Input
+                              type="number"
+                              min="0"
+                              placeholder="Monto en MXN"
+                              value={operatorBudget || ''}
+                              onChange={(e) => setOperatorBudget(parseFloat(e.target.value) || 0)}
+                              className="flex-1"
+                              disabled={isLoadingBudget || isSavingBudget}
+                            />
+                            <div className="ml-2 mr-2">
+                              <Label>MXN</Label>
+                            </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => selectedTrip && saveTripBudget(selectedTrip, operatorBudget)}
+                              disabled={isLoadingBudget || isSavingBudget || !selectedTrip}
+                            >
+                              {isSavingBudget ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
-                                <div className="text-3xl font-bold text-purple-700">
-                                  ${operatorBudget?.toFixed(2) || '0.00'}
-                                </div>
+                                <PiggyBankIcon className="h-4 w-4" />
                               )}
-                              <p className="text-sm text-purple-600 mt-1">MXN</p>
+                              <span className="ml-2">{isSavingBudget ? "Guardando..." : "Guardar"}</span>
+                            </Button>
+                          </div>
+                          {isLoadingBudget && (
+                            <div className="text-sm text-gray-500 mt-1 flex items-center">
+                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              Cargando presupuesto...
                             </div>
-                            
-                            <div className="space-y-3">
-                              <Input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder="Asignar presupuesto"
-                                value={operatorBudget || ''}
-                                onChange={(e) => setOperatorBudget(parseFloat(e.target.value) || 0)}
-                                disabled={isLoadingBudget || isSavingBudget}
-                                className="text-center"
-                              />
-                              <Button 
-                                onClick={() => selectedTrip && saveTripBudget(selectedTrip, operatorBudget)}
-                                disabled={isLoadingBudget || isSavingBudget || !selectedTrip}
-                                className="w-full bg-purple-600 hover:bg-purple-700"
-                                size="sm"
-                              >
-                                {isSavingBudget ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Guardando...
-                                  </>
-                                ) : (
-                                  <>
-                                    <PiggyBankIcon className="h-4 w-4 mr-2" />
-                                    Guardar Presupuesto
-                                  </>
-                                )}
-                              </Button>
+                          )}
+                        </div>
+                        
+                        {/* Sección de gastos */}
+                        <div>
+                          <div className="flex items-center mb-4">
+                            <h4 className="text-md font-semibold text-gray-700">Gastos</h4>
+                            <div className="flex-1 mx-2 h-px bg-gray-200"></div>
+                            <div className="text-sm text-gray-500">Total: ${totalExpenses.toFixed(2)}</div>
+                          </div>
+                          
+                          {/* Lista de gastos actuales */}
+                          {isLoadingExpenses ? (
+                            <div className="py-4 flex justify-center items-center space-x-2">
+                              <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                              <span className="text-gray-600">Cargando gastos...</span>
                             </div>
-                          </CardContent>
-                        </Card>
-
-                        {/* Tarjeta de Gastos */}
-                        <Card className="border-red-200 bg-red-50">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-lg flex items-center justify-between text-red-800">
-                              <div className="flex items-center">
-                                <ReceiptIcon className="h-5 w-5 mr-2" />
-                                Gastos Registrados
-                              </div>
-                              <span className="text-sm font-normal">
-                                ({expenses.length})
-                              </span>
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-center">
-                              {isLoadingExpenses ? (
-                                <div className="flex items-center justify-center">
-                                  <Loader2 className="h-5 w-5 animate-spin text-red-600" />
-                                  <span className="ml-2 text-gray-600">Cargando...</span>
-                                </div>
-                              ) : (
-                                <div className="text-3xl font-bold text-red-700">
-                                  ${totalExpenses.toFixed(2)}
-                                </div>
-                              )}
-                              <p className="text-sm text-red-600 mt-1">MXN</p>
-                            </div>
-                            
-                            {/* Lista compacta de gastos */}
-                            {expenses.length > 0 && (
-                              <div className="mt-4 space-y-2 max-h-32 overflow-y-auto">
-                                {expenses.slice(0, 3).map((expense) => (
-                                  <div key={expense.id} className="flex justify-between items-center p-2 bg-white rounded-md text-xs">
-                                    <span className="text-gray-700 truncate">{expense.category}</span>
-                                    <span className="text-red-600 font-medium">${expense.amount.toFixed(2)}</span>
+                          ) : expenses.length > 0 ? (
+                            <div className="space-y-2 mb-4">
+                              {expenses.map(expense => (
+                                <div key={expense.id} className="flex items-center justify-between bg-white p-3 rounded-md border border-gray-200">
+                                  <div className="flex-1">
+                                    <div className="font-medium">${expense.amount.toFixed(2)} ({expense.category})</div>
+                                    {expense.description && (
+                                      <div className="text-sm text-gray-500">{expense.description}</div>
+                                    )}
+                                    {/* Mostrar información de quién registró el gasto */}
+                                    {expense.createdBy && (
+                                      <div className="text-xs text-blue-600 mt-1 flex items-center">
+                                        <UserIcon className="h-3 w-3 mr-1" />
+                                        Registrado por: {expense.createdBy}
+                                      </div>
+                                    )}
                                   </div>
-                                ))}
-                                {expenses.length > 3 && (
-                                  <div className="text-center text-xs text-gray-500">
-                                    +{expenses.length - 3} gastos más
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-
-                        {/* Tarjeta de Balance */}
-                        <Card className={`border-2 ${tripProfit >= 0 ? 'border-green-200 bg-green-50' : 'border-orange-200 bg-orange-50'}`}>
-                          <CardHeader className="pb-3">
-                            <CardTitle className={`text-lg flex items-center ${tripProfit >= 0 ? 'text-green-800' : 'text-orange-800'}`}>
-                              <TrendingUpIcon className="h-5 w-5 mr-2" />
-                              Balance Final
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-center space-y-3">
-                              {isLoadingExpenses || isLoadingFinancialData ? (
-                                <div className="flex items-center justify-center">
-                                  <Loader2 className="h-5 w-5 animate-spin text-gray-600" />
-                                  <span className="ml-2 text-gray-600">Calculando...</span>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => handleRemoveExpense(expense.id)}
+                                    disabled={isRemovingExpense === expense.id}
+                                  >
+                                    {isRemovingExpense === expense.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin text-red-500" />
+                                    ) : (
+                                      <MinusCircleIcon className="h-4 w-4 text-red-500" />
+                                    )}
+                                  </Button>
                                 </div>
-                              ) : (
-                                <>
-                                  <div className={`text-4xl font-bold ${tripProfit >= 0 ? 'text-green-700' : 'text-orange-700'}`}>
-                                    ${tripProfit.toFixed(2)}
-                                  </div>
-                                  <p className="text-sm text-gray-600">
-                                    {tripProfit >= 0 ? 'Ganancia' : 'Pérdida'}
-                                  </p>
-                                </>
-                              )}
-                              
-                              {/* Desglose rápido */}
-                              <div className="pt-3 border-t border-gray-200 space-y-1 text-xs">
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Ventas:</span>
-                                  <span className="text-green-600 font-medium">${totalSales.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Gastos:</span>
-                                  <span className="text-red-600 font-medium">-${totalExpenses.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Presupuesto:</span>
-                                  <span className="text-purple-600 font-medium">${operatorBudget?.toFixed(2) || '0.00'}</span>
-                                </div>
-                              </div>
+                              ))}
                             </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-
-                      {/* Sección de agregar gastos mejorada */}
-                      <Card className="border-gray-200">
-                        <CardHeader>
-                          <CardTitle className="text-lg flex items-center text-gray-800">
-                            <PlusCircleIcon className="h-5 w-5 mr-2" />
-                            Agregar Nuevo Gasto
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          {/* Formulario para agregar gasto con grid responsive */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="expense-category" className="text-sm font-medium text-gray-700 mb-2 block">
-                                Categoría del Gasto
-                              </Label>
-                              <Select
-                                value={newExpense.category}
-                                onValueChange={(value) => setNewExpense({...newExpense, category: value})}
-                              >
-                                <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Seleccionar categoría" />
+                          ) : (
+                            <div className="text-center py-4 text-gray-500 mb-4">
+                              No hay gastos registrados
+                            </div>
+                          )}
+                          
+                          {/* Formulario para agregar nuevo gasto */}
+                          <div className="bg-white p-4 rounded-md border border-gray-200 mb-4">
+                            <h5 className="text-sm font-medium mb-3 text-gray-700">Agregar nuevo gasto</h5>
+                            <div className="grid grid-cols-12 gap-2 mb-2">
+                              <div className="col-span-7">
+                                <Select
+                                  value={newExpense.category}
+                                  onValueChange={(value) => setNewExpense({...newExpense, category: value})}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Seleccionar categoría" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="combustible">Combustible</SelectItem>
@@ -1456,122 +1384,80 @@ export default function TripSummary({ className }: TripSummaryProps) {
                                     <SelectItem value="otro">Otro gasto</SelectItem>
                                   </SelectContent>
                                 </Select>
-                            </div>
-                            
-                            <div>
-                              <Label htmlFor="expense-amount" className="text-sm font-medium text-gray-700 mb-2 block">
-                                Monto del Gasto
-                              </Label>
-                              <div className="flex items-center space-x-2">
-                                <Input 
-                                  id="expense-amount"
-                                  type="number" 
-                                  min="0"
-                                  step="0.01"
-                                  placeholder="0.00" 
-                                  value={newExpense.amount || ''}
-                                  onChange={(e) => setNewExpense({...newExpense, amount: parseFloat(e.target.value) || 0})}
-                                  className="flex-1"
-                                />
-                                <span className="text-sm text-gray-500 font-medium">MXN</span>
+                              </div>
+                              <div className="col-span-5">
+                                <div className="flex items-center">
+                                  <Input 
+                                    type="number" 
+                                    min="0"
+                                    placeholder="Monto" 
+                                    value={newExpense.amount || ''}
+                                    onChange={(e) => setNewExpense({...newExpense, amount: parseFloat(e.target.value) || 0})}
+                                  />
+                                  <span className="ml-2">MXN</span>
+                                </div>
                               </div>
                             </div>
+                            <div className="mb-3">
+                              <Input 
+                                placeholder="Descripción (opcional)" 
+                                value={newExpense.description || ''}
+                                onChange={(e) => setNewExpense({...newExpense, description: e.target.value})}
+                              />
+                            </div>
+                            <Button 
+                              onClick={handleAddExpense}
+                              disabled={!newExpense.category || newExpense.amount <= 0 || !selectedTrip || isSavingExpense}
+                              className="w-full"
+                            >
+                              {isSavingExpense ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Guardando...
+                                </>
+                              ) : (
+                                <>
+                                  <PlusCircleIcon className="h-4 w-4 mr-2" />
+                                  Agregar Gasto
+                                </>
+                              )}
+                            </Button>
                           </div>
                           
-                          <div>
-                            <Label htmlFor="expense-description" className="text-sm font-medium text-gray-700 mb-2 block">
-                              Descripción (Opcional)
-                            </Label>
-                            <Input 
-                              id="expense-description"
-                              placeholder="Detalles adicionales del gasto..." 
-                              value={newExpense.description || ''}
-                              onChange={(e) => setNewExpense({...newExpense, description: e.target.value})}
-                            />
+                          {/* Resumen financiero */}
+                          <div className="bg-gray-100 p-4 rounded-md">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <div className="text-sm text-gray-600">Ventas Totales</div>
+                                {isLoadingFinancialData ? (
+                                  <div className="profit-loader mt-1"></div>
+                                ) : (
+                                  <div className="font-bold text-green-600">${totalSales.toFixed(2)}</div>
+                                )}
+                              </div>
+                              <div>
+                                <div className="text-sm text-gray-600">Gastos Totales</div>
+                                {isLoadingFinancialData || isLoadingExpenses ? (
+                                  <div className="profit-loader mt-1"></div>
+                                ) : (
+                                  <div className="font-bold text-red-600">${totalExpenses.toFixed(2)}</div>
+                                )}
+                              </div>
+                            </div>
+                            <Separator className="my-3" />
+                            <div className="flex justify-between items-center">
+                              <div className="font-medium">Ganancia del viaje</div>
+                              {isLoadingExpenses || isLoadingFinancialData ? (
+                                <div className="profit-loader" style={{width: '120px', height: '30px'}}></div>
+                              ) : (
+                                <div className={`text-xl font-bold ${tripProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  ${tripProfit.toFixed(2)}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          
-                          <Button 
-                            onClick={handleAddExpense}
-                            disabled={!newExpense.category || newExpense.amount <= 0 || !selectedTrip || isSavingExpense}
-                            className="w-full bg-green-600 hover:bg-green-700"
-                            size="lg"
-                          >
-                            {isSavingExpense ? (
-                              <>
-                                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                                Registrando Gasto...
-                              </>
-                            ) : (
-                              <>
-                                <PlusCircleIcon className="h-5 w-5 mr-2" />
-                                Registrar Gasto
-                              </>
-                            )}
-                          </Button>
-                        </CardContent>
-                      </Card>
-
-                      {/* Lista detallada de gastos */}
-                      {expenses.length > 0 && (
-                        <Card className="border-gray-200">
-                          <CardHeader>
-                            <CardTitle className="text-lg flex items-center justify-between text-gray-800">
-                              <div className="flex items-center">
-                                <ReceiptIcon className="h-5 w-5 mr-2" />
-                                Gastos Detallados
-                              </div>
-                              <span className="text-sm font-normal text-gray-500">
-                                {expenses.length} {expenses.length === 1 ? 'registro' : 'registros'}
-                              </span>
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            {isLoadingExpenses ? (
-                              <div className="py-8 flex justify-center items-center space-x-2">
-                                <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-                                <span className="text-gray-600">Cargando gastos...</span>
-                              </div>
-                            ) : (
-                              <div className="space-y-3">
-                                {expenses.map(expense => (
-                                  <div key={expense.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
-                                    <div className="flex-1">
-                                      <div className="flex items-center mb-1">
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-800 mr-2">
-                                          {expense.category}
-                                        </span>
-                                        <span className="font-bold text-lg text-gray-900">${expense.amount.toFixed(2)}</span>
-                                      </div>
-                                      {expense.description && (
-                                        <div className="text-sm text-gray-600 mb-1">{expense.description}</div>
-                                      )}
-                                      {expense.createdBy && (
-                                        <div className="text-xs text-blue-600 flex items-center">
-                                          <UserIcon className="h-3 w-3 mr-1" />
-                                          Registrado por: {expense.createdBy}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
-                                      onClick={() => handleRemoveExpense(expense.id)}
-                                      disabled={isRemovingExpense === expense.id}
-                                      className="ml-4 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    >
-                                      {isRemovingExpense === expense.id ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <MinusCircleIcon className="h-4 w-4" />
-                                      )}
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      )}
+                        </div>
+                      </div>
                     </div>
 
                     {/* Lista de Pasajeros */}
