@@ -4,7 +4,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { 
   UserIcon, 
   LogOutIcon,
-  X
+  X,
+  MenuIcon
 } from "lucide-react";
 import { NotificationsMenu } from "@/components/notifications/notifications-menu";
 import {
@@ -25,7 +26,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ProfilePage } from "@/components/profile/profile-page";
+import { TabType } from "@/hooks/use-active-tab";
+import { hasAccessToSection } from "@/lib/role-based-permissions";
 
 export function Topbar() {
   const [, setLocation] = useLocation();
