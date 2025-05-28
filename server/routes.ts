@@ -561,6 +561,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Nueva ruta dedicada para búsqueda precisa de viajes
+  app.get(apiRouter("/search-trips"), async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      if (!user) {
+        return res.status(401).json({ message: 'No autenticado' });
+      }
+
+      console.log(`[GET /search-trips] Usuario: ${user.firstName} ${user.lastName}`);
+      console.log(`[GET /search-trips] Filtros recibidos:`, req.query);
+
+      const { origin, destination, date, seats } = req.query;
+
+      // Validar que al menos se proporcione origen o destino
+      if (!origin && !destination) {
+        return res.status(400).json({ 
+          message: 'Debe proporcionar al menos un origen o destino para la búsqueda' 
+        });
+      }
+
+      const searchParams: any = {
+        visibility: 'publicado'
+      };
+
+      // Aplicar filtro de compañía según el rol del usuario
+      if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.TICKET_OFFICE) {
+        const userCompanyId = user.companyId || user.company || null;
+        if (userCompanyId) {
+          searchParams.companyId = userCompanyId;
+          console.log(`[GET /search-trips] Filtro compañía aplicado: ${userCompanyId}`);
+        } else {
+          console.log(`[GET /search-trips] Usuario sin compañía asignada`);
+          return res.json([]);
+        }
+      }
+
+      if (origin) searchParams.origin = origin as string;
+      if (destination) searchParams.destination = destination as string;
+      if (date) searchParams.date = date as string;
+      if (seats) searchParams.seats = parseInt(seats as string, 10);
+
+      // Buscar solo sub-viajes y viajes que coincidan exactamente
+      searchParams.parentOnly = 'false';
+
+      console.log(`[GET /search-trips] Parámetros de búsqueda:`, searchParams);
+
+      const trips = await storage.searchTrips(searchParams);
+      
+      console.log(`[GET /search-trips] Encontrados ${trips.length} viajes`);
+      
+      res.json(trips);
+    } catch (error) {
+      console.error('Error en búsqueda de viajes:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  });
+
   // Ruta estándar para buscar viajes (solo muestra los publicados por defecto)
   app.get(apiRouter("/trips"), async (req: Request, res: Response) => {
     try {

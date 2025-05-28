@@ -135,23 +135,25 @@ export function TripList() {
 
   // Filter trips based on search parameters
   const { data: trips, isLoading, isError } = useQuery({
-    queryKey: ["/api/trips", searchParams],
+    queryKey: searchParams.useSearchEndpoint ? ["/api/search-trips", searchParams] : ["/api/trips", searchParams],
     queryFn: async () => {
-      // Añadir el filtro de visibilidad publicado a los parámetros de búsqueda
+      const endpoint = searchParams.useSearchEndpoint ? '/api/search-trips' : '/api/trips';
+      
+      // Prepare parameters
       const paramsWithVisibility = { ...searchParams, visibility: 'publicado' };
-
-      // La lógica para parentOnly ahora se manejará completamente en el useEffect,
-      // así que no necesitamos modificarla aquí basada en hasOriginAndDestination.
-      // Simplemente enviamos los parámetros como están.
+      
+      // Remove the useSearchEndpoint flag from query parameters
+      const { useSearchEndpoint, ...queryParams } = paramsWithVisibility;
 
       // Debug: mostrar los parámetros que se van a enviar
-      console.log('[TripList Debug] Parámetros finales:', paramsWithVisibility);
+      console.log(`[TripList Debug] Usando endpoint: ${endpoint}`);
+      console.log('[TripList Debug] Parámetros finales:', queryParams);
 
       const queryString = new URLSearchParams(
-        Object.entries(paramsWithVisibility).filter(([_, v]) => v !== undefined) as [string, string][]
+        Object.entries(queryParams).filter(([_, v]) => v !== undefined) as [string, string][]
       ).toString();
 
-      const response = await fetch(`/api/trips${queryString ? `?${queryString}` : ''}`);
+      const response = await fetch(`${endpoint}${queryString ? `?${queryString}` : ''}`);
       if (!response.ok) throw new Error("Failed to fetch trips");
       return await response.json() as TripWithRouteInfo[];
     },
@@ -164,8 +166,15 @@ export function TripList() {
     return extractLocationsFromTrips(allTrips);
   }, [allTrips]);
 
-  // Manual search function
+  // Manual search function using dedicated search endpoint
   const handleSearch = () => {
+    // Only proceed if we have at least origin or destination
+    if (!origin && !destination) {
+      // If no origin/destination, show default trips
+      setSearchParams({ date: formatDateForApiQuery(date), parentOnly: 'true' });
+      return;
+    }
+
     const params: SearchParams = {};
     if (origin) params.origin = origin;
     if (destination) params.destination = destination;
@@ -174,14 +183,8 @@ export function TripList() {
       params.seats = parseInt(seats, 10);
     }
 
-    // Lógica actualizada para parentOnly
-    if (origin || destination) {
-      // Si se proporciona origen o destino, busca todos los viajes coincidentes (incluidos los subtrips)
-      params.parentOnly = 'false';
-    } else {
-      // Si no se proporciona ni origen ni destino, muestra solo los viajes padre
-      params.parentOnly = 'true';
-    }
+    // Use dedicated search endpoint for precise filtering
+    params.useSearchEndpoint = 'true';
 
     setSearchParams(params);
   };
