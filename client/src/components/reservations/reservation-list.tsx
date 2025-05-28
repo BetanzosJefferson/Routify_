@@ -495,27 +495,28 @@ export function ReservationList() {
                 <TabsList className="w-full bg-transparent border-b border-gray-100 p-0 mb-0">
                   <TabsTrigger 
                     value="upcoming" 
-                    className="flex-1 items-center gap-1 px-0 py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                    className="flex-1 items-center justify-center gap-1 px-1 py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-xs sm:text-sm"
                   >
-                    <CalendarIcon className="h-5 w-5 mr-2" />
-                    <span className="font-medium">Actuales y Futuras</span>
-                    <Badge className="ml-2 bg-primary text-white">{upcomingReservations.length}</Badge>
+                    <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5 sm:mr-1" />
+                    <span className="font-medium hidden xs:inline">Actuales</span>
+                    <span className="font-medium hidden sm:inline"> y Futuras</span>
+                    <Badge className="ml-1 bg-primary text-white text-xs px-1 py-0">{upcomingReservations.length}</Badge>
                   </TabsTrigger>
                   <TabsTrigger 
                     value="archived" 
-                    className="flex-1 items-center gap-1 px-0 py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                    className="flex-1 items-center justify-center gap-1 px-1 py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-xs sm:text-sm"
                   >
-                    <ArchiveIcon className="h-5 w-5 mr-2" />
+                    <ArchiveIcon className="h-4 w-4 sm:h-5 sm:w-5 sm:mr-1" />
                     <span className="font-medium">Archivadas</span>
-                    <Badge className="ml-2 bg-muted text-muted-foreground">{archivedReservations.length}</Badge>
+                    <Badge className="ml-1 bg-muted text-muted-foreground text-xs px-1 py-0">{archivedReservations.length}</Badge>
                   </TabsTrigger>
                   <TabsTrigger 
                     value="canceled" 
-                    className="flex-1 items-center gap-1 px-0 py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                    className="flex-1 items-center justify-center gap-1 px-1 py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-xs sm:text-sm"
                   >
-                    <XIcon className="h-5 w-5 mr-2" />
+                    <XIcon className="h-4 w-4 sm:h-5 sm:w-5 sm:mr-1" />
                     <span className="font-medium">Canceladas</span>
-                    <Badge className="ml-2 bg-red-100 text-red-800 border-red-200">{canceledReservations.length}</Badge>
+                    <Badge className="ml-1 bg-red-100 text-red-800 border-red-200 text-xs px-1 py-0">{canceledReservations.length}</Badge>
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
