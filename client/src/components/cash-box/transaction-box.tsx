@@ -551,61 +551,130 @@ const TransactionBox: React.FC = () => {
               <h3 className="text-lg font-semibold">Reservaciones ({reservationTransactions.length})</h3>
             </div>
             
-            <Table>
-              <TableCaption>
-                {reservationTransactions.length === 0
-                  ? "No hay transacciones de reservaciones pendientes"
-                  : "Lista de transacciones de reservaciones"}
-              </TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Origen-Destino</TableHead>
-                  <TableHead>Pasajeros</TableHead>
-                  <TableHead>Método</TableHead>
-                  <TableHead>Monto</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {reservationTransactions.map((transaction) => {
+            {/* Desktop Table */}
+            <div className="hidden lg:block">
+              <Table>
+                <TableCaption>
+                  {reservationTransactions.length === 0
+                    ? "No hay transacciones de reservaciones pendientes"
+                    : "Lista de transacciones de reservaciones"}
+                </TableCaption>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Origen-Destino</TableHead>
+                    <TableHead>Pasajeros</TableHead>
+                    <TableHead>Método</TableHead>
+                    <TableHead>Monto</TableHead>
+                    {user?.role === "taquilla" && <TableHead>Empresa</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reservationTransactions.map((transaction) => {
+                    try {
+                      const details = transaction.detalles?.details || {};
+                      return (
+                        <TableRow key={transaction.id}>
+                          <TableCell>{transaction.id}</TableCell>
+                          <TableCell>
+                            {formatDate(details.dateCreated || transaction.createdAt)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-xs">
+                              <div className="font-medium">{details.origen}</div>
+                              <div className="mt-1">{details.destino}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{details.pasajeros || 'N/A'}</TableCell>
+                          <TableCell>
+                            <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
+                              {details.metodoPago || "N/A"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
+                          {user?.role === "taquilla" && (
+                            <TableCell>
+                              <div className="text-xs font-mono">
+                                {transaction.companyId || 'N/A'}
+                              </div>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    } catch (error) {
+                      console.error("Error al renderizar transacción:", error, transaction);
+                      return null;
+                    }
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="lg:hidden space-y-3">
+              {reservationTransactions.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No hay transacciones de reservaciones pendientes
+                </div>
+              ) : (
+                reservationTransactions.map((transaction) => {
                   try {
                     const details = transaction.detalles?.details || {};
                     return (
-                      <TableRow key={transaction.id}>
-                        <TableCell>{transaction.id}</TableCell>
-                        <TableCell>
-                          {formatDate(details.dateCreated || transaction.createdAt)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs">
-                            <div className="font-medium">{details.origen}</div>
-                            <div className="mt-1">{details.destino}</div>
+                      <div key={transaction.id} className="border rounded-xl p-4 bg-white">
+                        {/* Header con ID y fecha */}
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h4 className="font-semibold text-gray-900 text-sm">ID #{transaction.id}</h4>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {formatDate(details.dateCreated || transaction.createdAt)}
+                            </p>
                           </div>
-                        </TableCell>
-                        <TableCell>{details.pasajeros || 'N/A'}</TableCell>
-                        <TableCell>
-                          <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
-                            {details.metodoPago || "N/A"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
-                        {user?.role === "taquilla" && (
-                          <TableCell>
-                            <div className="text-xs font-mono">
-                              {transaction.companyId || 'N/A'}
+                          <div className="text-right">
+                            <p className="font-bold text-green-600 text-sm">
+                              {formatCurrency(details.monto || 0)}
+                            </p>
+                            <Badge 
+                              variant={details.metodoPago === "efectivo" ? "default" : "secondary"}
+                              className="text-xs mt-1"
+                            >
+                              {details.metodoPago || "N/A"}
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        {/* Ruta */}
+                        <div className="mb-3">
+                          <p className="text-xs text-gray-500">Origen - Destino</p>
+                          <div className="text-sm">
+                            <div className="font-medium text-gray-900 truncate">{details.origen}</div>
+                            <div className="text-gray-700 truncate">{details.destino}</div>
+                          </div>
+                        </div>
+                        
+                        {/* Información adicional */}
+                        <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                          <div>
+                            <p className="text-xs text-gray-500">Pasajeros</p>
+                            <p className="text-sm font-medium text-gray-900">{details.pasajeros || 'N/A'}</p>
+                          </div>
+                          {user?.role === "taquilla" && (
+                            <div className="text-right">
+                              <p className="text-xs text-gray-500">Empresa</p>
+                              <p className="text-xs font-mono text-gray-900">{transaction.companyId || 'N/A'}</p>
                             </div>
-                          </TableCell>
-                        )}
-                      </TableRow>
+                          )}
+                        </div>
+                      </div>
                     );
                   } catch (error) {
                     console.error("Error al renderizar transacción:", error, transaction);
                     return null;
                   }
-                })}
-              </TableBody>
-            </Table>
+                })
+              )}
+            </div>
           </div>
 
           <Separator className="my-6" />
@@ -616,77 +685,165 @@ const TransactionBox: React.FC = () => {
               <h3 className="text-lg font-semibold">Paqueterías ({packageTransactions.length})</h3>
             </div>
             
-            <Table>
-              <TableCaption>
-                {packageTransactions.length === 0
-                  ? "No hay transacciones de paqueterías pendientes"
-                  : "Lista de transacciones de paqueterías"}
-              </TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Origen-Destino</TableHead>
-                  <TableHead>Remitente/Destinatario</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead>Método</TableHead>
-                  <TableHead>Monto</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {packageTransactions.map((transaction) => {
+            {/* Desktop Table */}
+            <div className="hidden lg:block">
+              <Table>
+                <TableCaption>
+                  {packageTransactions.length === 0
+                    ? "No hay transacciones de paqueterías pendientes"
+                    : "Lista de transacciones de paqueterías"}
+                </TableCaption>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Origen-Destino</TableHead>
+                    <TableHead>Remitente/Destinatario</TableHead>
+                    <TableHead>Descripción</TableHead>
+                    <TableHead>Método</TableHead>
+                    <TableHead>Monto</TableHead>
+                    {user?.role === "taquilla" && <TableHead>Empresa</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {packageTransactions.map((transaction) => {
+                    try {
+                      const details = transaction.detalles?.details || {};
+                      return (
+                        <TableRow key={transaction.id}>
+                          <TableCell>{transaction.id}</TableCell>
+                          <TableCell>
+                            {formatDate(details.dateCreated || transaction.createdAt)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-xs">
+                              <div className="font-medium">{details.origen}</div>
+                              <div className="mt-1">{details.destino}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-xs">
+                              <div className="font-medium">De: {details.remitente || 'No especificado'}</div>
+                              <div className="mt-1">Para: {details.destinatario || 'No especificado'}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-xs max-w-[150px] truncate">
+                              {details.descripcion || "Sin descripción"}
+                              {details.usaAsientos && (
+                                <Badge variant="outline" className="ml-1">
+                                  {details.asientos} asiento{details.asientos !== 1 && "s"}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
+                              {details.metodoPago || "N/A"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
+                          {user?.role === "taquilla" && (
+                            <TableCell>
+                              <div className="text-xs font-mono">
+                                {transaction.companyId || 'N/A'}
+                              </div>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    } catch (error) {
+                      console.error("Error al renderizar transacción de paquete:", error, transaction);
+                      return null;
+                    }
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="lg:hidden space-y-3">
+              {packageTransactions.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No hay transacciones de paqueterías pendientes
+                </div>
+              ) : (
+                packageTransactions.map((transaction) => {
                   try {
                     const details = transaction.detalles?.details || {};
                     return (
-                      <TableRow key={transaction.id}>
-                        <TableCell>{transaction.id}</TableCell>
-                        <TableCell>
-                          {formatDate(details.dateCreated || transaction.createdAt)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs">
-                            <div className="font-medium">{details.origen}</div>
-                            <div className="mt-1">{details.destino}</div>
+                      <div key={transaction.id} className="border rounded-xl p-4 bg-white">
+                        {/* Header con ID y fecha */}
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h4 className="font-semibold text-gray-900 text-sm">ID #{transaction.id}</h4>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {formatDate(details.dateCreated || transaction.createdAt)}
+                            </p>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs">
-                            <div className="font-medium">De: {details.remitente || 'No especificado'}</div>
-                            <div className="mt-1">Para: {details.destinatario || 'No especificado'}</div>
+                          <div className="text-right">
+                            <p className="font-bold text-green-600 text-sm">
+                              {formatCurrency(details.monto || 0)}
+                            </p>
+                            <Badge 
+                              variant={details.metodoPago === "efectivo" ? "default" : "secondary"}
+                              className="text-xs mt-1"
+                            >
+                              {details.metodoPago || "N/A"}
+                            </Badge>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs max-w-[150px] truncate">
-                            {details.descripcion || "Sin descripción"}
+                        </div>
+                        
+                        {/* Ruta */}
+                        <div className="mb-3">
+                          <p className="text-xs text-gray-500">Origen - Destino</p>
+                          <div className="text-sm">
+                            <div className="font-medium text-gray-900 truncate">{details.origen}</div>
+                            <div className="text-gray-700 truncate">{details.destino}</div>
+                          </div>
+                        </div>
+                        
+                        {/* Remitente y Destinatario */}
+                        <div className="mb-3">
+                          <p className="text-xs text-gray-500">Remitente</p>
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            De: {details.remitente || 'No especificado'}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">Destinatario</p>
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            Para: {details.destinatario || 'No especificado'}
+                          </p>
+                        </div>
+                        
+                        {/* Descripción y información adicional */}
+                        <div className="flex justify-between items-start pt-2 border-t border-gray-100">
+                          <div className="flex-1 min-w-0 mr-2">
+                            <p className="text-xs text-gray-500">Descripción</p>
+                            <p className="text-sm text-gray-900 truncate">
+                              {details.descripcion || "Sin descripción"}
+                            </p>
                             {details.usaAsientos && (
-                              <Badge variant="outline" className="ml-1">
+                              <Badge variant="outline" className="text-xs mt-1">
                                 {details.asientos} asiento{details.asientos !== 1 && "s"}
                               </Badge>
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={details.metodoPago === "efectivo" ? "default" : "secondary"}>
-                            {details.metodoPago || "N/A"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{formatCurrency(details.monto || 0)}</TableCell>
-                        {user?.role === "taquilla" && (
-                          <TableCell>
-                            <div className="text-xs font-mono">
-                              {transaction.companyId || 'N/A'}
+                          {user?.role === "taquilla" && (
+                            <div className="text-right">
+                              <p className="text-xs text-gray-500">Empresa</p>
+                              <p className="text-xs font-mono text-gray-900">{transaction.companyId || 'N/A'}</p>
                             </div>
-                          </TableCell>
-                        )}
-                      </TableRow>
+                          )}
+                        </div>
+                      </div>
                     );
                   } catch (error) {
                     console.error("Error al renderizar transacción de paquete:", error, transaction);
                     return null;
                   }
-                })}
-              </TableBody>
-            </Table>
+                })
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
