@@ -230,30 +230,17 @@ export function CommandCombobox({
                       key={location.value}
                       value={location.value}
                       onSelect={(currentValue) => {
-                        onChange(currentValue)
-                        setOpen(false)
-                        setSearchValue("")
+                        // Usar setTimeout para evitar conflictos de timing
+                        setTimeout(() => {
+                          onChange(currentValue)
+                          setOpen(false)
+                          setSearchValue("")
+                        }, 0)
                       }}
                       className="flex py-2 cursor-pointer hover:bg-gray-100 touch-manipulation"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        onChange(location.value)
-                        setOpen(false)
-                        setSearchValue("")
-                      }}
                       onMouseDown={(e) => {
+                        // Prevenir el comportamiento por defecto pero permitir que onSelect se ejecute
                         e.preventDefault()
-                        onChange(location.value)
-                        setOpen(false)
-                        setSearchValue("")
-                      }}
-                      onTouchEnd={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        onChange(location.value)
-                        setOpen(false)
-                        setSearchValue("")
                       }}
                     >
                       <div className="flex items-center w-full">
