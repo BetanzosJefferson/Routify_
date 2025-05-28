@@ -2106,355 +2106,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Obtener el usuario autenticado
       const { user } = req as any;
       
-      console.log(`[GET /reservations] Usuario: ${user ? user.firstName + ' ' + user.lastName : 'No autenticado'}`);
-      if (user) {
-        console.log(`[GET /reservations] Rol: ${user.role}, CompanyId: ${user.companyId || user.company || 'No definido'}`);
+      if (!user) {
+        return res.status(401).json({ error: "No autenticado" });
       }
       
-      // SEGURIDAD: Filtrado de datos por compañía
+      console.log(`[GET /reservations] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}`);
+      
+      // Verificar filtros básicos
       let companyId: string | null = null;
       let tripId: number | null = null;
-      let companyIds: string[] | undefined = undefined; // Agregamos esta variable para taquilleros
-      let includeRelatedTrips = req.query.includeRelated === 'true';
+      let companyIds: string[] | undefined = undefined;
       
       // Verificar si se solicita filtrar por viaje específico
       if (req.query.tripId) {
         tripId = parseInt(req.query.tripId as string, 10);
-        console.log(`[GET /reservations] Solicitando específicamente reservaciones del viaje ID: ${tripId}`);
+        console.log(`[GET /reservations] Filtrando por viaje ID: ${tripId}`);
+      }
+      
+      // Determinar filtros de seguridad según el rol
+      if (user.role === UserRole.TICKET_OFFICE) {
+        // Taquilleros: obtener sus compañías asignadas
+        const userCompanyAssociations = await db
+          .select()
+          .from(userCompanies)
+          .where(eq(userCompanies.userId, user.id));
         
-        if (includeRelatedTrips) {
-          console.log(`[GET /reservations] Se incluirán reservaciones de viajes relacionados (principal/subviajes)`);
+        if (userCompanyAssociations.length === 0) {
+          return res.json([]);
+        }
+        
+        companyIds = userCompanyAssociations.map(assoc => assoc.companyId);
+        console.log(`[GET /reservations] Taquillero con ${companyIds.length} empresas asignadas`);
+      } 
+      else if (user.role === UserRole.DRIVER && tripId) {
+        // Conductores: verificar que el viaje esté asignado a ellos
+        const trip = await storage.getTrip(tripId);
+        if (!trip || trip.driverId !== user.id) {
+          return res.status(403).json({ error: "Acceso denegado a este viaje" });
+        }
+      }
+      else if (user.role !== UserRole.SUPER_ADMIN && 
+               user.role !== UserRole.ADMIN && 
+               user.role !== UserRole.CHECKER) {
+        // Otros roles: filtrar por su compañía
+        companyId = user.companyId || user.company;
+        if (!companyId) {
+          return res.json([]);
         }
       }
       
-      // REGLAS DE ACCESO:
-      // 1. superAdmin y admin pueden ver TODAS las reservaciones
-      // 2. Taquilleros pueden ver reservaciones de sus compañías asignadas
-      // 3. Conductores pueden ver reservaciones de los viajes asignados a ellos
-      // 4. El resto de roles solo pueden ver reservaciones de SU COMPAÑÍA
-      if (user) {
-        // CASO ESPECIAL: TAQUILLEROS - obtener las compañías asignadas
-        if (user.role === UserRole.TICKET_OFFICE) {
-          console.log(`[GET /reservations] TAQUILLERO solicitando reservaciones`);
-          
-          // Obtener las compañías asociadas al taquillero
-          const userCompanyAssociations = await db
-            .select()
-            .from(userCompanies)
-            .where(eq(userCompanies.userId, user.id));
-          
-          if (userCompanyAssociations.length === 0) {
-            console.log(`[GET /reservations] Taquillero sin empresas asociadas, no verá ninguna reservación`);
-            return res.json([]);
-          }
-          
-          // Obtener los IDs de las compañías asignadas
-          const assignedCompanyIds = userCompanyAssociations.map(assoc => assoc.companyId);
-          console.log(`[GET /reservations] Taquillero con ${assignedCompanyIds.length} empresas asignadas: [${assignedCompanyIds.join(', ')}]`);
-          
-          // Las reservaciones se filtrarán por estas compañías en la capa de almacenamiento
-          companyIds = assignedCompanyIds;
-        }
-        // CASO ESPECIAL: CONDUCTORES - solo ven sus viajes asignados
-        else if (user.role === UserRole.DRIVER && tripId) {
-          console.log(`[GET /reservations] CONDUCTOR solicitando reservaciones para viaje ${tripId}`);
-          
-          // Obtener el viaje específico para verificar si está asignado al conductor
-          const trip = await storage.getTrip(tripId);
-          
-          if (trip && trip.driverId === user.id) {
-            console.log(`[GET /reservations] Permitiendo a conductor ver reservaciones del viaje ${tripId} asignado a él`);
-            
-            // Si se solicita incluir viajes relacionados
-            if (includeRelatedTrips) {
-              try {
-                console.log(`[GET /reservations] Buscando viajes relacionados con ${tripId}`);
-                
-                // Obtener el viaje completo con información de ruta
-                const fullTrip = await storage.getTripWithRouteInfo(tripId);
-                if (!fullTrip) {
-                  throw new Error(`No se encontró información completa del viaje ${tripId}`);
-                }
-                
-                // Obtener todos los viajes para identificar relaciones
-                const allTrips = await storage.getTrips();
-                let relatedTripIds = [tripId]; // Incluir el viaje solicitado
-                
-                // Determinar viajes relacionados según el tipo
-                if (!fullTrip.isSubTrip) {
-                  // Es un viaje principal, buscar sus subviajes
-                  const subTrips = allTrips.filter(t => t.parentTripId === tripId);
-                  relatedTripIds = [...relatedTripIds, ...subTrips.map(t => t.id)];
-                  console.log(`[GET /reservations] Incluyendo ${subTrips.length} sub-viajes del viaje principal ${tripId}`);
-                } else if (fullTrip.parentTripId) {
-                  // Es un sub-viaje, incluir el viaje principal y otros sub-viajes hermanos
-                  relatedTripIds.push(fullTrip.parentTripId);
-                  const siblingTrips = allTrips.filter(t => 
-                    t.parentTripId === fullTrip.parentTripId && t.id !== tripId);
-                  relatedTripIds = [...relatedTripIds, ...siblingTrips.map(t => t.id)];
-                  console.log(`[GET /reservations] Incluyendo viaje principal ${fullTrip.parentTripId} y ${siblingTrips.length} sub-viajes hermanos`);
-                }
-                
-                // Obtener reservaciones de todos los viajes relacionados
-                const allReservations = [];
-                
-                for (const id of relatedTripIds) {
-                  const tripReservations = await storage.getReservations(undefined, id);
-                  allReservations.push(...tripReservations);
-                  console.log(`[GET /reservations] Encontradas ${tripReservations.length} reservaciones para viaje relacionado ${id}`);
-                }
-                
-                console.log(`[GET /reservations] Total: ${allReservations.length} reservaciones de todos los viajes relacionados`);
-                return res.json(allReservations);
-              } catch (error) {
-                console.error('[GET /reservations] Error al obtener viajes relacionados:', error);
-                // Si hay error, caer al comportamiento normal (solo el viaje solicitado)
-              }
-            }
-            
-            // Comportamiento original: solo reservaciones del viaje específico
-            const tripReservations = await storage.getReservations(undefined, tripId);
-            return res.json(tripReservations);
-          } else {
-            console.log(`[GET /reservations] ACCESO DENEGADO: El viaje ${tripId} no está asignado al conductor ${user.id}`);
-            return res.status(403).json({ error: "Acceso denegado a este viaje" });
-          }
-        }
-        // Los roles que NO son superAdmin, admin, taquilla o checador tienen acceso restringido
-        else if (user.role !== UserRole.SUPER_ADMIN && 
-                 user.role !== UserRole.ADMIN && 
-                 user.role !== UserRole.TICKET_OFFICE && 
-                 user.role !== UserRole.CHECKER) {
-          // Obtener la compañía del usuario
-          companyId = user.companyId || user.company;
-          
-          if (!companyId) {
-            console.log(`[GET /reservations] ADVERTENCIA: Usuario sin compañía asignada`);
-            // Si el usuario no tiene compañía asignada, devolver lista vacía por seguridad
-            return res.json([]);
-          }
-          
-          console.log(`[GET /reservations] FILTRO CRÍTICO: Aplicando filtro por compañía "${companyId}"`);
-        } else if (user.role !== UserRole.TICKET_OFFICE) {
-          // SuperAdmin, Admin, y Checador - acceso total
-          console.log(`[GET /reservations] Usuario con rol ${user.role} puede ver TODAS las reservaciones`);
-        }
+      // Obtener reservaciones con filtros optimizados
+      let reservations;
+      if (user.role === UserRole.TICKET_OFFICE && companyIds) {
+        reservations = await storage.getReservations(undefined, tripId || undefined, companyIds);
       } else {
-        console.log(`[GET /reservations] Usuario no autenticado`);
-        // Usuarios no autenticados no deberían poder ver reservaciones
-        return res.status(401).json({ error: "No autenticado" });
-      }
-      
-      // Si se solicita incluir viajes relacionados para cualquier rol (dueño, admin, etc.)
-      let reservations = [];
-      
-      if (tripId && includeRelatedTrips) {
-        try {
-          console.log(`[GET /reservations] Usuario con rol ${user.role} solicitando viajes relacionados con ${tripId}`);
-          
-          // Obtener el viaje completo con información de ruta
-          const fullTrip = await storage.getTripWithRouteInfo(tripId);
-          if (!fullTrip) {
-            throw new Error(`No se encontró información completa del viaje ${tripId}`);
-          }
-          
-          // Obtener todos los viajes para identificar relaciones
-          const allTrips = await storage.getTrips();
-          let relatedTripIds = [tripId]; // Incluir el viaje solicitado
-          
-          // Determinar viajes relacionados según el tipo
-          if (!fullTrip.isSubTrip) {
-            // Es un viaje principal, buscar sus subviajes
-            const subTrips = allTrips.filter(t => t.parentTripId === tripId);
-            relatedTripIds = [...relatedTripIds, ...subTrips.map(t => t.id)];
-            console.log(`[GET /reservations] Incluyendo ${subTrips.length} sub-viajes del viaje principal ${tripId}`);
-          } else if (fullTrip.parentTripId) {
-            // Es un sub-viaje, incluir el viaje principal y otros sub-viajes hermanos
-            relatedTripIds.push(fullTrip.parentTripId);
-            const siblingTrips = allTrips.filter(t => 
-              t.parentTripId === fullTrip.parentTripId && t.id !== tripId);
-            relatedTripIds = [...relatedTripIds, ...siblingTrips.map(t => t.id)];
-            console.log(`[GET /reservations] Incluyendo viaje principal ${fullTrip.parentTripId} y ${siblingTrips.length} sub-viajes hermanos`);
-          }
-          
-          // Obtener reservaciones de todos los viajes relacionados
-          const allReservations = [];
-          
-          for (const id of relatedTripIds) {
-            // Aplicar filtro de compañía según el rol del usuario
-            let tripReservations;
-            
-            if (user.role === UserRole.SUPER_ADMIN) {
-              // SuperAdmin ve todo sin filtrar por compañía
-              tripReservations = await storage.getReservations(undefined, id);
-            } 
-            else if (user.role === UserRole.TICKET_OFFICE && companyIds && companyIds.length > 0) {
-              // Taquilleros filtran por sus compañías asignadas
-              console.log(`[GET /reservations] TAQUILLERO: Filtrando viaje relacionado ${id} por ${companyIds.length} compañías asignadas`);
-              tripReservations = await storage.getReservations(undefined, id, companyIds);
-            } 
-            else {
-              // Resto de roles filtran por su compañía directa
-              tripReservations = await storage.getReservations(companyId || undefined, id);
-            }
-            
-            allReservations.push(...tripReservations);
-            console.log(`[GET /reservations] Encontradas ${tripReservations.length} reservaciones para viaje relacionado ${id}`);
-          }
-          
-          console.log(`[GET /reservations] Total: ${allReservations.length} reservaciones de todos los viajes relacionados`);
-          reservations = allReservations;
-        } catch (error) {
-          console.error('[GET /reservations] Error al obtener viajes relacionados:', error);
-          // Si hay error, caer al comportamiento normal (solo el viaje solicitado)
-          // Usando filtro de compañías para taquilleros o filtro normal para otros roles
-          if (user.role === UserRole.TICKET_OFFICE && companyIds && companyIds.length > 0) {
-            console.log(`[GET /reservations] TAQUILLERO: Aplicando filtro de ${companyIds.length} compañías tras error`);
-            reservations = await storage.getReservations(undefined, tripId || undefined, companyIds);
-          } else {
-            reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
-          }
-        }
-      } else {
-        // Ejecutar la consulta con los filtros apropiados
-        if (user.role === UserRole.TICKET_OFFICE && companyIds && companyIds.length > 0) {
-          console.log(`[GET /reservations] TAQUILLERO: Aplicando filtro de ${companyIds.length} compañías`);
-          reservations = await storage.getReservations(undefined, tripId || undefined, companyIds);
-        } else {
-          // Filtro normal por compañía para otros roles
-          reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
-        }
+        reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
       }
       
       console.log(`[GET /reservations] Encontradas ${reservations.length} reservaciones`);
-      
-      // CAPA ADICIONAL DE SEGURIDAD - FILTRO POST-CONSULTA
-      if (user) {
-        // CASO ESPECIAL: TAQUILLERO - verificar acceso a múltiples compañías asignadas
-        if (user.role === UserRole.TICKET_OFFICE) {
-          // Solo aplicar filtro si tenemos las compañías asignadas
-          if (companyIds && companyIds.length > 0) {
-            console.log(`[GET /reservations] VERIFICACIÓN TAQUILLERO: Asegurando acceso solo a compañías asignadas`);
-            
-            // Verificar que todas las reservaciones pertenezcan a las compañías asignadas
-            const reservacionesDeOtrasCompanias = reservations.filter(r => 
-              r.companyId && !companyIds.includes(r.companyId)
-            );
-            
-            if (reservacionesDeOtrasCompanias.length > 0) {
-              console.log(`[ALERTA DE SEGURIDAD] Se intentaron mostrar ${reservacionesDeOtrasCompanias.length} reservaciones de compañías no asignadas al taquillero!`);
-              
-              // CRÍTICO: Filtrar y devolver SOLO las reservaciones de las compañías asignadas
-              const reservacionesFiltradas = reservations.filter(r => 
-                r.companyId && companyIds.includes(r.companyId)
-              );
-              console.log(`[CORRECCIÓN] Devolviendo solo ${reservacionesFiltradas.length} reservaciones de las compañías asignadas`);
-              
-              // Reemplazar los resultados
-              return res.json(reservacionesFiltradas);
-            }
-          }
-        }
-        // VERIFICACIÓN PARA OTROS ROLES (excepto superAdmin, admin, taquilla y checador)
-        else if (user.role !== UserRole.SUPER_ADMIN && 
-                user.role !== UserRole.ADMIN && 
-                user.role !== UserRole.CHECKER) {
-          // Obtener la compañía del usuario
-          const userCompany = user.companyId || user.company || null;
-          
-          if (userCompany) {
-            // Verificar que todas las reservaciones sean realmente de la compañía del usuario
-            const reservacionesDeOtrasCompanias = reservations.filter(r => 
-              r.companyId && r.companyId !== userCompany
-            );
-            
-            if (reservacionesDeOtrasCompanias.length > 0) {
-              console.log(`[ALERTA DE SEGURIDAD] Se intentaron mostrar ${reservacionesDeOtrasCompanias.length} reservaciones de otras compañías!`);
-              
-              // CRÍTICO: Filtrar y devolver SOLO las reservaciones de la compañía del usuario
-              const reservacionesFiltradas = reservations.filter(r => r.companyId === userCompany);
-              console.log(`[CORRECCIÓN] Devolviendo solo ${reservacionesFiltradas.length} reservaciones de compañía ${userCompany}`);
-              
-              // Reemplazar los resultados
-              return res.json(reservacionesFiltradas);
-            }
-          }
-        }
-      }
-      
-      // Si el usuario es TICKET_OFFICE (Taquilla), agregar información de la empresa a cada reservación
-      if (user && user.role === UserRole.TICKET_OFFICE) {
-        console.log(`[GET /reservations] Usuario con rol TICKET_OFFICE: Agregando información de empresas`);
-        
-        // Procesar las reservaciones para agregar el nombre de la empresa
-        const reservationsWithCompanyInfo = await Promise.all(
-          reservations.map(async (reservation) => {
-            // Primero intentamos usar companyId directamente de la reservación
-            if (reservation.companyId) {
-              // Obtener información de la empresa
-              const companyInfo = await storage.getCompanyById(reservation.companyId);
-              
-              if (companyInfo) {
-                // Devolver la reservación con la información de la empresa
-                return {
-                  ...reservation,
-                  companyInfo: {
-                    id: companyInfo.id,
-                    name: companyInfo.name
-                  }
-                };
-              } else {
-                // Si no se encuentra la empresa pero tenemos ID, mostrar ID como nombre
-                return {
-                  ...reservation,
-                  companyInfo: {
-                    id: reservation.companyId,
-                    name: `Empresa ID: ${reservation.companyId}`
-                  }
-                };
-              }
-            } 
-            // Si la reservación no tiene companyId directo, intentar obtenerlo del viaje
-            else if (reservation.trip && reservation.trip.companyId) {
-              const companyInfo = await storage.getCompanyById(reservation.trip.companyId);
-              
-              if (companyInfo) {
-                return {
-                  ...reservation,
-                  companyInfo: {
-                    id: companyInfo.id,
-                    name: companyInfo.name
-                  }
-                };
-              } else {
-                return {
-                  ...reservation,
-                  companyInfo: {
-                    id: reservation.trip.companyId,
-                    name: `Empresa ID: ${reservation.trip.companyId}`
-                  }
-                };
-              }
-            }
-            // Si no hay ninguna información de empresa disponible
-            return {
-              ...reservation,
-              companyInfo: {
-                id: null,
-                name: "Sin empresa asignada"
-              }
-            };
-          })
-        );
-        
-        console.log(`[GET /reservations] Procesadas ${reservationsWithCompanyInfo.length} reservaciones con información de empresa`);
-        return res.json(reservationsWithCompanyInfo);
-      }
-      
       res.json(reservations);
     } catch (error: any) {
       console.error("[GET /reservations] Error:", error);
-      res.status(500).json({ error: "Error al obtener reservaciones", details: error.message || "Error desconocido" });
+      res.status(500).json({ error: "Error al obtener reservaciones" });
     }
   });
 
