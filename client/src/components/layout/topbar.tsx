@@ -121,24 +121,33 @@ export function Topbar({ activeTab, onTabChange }: TopbarProps) {
                 <nav className="flex flex-col p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-140px)]">
                   {canAccess("routes") && (
                     <NavLink 
-                      active={activeTab === "create-route"}
-                      onClick={() => handleNavClick("create-route")}
+                      active={window.location.pathname === "/routes"}
+                      onClick={() => {
+                        setLocation("/routes");
+                        setMobileMenuOpen(false);
+                      }}
                     >
                       Rutas
                     </NavLink>
                   )}
                   {canAccess("publish-trip") && (
                     <NavLink 
-                      active={activeTab === "publish-trip"}
-                      onClick={() => handleNavClick("publish-trip")}
+                      active={window.location.pathname === "/publish-trip"}
+                      onClick={() => {
+                        setLocation("/publish-trip");
+                        setMobileMenuOpen(false);
+                      }}
                     >
                       Publicar Viajes
                     </NavLink>
                   )}
                   {canAccess("trips") && (
                     <NavLink 
-                      active={activeTab === "trips"}
-                      onClick={() => handleNavClick("trips")}
+                      active={window.location.pathname === "/trips"}
+                      onClick={() => {
+                        setLocation("/trips");
+                        setMobileMenuOpen(false);
+                      }}
                     >
                       Viajes
                     </NavLink>
