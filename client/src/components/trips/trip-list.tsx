@@ -146,6 +146,10 @@ export function TripList() {
         (paramsWithVisibility as any).parentOnly = 'true';
       }
       
+      // Debug: mostrar los parámetros que se van a enviar
+      console.log('[TripList Debug] Parámetros finales:', paramsWithVisibility);
+      console.log('[TripList Debug] hasOriginAndDestination:', hasOriginAndDestination);
+      
       const queryString = new URLSearchParams(
         Object.entries(paramsWithVisibility).filter(([_, v]) => v !== undefined) as [string, string][]
       ).toString();
