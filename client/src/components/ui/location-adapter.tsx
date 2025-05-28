@@ -25,7 +25,7 @@ export function LocationAdapter({
   const comboboxOptions: ComboboxOption[] = React.useMemo(() => {
     return options.map(opt => ({
       value: opt.value,
-      label: opt.label
+      label: `${opt.place}, ${opt.city}`
     }));
   }, [options]);
 

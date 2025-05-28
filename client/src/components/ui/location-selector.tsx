@@ -38,7 +38,7 @@ export function LocationSelector({
   // Agrupar opciones por ciudad
   const groupedOptions: GroupedLocations = React.useMemo(() => {
     return options.reduce((acc, option) => {
-      const city = option.city || 'Otras ubicaciones'
+      const city = option.city
       if (!acc[city]) {
         acc[city] = []
       }
@@ -54,7 +54,7 @@ export function LocationSelector({
     const filtered: GroupedLocations = {}
     Object.entries(groupedOptions).forEach(([city, locations]) => {
       const filteredLocations = locations.filter(location =>
-        location.label.toLowerCase().includes(searchValue.toLowerCase()) ||
+        location.place.toLowerCase().includes(searchValue.toLowerCase()) ||
         city.toLowerCase().includes(searchValue.toLowerCase())
       )
       if (filteredLocations.length > 0) {
@@ -71,7 +71,7 @@ export function LocationSelector({
     for (const locations of Object.values(groupedOptions)) {
       for (const location of locations) {
         if (location.value === value) {
-          return location.label
+          return `${location.place}, ${location.city}`
         }
       }
     }
@@ -178,7 +178,7 @@ export function LocationSelector({
                         />
                       </div>
                       <div className="flex flex-col flex-1 min-w-0">
-                        <span className="text-sm truncate">{location.label}</span>
+                        <span className="text-sm truncate">{location.place}</span>
                       </div>
                     </div>
                   ))}
