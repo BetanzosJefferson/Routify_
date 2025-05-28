@@ -164,32 +164,34 @@ export function TripList() {
     return extractLocationsFromTrips(allTrips);
   }, [allTrips]);
 
-  // Update search params in real-time as the user types
+  // Manual search function
+  const handleSearch = () => {
+    const params: SearchParams = {};
+    if (origin) params.origin = origin;
+    if (destination) params.destination = destination;
+    if (date) params.date = formatDateForApiQuery(date);
+    if (seats && !isNaN(parseInt(seats, 10))) {
+      params.seats = parseInt(seats, 10);
+    }
+
+    // Lógica actualizada para parentOnly
+    if (origin || destination) {
+      // Si se proporciona origen o destino, busca todos los viajes coincidentes (incluidos los subtrips)
+      params.parentOnly = 'false';
+    } else {
+      // Si no se proporciona ni origen ni destino, muestra solo los viajes padre
+      params.parentOnly = 'true';
+    }
+
+    setSearchParams(params);
+  };
+
+  // Initialize with default search (parent trips only for today)
   useEffect(() => {
-    // Small debounce function to avoid too many requests
-    const debounceTimer = setTimeout(() => {
-      const params: SearchParams = {};
-      if (origin) params.origin = origin;
-      if (destination) params.destination = destination;
-      if (date) params.date = formatDateForApiQuery(date);
-      if (seats && !isNaN(parseInt(seats, 10))) {
-        params.seats = parseInt(seats, 10);
-      }
-
-      // Lógica actualizada para parentOnly
-      if (origin || destination) {
-        // Si se proporciona origen o destino, busca todos los viajes coincidentes (incluidos los subtrips)
-        params.parentOnly = 'false';
-      } else {
-        // Si no se proporciona ni origen ni destino, muestra solo los viajes padre
-        params.parentOnly = 'true';
-      }
-
-      setSearchParams(params);
-    }, 300); // 300ms debounce
-
-    return () => clearTimeout(debounceTimer);
-  }, [origin, destination, date, seats]);
+    if (!searchParams.date) {
+      setSearchParams({ date: formatDateForApiQuery(today), parentOnly: 'true' });
+    }
+  }, []);
 
   // Handler for reservation button click
   const handleReserve = (trip: TripWithRouteInfo) => {
@@ -353,6 +355,17 @@ export function TripList() {
                 value={seats}
                 onChange={(e) => setSeats(e.target.value)}
               />
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={handleSearch}
+                className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                Buscar Viajes
+              </button>
             </div>
 
           </div>
