@@ -88,9 +88,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Populate location data on server start
   try {
     await populateLocationData();
-    console.log("Location data loaded successfully");
+    // Location data loaded successfully
   } catch (error) {
-    console.error("Error loading location data:", error);
+    // Error loading location data
   }
 
   // LOCATION DATA ENDPOINT
@@ -99,7 +99,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const locations = await db.select().from(locationData);
       res.json(locations);
     } catch (error) {
-      console.error("Error fetching location data:", error);
+      // Error fetching location data
       res.status(500).json({ error: "Failed to fetch location data" });
     }
   });
@@ -112,36 +112,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let companyId = null;
       
       if (user) {
-        console.log(`[GET /routes] Usuario: ${user.firstName} ${user.lastName}, Rol: ${user.role}, CompanyId: ${user.companyId}, Company: ${user.company}`);
+        // User access logged
         
         // ACCESO TOTAL solo para superAdmin y developer - sin restricciones
         if (user.role === UserRole.SUPER_ADMIN || 
             user.role === UserRole.DEVELOPER) {
-          console.log(`[GET /routes] Usuario con rol ${user.role}: ACCESO TOTAL - mostrando todas las rutas`);
+          // Full access granted
           // No establecer companyId para estos roles para ver TODAS las rutas
         } 
         // ACCESO PARA ADMIN - solo ver rutas de su compañía
         else if (user.role === UserRole.ADMIN) {
-          console.log(`[GET /routes] Admin: ${user.firstName} ${user.lastName}, filtrando por compañía: ${user.companyId || user.company}`);
+          // Admin access with company filter
           if (user.companyId || user.company) {
             companyId = user.companyId || user.company;
           } else {
-            console.warn(`[GET /routes] Administrador sin companyId o company definido`);
+            // Admin without company defined
           }
         } else {
           // USUARIOS NORMALES - Filtrar por su compañía
           companyId = user.companyId || user.company;
           
           if (!companyId) {
-            console.log(`[GET /routes] Usuario sin compañía - no verá ninguna ruta`);
+            // User without company - no routes shown
             return res.json([]);
           }
           
-          console.log(`[GET /routes] Consultando rutas para la compañía: ${companyId}`);
+          // Querying routes for company
         }
       } else {
         // Usuario no autenticado
-        console.log(`[GET /routes] Acceso anónimo: mostrando todas las rutas públicas`);
+        // Anonymous access - showing public routes
       }
       
       // Usar la función actualizada que filtra directamente en la base de datos
