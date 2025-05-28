@@ -94,6 +94,26 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
   // Determinar si el usuario puede eliminar paquetes
   const canDelete = user ? hasRoleAccess(user.role, [UserRole.OWNER, UserRole.ADMIN]) : false;
   
+  // Función para verificar si el usuario taquilla puede interactuar con un paquete específico
+  const canInteractWithPackage = (packageItem: any) => {
+    if (!user) return false;
+    
+    // Roles con acceso completo
+    if (hasRoleAccess(user.role, [UserRole.OWNER, UserRole.ADMIN, UserRole.CALL_CENTER, UserRole.CHECKER])) {
+      return true;
+    }
+    
+    // Para rol taquilla, verificar acceso a la empresa del paquete
+    if (user.role === UserRole.TICKET_OFFICE) {
+      // Aquí verificaremos si el usuario tiene acceso a la empresa del paquete
+      // Por ahora asumimos que sí tiene acceso ya que el endpoint /taquilla/packages
+      // solo devuelve paquetes de empresas a las que el usuario tiene acceso
+      return true;
+    }
+    
+    return false;
+  };
+  
   // Determinar qué endpoint usar basado en el rol del usuario
   const packageEndpoint = user?.role === UserRole.TICKET_OFFICE ? "/api/taquilla/packages" : "/api/packages";
   
@@ -644,7 +664,7 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                         </DialogContent>
                       </Dialog>
                       
-                      {canCreateEdit && pkg.deliveryStatus !== "entregado" && (
+                      {canInteractWithPackage(pkg) && pkg.deliveryStatus !== "entregado" && (
                         <DropdownMenuItem
                           onClick={() => {
                             markAsDeliveredMutation.mutate(pkg.id);
