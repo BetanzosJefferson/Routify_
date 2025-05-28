@@ -94,11 +94,14 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
   // Determinar si el usuario puede eliminar paquetes
   const canDelete = user ? hasRoleAccess(user.role, [UserRole.OWNER, UserRole.ADMIN]) : false;
   
+  // Determinar qué endpoint usar basado en el rol del usuario
+  const packageEndpoint = user?.role === UserRole.TICKET_OFFICE ? "/api/taquilla/packages" : "/api/packages";
+  
   // Obtener los paquetes
   const packagesQuery = useQuery({
-    queryKey: ["/api/packages"],
+    queryKey: [packageEndpoint],
     queryFn: async () => {
-      const response = await fetch("/api/packages");
+      const response = await fetch(packageEndpoint);
       if (!response.ok) {
         throw new Error("Error al cargar paquetes");
       }
@@ -161,7 +164,7 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
         description: "El paquete ha sido marcado como entregado",
         variant: "default",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
+      queryClient.invalidateQueries({ queryKey: [packageEndpoint] });
     },
     onError: (error: Error) => {
       toast({
@@ -190,7 +193,7 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
       });
       
       // Invalidar la caché de paquetes
-      queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
+      queryClient.invalidateQueries({ queryKey: [packageEndpoint] });
       
       // Invalidar también la caché de viajes para actualizar los asientos disponibles
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
