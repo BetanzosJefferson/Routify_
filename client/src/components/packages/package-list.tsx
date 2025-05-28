@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Plus, Eye, Edit, Package, Clock, Check, Search, X, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
-import { hasRoleAccess, UserRole } from "@/lib/auth";
+import { hasRoleAccess } from "@/lib/role-based-permissions";
+import { UserRole } from "@shared/schema";
 import { PackageDetailModal } from "./package-detail-modal";
 
 interface PackageListProps {
