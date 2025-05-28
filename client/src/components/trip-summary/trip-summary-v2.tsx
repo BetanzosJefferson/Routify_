@@ -865,40 +865,42 @@ export default function TripSummary({ className }: TripSummaryProps) {
             </CardHeader>
             <CardContent>
               {filteredTrips.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Fecha
-                        </th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Ruta
-                        </th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Horario
-                        </th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Unidad
-                        </th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Operador
-                        </th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Pasajeros
-                        </th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Total Ventas
-                        </th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Egresos
-                        </th>
-                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Ganancia
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 bg-white">
+                <>
+                  {/* Desktop Table */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Fecha
+                          </th>
+                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Ruta
+                          </th>
+                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Horario
+                          </th>
+                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Unidad
+                          </th>
+                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Operador
+                          </th>
+                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Pasajeros
+                          </th>
+                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Total Ventas
+                          </th>
+                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Egresos
+                          </th>
+                          <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Ganancia
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
                       {filteredTrips.map(trip => {
                         const { passengers, sales } = getTripStats(trip.id);
                         
@@ -1002,7 +1004,108 @@ export default function TripSummary({ className }: TripSummaryProps) {
                       })}
                     </tbody>
                   </table>
-                </div>
+                  </div>
+                  
+                  {/* Mobile Cards */}
+                  <div className="lg:hidden space-y-3">
+                    {filteredTrips.map(trip => {
+                      const { passengers, sales } = getTripStats(trip.id);
+                      
+                      // Calcular gastos del viaje
+                      const tripFinancialData = tripsFinancialData[trip.id];
+                      let tripExpenses = 0;
+                      
+                      if (tripFinancialData) {
+                        tripExpenses = tripFinancialData.expenses.reduce((sum, e) => sum + e.amount, 0);
+                      } else {
+                        tripExpenses = expenses.filter(e => e.tripId === trip.id).reduce((sum, e) => sum + e.amount, 0);
+                      }
+                      
+                      const profit = sales - tripExpenses;
+                      
+                      return (
+                        <div
+                          key={trip.id}
+                          className={`border rounded-xl p-4 cursor-pointer transition-all duration-200 hover:shadow-md ${
+                            selectedTrip === trip.id 
+                              ? 'border-blue-500 bg-blue-50 shadow-md' 
+                              : 'border-gray-200 bg-white hover:border-gray-300'
+                          }`}
+                          onClick={() => {
+                            setSelectedTrip(trip.id);
+                            setNewExpense(prev => ({...prev, tripId: trip.id}));
+                          }}
+                        >
+                          {/* Header con ruta y fecha */}
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-gray-900 truncate text-sm">
+                                {trip.route.name}
+                              </h3>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {(() => {
+                                  let dateStr = trip.departureDate;
+                                  let date;
+                                  
+                                  if (typeof dateStr === 'string' && dateStr.includes('T')) {
+                                    const datePart = dateStr.split('T')[0];
+                                    const [year, month, day] = datePart.split('-').map(Number);
+                                    date = new Date(year, month - 1, day, 12, 0, 0);
+                                  } else {
+                                    date = new Date(dateStr);
+                                  }
+                                  
+                                  return format(date, 'dd/MM/yyyy');
+                                })()}
+                              </p>
+                            </div>
+                            <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              profit > 0 ? 'bg-green-100 text-green-800' :
+                              profit < 0 ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              ${profit.toFixed(0)}
+                            </div>
+                          </div>
+                          
+                          {/* Información principal */}
+                          <div className="grid grid-cols-2 gap-3 mb-3">
+                            <div>
+                              <p className="text-xs text-gray-500">Horario</p>
+                              <p className="text-sm font-medium text-gray-900">
+                                {formatTripTime(trip.departureTime, true, 'pretty')} - {formatTripTime(trip.arrivalTime, true, 'pretty')}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Operador</p>
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {trip.assignedDriver 
+                                  ? `${trip.assignedDriver.firstName} ${trip.assignedDriver.lastName}`
+                                  : 'No asignado'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Métricas financieras */}
+                          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-100">
+                            <div className="text-center">
+                              <p className="text-xs text-gray-500">Pasajeros</p>
+                              <p className="text-sm font-semibold text-gray-900">{passengers}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-gray-500">Ventas</p>
+                              <p className="text-sm font-semibold text-green-600">${sales.toFixed(0)}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-gray-500">Gastos</p>
+                              <p className="text-sm font-semibold text-red-600">${tripExpenses.toFixed(0)}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   No hay viajes programados para esta fecha
