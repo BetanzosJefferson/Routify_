@@ -612,6 +612,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[GET /search-trips] Encontrados ${trips.length} viajes`);
       
+      if (trips.length === 0) {
+        console.log(`[GET /search-trips] No se encontraron viajes con los criterios especificados`);
+        console.log(`[GET /search-trips] Origen: "${searchParams.origin}"`);
+        console.log(`[GET /search-trips] Destino: "${searchParams.destination || 'no especificado'}"`);
+        console.log(`[GET /search-trips] Fecha: "${searchParams.date}"`);
+        console.log(`[GET /search-trips] CompanyId: "${searchParams.companyId}"`);
+      }
+      
       res.json(trips);
     } catch (error) {
       console.error('Error en búsqueda de viajes:', error);
