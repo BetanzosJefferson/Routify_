@@ -1543,74 +1543,129 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    // Obtener detalles para cada reserva
-    const reservationsWithDetails: ReservationWithDetails[] = [];
+    // OPTIMIZACIÓN: Usar una sola consulta JOIN para obtener todos los datos
+    console.log(`[getReservations] OPTIMIZANDO: Usando consulta JOIN única para ${reservations.length} reservas`);
     
+    // Extraer IDs únicos para consultas batch
+    const reservationIds = reservations.map(r => r.id);
+    const tripIds = [...new Set(reservations.map(r => r.tripId))];
+    const userIds = [
+      ...new Set([
+        ...reservations.map(r => r.createdBy).filter(Boolean),
+        ...reservations.map(r => r.checkedBy).filter(Boolean), 
+        ...reservations.map(r => r.paidBy).filter(Boolean)
+      ])
+    ] as number[];
+    
+    // Consulta BATCH para todos los pasajeros
+    const allPassengers = await db
+      .select()
+      .from(schema.passengers)
+      .where(inArray(schema.passengers.reservationId, reservationIds));
+    
+    // Consulta BATCH para todos los viajes con sus rutas
+    const allTripsWithRoutes = await db
+      .select({
+        // Campos del viaje
+        tripId: schema.trips.id,
+        tripRouteId: schema.trips.routeId,
+        tripCompanyId: schema.trips.companyId,
+        tripDepartureDate: schema.trips.departureDate,
+        tripDepartureTime: schema.trips.departureTime,
+        tripArrivalTime: schema.trips.arrivalTime,
+        tripCapacity: schema.trips.capacity,
+        tripAvailableSeats: schema.trips.availableSeats,
+        tripPrice: schema.trips.price,
+        tripDriverId: schema.trips.driverId,
+        tripVehicleId: schema.trips.vehicleId,
+        tripIsSubTrip: schema.trips.isSubTrip,
+        tripParentTripId: schema.trips.parentTripId,
+        tripOrigin: schema.trips.origin,
+        tripDestination: schema.trips.destination,
+        tripSegmentPrices: schema.trips.segmentPrices,
+        // Campos de la ruta
+        routeId: schema.routes.id,
+        routeName: schema.routes.name,
+        routeOrigin: schema.routes.origin,
+        routeDestination: schema.routes.destination,
+        routeStops: schema.routes.stops,
+        routeCompanyId: schema.routes.companyId
+      })
+      .from(schema.trips)
+      .leftJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
+      .where(inArray(schema.trips.id, tripIds));
+    
+    // Consulta BATCH para todos los usuarios
+    const allUsers = userIds.length > 0 ? await db
+      .select()
+      .from(schema.users)
+      .where(inArray(schema.users.id, userIds)) : [];
+    
+    // Crear mapas para acceso rápido
+    const passengersMap = new Map<number, any[]>();
+    allPassengers.forEach(passenger => {
+      if (!passengersMap.has(passenger.reservationId)) {
+        passengersMap.set(passenger.reservationId, []);
+      }
+      passengersMap.get(passenger.reservationId)!.push(passenger);
+    });
+    
+    const tripsMap = new Map<number, any>();
+    allTripsWithRoutes.forEach(row => {
+      tripsMap.set(row.tripId, {
+        id: row.tripId,
+        routeId: row.tripRouteId,
+        companyId: row.tripCompanyId,
+        departureDate: row.tripDepartureDate,
+        departureTime: row.tripDepartureTime,
+        arrivalTime: row.tripArrivalTime,
+        capacity: row.tripCapacity,
+        availableSeats: row.tripAvailableSeats,
+        price: row.tripPrice,
+        driverId: row.tripDriverId,
+        vehicleId: row.tripVehicleId,
+        isSubTrip: row.tripIsSubTrip,
+        parentTripId: row.tripParentTripId,
+        origin: row.tripOrigin,
+        destination: row.tripDestination,
+        segmentPrices: row.tripSegmentPrices,
+        route: row.routeId ? {
+          id: row.routeId,
+          name: row.routeName,
+          origin: row.routeOrigin,
+          destination: row.routeDestination,
+          stops: row.routeStops,
+          companyId: row.routeCompanyId
+        } : null
+      });
+    });
+    
+    const usersMap = new Map<number, any>();
+    allUsers.forEach(user => {
+      usersMap.set(user.id, user);
+    });
+    
+    // Construir resultados finales
+    const reservationsWithDetails: ReservationWithDetails[] = [];
     for (const reservation of reservations) {
-      // Obtener información del viaje asociado 
-      // NOTA: getTripWithRouteInfo ya incluye sus propias verificaciones de seguridad
-      const trip = await this.getTripWithRouteInfo(reservation.tripId);
+      const trip = tripsMap.get(reservation.tripId);
       if (!trip) {
-        console.log(`[getReservations] No se encontró el viaje ${reservation.tripId} asociado a la reserva ${reservation.id}`);
+        console.log(`[getReservations] No se encontró el viaje ${reservation.tripId} para la reserva ${reservation.id}`);
         continue;
       }
       
-      // Obtener pasajeros
-      const passengers = await this.getPassengers(reservation.id);
+      const passengers = passengersMap.get(reservation.id) || [];
+      const createdByUser = reservation.createdBy ? usersMap.get(reservation.createdBy) : undefined;
+      const checkedByUser = reservation.checkedBy ? usersMap.get(reservation.checkedBy) : undefined;
+      const paidByUser = reservation.paidBy ? usersMap.get(reservation.paidBy) : undefined;
       
-      // Obtener información del usuario que creó la reservación
-      let createdByUser: schema.User | undefined = undefined;
-      if (reservation.createdBy) {
-        // Buscar el usuario por ID
-        const [user] = await db
-          .select()
-          .from(schema.users)
-          .where(eq(schema.users.id, reservation.createdBy));
-        
-        if (user) {
-          createdByUser = user;
-          console.log(`[getReservations] Reserva ${reservation.id} creada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
-        }
-      }
-      
-      // Obtener información del usuario que escaneó el ticket
-      let checkedByUser: schema.User | undefined = undefined;
-      if (reservation.checkedBy) {
-        // Buscar el usuario por ID
-        const [user] = await db
-          .select()
-          .from(schema.users)
-          .where(eq(schema.users.id, reservation.checkedBy));
-        
-        if (user) {
-          checkedByUser = user;
-          console.log(`[getReservations] Reserva ${reservation.id} escaneada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
-        }
-      }
-      
-      // Obtener información del usuario que marcó como pagado el ticket
-      let paidByUser: schema.User | undefined = undefined;
-      if (reservation.paidBy) {
-        // Buscar el usuario por ID
-        const [user] = await db
-          .select()
-          .from(schema.users)
-          .where(eq(schema.users.id, reservation.paidBy));
-        
-        if (user) {
-          paidByUser = user;
-          console.log(`[getReservations] Reserva ${reservation.id} marcada como pagada por usuario ${user.firstName} ${user.lastName} (ID: ${user.id})`);
-        }
-      }
-      
-      // Agregar a los resultados
       reservationsWithDetails.push({
         ...reservation,
         trip,
         passengers,
-        createdByUser, // Añadimos el usuario creador
-        checkedByUser, // Añadimos el usuario que escaneó el ticket
-        paidByUser     // Añadimos el usuario que marcó como pagado el ticket
+        createdByUser,
+        checkedByUser,
+        paidByUser
       });
     }
     
