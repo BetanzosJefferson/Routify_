@@ -177,17 +177,7 @@ export function BoardingList() {
 
   return (
     <div className="py-6 relative">
-      <div className="flex items-center mb-4">
-        <div className="rounded-full bg-primary bg-opacity-10 p-2 mr-3">
-          <ClipboardListIcon className="h-6 w-6 text-primary" />
-        </div>
-        <div>
-          <h2 className="text-xl font-semibold text-gray-800">Lista de Abordaje</h2>
-          <p className="text-sm text-gray-500">
-            Mostrando viajes para el {formatDisplayDate(currentDate)}
-          </p>
-        </div>
-      </div>
+
 
       {/* Selector de fecha */}
       <div className="flex justify-center items-center mb-6">
