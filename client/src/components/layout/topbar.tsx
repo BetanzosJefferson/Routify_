@@ -119,6 +119,7 @@ export function Topbar({ activeTab, onTabChange }: TopbarProps) {
                   </div>
                 </div>
                 <nav className="flex flex-col p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-140px)]">
+                  {/* Rutas */}
                   {canAccess("routes") && (
                     <NavLink 
                       active={window.location.pathname === "/routes"}
@@ -130,6 +131,8 @@ export function Topbar({ activeTab, onTabChange }: TopbarProps) {
                       Rutas
                     </NavLink>
                   )}
+                  
+                  {/* Publicar Viajes */}
                   {canAccess("publish-trip") && (
                     <NavLink 
                       active={window.location.pathname === "/publish-trip"}
@@ -141,6 +144,8 @@ export function Topbar({ activeTab, onTabChange }: TopbarProps) {
                       Publicar Viajes
                     </NavLink>
                   )}
+                  
+                  {/* Viajes */}
                   {canAccess("trips") && (
                     <NavLink 
                       active={window.location.pathname === "/trips"}
@@ -152,6 +157,8 @@ export function Topbar({ activeTab, onTabChange }: TopbarProps) {
                       Viajes
                     </NavLink>
                   )}
+                  
+                  {/* Reservaciones */}
                   {canAccess("reservations") && (
                     <NavLink 
                       active={window.location.pathname === "/reservations"}
@@ -163,6 +170,47 @@ export function Topbar({ activeTab, onTabChange }: TopbarProps) {
                       Reservaciones
                     </NavLink>
                   )}
+                  
+                  {/* Solicitud de reservaciones */}
+                  {canAccess("reservation-requests") && (
+                    <NavLink 
+                      active={window.location.pathname === "/reservation-requests"}
+                      onClick={() => {
+                        setLocation("/reservation-requests");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Solicitud de reservaciones
+                    </NavLink>
+                  )}
+                  
+                  {/* Lista de abordaje */}
+                  {canAccess("boarding-list") && (
+                    <NavLink 
+                      active={window.location.pathname === "/boarding-list"}
+                      onClick={() => {
+                        setLocation("/boarding-list");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Lista de abordaje
+                    </NavLink>
+                  )}
+                  
+                  {/* Paqueterías */}
+                  {canAccess("packages") && (
+                    <NavLink 
+                      active={window.location.pathname === "/packages"}
+                      onClick={() => {
+                        setLocation("/packages");
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      Paqueterias
+                    </NavLink>
+                  )}
+                  
+                  {/* Bitácora */}
                   {canAccess("trip-summary") && (
                     <NavLink 
                       active={window.location.pathname === "/trip-log"}
@@ -171,9 +219,11 @@ export function Topbar({ activeTab, onTabChange }: TopbarProps) {
                         setMobileMenuOpen(false);
                       }}
                     >
-                      Bitácora
+                      Bitacora
                     </NavLink>
                   )}
+                  
+                  {/* Caja */}
                   {canAccess("cash-box") && (
                     <NavLink 
                       active={window.location.pathname === "/cash-box"}
@@ -185,6 +235,8 @@ export function Topbar({ activeTab, onTabChange }: TopbarProps) {
                       Caja
                     </NavLink>
                   )}
+                  
+                  {/* Historial de cortes */}
                   {canAccess("cutoff-history") && (
                     <NavLink 
                       active={window.location.pathname === "/cutoff-history"}
@@ -193,53 +245,24 @@ export function Topbar({ activeTab, onTabChange }: TopbarProps) {
                         setMobileMenuOpen(false);
                       }}
                     >
-                      Historial de Cortes
+                      Historial de cortes
                     </NavLink>
                   )}
-                  {canAccess("boarding-list") && (
+                  
+                  {/* Caja de usuarios */}
+                  {canAccess("user-cash-boxes") && (
                     <NavLink 
-                      active={window.location.pathname === "/boarding-list"}
+                      active={window.location.pathname === "/user-cash-boxes"}
                       onClick={() => {
-                        setLocation("/boarding-list");
+                        setLocation("/user-cash-boxes");
                         setMobileMenuOpen(false);
                       }}
                     >
-                      Lista de Abordaje
+                      Caja de usuarios
                     </NavLink>
                   )}
-                  {canAccess("users") && (
-                    <NavLink 
-                      active={window.location.pathname === "/users"}
-                      onClick={() => {
-                        setLocation("/users");
-                        setMobileMenuOpen(false);
-                      }}
-                    >
-                      Usuarios
-                    </NavLink>
-                  )}
-                  {canAccess("passenger-transfer") && (
-                    <NavLink 
-                      active={window.location.pathname === "/passenger-transfer"}
-                      onClick={() => {
-                        setLocation("/passenger-transfer");
-                        setMobileMenuOpen(false);
-                      }}
-                    >
-                      Transferencia de pasajeros
-                    </NavLink>
-                  )}
-                  {canAccess("vehicles") && (
-                    <NavLink 
-                      active={window.location.pathname === "/vehicles"}
-                      onClick={() => {
-                        setLocation("/vehicles");
-                        setMobileMenuOpen(false);
-                      }}
-                    >
-                      Unidades
-                    </NavLink>
-                  )}
+                  
+                  {/* Gestión de comisiones */}
                   {canAccess("commissions") && (
                     <NavLink 
                       active={window.location.pathname === "/commissions"}
@@ -248,9 +271,11 @@ export function Topbar({ activeTab, onTabChange }: TopbarProps) {
                         setMobileMenuOpen(false);
                       }}
                     >
-                      Gestión de comisiones
+                      Gestion de comisiones
                     </NavLink>
                   )}
+                  
+                  {/* Mis comisiones */}
                   {canAccess("my-commissions") && (
                     <NavLink 
                       active={window.location.pathname === "/my-commissions"}
@@ -262,81 +287,43 @@ export function Topbar({ activeTab, onTabChange }: TopbarProps) {
                       Mis comisiones
                     </NavLink>
                   )}
-                  {canAccess("packages") && (
+                  
+                  {/* Cupones */}
+                  {canAccess("coupons") && (
                     <NavLink 
-                      active={window.location.pathname === "/packages"}
+                      active={window.location.pathname === "/coupons"}
                       onClick={() => {
-                        setLocation("/packages");
+                        setLocation("/coupons");
                         setMobileMenuOpen(false);
                       }}
                     >
-                      Paqueterías
+                      Cupones
                     </NavLink>
                   )}
-                  {canAccess("trip-expense") && (
+                  
+                  {/* Usuarios */}
+                  {canAccess("users") && (
                     <NavLink 
-                      active={window.location.pathname === "/trip-expense"}
+                      active={window.location.pathname === "/users"}
                       onClick={() => {
-                        setLocation("/trip-expense");
+                        setLocation("/users");
                         setMobileMenuOpen(false);
                       }}
                     >
-                      Gastos de Viaje
+                      Usuarios
                     </NavLink>
                   )}
-                  {canAccess("trip-expense-summary") && (
+                  
+                  {/* Unidades */}
+                  {canAccess("vehicles") && (
                     <NavLink 
-                      active={window.location.pathname === "/trip-expense-summary"}
+                      active={window.location.pathname === "/vehicles"}
                       onClick={() => {
-                        setLocation("/trip-expense-summary");
+                        setLocation("/vehicles");
                         setMobileMenuOpen(false);
                       }}
                     >
-                      Resumen de Gastos
-                    </NavLink>
-                  )}
-                  {canAccess("routes") && (
-                    <NavLink 
-                      active={window.location.pathname === "/routes"}
-                      onClick={() => {
-                        setLocation("/routes");
-                        setMobileMenuOpen(false);
-                      }}
-                    >
-                      Gestión de Rutas
-                    </NavLink>
-                  )}
-                  {canAccess("companies") && (
-                    <NavLink 
-                      active={window.location.pathname === "/companies"}
-                      onClick={() => {
-                        setLocation("/companies");
-                        setMobileMenuOpen(false);
-                      }}
-                    >
-                      Empresas
-                    </NavLink>
-                  )}
-                  {canAccess("global-analytics") && (
-                    <NavLink 
-                      active={window.location.pathname === "/global-analytics"}
-                      onClick={() => {
-                        setLocation("/global-analytics");
-                        setMobileMenuOpen(false);
-                      }}
-                    >
-                      Analíticas Globales
-                    </NavLink>
-                  )}
-                  {canAccess("discount-codes") && (
-                    <NavLink 
-                      active={window.location.pathname === "/discount-codes"}
-                      onClick={() => {
-                        setLocation("/discount-codes");
-                        setMobileMenuOpen(false);
-                      }}
-                    >
-                      Códigos de Descuento
+                      Unidades
                     </NavLink>
                   )}
                 </nav>
