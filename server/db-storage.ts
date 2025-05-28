@@ -981,13 +981,14 @@ export class DatabaseStorage implements IStorage {
       
       // For subtrips, check against segment origin and destination
       if (trip.isSubTrip && trip.segmentOrigin && trip.segmentDestination) {
+        console.log(`[SUBTRIP-DEBUG] Procesando subTrip ${trip.id}: ${trip.segmentOrigin} -> ${trip.segmentDestination}`);
         const originMatch = !params.origin || trip.segmentOrigin.toLowerCase().includes(params.origin.toLowerCase());
         const destMatch = !params.destination || trip.segmentDestination.toLowerCase().includes(params.destination.toLowerCase());
         
-        console.log(`[searchTrips-v2] SubTrip ${trip.id}: ${trip.segmentOrigin} -> ${trip.segmentDestination}, originMatch: ${originMatch}, destMatch: ${destMatch}`);
+        console.log(`[SUBTRIP-DEBUG] SubTrip ${trip.id}: originMatch=${originMatch}, destMatch=${destMatch}, params.origin=${params.origin}`);
         
         if (originMatch && destMatch) {
-          console.log(`[PUSH-2] Agregando subTrip ${trip.id} (isSubTrip: ${trip.isSubTrip}) - params.origin: ${params.origin}`);
+          console.log(`[PUSH-2] *** AGREGANDO SUBTRIP ${trip.id} (isSubTrip: ${trip.isSubTrip}) - params.origin: ${params.origin} ***`);
           tripsWithRouteInfo.push({
             ...trip,
             route,
@@ -998,6 +999,8 @@ export class DatabaseStorage implements IStorage {
             assignedVehicle,
             assignedDriver
           });
+        } else {
+          console.log(`[SUBTRIP-DEBUG] *** NO AGREGANDO SUBTRIP ${trip.id} - no coincide con filtros ***`);
         }
         continue;
       }
