@@ -740,7 +740,6 @@ export function PublishTripForm() {
               : "Publicar Nuevo Viaje"}
         </Button>
       </div>
-
       {/* Form section */}
       {showForm && (
         <div className="bg-card rounded-lg border shadow-sm p-6">
@@ -1204,7 +1203,7 @@ export function PublishTripForm() {
                       de la ruta. Estos tiempos se utilizarán en itinerarios y
                       para calcular estimaciones de tiempo para pasajeros.
                     </p>
-                    <p className="text-sm text-primary-foreground bg-primary/10 p-3 rounded mb-4">
+                    <p className="text-sm bg-primary/10 p-3 rounded mb-4 text-[#797f8c]">
                       Edite directamente los horarios haciendo clic en el campo
                       de tiempo. Los cambios actualizarán automáticamente los
                       tiempos de salida y llegada para cada segmento de viaje.
@@ -1480,7 +1479,6 @@ export function PublishTripForm() {
           </Form>
         </div>
       )}
-
       {/* Trip list */}
       <TripList onEditTrip={loadTripForEditing} />
     </div>
