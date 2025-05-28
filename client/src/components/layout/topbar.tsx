@@ -106,11 +106,19 @@ export function Topbar({ activeTab, onTabChange }: TopbarProps) {
                   <MenuIcon className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[240px] sm:w-[300px] p-0">
-                <div className="px-6 py-6 border-b border-gray-200">
-                  <h2 className="text-xl font-semibold">TransRoute</h2>
+              <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 bg-gradient-to-b from-slate-50 to-white">
+                <div className="px-6 py-6 border-b border-gray-200 bg-white shadow-sm">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
+                      <span className="text-white font-bold text-lg">TR</span>
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-800">TransRoute</h2>
+                      <p className="text-sm text-gray-500">Sistema de Gestión</p>
+                    </div>
+                  </div>
                 </div>
-                <nav className="flex flex-col p-4">
+                <nav className="flex flex-col p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-140px)]">
                   {canAccess("routes") && (
                     <NavLink 
                       active={activeTab === "create-route"}
@@ -323,6 +331,33 @@ export function Topbar({ activeTab, onTabChange }: TopbarProps) {
                     </NavLink>
                   )}
                 </nav>
+                
+                {/* Información del usuario */}
+                <div className="mt-auto p-4 border-t border-gray-200 bg-white">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                      {user?.profilePicture ? (
+                        <img 
+                          src={user.profilePicture} 
+                          alt="Profile" 
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-gray-600 font-semibold text-sm">
+                          {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {user?.firstName} {user?.lastName}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {getRoleDisplayName(user?.role)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </SheetContent>
             </Sheet>
             
@@ -413,13 +448,16 @@ interface NavLinkProps {
 function NavLink({ active, onClick, children }: NavLinkProps) {
   return (
     <div 
-      className={`flex items-center px-2 py-3 text-base font-medium rounded-md cursor-pointer ${
+      className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg cursor-pointer transition-all duration-200 ${
         active 
-          ? "text-primary bg-gray-50" 
-          : "text-gray-700 hover:bg-gray-100"
+          ? "text-blue-700 bg-blue-50 border-l-4 border-blue-700 shadow-sm" 
+          : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 hover:translate-x-1"
       }`}
       onClick={onClick}
     >
+      <div className={`w-2 h-2 rounded-full mr-3 ${
+        active ? "bg-blue-700" : "bg-gray-400"
+      }`} />
       {children}
     </div>
   );
