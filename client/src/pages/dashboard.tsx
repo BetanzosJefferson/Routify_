@@ -14,7 +14,6 @@ import CommissionsPage from "@/components/commissions/commissions-page";
 import { BoardingList } from "@/components/boarding-list/boarding-list";
 import { PassengerTransferPage } from "@/components/passenger-transfer/passenger-transfer-page";
 import { UserCashBoxesPage } from "@/components/user-cash-boxes/user-cash-boxes-page";
-import PackagesPage from "@/pages/packages-page";
 import { TabType } from "@/hooks/use-active-tab";
 import { useAuth } from "@/hooks/use-auth";
 import { hasAccessToSection } from "@/lib/role-based-permissions";
@@ -28,10 +27,8 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabType>(
     // Para choferes, la sección por defecto es boarding-list
     // Para comisionistas, la sección por defecto es trips
-    // Para taquilla, la sección por defecto es trips
     user?.role === 'chofer' ? "boarding-list" : 
-    user?.role === 'comisionista' ? "trips" :
-    user?.role === 'taquilla' ? "trips" : "create-route"
+    user?.role === 'comisionista' ? "trips" : "create-route"
   );
   
   // Update active tab when URL changes
@@ -39,7 +36,7 @@ export default function Dashboard() {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("tab") as TabType | null;
     
-    if (tab && ["create-route", "publish-trip", "trips", "reservations", "trip-summary", "users", "vehicles", "commissions", "boarding-list", "packages"].includes(tab)) {
+    if (tab && ["create-route", "publish-trip", "trips", "reservations", "trip-summary", "users", "vehicles", "commissions", "boarding-list"].includes(tab)) {
       // Solo actualizar si el usuario tiene acceso a esta sección
       if (user && hasAccessToSection(user.role, tab)) {
         setActiveTab(tab);
@@ -47,7 +44,7 @@ export default function Dashboard() {
         // Si no tiene acceso, buscar la primera sección a la que sí tenga acceso
         const accessibleSections = [
           "create-route", "publish-trip", "trips", "reservations", 
-          "trip-summary", "boarding-list", "users", "vehicles", "commissions", "packages"
+          "trip-summary", "boarding-list", "users", "vehicles", "commissions"
         ].filter(section => hasAccessToSection(user?.role || "", section));
         
         if (accessibleSections.length > 0) {
@@ -148,12 +145,6 @@ export default function Dashboard() {
             {activeTab === "user-cash-boxes" && canAccess("user-cash-boxes") ? (
               <UserCashBoxesPage />
             ) : activeTab === "user-cash-boxes" && (
-              <AccessDeniedAlert />
-            )}
-            
-            {activeTab === "packages" && canAccess("packages") ? (
-              <PackagesPage />
-            ) : activeTab === "packages" && (
               <AccessDeniedAlert />
             )}
           </main>
