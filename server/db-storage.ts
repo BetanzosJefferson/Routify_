@@ -1010,11 +1010,11 @@ export class DatabaseStorage implements IStorage {
       const hasOriginOrDestinationFilter = params.origin || params.destination;
       const isMainTrip = !trip.isSubTrip;
       
-      console.log(`[searchTrips-v2] Viaje ${trip.id}: isSubTrip=${trip.isSubTrip}, hasFilter=${hasOriginOrDestinationFilter}, isMainTrip=${isMainTrip}`);
+      console.log(`[searchTrips-v2] Viaje ${trip.id}: isSubTrip=${trip.isSubTrip}, hasFilter=${hasOriginOrDestinationFilter}, isMainTrip=${isMainTrip}, params.origin=${params.origin}`);
       
       // Si hay filtro de origen/destino y es un viaje padre, saltarlo ANTES de verificar matches
       if (hasOriginOrDestinationFilter && isMainTrip) {
-        console.log(`[searchTrips-v2] Excluyendo viaje padre ${trip.id} (${trip.isSubTrip ? 'subtrip' : 'main'}) debido a filtro de origen/destino específico`);
+        console.log(`[searchTrips-v2] *** EXCLUYENDO VIAJE PADRE ${trip.id} (isSubTrip: ${trip.isSubTrip}) debido a filtro de origen/destino específico ***`);
         continue;
       }
       
