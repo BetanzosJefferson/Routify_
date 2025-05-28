@@ -2116,11 +2116,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let companyId: string | null = null;
       let tripId: number | null = null;
       let companyIds: string[] | undefined = undefined;
+      let dateFilter: string | null = null;
       
       // Verificar si se solicita filtrar por viaje específico
       if (req.query.tripId) {
         tripId = parseInt(req.query.tripId as string, 10);
         console.log(`[GET /reservations] Filtrando por viaje ID: ${tripId}`);
+      }
+      
+      // Verificar si se solicita filtrar por fecha específica
+      if (req.query.date) {
+        dateFilter = req.query.date as string;
+        console.log(`[GET /reservations] Filtrando por fecha: ${dateFilter}`);
       }
       
       // Determinar filtros de seguridad según el rol
@@ -2158,9 +2165,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Obtener reservaciones con filtros optimizados
       let reservations;
       if (user.role === UserRole.TICKET_OFFICE && companyIds) {
-        reservations = await storage.getReservations(undefined, tripId || undefined, companyIds);
+        reservations = await storage.getReservations(undefined, tripId || undefined, companyIds, dateFilter || undefined);
       } else {
-        reservations = await storage.getReservations(companyId || undefined, tripId || undefined);
+        reservations = await storage.getReservations(companyId || undefined, tripId || undefined, undefined, dateFilter || undefined);
       }
       
       console.log(`[GET /reservations] Encontradas ${reservations.length} reservaciones`);
