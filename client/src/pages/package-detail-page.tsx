@@ -85,6 +85,15 @@ export default function PackageDetailPage() {
         return;
       }
       
+      // Si el usuario tiene rol taquilla, tiene acceso a paquetes de todas sus empresas asociadas
+      // Como el endpoint /api/taquilla/packages ya filtra por empresas autorizadas,
+      // si llegamos a ver este paquete, significa que tenemos acceso
+      if (user.role === 'taquilla') {
+        setIsSameCompany(true);
+        console.log("¿Coincide la compañía?", true, "(rol taquilla con acceso multi-empresa)");
+        return;
+      }
+      
       // Para otros roles, comprobar si el companyId coincide
       // El usuario puede tener la compañía en diferentes formatos:
       // 1. user.companyId - identificador directo de la compañía (formato slug)
