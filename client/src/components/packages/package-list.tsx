@@ -787,15 +787,70 @@ export function PackageList({ onAddPackage, onEditPackage }: PackageListProps) {
                 )}
               </div>
               
-              <div 
-                className="p-1 hover:bg-gray-100 rounded-md transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // Aquí puedes agregar acciones adicionales como menú de opciones
-                }}
-              >
-                <MoreHorizontal className="h-4 w-4 text-gray-500" />
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <div 
+                    className="p-1 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreHorizontal className="h-4 w-4 text-gray-500" />
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPackageToDetail(pkg);
+                      setIsDetailModalOpen(true);
+                    }}
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    Ver detalle
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(`/api/public/packages/${pkg.id}`, '_blank');
+                    }}
+                  >
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Ver ficha pública
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      printPackageTicket(pkg);
+                    }}
+                  >
+                    <Printer className="mr-2 h-4 w-4" />
+                    Imprimir ticket
+                  </DropdownMenuItem>
+                  {(hasRoleAccess(user?.role as UserRole, ['admin', 'dueño']) ||
+                    (user?.role === 'taquilla' && pkg.createdBy === user?.id)) && (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditPackage(pkg.id);
+                      }}
+                    >
+                      <Edit className="mr-2 h-4 w-4" />
+                      Editar
+                    </DropdownMenuItem>
+                  )}
+                  {hasRoleAccess(user?.role as UserRole, ['admin', 'dueño']) && (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPackageToDelete(pkg);
+                      }}
+                      className="text-red-600 focus:text-red-600"
+                    >
+                      <Trash className="mr-2 h-4 w-4" />
+                      Eliminar
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         ))}
