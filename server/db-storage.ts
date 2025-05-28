@@ -453,18 +453,6 @@ export class DatabaseStorage implements IStorage {
     for (const trip of trips) {
       const route = routeMap.get(trip.routeId);
       if (route) {
-        // NUEVA LÓGICA: Si se está filtrando por origen O destino específicos, excluir viajes padre
-        const hasOriginOrDestinationFilter = params.origin || params.destination;
-        const isMainTrip = !trip.isSubTrip;
-        
-        console.log(`[searchTrips-REAL] Viaje ${trip.id}: isSubTrip=${trip.isSubTrip}, hasFilter=${hasOriginOrDestinationFilter}, params.origin=${params.origin}`);
-        
-        // Si hay filtro de origen/destino y es un viaje padre, saltarlo
-        if (hasOriginOrDestinationFilter && isMainTrip) {
-          console.log(`[searchTrips-REAL] *** EXCLUYENDO VIAJE PADRE ${trip.id} debido a filtro de origen/destino ***`);
-          continue;
-        }
-        
         // Obtener datos de la compañía si existen
         let companyData = { companyName: undefined, companyLogo: undefined };
         
@@ -506,7 +494,6 @@ export class DatabaseStorage implements IStorage {
         // Verificar que los datos de la compañía estén presentes
         console.log(`Viaje ${trip.id} - companyName: ${tripWithInfo.companyName}, companyLogo: ${tripWithInfo.companyLogo}`);
         
-        console.log(`[PUSH-1] Agregando viaje ${trip.id} (isSubTrip: ${trip.isSubTrip}) - params.origin: ${params.origin}`);
         tripsWithRouteInfo.push(tripWithInfo);
       }
       // Si no se encuentra la ruta, simplemente no incluimos este viaje
