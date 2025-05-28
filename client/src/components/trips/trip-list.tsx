@@ -278,13 +278,6 @@ export function TripList() {
 
   return (
     <div className="py-6">
-      <div className="flex items-center mb-4">
-        <div className="rounded-full bg-primary bg-opacity-10 p-2 mr-3">
-          <MapPinIcon className="h-6 w-6 text-primary" />
-        </div>
-        <h2 className="text-xl font-semibold text-gray-800">Viajes</h2>
-      </div>
-
       <Card className="mb-6">
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">

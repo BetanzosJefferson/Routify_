@@ -119,93 +119,209 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             </NavSection>
           )}*/}
           
-          {/* Sección de Gestión de Rutas */}
-          {(canAccess("routes") || canAccess("publish-trip") || canAccess("trips")) && (
-            <NavSection title="Gestión de Rutas">
-              {canAccess("routes") && (
-                <NavItem 
-                  icon={<MapIcon className="h-5 w-5" />} 
-                  active={location === "/routes"}
-                  onClick={() => setLocation("/routes")}
-                >
-                  Rutas
-                </NavItem>
-              )}
-              {canAccess("publish-trip") && (
-                <NavItem 
-                  icon={<ClockIcon className="h-5 w-5" />} 
-                  active={location === "/publish-trip"}
-                  onClick={() => setLocation("/publish-trip")}
-                >
-                  Publicar Viajes
-                </NavItem>
-              )}
-              {canAccess("trips") && (
-                <NavItem 
-                  icon={<BuildingIcon className="h-5 w-5" />} 
-                  active={location === "/trips"}
-                  onClick={() => setLocation("/trips")}
-                >
-                  Viajes
-                </NavItem>
-              )}
-            </NavSection>
+          {/* Sección de Rutas */}
+          {canAccess("routes") && (
+            <div className="space-y-1">
+              <NavItem 
+                icon={<MapIcon className="h-5 w-5" />} 
+                active={location === "/routes"}
+                onClick={() => setLocation("/routes")}
+              >
+                Rutas
+              </NavItem>
+            </div>
           )}
           
-          {/* Sección de Reservaciones y Reportes */}
-          {(canAccess("reservations") || canAccess("trip-summary") || canAccess("boarding-list")) && (
-            <NavSection title="Reservaciones y Reportes">
-              {canAccess("reservations") && (
-                <NavItem 
-                  icon={<UserIcon className="h-5 w-5" />} 
-                  active={location === "/reservations"}
-                  onClick={() => setLocation("/reservations")}
-                >
-                  Reservaciones
-                </NavItem>
-              )}
-              {canAccess("trip-summary") && (
-                <NavItem 
-                  icon={<ClipboardListIcon className="h-5 w-5" />} 
-                  active={location === "/trip-log"}
-                  onClick={() => setLocation("/trip-log")}
-                >
-                  Bitácora
-                </NavItem>
-              )}
-              {canAccess("cash-box") && (
-                <NavItem 
-                  icon={<ReceiptIcon className="h-5 w-5" />} 
-                  active={location === "/cash-box"}
-                  onClick={() => setLocation("/cash-box")}
-                >
-                  Caja
-                </NavItem>
-              )}
-              {canAccess("cutoff-history") && (
-                <NavItem 
-                  icon={<ClipboardListIcon className="h-5 w-5" />} 
-                  active={location === "/cutoff-history"}
-                  onClick={() => setLocation("/cutoff-history")}
-                >
-                  Historial de Cortes
-                </NavItem>
-              )}
-              {canAccess("boarding-list") && (
-                <NavItem 
-                  icon={<UsersIcon className="h-5 w-5" />} 
-                  active={location === "/boarding-list"}
-                  onClick={() => setLocation("/boarding-list")}
-                >
-                  Lista de Abordaje
-                </NavItem>
-              )}
-            </NavSection>
+          {/* Publicar Viajes */}
+          {canAccess("publish-trip") && (
+            <div className="space-y-1">
+              <NavItem 
+                icon={<ClockIcon className="h-5 w-5" />} 
+                active={location === "/publish-trip"}
+                onClick={() => setLocation("/publish-trip")}
+              >
+                Publicar Viajes
+              </NavItem>
+            </div>
           )}
           
-          {/* Sección de Usuarios */}
+          {/* Viajes */}
+          {canAccess("trips") && (
+            <div className="space-y-1">
+              <NavItem 
+                icon={<BuildingIcon className="h-5 w-5" />} 
+                active={location === "/trips"}
+                onClick={() => setLocation("/trips")}
+              >
+                Viajes
+              </NavItem>
+            </div>
+          )}
+
+          {/* Línea separadora */}
+          {(canAccess("routes") || canAccess("publish-trip") || canAccess("trips")) && (canAccess("reservations") || canAccess("reservation-requests") || canAccess("boarding-list")) && (
+            <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+          )}
+          
+          {/* Sección de Reservaciones */}
+          {canAccess("reservations") && (
+            <div className="space-y-1">
+              <NavItem 
+                icon={<UserIcon className="h-5 w-5" />} 
+                active={location === "/reservations"}
+                onClick={() => setLocation("/reservations")}
+              >
+                Reservaciones
+              </NavItem>
+            </div>
+          )}
+          
+          {canAccess("reservation-requests") && (
+            <div className="space-y-1">
+              <NavItem 
+                icon={<FileTextIcon className="h-5 w-5" />} 
+                active={location === "/reservation-requests"}
+                onClick={() => setLocation("/reservation-requests")}
+              >
+                Solicitud de reservaciones
+              </NavItem>
+            </div>
+          )}
+          
+          {canAccess("boarding-list") && (
+            <div className="space-y-1">
+              <NavItem 
+                icon={<UsersIcon className="h-5 w-5" />} 
+                active={location === "/boarding-list"}
+                onClick={() => setLocation("/boarding-list")}
+              >
+                Lista de abordaje
+              </NavItem>
+            </div>
+          )}
+
+          {/* Línea separadora */}
+          {(canAccess("reservations") || canAccess("reservation-requests") || canAccess("boarding-list")) && canAccess("packages") && (
+            <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+          )}
+          
+          {/* Paqueterías */}
+          {canAccess("packages") && (
+            <div className="space-y-1">
+              <NavItem 
+                icon={<FileTextIcon className="h-5 w-5" />} 
+                active={location === "/packages"}
+                onClick={() => setLocation("/packages")}
+              >
+                Paqueterias
+              </NavItem>
+            </div>
+          )}
+
+          {/* Línea separadora */}
+          {canAccess("packages") && (canAccess("trip-summary") || canAccess("cash-box") || canAccess("cutoff-history") || canAccess("user-cash-boxes") || canAccess("commissions") || canAccess("coupons")) && (
+            <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+          )}
+          
+          {/* Bitácora */}
+          {canAccess("trip-summary") && (
+            <div className="space-y-1">
+              <NavItem 
+                icon={<ClipboardListIcon className="h-5 w-5" />} 
+                active={location === "/trip-log"}
+                onClick={() => setLocation("/trip-log")}
+              >
+                Bitacora
+              </NavItem>
+            </div>
+          )}
+          
+          {/* Caja */}
+          {canAccess("cash-box") && (
+            <div className="space-y-1">
+              <NavItem 
+                icon={<ReceiptIcon className="h-5 w-5" />} 
+                active={location === "/cash-box"}
+                onClick={() => setLocation("/cash-box")}
+              >
+                Caja
+              </NavItem>
+            </div>
+          )}
+          
+          {/* Historial de cortes */}
+          {canAccess("cutoff-history") && (
+            <div className="space-y-1">
+              <NavItem 
+                icon={<ClipboardListIcon className="h-5 w-5" />} 
+                active={location === "/cutoff-history"}
+                onClick={() => setLocation("/cutoff-history")}
+              >
+                Historial de cortes
+              </NavItem>
+            </div>
+          )}
+          
+          {/* Caja de usuarios */}
+          {canAccess("user-cash-boxes") && (
+            <div className="space-y-1">
+              <NavItem 
+                icon={<Wallet className="h-5 w-5" />} 
+                active={(location === '/' || location === '/dashboard') && activeTab === "user-cash-boxes"}
+                onClick={() => handleTabClick("user-cash-boxes")}
+              >
+                Caja de usuarios
+              </NavItem>
+            </div>
+          )}
+          
+          {/* Gestión de comisiones */}
+          {canAccess("commissions") && (
+            <div className="space-y-1">
+              <NavItem 
+                icon={<PercentIcon className="h-5 w-5" />} 
+                active={location === "/commissions"}
+                onClick={() => setLocation("/commissions")}
+              >
+                Gestion de comisiones
+              </NavItem>
+            </div>
+          )}
+          
+          {/* Mis comisiones */}
+          {canAccess("my-commissions") && (
+            <div className="space-y-1">
+              <NavItem 
+                icon={<PercentIcon className="h-5 w-5" />} 
+                active={location === "/my-commissions"}
+                onClick={() => setLocation("/my-commissions")}
+              >
+                Mis comisiones
+              </NavItem>
+            </div>
+          )}
+          
+          {/* Cupones */}
+          {canAccess("coupons") && (
+            <div className="space-y-1">
+              <NavItem 
+                icon={<TagIcon className="h-5 w-5" />} 
+                active={location === "/coupons"}
+                onClick={() => setLocation("/coupons")}
+              >
+                Cupones
+              </NavItem>
+            </div>
+          )}
+
+          {/* Línea separadora */}
+          {(canAccess("trip-summary") || canAccess("cash-box") || canAccess("cutoff-history") || canAccess("user-cash-boxes") || canAccess("commissions") || canAccess("coupons")) && (canAccess("users") || canAccess("vehicles")) && (
+            <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+          )}
+          
+          {/* Usuarios */}
           {canAccess("users") && (
-            <NavSection title="Usuarios">
+            <div className="space-y-1">
               <NavItem 
                 icon={<UserIcon className="h-5 w-5" />} 
                 active={location === "/users"}
@@ -213,93 +329,20 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               >
                 Usuarios
               </NavItem>
-            </NavSection>
+            </div>
           )}
           
-          {/* Sección de Solicitudes */}
-          {canAccess("reservation-requests") && (
-            <NavSection title="Solicitudes">
+          {/* Unidades */}
+          {canAccess("vehicles") && (
+            <div className="space-y-1">
               <NavItem 
-                icon={<FileTextIcon className="h-5 w-5" />} 
-                active={location === "/reservation-requests"}
-                onClick={() => setLocation("/reservation-requests")}
+                icon={<TruckIcon className="h-5 w-5" />} 
+                active={location === "/vehicles"}
+                onClick={() => setLocation("/vehicles")}
               >
-                Solicitudes de Reservación
+                Unidades
               </NavItem>
-            </NavSection>
-          )}
-          
-          {/* Sección de Transferencia de Pasajeros - Temporalmente deshabilitada
-          {canAccess("passenger-transfer") && (
-            <NavSection title="Operaciones">
-              <NavItem 
-                icon={<ArrowRightLeft className="h-5 w-5" />} 
-                active={location === "/passenger-transfer"}
-                onClick={() => setLocation("/passenger-transfer")}
-              >
-                Transferencia de pasajeros
-              </NavItem>
-            </NavSection>
-          )} */}
-          
-          {/* Sección de Flota y Finanzas */}
-          {(canAccess("vehicles") || canAccess("commissions") || canAccess("my-commissions") || canAccess("coupons") || canAccess("packages") || canAccess("user-cash-boxes")) && (
-            <NavSection title="Flota y Finanzas">
-              {canAccess("vehicles") && (
-                <NavItem 
-                  icon={<TruckIcon className="h-5 w-5" />} 
-                  active={location === "/vehicles"}
-                  onClick={() => setLocation("/vehicles")}
-                >
-                  Unidades
-                </NavItem>
-              )}
-              {canAccess("commissions") && (
-                <NavItem 
-                  icon={<PercentIcon className="h-5 w-5" />} 
-                  active={location === "/commissions"}
-                  onClick={() => setLocation("/commissions")}
-                >
-                  Gestión de comisiones
-                </NavItem>
-              )}
-              {canAccess("my-commissions") && (
-                <NavItem 
-                  icon={<PercentIcon className="h-5 w-5" />} 
-                  active={location === "/my-commissions"}
-                  onClick={() => setLocation("/my-commissions")}
-                >
-                  Mis comisiones
-                </NavItem>
-              )}
-              {canAccess("coupons") && (
-                <NavItem 
-                  icon={<TagIcon className="h-5 w-5" />} 
-                  active={location === "/coupons"}
-                  onClick={() => setLocation("/coupons")}
-                >
-                  Cupones
-                </NavItem>
-              )}
-              {canAccess("packages") && (
-                <NavItem 
-                  icon={<FileTextIcon className="h-5 w-5" />} 
-                  active={location === "/packages"}
-                  onClick={() => setLocation("/packages")}
-                >
-                  Paqueterías
-                </NavItem>
-              )}
-              {canAccess("user-cash-boxes") && (
-                <NavItem 
-                  icon={<Wallet className="h-5 w-5" />} 
-                  active={(location === '/' || location === '/dashboard') && activeTab === "user-cash-boxes"}
-                  onClick={() => handleTabClick("user-cash-boxes")}
-                >
-                  Cajas de usuarios
-                </NavItem>
-              )}
-            </NavSection>
+            </div>
           )}
           
           {/* Sección de Configuración - no incluida en TabType por el momento */}
