@@ -39,6 +39,7 @@ import {
   UsersIcon,
   InfoIcon,
   CreditCardIcon,
+  MessageCircleIcon,
 } from "lucide-react";
 
 interface ReservationStepsModalProps {
@@ -649,6 +650,90 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
     }
   };
   
+  // Handle sending ticket via WhatsApp
+  const handleSendWhatsApp = async () => {
+    if (!submittedReservation) {
+      toast({
+        title: "Error",
+        description: "No se encontró la información de la reservación",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Verificar que tenemos un número de teléfono
+    if (!phone || phone.trim() === "") {
+      toast({
+        title: "Error",
+        description: "No se encontró el número de teléfono del cliente",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      toast({
+        title: "Preparando envío por WhatsApp...",
+        description: "Generando boleto y preparando mensaje",
+      });
+
+      // Limpiar el número de teléfono (quitar espacios, guiones, etc.)
+      const cleanPhone = phone.replace(/\D/g, '');
+      
+      // Agregar código de país si no lo tiene (asumiendo México +52)
+      let formattedPhone = cleanPhone;
+      if (cleanPhone.length === 10) {
+        formattedPhone = '52' + cleanPhone;
+      } else if (cleanPhone.length === 12 && cleanPhone.startsWith('52')) {
+        formattedPhone = cleanPhone;
+      }
+
+      // Crear el mensaje para WhatsApp
+      const reservationId = generateReservationId(submittedReservation.id);
+      const passengerNames = passengers.map(p => `${p.firstName} ${p.lastName}`).join(', ');
+      
+      const message = `¡Hola! 👋
+
+Aquí tienes tu boleto de viaje:
+
+🎫 *Boleto #${reservationId}*
+👤 *Pasajero(s):* ${passengerNames}
+🚌 *Ruta:* ${trip.route.name}
+📅 *Fecha:* ${format(new Date(trip.departureDate), "dd/MM/yyyy", { locale: es })}
+🕐 *Hora de salida:* ${formatTripTime(trip.departureTime)}
+💰 *Total:* ${formatPrice(totalPrice)}
+
+*Términos importantes:*
+• Llegar 15 minutos antes de la salida
+• Llevar cambio exacto para pagos en efectivo
+• Máximo 1 maleta mediana por persona
+
+¡Buen viaje! 🚌✨`;
+
+      // Codificar el mensaje para URL
+      const encodedMessage = encodeURIComponent(message);
+      
+      // Crear la URL de WhatsApp
+      const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
+      
+      // Abrir WhatsApp en una nueva ventana
+      window.open(whatsappUrl, '_blank');
+      
+      toast({
+        title: "WhatsApp abierto exitosamente",
+        description: "Se ha abierto WhatsApp con el mensaje y datos del boleto preparados",
+      });
+
+    } catch (error) {
+      console.error('Error al preparar envío por WhatsApp:', error);
+      toast({
+        title: "Error al abrir WhatsApp",
+        description: "Ocurrió un error al preparar el mensaje. Intente nuevamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Handle downloading the ticket as PDF (usando la misma lógica que reservation-details-modal)
   const handleDownloadTicket = async () => {
     if (!submittedReservation) {
@@ -1799,6 +1884,13 @@ export function ReservationStepsModal({ trip, isOpen, onClose }: ReservationStep
               >
                 <DownloadIcon className="w-4 h-4 mr-2" />
                 Descargar Boleto
+              </Button>
+              <Button 
+                onClick={handleSendWhatsApp}
+                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white"
+              >
+                <MessageCircleIcon className="w-4 h-4 mr-2" />
+                Enviar por WhatsApp
               </Button>
             </DialogFooter>
           </>
