@@ -30,9 +30,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const reconnectTimeout = useRef<number | null>(null);
   
   const log = (message: string, ...args: any[]) => {
-    if (debug) {
-      console.log(`[WebSocket] ${message}`, ...args);
-    }
+    // Logging disabled for production
   };
   
   // Función para conectar al WebSocket
@@ -83,21 +81,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
           const data = JSON.parse(event.data);
           log('Mensaje WebSocket procesado:', data);
           
-          // Añadir logging específico para notificaciones
-          if (data.type === 'notification') {
-            console.log('=== NOTIFICACIÓN RECIBIDA ===');
-            console.log('Tipo:', data.type);
-            console.log('Datos:', data.data);
-            console.log('Timestamp:', new Date().toISOString());
-            console.log('===========================');
-          }
+          // Process notification without logging
           
           if (onMessage) {
             onMessage(data);
           }
         } catch (error) {
-          console.error('[WebSocket] Error al procesar mensaje:', error);
-          console.error('[WebSocket] Contenido del mensaje:', event.data);
+          // Error handling without logging
         }
       };
       
@@ -120,7 +110,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       };
       
       socket.current.onerror = (error) => {
-        console.error('[WebSocket] Error en la conexión:', error);
         setStatus('error');
         
         if (onError) {
@@ -129,7 +118,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       };
       
     } catch (error) {
-      console.error('[WebSocket] Error al crear conexión:', error);
       setStatus('error');
     }
   };

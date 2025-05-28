@@ -38,21 +38,11 @@ export function useRealTimeNotifications() {
   
   // Manejador de mensajes WebSocket
   const handleWebSocketMessage = (data: any) => {
-    // Registrar todos los mensajes WebSocket para depuración
-    console.log('[WebSocket] Mensaje recibido:', data);
-    
     if (data.type === 'notification') {
-      console.log('[WebSocket] NOTIFICACIÓN RECIBIDA', data.data);
-      
       try {
-        // Reproducir sonido de notificación - llamar esto primero para mejorar la experiencia
-        console.log('[Notificación] Intentando reproducir sonido...');
-        
-        // IMPORTANTE: Usar setTimeout para asegurar que el sonido se reproduzca después de un breve retraso
-        // Esto ayuda en navegadores que requieren interacción del usuario antes de reproducir audio
+        // Reproducir sonido de notificación
         setTimeout(() => {
           playNotificationSound();
-          console.log('[Notificación] Llamada de reproducción de sonido ejecutada');
         }, 100);
         
         // Extraer el mensaje de la notificación - aceptar diferentes estructuras
@@ -61,10 +51,6 @@ export function useRealTimeNotifications() {
         let message = notification.message || 'Has recibido una nueva notificación';
         let notificationType = notification.type || 'default';
         let createdAt = notification.createdAt || new Date().toISOString();
-        
-        console.log('[Notificación] Datos procesados:', {
-          title, message, notificationType, createdAt
-        });
         
         // Formatear fecha
         const formattedDate = format(new Date(createdAt), 'HH:mm', { locale: es });
@@ -86,11 +72,10 @@ export function useRealTimeNotifications() {
         }, 300);
         
         // Actualizar la caché de datos
-        console.log('[Notificación] Actualizando caché de notificaciones');
         queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
         queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread-count'] });
       } catch (error) {
-        console.error('[Notificación] Error al procesar notificación:', error);
+        // Error handling without logging
       }
     }
   };
@@ -98,7 +83,7 @@ export function useRealTimeNotifications() {
   // Inicializar WebSocket
   const { status: wsStatus } = useWebSocket({
     onMessage: handleWebSocketMessage,
-    debug: true,
+    debug: false,
     autoReconnect: true
   });
   
@@ -130,8 +115,6 @@ export function useRealTimeNotifications() {
       if (newNotifications.length > 0) {
         // Reproducir sonido sólo una vez, independientemente del número de notificaciones
         playNotificationSound();
-        
-        console.log(`Recibidas ${newNotifications.length} notificaciones nuevas`);
       }
       
       // Mostrar toast para cada notificación nueva (limitado a 3 para evitar spam)
