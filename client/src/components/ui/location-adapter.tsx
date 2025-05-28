@@ -1,5 +1,5 @@
 import React from "react";
-import { CommandCombobox, LocationOption } from "@/components/ui/command-combobox";
+import { LocationSelector, LocationOption } from "@/components/ui/location-selector";
 import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 
 /**
@@ -25,18 +25,16 @@ export function LocationAdapter({
   const comboboxOptions: ComboboxOption[] = React.useMemo(() => {
     return options.map(opt => ({
       value: opt.value,
-      label: opt.place === "Todas las paradas" 
-        ? `${opt.city} (Todas las paradas)`
-        : `${opt.place}, ${opt.city}`
+      label: opt.label
     }));
   }, [options]);
 
   return mode === "grouped" ? (
-    <CommandCombobox
+    <LocationSelector
       options={options}
       value={value}
       onChange={onChange}
-      placeholder={placeholder}
+      placeholder={placeholder || "Seleccionar ubicación..."}
       className={className}
     />
   ) : (
