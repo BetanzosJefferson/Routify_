@@ -5123,9 +5123,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[GET /taquilla/packages] Usuario: ${user.firstName} ${user.lastName} (ID: ${user.id})`);
       
       // Verificar que el usuario sea taquillero
-      if (user.role !== 'taquillero') {
-        console.log(`[GET /taquilla/packages] ACCESO DENEGADO: El usuario tiene rol ${user.role}, se requiere rol taquillero`);
-        return res.status(403).json({ error: "Acceso denegado. Solo taquilleros pueden usar este endpoint." });
+      if (user.role !== 'taquilla') {
+        console.log(`[GET /taquilla/packages] ACCESO DENEGADO: El usuario tiene rol ${user.role}, se requiere rol taquilla`);
+        return res.status(403).json({ error: "Acceso denegado. Solo usuarios con rol taquilla pueden usar este endpoint." });
       }
       
       // Obtener todas las empresas asociadas al taquillero
