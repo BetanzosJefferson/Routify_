@@ -5115,6 +5115,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
   
   // 1. Obtener todas las paqueterías (con filtros)
+  // Endpoint específico para taquilleros: obtener paqueterías de todas sus empresas
+  app.get(apiRouter("/taquilla/packages"), isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { user } = req as any;
+      
+      console.log(`[GET /taquilla/packages] Usuario: ${user.firstName} ${user.lastName} (ID: ${user.id})`);
+      
+      // Verificar que el usuario sea taquillero
+      if (user.role !== 'taquillero') {
+        console.log(`[GET /taquilla/packages] ACCESO DENEGADO: El usuario tiene rol ${user.role}, se requiere rol taquillero`);
+        return res.status(403).json({ error: "Acceso denegado. Solo taquilleros pueden usar este endpoint." });
+      }
+      
+      // Obtener todas las empresas asociadas al taquillero
+      const userCompanies = await db
+        .select()
+        .from(schema.userCompanies)
+        .where(eq(schema.userCompanies.userId, user.id));
+      
+      const companyIds = userCompanies.map(uc => uc.companyId);
+      console.log(`[GET /taquilla/packages] Taquillero tiene acceso a ${companyIds.length} empresas: [${companyIds.join(', ')}]`);
+      
+      if (companyIds.length === 0) {
+        console.log(`[GET /taquilla/packages] ADVERTENCIA: Taquillero no tiene empresas asociadas`);
+        return res.json([]);
+      }
+      
+      // Obtener paqueterías de todas las empresas del taquillero
+      const packages = await storage.getPackages({ companyIds: companyIds });
+      
+      console.log(`[GET /taquilla/packages] Encontrados ${packages.length} paquetes para las empresas del taquillero`);
+      
+      res.json(packages);
+    } catch (error) {
+      console.error(`[GET /taquilla/packages] Error: ${error}`);
+      res.status(500).json({ error: "Error al obtener paqueterías para taquillero" });
+    }
+  });
+
   app.get(apiRouter("/packages"), validatePackageAccess, async (req: Request, res: Response) => {
     try {
       const { user } = req as any;
