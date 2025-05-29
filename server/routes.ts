@@ -2199,6 +2199,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Filtrar reservaciones manualmente
           filteredReservations = reservations.filter(res => tripIdsOnDate.includes(res.tripId));
           console.log(`[GET /reservations] SUPABASE: Reservaciones después de filtro fecha: ${filteredReservations.length}`);
+        } else {
+          // Sin filtro de fecha: mostrar reservaciones actuales y futuras
+          console.log(`[GET /reservations] SUPABASE: Sin filtro de fecha, mostrando todas las reservaciones actuales y futuras`);
+          
+          // Obtener todos los viajes
+          const allTrips = await db.select().from(schema.trips);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); // Inicio del día actual
+          
+          // Filtrar viajes que son de hoy o futuros
+          const currentAndFutureTrips = allTrips.filter(trip => {
+            const tripDate = new Date(trip.departureDate);
+            tripDate.setHours(0, 0, 0, 0);
+            return tripDate >= today;
+          });
+          
+          const currentAndFutureTripIds = currentAndFutureTrips.map(trip => trip.id);
+          console.log(`[GET /reservations] SUPABASE: Viajes actuales y futuros: [${currentAndFutureTripIds.join(', ')}]`);
+          
+          // Filtrar reservaciones para viajes actuales y futuros
+          filteredReservations = reservations.filter(res => currentAndFutureTripIds.includes(res.tripId));
+          console.log(`[GET /reservations] SUPABASE: Reservaciones actuales y futuras: ${filteredReservations.length}`);
         }
         
         if (filteredReservations.length === 0) {
