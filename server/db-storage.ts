@@ -1557,14 +1557,12 @@ export class DatabaseStorage implements IStorage {
     
     // Extraer IDs únicos para consultas batch
     const reservationIds = reservations.map(r => r.id);
-    const tripIds = [...new Set(reservations.map(r => r.tripId))];
-    const userIds = [
-      ...new Set([
-        ...reservations.map(r => r.createdBy).filter(Boolean),
-        ...reservations.map(r => r.checkedBy).filter(Boolean), 
-        ...reservations.map(r => r.paidBy).filter(Boolean)
-      ])
-    ] as number[];
+    const tripIds = Array.from(new Set(reservations.map(r => r.tripId).filter(Boolean)));
+    const userIds = Array.from(new Set([
+      ...reservations.map(r => r.createdBy).filter(Boolean),
+      ...reservations.map(r => r.checkedBy).filter(Boolean), 
+      ...reservations.map(r => r.paidBy).filter(Boolean)
+    ].filter(Boolean))) as number[];
     
     // Consulta BATCH para todos los pasajeros
     const allPassengers = reservationIds.length > 0 ? await db
