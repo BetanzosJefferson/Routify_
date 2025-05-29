@@ -2156,97 +2156,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // SUPABASE FIX: Obtener reservaciones con consultas simples
-      console.log(`[GET /reservations] SUPABASE: Iniciando consulta simplificada`);
+      // SUPABASE FIX: Consulta ultra simple para obtener reservaciones
+      console.log(`[GET /reservations] SUPABASE: Iniciando consulta ultra simple`);
       
       try {
-        // Construir condiciones básicas
-        const whereConditions = [];
+        // Paso 1: Obtener todas las reservaciones básicas con filtros simples
+        let reservationsQuery = db.select().from(schema.reservations);
         
-        // Filtro por viaje específico
-        if (tripId) {
-          console.log(`[GET /reservations] SUPABASE: Filtrando por viaje ID: ${tripId}`);
-          whereConditions.push(eq(schema.reservations.tripId, tripId));
-        }
-        
-        // Filtro por compañía específica
+        // Aplicar filtros uno por uno
         if (companyId) {
-          console.log(`[GET /reservations] SUPABASE: Filtrando por compañía: ${companyId}`);
-          whereConditions.push(eq(schema.reservations.companyId, companyId));
+          console.log(`[GET /reservations] SUPABASE: Aplicando filtro de compañía: ${companyId}`);
+          reservationsQuery = reservationsQuery.where(eq(schema.reservations.companyId, companyId)) as any;
         }
         
-        // Filtro por múltiples compañías (para taquilleros)
-        if (companyIds && companyIds.length > 0 && !companyId) {
-          console.log(`[GET /reservations] SUPABASE: Filtrando por múltiples compañías: [${companyIds.join(', ')}]`);
-          whereConditions.push(inArray(schema.reservations.companyId, companyIds));
+        if (tripId) {
+          console.log(`[GET /reservations] SUPABASE: Aplicando filtro de viaje: ${tripId}`);
+          reservationsQuery = reservationsQuery.where(eq(schema.reservations.tripId, tripId)) as any;
         }
         
-        // Filtro por fecha - primero obtener viajes de la fecha
+        const reservations = await reservationsQuery;
+        console.log(`[GET /reservations] SUPABASE: Reservaciones encontradas: ${reservations.length}`);
+        
+        // Paso 2: Si hay filtro por fecha, filtrar manualmente
+        let filteredReservations = reservations;
+        
         if (dateFilter) {
-          console.log(`[GET /reservations] SUPABASE: Filtrando por fecha: ${dateFilter}`);
+          console.log(`[GET /reservations] SUPABASE: Aplicando filtro manual por fecha: ${dateFilter}`);
           
-          // Obtener IDs de viajes que salen en la fecha específica
-          const tripsOnDate = await db
-            .select({ id: schema.trips.id })
-            .from(schema.trips)
-            .where(sql`DATE(departure_date) = ${dateFilter}`);
+          // Obtener todos los viajes de la fecha
+          const allTrips = await db.select().from(schema.trips);
+          const targetDate = new Date(dateFilter);
           
-          const tripIds = tripsOnDate.map(trip => trip.id);
-          console.log(`[GET /reservations] SUPABASE: Encontrados ${tripIds.length} viajes para la fecha ${dateFilter}`);
+          // Filtrar viajes por fecha manualmente
+          const tripsOnDate = allTrips.filter(trip => {
+            const tripDate = new Date(trip.departureDate);
+            return tripDate.toDateString() === targetDate.toDateString();
+          });
           
-          if (tripIds.length === 0) {
-            console.log(`[GET /reservations] SUPABASE: No hay viajes en la fecha ${dateFilter}, devolviendo array vacío`);
-            return res.json([]);
-          }
+          const tripIdsOnDate = tripsOnDate.map(trip => trip.id);
+          console.log(`[GET /reservations] SUPABASE: Viajes en fecha ${dateFilter}: [${tripIdsOnDate.join(', ')}]`);
           
-          whereConditions.push(inArray(schema.reservations.tripId, tripIds));
+          // Filtrar reservaciones manualmente
+          filteredReservations = reservations.filter(res => tripIdsOnDate.includes(res.tripId));
+          console.log(`[GET /reservations] SUPABASE: Reservaciones después de filtro fecha: ${filteredReservations.length}`);
         }
         
-        // Ejecutar consulta principal
-        let query = db.select().from(schema.reservations);
-        
-        if (whereConditions.length > 0) {
-          query = query.where(and(...whereConditions)) as any;
-        }
-        
-        const reservations = await query;
-        console.log(`[GET /reservations] SUPABASE: Encontradas ${reservations.length} reservaciones`);
-        
-        if (reservations.length === 0) {
+        if (filteredReservations.length === 0) {
+          console.log(`[GET /reservations] SUPABASE: No hay reservaciones, devolviendo array vacío`);
           return res.json([]);
         }
         
-        // Procesar cada reservación individualmente para obtener detalles
+        // Paso 3: Obtener detalles para cada reservación de forma individual
         const result = [];
         
-        for (const reservation of reservations) {
+        for (const reservation of filteredReservations) {
           try {
+            console.log(`[GET /reservations] SUPABASE: Procesando reservación ${reservation.id}`);
+            
             // Obtener el viaje
-            const [trip] = await db
-              .select()
-              .from(schema.trips)
-              .where(eq(schema.trips.id, reservation.tripId));
+            const allTrips = await db.select().from(schema.trips);
+            const trip = allTrips.find(t => t.id === reservation.tripId);
             
             if (!trip) {
-              console.log(`[GET /reservations] SUPABASE: Viaje ${reservation.tripId} no encontrado para reserva ${reservation.id}`);
+              console.log(`[GET /reservations] SUPABASE: No se encontró viaje ${reservation.tripId}`);
               continue;
             }
             
-            // Obtener la ruta del viaje
+            // Obtener la ruta
             let route = null;
             if (trip.routeId) {
-              const [routeData] = await db
-                .select()
-                .from(schema.routes)
-                .where(eq(schema.routes.id, trip.routeId));
-              route = routeData || null;
+              const allRoutes = await db.select().from(schema.routes);
+              route = allRoutes.find(r => r.id === trip.routeId) || null;
             }
             
             // Obtener pasajeros
-            const passengers = await db
-              .select()
-              .from(schema.passengers)
-              .where(eq(schema.passengers.reservationId, reservation.id));
+            const allPassengers = await db.select().from(schema.passengers);
+            const passengers = allPassengers.filter(p => p.reservationId === reservation.id);
             
             // Crear objeto completo
             const reservationWithDetails = {
@@ -2259,17 +2244,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             };
             
             result.push(reservationWithDetails);
+            console.log(`[GET /reservations] SUPABASE: Reservación ${reservation.id} procesada exitosamente`);
           } catch (error) {
-            console.log(`[GET /reservations] SUPABASE: Error procesando reserva ${reservation.id}:`, error);
+            console.log(`[GET /reservations] SUPABASE: Error en reservación ${reservation.id}:`, error);
             continue;
           }
         }
         
-        console.log(`[GET /reservations] SUPABASE: Procesadas ${result.length} reservaciones exitosamente`);
+        console.log(`[GET /reservations] SUPABASE: Total procesadas: ${result.length} reservaciones`);
         res.json(result);
         
       } catch (error) {
-        console.error(`[GET /reservations] SUPABASE: Error general:`, error);
+        console.error(`[GET /reservations] SUPABASE: Error crítico:`, error);
         res.json([]);
       }
     } catch (error: any) {
