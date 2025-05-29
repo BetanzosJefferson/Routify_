@@ -658,7 +658,13 @@ const TransactionHistoryBox: React.FC = () => {
         ) : (
           <div className="space-y-6">
             {/* Tarjetas de cortes */}
-            {Object.values(cutoffGroups).map((group) => (
+            {Object.values(cutoffGroups)
+              .sort((a, b) => {
+                // Ordenar por ID de corte de mayor a menor (más reciente primero)
+                // Ya que el ID de corte se incrementa automáticamente
+                return b.cutoffId - a.cutoffId;
+              })
+              .map((group) => (
               <Card key={group.cutoffId} className="bg-blue-50 border-blue-200 overflow-hidden">
                 <CardHeader className="bg-blue-100 pb-2">
                   <div className="flex flex-col space-y-2">
