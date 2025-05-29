@@ -1534,17 +1534,6 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`[getReservations] Encontradas ${reservations.length} reservas`);
     
-    // CAPA DE SEGURIDAD ADICIONAL
-    if (companyId) {
-      // Verificar que todas las reservas sean realmente de la compañía
-      const reservasFiltradas = reservations.filter(r => r.companyId === companyId);
-      
-      if (reservasFiltradas.length !== reservations.length) {
-        console.log(`[getReservations] ALERTA DE SEGURIDAD: La consulta SQL devolvió ${reservations.length} reservas pero solo ${reservasFiltradas.length} son de la compañía ${companyId}`);
-        reservations = reservasFiltradas;
-      }
-    }
-    
     // Si no hay reservaciones, devolver array vacío inmediatamente
     if (reservations.length === 0) {
       console.log(`[getReservations] No hay reservaciones, devolviendo array vacío`);
@@ -1552,97 +1541,60 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
     
-    // OPTIMIZACIÓN: Usar una sola consulta JOIN para obtener todos los datos
-    console.log(`[getReservations] OPTIMIZANDO: Usando consulta JOIN única para ${reservations.length} reservas`);
+    // SUPABASE FIX: Procesar reservaciones una por una para evitar errores de JOIN
+    console.log(`[getReservations] SUPABASE: Procesando ${reservations.length} reservaciones individualmente`);
+    const result: ReservationWithDetails[] = [];
     
-    // Extraer IDs únicos para consultas batch
-    const reservationIds = reservations.map(r => r.id);
-    const tripIds = Array.from(new Set(reservations.map(r => r.tripId).filter(Boolean)));
-    const userIds = Array.from(new Set([
-      ...reservations.map(r => r.createdBy).filter(Boolean),
-      ...reservations.map(r => r.checkedBy).filter(Boolean), 
-      ...reservations.map(r => r.paidBy).filter(Boolean)
-    ].filter(Boolean))) as number[];
-    
-    // Consulta BATCH para todos los pasajeros
-    const allPassengers = reservationIds.length > 0 ? await db
-      .select()
-      .from(schema.passengers)
-      .where(inArray(schema.passengers.reservationId, reservationIds)) : [];
-    
-    // Consulta BATCH para todos los viajes con sus rutas (simplificada para Supabase)
-    const allTripsData = tripIds.length > 0 ? await db
-      .select()
-      .from(schema.trips)
-      .where(inArray(schema.trips.id, tripIds)) : [];
-    
-    // Obtener rutas por separado
-    const routeIds = Array.from(new Set(allTripsData.map(trip => trip.routeId).filter(Boolean)));
-    const allRoutesData = routeIds.length > 0 ? await db
-      .select()
-      .from(schema.routes)
-      .where(inArray(schema.routes.id, routeIds)) : [];
-    
-    // Consulta BATCH para todos los usuarios
-    const allUsers = userIds.length > 0 ? await db
-      .select()
-      .from(schema.users)
-      .where(inArray(schema.users.id, userIds)) : [];
-    
-    // Crear mapas para acceso rápido
-    const passengersMap = new Map<number, any[]>();
-    allPassengers.forEach(passenger => {
-      if (!passengersMap.has(passenger.reservationId)) {
-        passengersMap.set(passenger.reservationId, []);
-      }
-      passengersMap.get(passenger.reservationId)!.push(passenger);
-    });
-    
-    const routesMap = new Map<number, any>();
-    allRoutesData.forEach(route => {
-      routesMap.set(route.id, route);
-    });
-    
-    const tripsMap = new Map<number, any>();
-    allTripsData.forEach(trip => {
-      const route = routesMap.get(trip.routeId);
-      tripsMap.set(trip.id, {
-        ...trip,
-        route: route || null
-      });
-    });
-    
-    const usersMap = new Map<number, any>();
-    allUsers.forEach(user => {
-      usersMap.set(user.id, user);
-    });
-    
-    // Construir resultados finales
-    const reservationsWithDetails: ReservationWithDetails[] = [];
     for (const reservation of reservations) {
-      const trip = tripsMap.get(reservation.tripId);
-      if (!trip) {
-        console.log(`[getReservations] No se encontró el viaje ${reservation.tripId} para la reserva ${reservation.id}`);
+      try {
+        // Obtener el viaje
+        const [trip] = await db
+          .select()
+          .from(schema.trips)
+          .where(eq(schema.trips.id, reservation.tripId));
+        
+        if (!trip) {
+          console.log(`[getReservations] No se encontró viaje ${reservation.tripId} para reserva ${reservation.id}`);
+          continue;
+        }
+        
+        // Obtener la ruta del viaje
+        let route = null;
+        if (trip.routeId) {
+          const [routeData] = await db
+            .select()
+            .from(schema.routes)
+            .where(eq(schema.routes.id, trip.routeId));
+          route = routeData || null;
+        }
+        
+        // Obtener pasajeros
+        const passengers = await db
+          .select()
+          .from(schema.passengers)
+          .where(eq(schema.passengers.reservationId, reservation.id));
+        
+        // Crear el objeto completo
+        const reservationWithDetails: ReservationWithDetails = {
+          ...reservation,
+          trip: {
+            ...trip,
+            route
+          },
+          passengers: passengers || []
+        };
+        
+        result.push(reservationWithDetails);
+      } catch (error) {
+        console.log(`[getReservations] Error procesando reserva ${reservation.id}:`, error);
+        // Continuar con la siguiente reserva en caso de error
         continue;
       }
-      
-      const passengers = passengersMap.get(reservation.id) || [];
-      const createdByUser = reservation.createdBy ? usersMap.get(reservation.createdBy) : undefined;
-      const checkedByUser = reservation.checkedBy ? usersMap.get(reservation.checkedBy) : undefined;
-      const paidByUser = reservation.paidBy ? usersMap.get(reservation.paidBy) : undefined;
-      
-      reservationsWithDetails.push({
-        ...reservation,
-        trip,
-        passengers,
-        createdByUser,
-        checkedByUser,
-        paidByUser
-      });
     }
     
+    console.log(`[getReservations] SUPABASE: Procesadas ${result.length} reservaciones exitosamente`);
     console.timeEnd('getReservations-optimized');
-    return reservationsWithDetails;
+    return result;
   }
   
   async getReservation(id: number): Promise<Reservation | undefined> {
