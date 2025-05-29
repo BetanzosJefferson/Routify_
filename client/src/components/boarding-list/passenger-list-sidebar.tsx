@@ -874,20 +874,6 @@ export function PassengerListSidebar({ tripId, onClose }: PassengerListSidebarPr
                 ))}
               </div>
               
-              <div className="pt-2 border-t border-gray-200">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-600">Total ingresos:</span>
-                  <span className="font-semibold text-green-600">
-                    {formatPrice(tripPackages.reduce((sum, pkg) => sum + pkg.amount, 0))}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-600">Pagados:</span>
-                  <span className="font-medium text-gray-900">
-                    {formatPrice(tripPackages.filter(pkg => pkg.isPaid).reduce((sum, pkg) => sum + pkg.amount, 0))}
-                  </span>
-                </div>
-              </div>
             </div>
           ) : (
             <div className="text-center py-8 bg-gray-50 rounded-xl border border-gray-200">
