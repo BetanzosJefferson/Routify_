@@ -67,7 +67,7 @@ export function ReservationList() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState(""); // Vacío por defecto = mostrar todas las reservaciones
   const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
   const [editingReservation, setEditingReservation] = useState<ReservationWithDetails | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
