@@ -24,12 +24,12 @@ import { useAllDriverReservations, Reservation, Passenger } from "@/hooks/use-dr
 import { PassengerListSidebar } from "./passenger-list-sidebar";
 
 export function BoardingList() {
-  // Usamos la fecha actual del sistema por defecto, pero permitimos cambiarla con el selector
+  // Usamos la fecha del sistema fija (28 de mayo) por defecto, pero permitimos cambiarla con el selector
   const [currentDate, setCurrentDate] = useState<Date>(() => {
-    // Usar la fecha actual del sistema
-    const today = new Date();
-    console.log(`[BoardingList] Inicializando con la fecha actual: ${today.toISOString()}`);
-    return today;
+    // Usar la fecha del sistema configurada (28 de mayo 2025)
+    const systemDate = new Date('2025-05-28T12:00:00.000Z');
+    console.log(`[BoardingList] Inicializando con la fecha del sistema: ${systemDate.toISOString()}`);
+    return systemDate;
   });
   const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
   const [, navigate] = useLocation();
