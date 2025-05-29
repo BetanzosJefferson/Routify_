@@ -1545,6 +1545,13 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
+    // Si no hay reservaciones, devolver array vacío inmediatamente
+    if (reservations.length === 0) {
+      console.log(`[getReservations] No hay reservaciones, devolviendo array vacío`);
+      console.timeEnd('getReservations-optimized');
+      return [];
+    }
+    
     // OPTIMIZACIÓN: Usar una sola consulta JOIN para obtener todos los datos
     console.log(`[getReservations] OPTIMIZANDO: Usando consulta JOIN única para ${reservations.length} reservas`);
     
@@ -1560,13 +1567,13 @@ export class DatabaseStorage implements IStorage {
     ] as number[];
     
     // Consulta BATCH para todos los pasajeros
-    const allPassengers = await db
+    const allPassengers = reservationIds.length > 0 ? await db
       .select()
       .from(schema.passengers)
-      .where(inArray(schema.passengers.reservationId, reservationIds));
+      .where(inArray(schema.passengers.reservationId, reservationIds)) : [];
     
     // Consulta BATCH para todos los viajes con sus rutas
-    const allTripsWithRoutes = await db
+    const allTripsWithRoutes = tripIds.length > 0 ? await db
       .select({
         // Campos del viaje
         tripId: schema.trips.id,
@@ -1595,7 +1602,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(schema.trips)
       .leftJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
-      .where(inArray(schema.trips.id, tripIds));
+      .where(inArray(schema.trips.id, tripIds)) : [];
     
     // Consulta BATCH para todos los usuarios
     const allUsers = userIds.length > 0 ? await db
