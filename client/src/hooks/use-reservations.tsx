@@ -16,9 +16,8 @@ export function useReservations(options: UseReservationsOptions = {}) {
   const { user } = useAuth();
   const { tripId, includeRelated = false, enabled = true, date } = options;
   
-  // Si no se proporciona fecha, usar la fecha actual para optimizar la carga inicial
-  const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-  const dateFilter = date || currentDate;
+  // Solo usar filtro de fecha si se proporciona explícitamente
+  const dateFilter = date;
   
   return useQuery<ReservationWithDetails[]>({
     queryKey: ["/api/reservations", { tripId, includeRelated, date: dateFilter }],
@@ -41,13 +40,17 @@ export function useReservations(options: UseReservationsOptions = {}) {
           params.append("includeRelated", "true");
         }
         
-        // Agregar filtro de fecha (por defecto día actual)
-        params.append("date", dateFilter);
+        // Agregar filtro de fecha solo si se especifica
+        if (dateFilter) {
+          params.append("date", dateFilter);
+        }
         
-        // Añadir los parámetros a la URL
-        url += `?${params.toString()}`;
+        // Añadir los parámetros a la URL solo si hay parámetros
+        if (params.toString()) {
+          url += `?${params.toString()}`;
+        }
         
-        console.log(`[useReservations] Obteniendo reservaciones para fecha ${dateFilter}: ${url}`);
+        console.log(`[useReservations] Obteniendo reservaciones${dateFilter ? ` para fecha ${dateFilter}` : ' (todas)'}: ${url}`);
         
         const response = await fetch(url);
         if (!response.ok) {
@@ -55,7 +58,7 @@ export function useReservations(options: UseReservationsOptions = {}) {
         }
         
         const reservations = await response.json();
-        console.log(`[useReservations] Obtenidas ${reservations.length} reservaciones para ${dateFilter}`);
+        console.log(`[useReservations] Obtenidas ${reservations.length} reservaciones${dateFilter ? ` para ${dateFilter}` : ' (todas)'}`);
         
         return reservations;
       } catch (error) {
