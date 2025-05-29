@@ -1570,37 +1570,18 @@ export class DatabaseStorage implements IStorage {
       .from(schema.passengers)
       .where(inArray(schema.passengers.reservationId, reservationIds)) : [];
     
-    // Consulta BATCH para todos los viajes con sus rutas
-    const allTripsWithRoutes = tripIds.length > 0 ? await db
-      .select({
-        // Campos del viaje
-        tripId: schema.trips.id,
-        tripRouteId: schema.trips.routeId,
-        tripCompanyId: schema.trips.companyId,
-        tripDepartureDate: schema.trips.departureDate,
-        tripDepartureTime: schema.trips.departureTime,
-        tripArrivalTime: schema.trips.arrivalTime,
-        tripCapacity: schema.trips.capacity,
-        tripAvailableSeats: schema.trips.availableSeats,
-        tripPrice: schema.trips.price,
-        tripDriverId: schema.trips.driverId,
-        tripVehicleId: schema.trips.vehicleId,
-        tripIsSubTrip: schema.trips.isSubTrip,
-        tripParentTripId: schema.trips.parentTripId,
-        tripOrigin: schema.trips.origin,
-        tripDestination: schema.trips.destination,
-        tripSegmentPrices: schema.trips.segmentPrices,
-        // Campos de la ruta
-        routeId: schema.routes.id,
-        routeName: schema.routes.name,
-        routeOrigin: schema.routes.origin,
-        routeDestination: schema.routes.destination,
-        routeStops: schema.routes.stops,
-        routeCompanyId: schema.routes.companyId
-      })
+    // Consulta BATCH para todos los viajes con sus rutas (simplificada para Supabase)
+    const allTripsData = tripIds.length > 0 ? await db
+      .select()
       .from(schema.trips)
-      .leftJoin(schema.routes, eq(schema.trips.routeId, schema.routes.id))
       .where(inArray(schema.trips.id, tripIds)) : [];
+    
+    // Obtener rutas por separado
+    const routeIds = Array.from(new Set(allTripsData.map(trip => trip.routeId).filter(Boolean)));
+    const allRoutesData = routeIds.length > 0 ? await db
+      .select()
+      .from(schema.routes)
+      .where(inArray(schema.routes.id, routeIds)) : [];
     
     // Consulta BATCH para todos los usuarios
     const allUsers = userIds.length > 0 ? await db
@@ -1617,33 +1598,17 @@ export class DatabaseStorage implements IStorage {
       passengersMap.get(passenger.reservationId)!.push(passenger);
     });
     
+    const routesMap = new Map<number, any>();
+    allRoutesData.forEach(route => {
+      routesMap.set(route.id, route);
+    });
+    
     const tripsMap = new Map<number, any>();
-    allTripsWithRoutes.forEach(row => {
-      tripsMap.set(row.tripId, {
-        id: row.tripId,
-        routeId: row.tripRouteId,
-        companyId: row.tripCompanyId,
-        departureDate: row.tripDepartureDate,
-        departureTime: row.tripDepartureTime,
-        arrivalTime: row.tripArrivalTime,
-        capacity: row.tripCapacity,
-        availableSeats: row.tripAvailableSeats,
-        price: row.tripPrice,
-        driverId: row.tripDriverId,
-        vehicleId: row.tripVehicleId,
-        isSubTrip: row.tripIsSubTrip,
-        parentTripId: row.tripParentTripId,
-        origin: row.tripOrigin,
-        destination: row.tripDestination,
-        segmentPrices: row.tripSegmentPrices,
-        route: row.routeId ? {
-          id: row.routeId,
-          name: row.routeName,
-          origin: row.routeOrigin,
-          destination: row.routeDestination,
-          stops: row.routeStops,
-          companyId: row.routeCompanyId
-        } : null
+    allTripsData.forEach(trip => {
+      const route = routesMap.get(trip.routeId);
+      tripsMap.set(trip.id, {
+        ...trip,
+        route: route || null
       });
     });
     
